@@ -1,7 +1,7 @@
 
 # Background
 
-> ⚠️ This example may be outdated and soon will up reviewed & updated. In the meantime, please take a look at the [Hello World](https://docs.bacalhau.org/getting-started/installation) and [Image Processing](https://docs.bacalhau.org/demos/image-processing) examples.
+> ⚠️ This example may be outdated and soon will be reviewed & updated. In the meantime, please take a look at the [Hello World](https://docs.bacalhau.org/getting-started/installation) and [Image Processing](https://docs.bacalhau.org/demos/image-processing) examples.
 
 
 Scientific Purpose of the workload:
