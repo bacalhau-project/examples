@@ -1,3 +1,7 @@
+> ⚠️ This example may be outdated and soon will up reviewed & updated. In the meantime, please take a look at the [Hello World](https://docs.bacalhau.org/getting-started/installation) and [Image Processing](https://docs.bacalhau.org/demos/image-processing) examples.
+
+
+```
 sed -n '/38.7[2-4]..,-9.1[3-7]../p' temperature_sensor_data.csv  | wc -l
 3871
 
@@ -26,10 +30,13 @@ wc -l temperature_sensor_data.csv
 │  │     [3 frames hidden]  <__array_function__ internals>, <buil...
 │  └─ 0.397 calc_temperature  generate_csv.py:70
 └─ 0.289 [self]
+```
 
 # Instructions
+```
 ../../bin/bacalhau devstack --dev
 export file_path="./temperature_sensor_data.csv"
 cid=$( IPFS_PATH=/tmp/bacalhau-ipfs1883232639 ipfs add -q $file_path )
 
 ./bin/bacalhau submit --cids=$cid --commands="sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/$cid"
+```
