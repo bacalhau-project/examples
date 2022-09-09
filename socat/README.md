@@ -1,6 +1,9 @@
 
 # Background
 
+> ⚠️ This example may be outdated and soon will up reviewed & updated. In the meantime, please take a look at the [Hello World](https://docs.bacalhau.org/getting-started/installation) and [Image Processing](https://docs.bacalhau.org/demos/image-processing) examples.
+
+
 Scientific Purpose of the workload:
 
 The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO2 in seawater around the globe. But in order to calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to partial pressure of CO2. We will convert the units by  combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
