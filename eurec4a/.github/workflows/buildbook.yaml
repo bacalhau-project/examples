@@ -1,0 +1,71 @@
+name: buildbook
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+        ipfs-version: [0.12.0]
+    defaults:
+      run:
+        shell: bash -l {0}
+    env:
+      IPFSSPEC_GATEWAYS: "http://127.0.0.1:8080"
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Set up Python modules with conda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: how_to_eurec4a
+        environment-file: environment.yml
+        python-version: ${{ matrix.python-version }}
+        auto-activate-base: false
+    - name: Install local ipfs node
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget curl jq
+        bash <(curl https://raw.githubusercontent.com/eurec4a/ipfs_tools/main/install_and_run_ipfs.sh) ${{ matrix.ipfs-version }}
+    - name: setting up notebook execution cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          how_to_eurec4a/_build/.jupyter_cache
+        key: ${{ runner.os }}-${{ hashFiles('requirements.txt') }}-${{ matrix.ipfs-version }}-${{ matrix.python-version }}
+    - name: build book
+      run: |
+        conda info
+        jupyter-book build -W -n --keep-going  how_to_eurec4a
+    - name: Archive build artifacts
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: build
+        path: |
+          how_to_eurec4a/_build
+
+  publish:
+    needs: build
+    if: "always() && github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository_owner == 'eurec4a'"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download compiled book
+        uses: actions/download-artifact@v2
+        with:
+          name: build
+          path: _build
+      - name: set CNAME
+        run: |
+          printf "howto.eurec4a.eu" > _build/html/CNAME
+      - name: Publish book on github pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/html

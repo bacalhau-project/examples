@@ -1,0 +1,46 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{how_to_eurec4a}
+
+\renewcommand\sphinxmaketitle{
+  \let\sphinxrestorepageanchorsetting\relax    
+  \ifHy@pageanchor\def\sphinxrestorepageanchorsetting{\Hy@pageanchortrue}\fi    
+  \hypersetup{pageanchor=false}% avoid duplicate destination warnings    
+  \begin{titlepage}%    
+    \let\footnotesize\small    
+    \let\footnoterule\relax    
+    \noindent\rule{\textwidth}{1pt}\par    
+      \begingroup % for PDF information dictionary    
+       \def\endgraf{ }\def\and{\& }%    
+       \pdfstringdefDisableCommands{\def\\{, }}% overwrite hyperref setup    
+       \hypersetup{pdfauthor={\@author}, pdftitle={\@title}}%    
+      \endgroup
+    \begin{flushright}%
+      \vspace{1cm}
+      \includegraphics[width=.3\textwidth]{logo_pyeurec4a.png}\par
+      \py@HeaderFamily
+      {\Huge \@title \par}
+      {\itshape\LARGE \py@release\releaseinfo \par}
+      \vfill
+      {\LARGE
+        \begin{tabular}[t]{r}
+          \@author \\
+          Copyright \copyright{} 2021
+        \end{tabular}\kern-\tabcolsep
+        \par}
+      \vfill\vfill
+      {\large
+       \@date \par
+       \vfill
+       \py@authoraddress \par
+      }%
+    \end{flushright}%\par
+    \@thanks
+  \end{titlepage}%
+  \setcounter{footnote}{0}%
+  \let\thanks\relax\let\maketitle\relax
+  %\gdef\@thanks{}\gdef\@author{}\gdef\@title{}
+  \clearpage
+  \ifdefined\sphinxbackoftitlepage\sphinxbackoftitlepage\fi
+  \if@openright\cleardoublepage\else\clearpage\fi
+  \sphinxrestorepageanchorsetting
+}
