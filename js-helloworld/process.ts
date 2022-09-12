@@ -32,8 +32,7 @@ for await (const row of readCSVRows(f)) {
     
     let fileWriter = await filesToWrite.get(fileName)!
     if (!fileWriter) {
-        fileWriter = await Deno.open(fileName,
-            { write: true, create: true, append: true, read: true, truncate: false, mode: 0o666 });
+        fileWriter = await Deno.open(fileName, { write: true, create: true, append: true, read: true, truncate: false, mode: 0o666 });
         await writeCSV(fileWriter, asyncRowGenerator(header));
         await filesToWrite.set(fileName, fileWriter)
     }
