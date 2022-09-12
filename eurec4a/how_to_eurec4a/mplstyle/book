@@ -1,0 +1,7 @@
+figure.constrained_layout.use: True
+figure.figsize: 10, 6
+figure.dpi: 200
+font.size: 10
+
+axes.spines.top: False
+axes.spines.right: False

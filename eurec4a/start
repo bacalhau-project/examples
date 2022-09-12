@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# make ipfs command available
+export PATH=$PATH:$HOME/go-ipfs
+# set up local node
+ipfs init
+
+# configure peering with known peers
+ipfs config --json Peering "`curl -L https://github.com/eurec4a/ipfs_tools/raw/main/peers.json`"
+
+# start the daemon
+ipfs daemon 2>ipfs.log | grep -i -o -m1 'Daemon is ready' & tail -f --pid=$! ipfs.log
+
+# continue starting the jupyter server
+exec "$@"

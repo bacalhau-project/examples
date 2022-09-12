@@ -1,0 +1,5 @@
+/* the default jupyter book styles break the formatting of leaflet legends.
+ * this directive resets the margin of legend entries to zero */
+div.leaflet-control-legend > p {
+  margin: 0;
+}
