@@ -23,6 +23,10 @@ A collection of worked examples that use Bacalhau.
 
 Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
+Please note that the push of the rendered code will delete and replace the existing files in the docs repository.
+
+You can pass Docusaurus yaml metadata by specifying a raw cell at the top of your notebook. See [the index](index.ipynb) for an example.
+
 ### Developer Help
 
 If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the filecoin slack.
