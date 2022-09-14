@@ -10,7 +10,7 @@ DST_FILES := $(patsubst $(SRC_DIR)/%.ipynb,$(DST_DIR)/%.md,$(SRC_FILES))
 
 $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 	mkdir -p $(dir $@)
-	jupytext --to markdown -o $@ $<
+	jupytext --to markdown --update-metadata '{"jupytext": {"notebook_metadata_filter":"sidebar_label,sidebar_position"}}' -o $@ $<
 	@echo
 
 requirements:
