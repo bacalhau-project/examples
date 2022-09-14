@@ -17,13 +17,13 @@ A collection of worked examples that use Bacalhau.
 * All examples must be ipynb files
 * Examples must be placed in "task specific" directories in this repository - this structure is mirrored to the documentation site
 * The todo folder will not be rendered
-* Due to a bug in docusaurus, files named `index.ipynb` or `README.ipynb` will not be rendered. See [this issue for a fix]. Name your notebooks something like `${task}-${subtask}.ipynb` instead, like the current examples.
+* Any file named `README.ipynb` or `index.ipynb` will be rendered as the index page for the directory
 
 ### Documentation Rendering
 
 Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
-Please note that the push of the rendered code will delete and replace the existing files in the docs repository.
+:warning: Please note that the push of the rendered code will delete and replace the existing files in the docs/examples directory in the [repository](https://github.com/bacalhau-project/docs.bacalhau.org). :warning: 
 
 You can pass Docusaurus yaml metadata by specifying a raw cell at the top of your notebook. See [the index](index.ipynb) for an example.
 
