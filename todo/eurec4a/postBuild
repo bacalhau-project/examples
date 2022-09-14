@@ -1,0 +1,7 @@
+#!/bin/bash
+
+IPFS_VERSION=0.10.0
+
+wget https://dist.ipfs.io/go-ipfs/v${IPFS_VERSION}/go-ipfs_v${IPFS_VERSION}_linux-amd64.tar.gz
+tar -xvzf go-ipfs_v${IPFS_VERSION}_linux-amd64.tar.gz
+rm go-ipfs_v${IPFS_VERSION}_linux-amd64.tar.gz

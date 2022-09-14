@@ -1,8 +1,0 @@
-name: how_to_eurec4a
-dependencies:
-  - python>=3.7
-  - anaconda
-  - cartopy
-  - pip
-  - pip:
-    - -r requirements.txt
