@@ -20,6 +20,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: render-ipynb
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Download rendered files
         uses: actions/download-artifact@v3
