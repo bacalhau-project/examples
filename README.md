@@ -17,6 +17,7 @@ A collection of worked examples that use Bacalhau.
 * All examples must be ipynb files
 * Examples must be placed in "task specific" directories in this repository - this structure is mirrored to the documentation site
 * The todo folder will not be rendered
+* Due to a bug in docusaurus, files named `index.ipynb` or `README.ipynb` will not be rendered. See [this issue for a fix]. Name your notebooks something like `${task}-${subtask}.ipynb` instead, like the current examples.
 
 ### Documentation Rendering
 
