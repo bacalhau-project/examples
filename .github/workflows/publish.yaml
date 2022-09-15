@@ -10,7 +10,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install nbconvert
-      - run: make
+      - run: make markdown
       - name: Archive rendered artifacts
         uses: actions/upload-artifact@v3
         with:
