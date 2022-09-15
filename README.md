@@ -24,6 +24,14 @@ Whenever you push to the main branch on this repository, a github action will au
 
 You can pass Docusaurus yaml metadata by specifying a raw cell at the top of your notebook. See [the index](index.ipynb) for an example.
 
+### Documentation Testing
+
+All ipynb files (except those in the todo directory) are tested [by a Github action](.github/workflows/test.yaml) using `pytest` and [`nbmake`](https://github.com/treebeardtech/nbmake).
+
+Please try to keep cell execution time to a minimum.
+
+You can [ignore cells](https://github.com/treebeardtech/nbmake#ignore-a-code-cell), [allow exceptions](https://github.com/treebeardtech/nbmake#allow-a-cell-to-throw-an-exception), and more.
+
 ### Developer Help
 
 If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the [Filecoin slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY).
