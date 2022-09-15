@@ -9,7 +9,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - run: pip install jupytext
+      - run: pip install nbconvert
       - run: make
       - name: Archive rendered artifacts
         uses: actions/upload-artifact@v3
