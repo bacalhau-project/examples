@@ -26,4 +26,4 @@ You can pass Docusaurus yaml metadata by specifying a raw cell at the top of you
 
 ### Developer Help
 
-If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the filecoin slack.
+If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the [Filecoin slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY).
