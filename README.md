@@ -22,6 +22,18 @@ Please see the [basic-template example](templates/basic-template) for a guide on
 
 Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
+Cells can be ignored (or inputs -- remove_input, or outputs -- remove_output) by adding the following to the cell metadata:
+
+```json
+...
+    "metadata": {
+        "tags": [
+            "remove_cell"
+        ]
+    },
+...
+```
+
 :warning: Please note that the push of the rendered code will delete and replace the existing files in the docs/examples directory in the [repository](https://github.com/bacalhau-project/docs.bacalhau.org). :warning: 
 
 ### Documentation Testing
