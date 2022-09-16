@@ -28,7 +28,7 @@ ifeq (, $(shell which pytest))
 	$(error "No pytest in $(PATH), please run pip install nbmake")
 endif
 
-markdown: markdown-requirements $(DST_FILES)
+markdown: markdown-requirements $(DST_FILES) $(DST_IMGS)
 
 test: test-requirements
 	pytest --nbmake --ignore=./todo/ --durations=0
