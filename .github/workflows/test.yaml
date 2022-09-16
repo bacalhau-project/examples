@@ -2,7 +2,7 @@ name: test
 on: [push]
 
 jobs:
-  render-ipynb:
+  test-ipynb:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
