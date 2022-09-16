@@ -1,7 +1,7 @@
 # Bacalhau Code Examples
 
 This is a collection of worked code examples that use Bacalhau.
-For ease of access they are rendered in the docs at https://docs.bacalhau.org/examples/
+For ease of access, they are rendered in the docs at https://docs.bacalhau.org/examples/
 
 * [Bacalhau Core Repository](https://github.com/filecoin-project/bacalhau)
 * [Documentation](https://docs.bacalhau.org/)
@@ -13,7 +13,7 @@ For ease of access they are rendered in the docs at https://docs.bacalhau.org/ex
 
 * All examples must be ipynb files
 * Examples must be placed in "task specific" directories in this repository - this structure is mirrored to the documentation site
-* The todo folder will not be rendered
+* The `todo` folder will not be rendered
 * Any file named `README.ipynb` or `index.ipynb` will be rendered as the index page for the directory
 
 ### Documentation Rendering
