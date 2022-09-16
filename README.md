@@ -9,6 +9,8 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 
 ## Developer Guide
 
+Please see the [basic-template example](templates/basic-template) for a guide on how to create a new example.
+
 ### Requirements
 
 * All examples must be ipynb files
@@ -21,8 +23,6 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
 :warning: Please note that the push of the rendered code will delete and replace the existing files in the docs/examples directory in the [repository](https://github.com/bacalhau-project/docs.bacalhau.org). :warning: 
-
-You can pass Docusaurus yaml metadata by specifying a raw cell at the top of your notebook. See [the index](index.ipynb) for an example.
 
 ### Documentation Testing
 
