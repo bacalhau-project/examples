@@ -11,7 +11,7 @@ DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 
 $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 	mkdir -p $(@D)
-	jupyter nbconvert --to markdown --output-dir=. --output=$@ $<
+	jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) $<
 	@echo
 
 $(DST_DIR)/%: $(SRC_IMGS)
@@ -28,7 +28,7 @@ ifeq (, $(shell which pytest))
 	$(error "No pytest in $(PATH), please run pip install nbmake")
 endif
 
-markdown: markdown-requirements $(DST_FILES) $(DST_IMGS)
+markdown: markdown-requirements $(DST_FILES)
 
 test: test-requirements
 	pytest --nbmake --ignore=./todo/ --durations=0
