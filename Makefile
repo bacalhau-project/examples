@@ -9,7 +9,7 @@ SRC_FILES := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*")
 DST_FILES := $(patsubst $(SRC_DIR)/%.ipynb,$(DST_DIR)/%.md,$(SRC_FILES))
 
 # Image files to copy
-SRC_IMGS := $(shell find . -type f -regex '\(.*jpg\|.*png\|.*jpeg\|.*JPG\|.*PNG\)' -not -path "./todo/*" -not -path "./rendered/*")
+SRC_IMGS := $(shell find . -type f -regex '\(.*jpg\|.*png\|.*jpeg\|.*JPG\|.*PNG\|.*mp4\)' -not -path "./todo/*" -not -path "./rendered/*")
 DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 
 # Need to process these one at a time so that we can extract the right output dir
