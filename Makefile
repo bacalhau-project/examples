@@ -22,6 +22,8 @@ $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 		--TagRemovePreprocessor.remove_all_outputs_tags=remove_output \
 		--TagRemovePreprocessor.remove_input_tags=remove_input \
 		$<
+# Remove %%bash from the file (this command works both on bsd/macs and linux)
+	grep -v "%%bash" $@ > temp && mv temp $@
 	@echo
 
 # Copy images to the rendered directory
