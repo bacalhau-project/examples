@@ -25,7 +25,7 @@ $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 	@echo
 
 # Copy images to the rendered directory
-$(DST_DIR)/%: $(SRC_IMGS)
+$(DST_DIR)/%: $(SRC_DIR)/%
 	mkdir -p $(@D)
 	cp $< $@
 
