@@ -11,7 +11,7 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 
 ### Ways of Working
 
-All example ideas are tracked as issues in the [Bacalhau Core Repository]() with a label of `Examples`. 
+All example ideas are tracked as issues in the [Bacalhau Core Repository]() with a label of `example`. 
 
 * If you have an idea for an example, please add an issue.
 * If you'd like to work on a example, please find an issue that has not been assigned, then assign the issue to yourself.
