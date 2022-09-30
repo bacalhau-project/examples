@@ -9,6 +9,16 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 
 ## Developer Guide
 
+### Ways of Working
+
+All example ideas are tracked as issues in the [Bacalhau Core Repository]() with a label of `Examples`. 
+
+* If you have an idea for an example, please add an issue.
+* If you'd like to work on a example, please find an issue that has not been assigned, then assign the issue to yourself.
+* David and Luke will prioritize the examples that are most useful to the community.
+
+### Basic Example
+
 Please see the [basic-template example](templates/basic-template) for a guide on how to create a new example.
 
 ### Requirements
@@ -42,7 +52,7 @@ All ipynb files (except those in the todo directory) are tested [by a Github act
 
 Please try to keep cell execution time to a minimum.
 
-You can [ignore cells](https://github.com/treebeardtech/nbmake#ignore-a-code-cell), [allow exceptions](https://github.com/treebeardtech/nbmake#allow-a-cell-to-throw-an-exception), and more.
+You can [ignore cells](https://github.com/treebeardtech/nbmake#ignore-a-code-cell), [allow exceptions](https://github.com/treebeardtech/nbmake#allow-a-cell-to-throw-an-exception), and more, by adding tags to that cell.
 
 ### Developer Help
 
