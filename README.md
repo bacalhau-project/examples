@@ -25,7 +25,7 @@ Please see the [basic-template example](templates/basic-template) for a guide on
 
 * All examples must be ipynb files
 * Examples must be placed in "task specific" directories in this repository - this structure is mirrored to the documentation site
-* The `todo` and `template` folder will not be rendered
+* The `todo` and `templates` folder will not be rendered
 * Any file named `README.ipynb` or `index.ipynb` will be rendered as the index page for the directory
 
 ### Documentation Rendering
