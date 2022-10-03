@@ -1,6 +1,5 @@
 .DS_Store
 rendered
-
 **/.ipynb_checkpoints/
 **/volumes/
 **/shards/
@@ -8,12 +7,9 @@ rendered
 **/stderr
 bacalhau
 .vscode/
-
-# These files should sit within the related notebook in a cell with %%writefile
 **/Dockerfile
 **/.py
 **/requirements.txt
-
 .vscode
-
 js-helloworld/outputs/*
+.idea/
