@@ -32,7 +32,7 @@ Please see the [basic-template example](templates/basic-template) for a guide on
 
 Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
-Cells can be ignored (or inputs -- remove_input, or outputs -- remove_output) by adding the following to the cell metadata:
+[Cells can be ignored](https://github.com/treebeardtech/nbmake#ignore-a-code-cell) (or inputs -- remove_input, or outputs -- remove_output) by adding the following to the cell metadata:
 
 ```json
 ...
