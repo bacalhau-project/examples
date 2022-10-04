@@ -10,8 +10,9 @@ pdb = PDBFile(input_path)
 forcefield = ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
 
 # Output
-output_path = '/output/final_state.pdbx'
-os.path.dirname(output_path) # check if ouput dir exists
+output_path = '/outputs/final_state.pdbx'
+if not os.path.exists(os.path.dirname(output_path)): # check if ouput dir exists
+    os.makedirs(os.path.dirname(output_path))
 
 # System Configuration
 
@@ -77,6 +78,6 @@ simulation.step(steps)
 # Write file with final simulation state
 
 state = simulation.context.getState(getPositions=True, enforcePeriodicBox=system.usesPeriodicBoundaryConditions())
-with open(output_path, mode="w") as file:
+with open(output_path, mode="w+") as file:
     PDBxFile.writeFile(simulation.topology, state.getPositions(), file)
 print('Simulation complete, file written to disk at: {}'.format(output_path))
