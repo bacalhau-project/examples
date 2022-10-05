@@ -70,6 +70,39 @@ yarn start
 
 :warning: Please note that the push of the rendered code will delete and replace the existing files in the docs/examples directory in the [repository](https://github.com/bacalhau-project/docs.bacalhau.org). :warning: 
 
+#### Docusaurus Metadata
+
+The top most cell of every notebook **must** have a raw cell with a bit of yaml in it:
+
+```yaml
+---
+sidebar_label: "Basic Template"
+sidebar_position: 1
+---
+```
+
+* `sidebar_label` is the label shown in the Docusaurus sidebar
+* `sidebar_position` sets the ordering of the labels in the sidebar. Lower values appear at the top.
+
+See [the template](templates/basic-template/index.ipynb) for an example.
+
+Depending on what editor you are using, you might need to open the file in raw "text" mode to see it. It looks something like this:
+
+```json
+...
+  {
+   "cell_type": "raw",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "sidebar_label: \"Basic Template\"\n",
+    "sidebar_position: 1\n",
+    "---"
+   ]
+  },
+...
+```
+
 ### Documentation Testing
 
 All ipynb files (except those in the todo directory) are tested [by a Github action](.github/workflows/test.yaml) using `pytest` and [`nbmake`](https://github.com/treebeardtech/nbmake).
