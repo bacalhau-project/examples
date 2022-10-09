@@ -14,3 +14,6 @@ bacalhau
 **/.py
 **/requirements.txt
 
+.vscode
+
+js-helloworld/outputs/*

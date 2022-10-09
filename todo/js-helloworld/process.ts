@@ -1,5 +1,5 @@
 import { readCSVRows, writeCSV } from "./deps.ts"
-import { path } from "./deps.ts"
+import { fs, mod } from "./deps.ts"
 
 const filename = Deno.env.get("FILE_TO_PROCESS")!;
 if (filename == null) {
@@ -9,6 +9,7 @@ let outputDir = Deno.env.get("OUTPUT_DIR")!;
 if (outputDir == null) {
     outputDir = "/outputs";
 }
+
 const f = await Deno.open(filename);
 
 const filesToWrite: Map<string, Deno.FsFile> = new Map();
@@ -28,10 +29,11 @@ for await (const row of readCSVRows(f)) {
     }
     
     const numPassengers = parseInt(row[6]);
-    const fileName = path.join(outputDir, `passengers_${numPassengers}.csv`);
-    
+    const fileName = mod.join(outputDir, `passengers_${numPassengers}.csv`);
+        
     let fileWriter = await filesToWrite.get(fileName)!
     if (!fileWriter) {
+        await fs.ensureDir(outputDir)
         fileWriter = await Deno.open(fileName, { write: true, create: true, append: true, read: true, truncate: false, mode: 0o666 });
         await writeCSV(fileWriter, asyncRowGenerator(header));
         await filesToWrite.set(fileName, fileWriter)
@@ -39,6 +41,12 @@ for await (const row of readCSVRows(f)) {
 
     await writeCSV(fileWriter, asyncRowGenerator(row));
     i++;
+    if (i % 1000 === 0) {
+        if (i === 1000) {
+            Deno.stdout.writeSync(new TextEncoder().encode(`Rows Processed:\n`));
+        }
+        Deno.stdout.writeSync(new TextEncoder().encode(`\t${i}\n`));
+    }
 }
 
 for (const file of filesToWrite.values()) {

@@ -1,2 +1,3 @@
-.vscode
 outputs/*
+stderr
+stdout
