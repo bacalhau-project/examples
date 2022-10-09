@@ -1,119 +1,82 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/go-resty/resty/v2"
+	"github.com/spf13/afero"
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Get files to download from FILE env variable
-	u, urlSet := os.LookupEnv("URL")
-	if !urlSet {
-		fmt.Printf("URL env variable is not set. Please do so with the -e URL=<URL> flag.\n")
-		return
-	}
-	uu, err := IsURLSupported(u)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing the URL (%s): %+v\n", u, err)
-		return
+	inputPath := os.Getenv("INPUT_PATH")
+	if inputPath == "" {
+		fmt.Printf("INPUT_PATH is not set, using '/inputs'\n")
+		inputPath = "/inputs"
 	}
 
 	outputPath := os.Getenv("OUTPUT_PATH")
 	if outputPath == "" {
-		fmt.Fprintf(os.Stdout, "OUTPUT_PATH env variable is not set. Using /outputs as the download directory in the container.\n")
+		fmt.Printf("OUTPUT_PATH is not set, using '/outputs'\n")
 		outputPath = "/outputs"
 	}
+	fs := afero.NewOsFs()
+	allObjects := []string{}
+	allDirs := []string{}
+	allFiles := []string{}
 
-	c := resty.New()
-	c.SetTimeout(config.GetDownloadURLRequestTimeout())
-	c.SetOutputDirectory(outputPath)
-	c.SetDoNotParseResponse(true) // We want to stream the response to disk directly
+	walker := func(path string, d os.DirEntry, err error) error {
+		if path == inputPath {
+			return nil
+		}
+		if d.IsDir() {
+			allDirs = append(allDirs, path)
+		} else {
+			allFiles = append(allFiles, path)
+		}
 
-	req := c.R().SetContext(ctx)
-	req = req.SetContext(ctx)
-	r, err := req.Head(uu.String())
+		return nil
+	}
+
+	err := filepath.WalkDir(inputPath, walker)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get headers from url (%s): %s", uu.String(), err)
+		fmt.Printf("Error walking input path: %v", err)
 		return
 	}
 
-	r, err = req.Get(uu.String())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get headers from url (%s): %s", uu.String(), err)
-		return
+	allObjects = append(allObjects, allDirs...)
+	allObjects = append(allObjects, allFiles...)
+
+	remainingObjects := []string{}
+	for _, oo := range allObjects {
+		if f, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if f.IsDir() {
+			fmt.Printf("Moving %s to %s\n", oo, outputPath)
+			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
+			if err != nil {
+				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
+				return
+			}
+		} else {
+			remainingObjects = append(remainingObjects, oo)
+		}
 	}
 
-	if r.StatusCode() != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "non-200 response from URL (%s): %s", uu.String(), r.Status())
-		return
+	for _, oo := range remainingObjects {
+		if _, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else {
+			fmt.Printf("Moving %s to %s\n", oo, outputPath)
+			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
+			if err != nil {
+				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
+				return
+			}
+		}
 	}
-
-	// Create a new file based on the URL
-	fmt.Fprintf(os.Stdout, "Starting download from %s to %s\n", uu.String(), path.Join(outputPath, uu.Path))
-	fileName := filepath.Base(path.Base(uu.Path))
-	filePath := filepath.Join(outputPath, fileName)
-	w, err := os.Create(filePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("failed to create file %s: %s", filePath, err))
-		return
-	}
-
-	// stream the body to the client without fully loading it into memory
-	n, err := io.Copy(w, r.RawBody())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("failed to write to file %s: %s", filePath, err))
-		return
-	}
-
-	if n == 0 {
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("no bytes written to file %s", filePath))
-		return
-	}
-
-	fmt.Fprintf(os.Stdout, "Downloaded %d bytes to %s\n", n, filePath)
-
-	// Closing everything
-	err = w.Sync()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("failed to sync file %s: %s", filePath, err))
-		return
-	}
-	r.RawBody().Close()
-	w.Close()
 
 	return
-}
-
-func IsURLSupported(rawURL string) (*url.URL, error) {
-	rawURL = strings.Trim(rawURL, " '\"")
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %s", err)
-	}
-	if (u.Scheme != "http") && (u.Scheme != "https") {
-		return nil, fmt.Errorf("URLs must begin with 'http' or 'https'. The submitted one began with %s", u.Scheme)
-	}
-
-	basePath := path.Base(u.Path)
-
-	// Need to check for both because a bare host
-	// Like http://localhost/ gets converted to "." by path.Base
-	if basePath == "" || u.Path == "" {
-		return nil, fmt.Errorf("URL must end with a file name")
-	}
-
-	return u, nil
 }
