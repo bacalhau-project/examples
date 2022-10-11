@@ -46,7 +46,7 @@ RUN deno cache deps.ts
 COPY index.ts .
 RUN deno cache index.ts
 RUN mkdir -p /var/tmp/log
-CMD ["deno", "run", "--allow-read", "--allow-write", "index.ts"]
+CMD ["run", "--allow-read", "--allow-write", "index.ts"]
 ```
 **NOTE**: This is not a production ready image - normally, you'd pin to a specific version of Deno, and not use the latest tag.
 
