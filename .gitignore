@@ -1,10 +1,19 @@
 .DS_Store
 rendered
-
 **/.ipynb_checkpoints/
 **/volumes/
 **/shards/
 **/stdout
 **/stderr
 bacalhau
+<<<<<<< HEAD
 env
+=======
+.vscode/
+**/Dockerfile
+**/.py
+**/requirements.txt
+.vscode
+js-helloworld/outputs/*
+.idea/
+>>>>>>> origin/main
