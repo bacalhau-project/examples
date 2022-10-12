@@ -1,13 +1,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
+	cp "github.com/otiai10/copy"
 )
 
 func main() {
@@ -22,7 +21,6 @@ func main() {
 		fmt.Printf("OUTPUT_PATH is not set, using '/outputs'\n")
 		outputPath = "/outputs"
 	}
-	fs := afero.NewOsFs()
 	allObjects := []string{}
 	allDirs := []string{}
 	allFiles := []string{}
@@ -46,36 +44,19 @@ func main() {
 		return
 	}
 
+	// Putting the objects in order so all Dirs come before all Files
 	allObjects = append(allObjects, allDirs...)
 	allObjects = append(allObjects, allFiles...)
 
-	remainingObjects := []string{}
 	for _, oo := range allObjects {
-		if f, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
-			continue
-		} else if f.IsDir() {
-			fmt.Printf("Moving %s to %s\n", oo, outputPath)
-			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
-			if err != nil {
-				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
-				return
-			}
-		} else {
-			remainingObjects = append(remainingObjects, oo)
-		}
-	}
 
-	for _, oo := range remainingObjects {
-		if _, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
-			continue
-		} else {
-			fmt.Printf("Moving %s to %s\n", oo, outputPath)
-			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
-			if err != nil {
-				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
-				return
-			}
+		fmt.Printf("Copying %s to %s\n", oo, outputPath)
+		err = cp.Copy(oo, strings.Replace(oo, inputPath, outputPath, 1))
+		if err != nil {
+			fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
+			return
 		}
+
 	}
 
 	return

@@ -1,3 +1,9 @@
+provider "aws" {
+  access_key = var.access_key
+  secret_key = var.secret_key
+  region     = var.region
+}
+
 module "networkModule" {
   source            = "./modules/network"
   access_key        = var.access_key
@@ -36,11 +42,12 @@ module "dnsModule" {
   access_key  = var.access_key
   secret_key  = var.secret_key
   region      = var.region
-  domain_name = "miteshsharma.com"
+  domain_name = "pintura.cloud"
   aRecords = [
-    "miteshsharma.com ${module.instanceModule.instance_eip}",
+    "pintura.cloud ${module.instanceModule.instance_eip}",
   ]
   cnameRecords = [
-    "www.miteshsharma.com miteshsharma.com"
+    "www.pintura.cloud pintura.cloud"
   ]
+  app_tag    = var.app_tag
 }

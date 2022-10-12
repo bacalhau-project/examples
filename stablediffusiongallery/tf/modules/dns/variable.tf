@@ -1,20 +1,15 @@
 # Variables
 variable "access_key" {}
 variable "secret_key" {}
-variable "region" {
-  default = "us-east-2"
-}
+variable "region" {}
 variable "domain_name" {
   description = "Domain name"
-  default     = ""
 }
 variable "aRecords" {
   type    = list(string)
-  default = []
 }
 variable "cnameRecords" {
   type    = list(string)
-  default = []
 }
 variable "ttl" {
   description = "time to live"
@@ -22,5 +17,4 @@ variable "ttl" {
 }
 variable "app_tag" {
   description = "Environment tag"
-  default     = ""
 }
