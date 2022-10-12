@@ -6,6 +6,7 @@ rendered
 **/stdout
 **/stderr
 bacalhau
+<<<<<<<<< Temporary merge branch 1
 .vscode/
 **/Dockerfile
 **/.py
@@ -13,3 +14,6 @@ bacalhau
 .vscode
 js-helloworld/outputs/*
 .idea/
+=========
+env
+>>>>>>>>> Temporary merge branch 2
