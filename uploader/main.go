@@ -48,16 +48,30 @@ func main() {
 	allObjects = append(allObjects, allDirs...)
 	allObjects = append(allObjects, allFiles...)
 
-	for _, oo := range allObjects {
-
-		fmt.Printf("Copying %s to %s\n", oo, outputPath)
-		err = cp.Copy(oo, strings.Replace(oo, inputPath, outputPath, 1))
+	for _, oo := range allObjects[1:] {
+		// See if oo still exists (its parent could have been moved)
+		_, err := os.Stat(oo)
 		if err != nil {
-			fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
+			fmt.Printf("Error stating object %v:", err)
+			continue
+		}
+		dstPath := strings.Replace(oo, inputPath, outputPath, 1)
+		fmt.Printf("Copying %s to %s\n", oo, dstPath)
+		err = cp.Copy(oo, dstPath)
+		if err != nil {
+			fmt.Printf("Error moving %s to %s: %v", oo, dstPath, err)
 			return
 		}
-
 	}
 
+	fmt.Printf("Done copying all objects. Final /outputs contents:\n")
+	err = filepath.WalkDir(outputPath,
+		func(path string, d os.DirEntry, err error) error {
+			fmt.Println(path)
+			return nil
+		})
+	if err != nil {
+		fmt.Printf("Error walking output path: %v", err)
+	}
 	return
 }
