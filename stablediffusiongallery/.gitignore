@@ -31,3 +31,5 @@ override.tf.json
 terraform.rc
 
 tf.plan
+
+.env

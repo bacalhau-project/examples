@@ -30,14 +30,17 @@ func main() {
 			return nil
 		}
 		if d.IsDir() {
+			fmt.Printf("Found directory: %s\n", path)
 			allDirs = append(allDirs, path)
 		} else {
+			fmt.Printf("Found file: %s\n", path)
 			allFiles = append(allFiles, path)
 		}
 
 		return nil
 	}
 
+	fmt.Printf("Walking input path: %s\n", inputPath)
 	err := filepath.WalkDir(inputPath, walker)
 	if err != nil {
 		fmt.Printf("Error walking input path: %v", err)
@@ -48,7 +51,11 @@ func main() {
 	allObjects = append(allObjects, allDirs...)
 	allObjects = append(allObjects, allFiles...)
 
-	for _, oo := range allObjects[1:] {
+	for _, oo := range allObjects {
+		if oo == inputPath {
+			continue
+		}
+
 		// See if oo still exists (its parent could have been moved)
 		_, err := os.Stat(oo)
 		if err != nil {
