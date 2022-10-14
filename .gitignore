@@ -1,19 +1,19 @@
 .DS_Store
 rendered
-
 **/.ipynb_checkpoints/
 **/volumes/
 **/shards/
 **/stdout
 **/stderr
 bacalhau
+<<<<<<<<< Temporary merge branch 1
 .vscode/
-
-# These files should sit within the related notebook in a cell with %%writefile
 **/Dockerfile
 **/.py
 **/requirements.txt
-
 .vscode
-
 js-helloworld/outputs/*
+.idea/
+=========
+env
+>>>>>>>>> Temporary merge branch 2
