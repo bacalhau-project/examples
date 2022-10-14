@@ -4,11 +4,6 @@ PYTHON_RUNNER := poetry run
 .PHONY: all  
 all: markdown-requirements test-requirements clean markdown test
 
-# Copy images to the rendered directory
-$(DST_DIR)/%: $(SRC_DIR)/%
-	mkdir -p $(@D)
-	cp $< $@
-
 markdown-requirements:
 ifeq (, $(shell poetry run which jupyter))
 	$(error "No jupyter in $(PATH), please run poetry add nbconvert")

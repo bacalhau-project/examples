@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import nbconvert
+import shutil
 
 src_dir = Path(".")
 dst_dir = Path("rendered")
@@ -16,7 +17,7 @@ image_suffixes = (".png", ".jpg", ".jpeg", ".gif", ".svg")
 image_exclude_directories = ("templates", "todo", "rendered")
 image_files_to_copy = []
 for image_suffix in image_suffixes:
-    image_files = glob.glob(f"images/**/*{image_suffix}", recursive=True)
+    image_files = glob.glob(f"**/*{image_suffix}", recursive=True)
     for i in image_files:
         if not i.startswith(image_exclude_directories):
             image_files_to_copy.append(i)
@@ -44,4 +45,4 @@ for f in notebooks_to_render:
 for i in image_files_to_copy:
     image_destination_dir = Path(dst_dir) / os.path.dirname(i)
     Path.exists(image_destination_dir) or Path(image_destination_dir).mkdir(parents=True)
-    Path.copyfile(Path(i), Path(dst_dir) / i)
+    shutil.copyfile(i, image_destination_dir / os.path.basename(i))
