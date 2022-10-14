@@ -30,7 +30,12 @@ for f in notebooks_to_render:
                 "remove_cell_tags": ("remove_cell",),
                 "remove_all_outputs_tags": ("remove_output",),
                 "remove_input_tags": ("remove_input",),
-            }
+            },
+            "ImageExtractor": {
+                "enabled": True,
+                "output_directory": f"{dst_dir}/{os.path.dirname(f)}",
+                "extract_output_types": ("image/png", "image/jpeg", "image/gif", "image/svg+xml"),
+            },
         },
     ).from_filename(
         f,

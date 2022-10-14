@@ -2,7 +2,7 @@ PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 PYTHON_RUNNER := poetry run
 
 .PHONY: all  
-all: markdown-requirements test-requirements clean markdown test
+all: markdown-requirements test-requirements clean markdown convert test
 
 markdown-requirements:
 ifeq (, $(shell poetry run which jupyter))
@@ -21,6 +21,11 @@ endif
 	@echo "Build environment correct."
 
 markdown: markdown-requirements $(DST_FILES) $(DST_IMGS)
+
+convert:
+	@echo "Converting notebooks to markdown..."
+	$(PYTHON_RUNNER) python build.py
+	@echo "Conversion complete."
 
 test: test-requirements
 	${PYTHON_RUNNER} pytest --nbmake --ignore=./todo/ --durations=0
