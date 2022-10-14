@@ -40,3 +40,8 @@ for f in notebooks_to_render:
     notebook_destination_dir = Path(dst_dir) / os.path.dirname(f)
     Path.exists(notebook_destination_dir) or Path(notebook_destination_dir).mkdir(parents=True)
     Path.write_text(Path(os.path.join(dst_dir, os.path.splitext(f)[0] + ".md")), stripped_markdown_string)
+
+for i in image_files_to_copy:
+    image_destination_dir = Path(dst_dir) / os.path.dirname(i)
+    Path.exists(image_destination_dir) or Path(image_destination_dir).mkdir(parents=True)
+    Path.copyfile(Path(i), Path(dst_dir) / i)
