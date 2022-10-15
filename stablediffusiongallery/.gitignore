@@ -2,3 +2,5 @@
 tf.plan
 terraform.tfstate*
 .terraform
+job_id.txt
+job.yaml

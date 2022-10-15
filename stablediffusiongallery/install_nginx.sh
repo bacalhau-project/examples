@@ -33,7 +33,7 @@ deactivate
 cat <<EOF | tee /etc/nginx/sites-available/${domain} > /dev/null
 server {
     listen 80;
-    server_name 127.0.0.1 localhost ${domain} www.${domain};
+    server_name 127.0.0.1 localhost ${domain} www.${domain} 3.99.73.151;
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {

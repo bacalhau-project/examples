@@ -16,7 +16,7 @@ resource "aws_instance" "instance" {
   }
 }
 
-resource "aws_eip" "testInstanceEip" {
+resource "aws_eip" "instanceeip" {
   vpc      = true
   instance = aws_instance.instance.id
 

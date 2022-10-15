@@ -13,6 +13,8 @@ IP=$(terraform output -raw ip_address)
 
 cd ..
 
+sed -i -r "/server_name/ s/ *[0-9.]*;$/ ${IP};/" install_nginx.sh
+
 # Push the install script to the instance
 scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
@@ -25,9 +27,4 @@ ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     ubuntu@"${IP}" \
     "sudo bash /home/ubuntu/install_nginx.sh"
 
-# Copy all the files from ./website directory to
-# /var/www/pictura using rsync
-rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null" \
-    website/ ubuntu@"${IP}":/var/www/pictura-cloud
-
+./update_website.sh
