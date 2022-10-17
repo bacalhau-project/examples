@@ -1,0 +1,19 @@
+#!/bin/bash
+export domain="pintura.cloud"
+export domain_python_safe="pintura-cloud"
+export user="${domain_python_safe}"
+export gunicorndir="/gunicorn"
+export pyenvname="pyenv"
+export NUM_OF_JOBS_TO_LIST=100
+export IMAGE_DOWNLOAD_DIR="/var/www/${domain_python_safe}/images"
+export SECONDS_BETWEEN_DOWNLOAD_QUERIES=60
+export SECONDS_BETWEEN_IMAGE_CREATES=60
+export appdir="/var/www/${domain_python_safe}"
+export staticdir="$appdir/static"
+export gunicorndir="/gunicorn"
+export pyenvname="pyenv"
+export IP="3.99.73.151"
+export NUMBER_TO_CREATE=5
+export LABEL="pintura-test"
+export BACALHAU_IMAGE_DOWNLOADER_PID_FILE="/var/run/bacalhau-downloader.pid"
+export BACALHAU_IMAGE_CREATOR_PID_FILE="/var/run/bacalhau-image-creator.pid"

@@ -1,3 +1,6 @@
+import os
+
+import gather
 from flask import Flask
 
 app = Flask(__name__)
@@ -6,6 +9,13 @@ app = Flask(__name__)
 @app.route("/")
 def hello_world():
     return "<center>Hello World! Uooohh Updated</center>"
+
+
+@app.route("/catalog")
+def catalog():
+    metadataStore = gather.GetMetadata()
+
+    return ""
 
 
 if __name__ == "__main__":

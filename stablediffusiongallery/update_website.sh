@@ -7,7 +7,7 @@ if [ -z "${IP}" ]; then
 fi
 
 # Copy all the files from ./website directory to
-# /var/www/pictura using rsync
+# /var/www/pintura using rsync
 rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null" --rsync-path="sudo rsync" \
-    website/ ubuntu@pintura.cloud:/var/www/pictura-cloud
+    website/ ubuntu@pintura.cloud:/var/www/pintura-cloud

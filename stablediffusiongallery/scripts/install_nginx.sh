@@ -1,14 +1,9 @@
 #!/bin/bash
 set -e
 
-domain="pictura.cloud"
-domain_python_safe="pictura-cloud"
-user="pictura-cloud"
-useradd -r $user || echo "User already exists."
-appdir="/var/www/${domain_python_safe}"
-staticdir="$appdir/static"
-gunicorndir="/gunicorn"
-pyenvname="pyenv"
+source /gunicorn/set_env.sh
+
+useradd -r "${user}" || echo "User already exists."
 
 # Clean up old files, just to be sure
 rm -f /etc/nginx/sites-enabled/default
@@ -27,13 +22,13 @@ pip3 install virtualenv
 virtualenv ${pyenvname}
 # shellcheck source=/dev/null
 source ${pyenvname}/bin/activate
-pip3 install gunicorn flask greenlet gevent
+pip3 install gunicorn flask greenlet gevent gevent-websocket
 deactivate
 
 cat <<EOF | tee /etc/nginx/sites-available/${domain} > /dev/null
 server {
     listen 80;
-    server_name 127.0.0.1 localhost ${domain} www.${domain} 3.99.73.151;
+    server_name 127.0.0.1 localhost ${domain} www.${domain} ${IP};
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
@@ -47,6 +42,7 @@ server {
 }
 EOF
 
+rm -f /etc/nginx/sites-enabled/${domain}
 ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 # Gunicorn.socket
@@ -82,7 +78,9 @@ RuntimeDirectory=gunicorn
 WorkingDirectory=${appdir}
 ExecStart=${gunicorndir}/${pyenvname}/bin/gunicorn \
           --access-logfile - \
-          --workers 3 \
+          --workers 1 \
+          -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
+          --chdir /var/www/pintura-cloud \
           --bind unix:/run/gunicorn.sock \
           wsgi:app
 ExecReload=/bin/kill -s HUP $MAINPID

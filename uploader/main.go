@@ -74,6 +74,9 @@ func main() {
 	fmt.Printf("Done copying all objects. Final /outputs contents:\n")
 	err = filepath.WalkDir(outputPath,
 		func(path string, d os.DirEntry, err error) error {
+			if path == inputPath {
+				return nil
+			}
 			fmt.Println(path)
 			return nil
 		})
