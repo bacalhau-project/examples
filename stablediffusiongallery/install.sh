@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Export poetry requirements to scripts/requirements.txt
+poetry export -f requirements.txt --output scripts/requirements.txt --without-hashes
+
 # Run the terraform script to create the resources
 cd tf || exit
 
@@ -14,6 +17,10 @@ IP=$(terraform output -raw ip_address)
 
 cd ..
 
+# Use sed to replace the sqlite password in the .env file
+SQLITE_PASSWORD=$(openssl rand -base64 28)
+sed -i "s/SQLITE_PASSWORD=.*/SQLITE_PASSWORD=$SQLITE_PASSWORD/g" .env
+
 sed -i -r "/export IP/ s/\"[0-9.]*\"$/\"${IP}\"/" scripts/set_env.sh
 rm -f scripts/set_env.sh-r
 
@@ -23,9 +30,6 @@ rm -f scripts/set_env.sh-r
 rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null" --rsync-path="sudo rsync" \
     scripts/ ubuntu@"${IP}":/gunicorn
-
-# Split out into its own file so we can update independantly
-./update_website.sh
 
 # Run the install script on the remote machine
 ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
@@ -50,3 +54,12 @@ ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     ubuntu@"${IP}" \
     "sudo bash /gunicorn/install_bacalhau_image_creator.sh"
+
+# Split out into its own file so we can update independantly
+./update_website.sh
+
+# Restart all services just to be sure
+ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    ubuntu@"${IP}" \
+    "sudo bash /gunicorn/restart_all_services.sh"

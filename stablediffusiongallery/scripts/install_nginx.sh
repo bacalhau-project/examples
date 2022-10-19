@@ -22,7 +22,10 @@ pip3 install virtualenv
 virtualenv ${pyenvname}
 # shellcheck source=/dev/null
 source ${pyenvname}/bin/activate
-pip3 install gunicorn flask greenlet gevent gevent-websocket
+
+# Install all python requirements from requirements.txt
+pip3 install -r requirements.txt
+
 deactivate
 
 cat <<EOF | tee /etc/nginx/sites-available/${domain} > /dev/null
@@ -71,6 +74,7 @@ Requires=gunicorn.socket
 After=network.target
 
 [Service]
+Environment="SQLITE_KEY=${SQLITE_KEY}"
 PermissionsStartOnly=True
 Type=notify
 DynamicUser=yes

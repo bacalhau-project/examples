@@ -67,8 +67,8 @@ def downloadFile(downloadParameters: Tuple) -> None:
     command = "bacalhau describe " + id
     stdout, stderr, exitCode = executeCommand(command)
 
-    with open(os.path.join(finalOutputDirString, "metadata"), "w") as m:
-        m.write(str(stdout))
+    with open(os.path.join(finalOutputDirString, "metadata"), "wb") as m:
+        m.write(stdout)
 
 
 def downloadImages(outputDir: str, numberToList: int) -> None:
@@ -118,7 +118,8 @@ if __name__ == "__main__":
     # If second argument is set, use that as the number of jobs to list
     numberToList = argv[2] if len(argv) > 2 else defaultNumberToList
 
-    pidFile = "/var/run/bacalhau-downloader.pid"
+    # If third argument is set, use that as the pid file (mostly for debugging)
+    pidFile = argv[3] if len(argv) > 3 else "/var/run/bacalhau-downloader.pid"
 
     # Exit if the pid file exists
     if Path(pidFile).exists():

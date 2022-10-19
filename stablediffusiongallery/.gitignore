@@ -4,3 +4,5 @@ terraform.tfstate*
 .terraform
 job_id.txt
 job.yaml
+__pycache__
+*.db

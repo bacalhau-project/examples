@@ -1,0 +1,31 @@
+<html>
+
+<head>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.0/css/lightgallery-bundle.min.css"
+        integrity="sha512-nUqPe0+ak577sKSMThGcKJauRI7ENhKC2FQAOOmdyCYSrUh0GnwLsZNYqwilpMmplN+3nO3zso8CWUgu33BDag=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/2.7.0/lightgallery.min.js"
+        integrity="sha512-pG+XpUdyBtp28FzjpaIaj72KYvZ87ZbmB3iytDK5+WFVyun8r5LJ2x1/Jy/KHdtzUXA0CUVhEnG+Isy1jVJAbA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <ul>
+        {% for image in images: %}
+        <li>{{ image["CreatedAt"] }}</li>
+        {% endfor %}
+    </ul>
+    <div id="lightgallery">
+        <a href="img/img1.jpg" data-lg-size="1600-2400">
+            <img alt="img1" src="img/thumb1.jpg" />
+        </a>
+        <a href="img/img2.jpg" data-lg-size="1024-800">
+            <img alt="img2" src="img/thumb2.jpg" />
+        </a>
+        ...
+    </div>
+
+</body>
+
+</html>
