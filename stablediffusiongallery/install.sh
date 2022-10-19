@@ -4,7 +4,7 @@ set -e
 # Export poetry requirements to scripts/requirements.txt
 poetry export -f requirements.txt --output scripts/requirements.txt --without-hashes
 
-source ./.env
+bash ./.env
 
 # Run the terraform script to create the resources
 cd tf || exit
@@ -21,8 +21,8 @@ cd ..
 # Use sed to replace the sqlite password in the .env file
 SQLITE_KEY=$(openssl rand -base64 28)
 
-firstString="SQLITE_KEY=.*$"
-secondString="SQLITE_KEY=${SQLITE_KEY}"
+firstString="SQLITE_KEY=\"?.*\"?[^\w\d]"
+secondString="SQLITE_KEY=\"?${SQLITE_KEY}\"?"
 
 sed -i '' -r "/SQLITE_KEY/ s/${firstString}/${secondString}/" .env
 

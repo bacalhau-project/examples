@@ -4,6 +4,7 @@ terraform.tfstate*
 .terraform
 job_id.txt
 job.yaml
-*/__pycache__/*
+__pycache__
 *.db
-scripts/set_env.sh
+set_env.sh
+.env.template
