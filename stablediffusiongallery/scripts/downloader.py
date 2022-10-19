@@ -109,6 +109,9 @@ def downloadImages(outputDir: str, numberToList: int) -> None:
         # Remove the temporary directory
         shutil.rmtree(tempdir)
 
+    # Request to local server to update the database
+    executeCommand("curl -X POST http://localhost/updateDB")
+
 
 # If main, execute with default settings
 if __name__ == "__main__":

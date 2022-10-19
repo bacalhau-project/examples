@@ -4,12 +4,13 @@ set -e
 # Export poetry requirements to scripts/requirements.txt
 poetry export -f requirements.txt --output scripts/requirements.txt --without-hashes
 
+source ./.env
+
 # Run the terraform script to create the resources
 cd tf || exit
 
 # shellcheck disable=SC1091
-source ../.env && \
-    terraform init && \
+terraform init && \
     terraform plan -out tf.plan && \
     terraform apply tf.plan
 
@@ -18,11 +19,14 @@ IP=$(terraform output -raw ip_address)
 cd ..
 
 # Use sed to replace the sqlite password in the .env file
-SQLITE_PASSWORD=$(openssl rand -base64 28)
-sed -i "s/SQLITE_PASSWORD=.*/SQLITE_PASSWORD=$SQLITE_PASSWORD/g" .env
+SQLITE_KEY=$(openssl rand -base64 28)
 
-sed -i -r "/export IP/ s/\"[0-9.]*\"$/\"${IP}\"/" scripts/set_env.sh
-rm -f scripts/set_env.sh-r
+firstString="SQLITE_KEY=.*$"
+secondString="SQLITE_KEY=${SQLITE_KEY}"
+
+sed -i '' -r "/SQLITE_KEY/ s/${firstString}/${secondString}/" .env
+
+envsubst < scripts/set_env.sh.template > scripts/set_env.sh
 
 # Push the install script to the instance
 # Copy all the files from ./website directory to
@@ -63,3 +67,9 @@ ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     ubuntu@"${IP}" \
     "sudo bash /gunicorn/restart_all_services.sh"
+
+# Make all .sh files in the /gunicorn readable only by root
+ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    ubuntu@"${IP}" \
+    "sudo chmod 700 /gunicorn/*.sh"

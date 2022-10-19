@@ -130,19 +130,16 @@ def updateDB(c: sqlite3.Cursor, imagesDir: str, lastProcessedDate: str):
                                 stdoutContent = s["RunOutput"]["stdout"]
 
                                 # Regex to find the image name from 'Copying /inputs/500 to /outputs/500'
-                                imageNames = re.search(r"Copying .*? to /outputs/(.*?)\w*", stdoutContent)
-                                for i in imageNames.captures(1):
-
-                                    # Create a new Image object
-                                    image = Image(
-                                        id=o["ID"],
-                                        prompt=prompt,
-                                        absoluteURL=f"/images/{o['ID']}/{i}",
-                                        createdAt=parser.parse(o["CreatedAt"]),
-                                    )
-                                    upsertImageIntoDB(c, image)
-
-                                    break
+                                # Group 1 is the image name
+                                imageName = re.search(r"Copying .*? to /outputs/(.*)\W", stdoutContent).group(1)
+                                # Create a new Image object
+                                image = Image(
+                                    id=o["ID"],
+                                    prompt=prompt,
+                                    absoluteURL=f"/images/{o['ID']}/{imageName}",
+                                    createdAt=parser.parse(o["CreatedAt"]),
+                                )
+                                upsertImageIntoDB(c, image)
 
     return dbstats(c)
 

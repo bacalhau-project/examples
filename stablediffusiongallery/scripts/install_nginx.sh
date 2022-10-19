@@ -66,6 +66,20 @@ SocketUser=www-data
 WantedBy=sockets.target
 EOF
 
+mkdir -p /etc/systemd/system/gunicorn.service.d/
+chmod 0700 /etc/systemd/system/gunicorn.service.d/
+
+# Copy the generated SQLITE_KEY to the gunicorn.service.d directory
+# so that it can be used by the gunicorn service
+echo "SQLITE_KEY=${SQLITE_KEY}" > /etc/systemd/system/gunicorn.service.d/.env
+chmod 0600 /etc/systemd/system/gunicorn.service.d/.env
+
+# Gunicorn config file
+cat <<EOF | tee /etc/systemd/system/gunicorn.service.d/sqlite_key.conf > /dev/null
+[Service]
+EnvironmentFile=/etc/systemd/system/gunicorn.service.d/.env
+EOF
+
 # Gunicorn.service
 cat <<EOF | tee /etc/systemd/system/gunicorn.service > /dev/null
 [Unit]
@@ -74,7 +88,6 @@ Requires=gunicorn.socket
 After=network.target
 
 [Service]
-Environment="SQLITE_KEY=${SQLITE_KEY}"
 PermissionsStartOnly=True
 Type=notify
 DynamicUser=yes
@@ -82,6 +95,7 @@ RuntimeDirectory=gunicorn
 WorkingDirectory=${appdir}
 ExecStart=${gunicorndir}/${pyenvname}/bin/gunicorn \
           --access-logfile - \
+          --timeout 120 \
           --workers 1 \
           -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
           --chdir /var/www/pintura-cloud \

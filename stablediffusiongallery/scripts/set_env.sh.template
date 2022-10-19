@@ -2,15 +2,15 @@
 set -o allexport
 domain="pintura.cloud"
 domain_python_safe="pintura-cloud"
-user=""
+user="${domain_python_safe}"
 gunicorndir="/gunicorn"
 pyenvname="pyenv"
 NUM_OF_JOBS_TO_LIST=100
-IMAGE_DOWNLOAD_DIR="/var/www//images"
+IMAGE_DOWNLOAD_DIR="/var/www/${domain_python_safe}/images"
 SECONDS_BETWEEN_DOWNLOAD_QUERIES=60
 SECONDS_BETWEEN_IMAGE_CREATES=60
-appdir="/var/www/"
-staticdir="/static"
+appdir="/var/www/${domain_python_safe}"
+staticdir="$appdir/static"
 gunicorndir="/gunicorn"
 pyenvname="pyenv"
 IP="3.99.73.151"
@@ -18,4 +18,4 @@ NUMBER_TO_CREATE=5
 LABEL="pintura-test"
 BACALHAU_IMAGE_DOWNLOADER_PID_FILE="/var/run/bacalhau-downloader.pid"
 BACALHAU_IMAGE_CREATOR_PID_FILE="/var/run/bacalhau-image-creator.pid"
-SQLITE_KEY=h1XXM5YhlJEry4FqtuItNYzWs9Yzv45jjmLsCQ==
+SQLITE_KEY=${SQLITE_KEY}

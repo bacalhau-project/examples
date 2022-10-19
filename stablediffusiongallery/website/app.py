@@ -2,6 +2,8 @@ import json
 import os
 from email.policy import default
 from pathlib import Path
+from threading import local
+from typing import final
 
 import db
 import gather
@@ -16,24 +18,24 @@ defaultImagesDir = "/var/www/pintura-cloud/images"
 
 @app.route("/")
 def index():
-    imagesDir = os.environ.get("IMAGES_DIR", defaultImagesDir)
     id = ""
-    metadataStore = gather.GatherMetadata(imagesDir, id)
-    print("\n\n\n" + os.getcwd() + "\n\n\n")
-    return render_template("index.html", images=metadataStore)
+    try:
+        conn, c = db.getCursor()
+        metadataStore = gather.GatherMetadata(c)
+        print("\n\n\n" + os.getcwd() + "\n\n\n")
+        return render_template("index.html", images=metadataStore)
+    finally:
+        conn.close()
 
 
 @app.route("/catalog", methods=["GET"])
 def catalog():
-    imagesDir = os.environ.get("IMAGES_DIR", defaultImagesDir)
-
-    id = ""
-    if "id" in request.args:
-        id = request.args["id"]
-
-    metadataStore = gather.GatherMetadata(imagesDir, id)
-
-    return metadataStore
+    try:
+        conn, c = db.getCursor()
+        metadataStore = gather.GatherMetadata(c)
+        return jsonpickle.encode(metadataStore)
+    finally:
+        conn.close()
 
 
 @app.route("/dbstats")
@@ -45,7 +47,7 @@ def dbstats():
         conn.close()
 
 
-@app.route("/resetdb", methods=["GET"])
+@app.route("/resetDB", methods=["GET"])
 def resetDB():
     localIPonly()
 
@@ -79,6 +81,12 @@ def updateDB():
         return jsonpickle.encode(dbStats)
     finally:
         conn.close()
+
+
+@app.route("/varz")
+def varz():
+    localIPonly()
+    return jsonpickle.encode(os.environ)
 
 
 def localIPonly():
