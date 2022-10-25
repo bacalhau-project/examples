@@ -117,4 +117,4 @@ You can run the test manually by running `make test`. Also take a look at the [C
 
 ### Developer Help
 
-If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the [Filecoin slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY).
+If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the #bacalhau channel in [Filecoin Slack](https://filecoin.io/slack).
