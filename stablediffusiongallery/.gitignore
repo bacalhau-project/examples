@@ -6,5 +6,5 @@ job_id.txt
 job.yaml
 __pycache__
 *.db
-set_env.sh
 .env.template
+.env.tf

@@ -1,41 +1,39 @@
 #!/bin/bash
 set -e
 
-source /gunicorn/set_env.sh
-
-useradd -r "${user}" || echo "User already exists."
+useradd -r "${USER}" || echo "User already exists."
 
 # Clean up old files, just to be sure
 rm -f /etc/nginx/sites-enabled/default
 
-mkdir -p $appdir
-mkdir -p $gunicorndir
-mkdir -p $staticdir
+mkdir -p $APPDIR
+mkdir -p $GUNICORNDIR
+mkdir -p $STATICDIR
 
 apt update -y
 apt autoremove -y
 apt reinstall -y -qq nginx python3 python3-pip
 
-cd $gunicorndir || exit
+cd $GUNICORNDIR || exit
 
 pip3 install virtualenv
-virtualenv ${pyenvname}
+virtualenv ${PYENVNAME}
 # shellcheck source=/dev/null
-source ${pyenvname}/bin/activate
+source ${PYENVNAME}/bin/activate
 
 # Install all python requirements from requirements.txt
 pip3 install -r requirements.txt
 
 deactivate
 
-cat <<EOF | tee /etc/nginx/sites-available/${domain} > /dev/null
+cat <<EOF | tee /etc/nginx/sites-available/${DOMAIN} > /dev/null
 server {
     listen 80;
-    server_name 127.0.0.1 localhost ${domain} www.${domain} ${IP};
+    server_name 127.0.0.1 localhost ${DOMAIN} www.${DOMAIN} ${IP};
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
-        root $appdir/static;
+        root $APPDIR/static;
     }
 
     location / {
@@ -45,8 +43,8 @@ server {
 }
 EOF
 
-rm -f /etc/nginx/sites-enabled/${domain}
-ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
+rm -f /etc/nginx/sites-enabled/${DOMAIN}
+ln -s /etc/nginx/sites-available/${DOMAIN} /etc/nginx/sites-enabled/${DOMAIN}
 
 # Gunicorn.socket
 cat <<EOF | tee /etc/systemd/system/gunicorn.socket > /dev/null
@@ -91,9 +89,11 @@ After=network.target
 PermissionsStartOnly=True
 Type=notify
 DynamicUser=yes
+User=www-data
+Group=www-data
 RuntimeDirectory=gunicorn
-WorkingDirectory=${appdir}
-ExecStart=${gunicorndir}/${pyenvname}/bin/gunicorn \
+WorkingDirectory=${APPDIR}
+ExecStart=${GUNICORNDIR}/${PYENVNAME}/bin/gunicorn \
           --access-logfile - \
           --timeout 120 \
           --workers 1 \

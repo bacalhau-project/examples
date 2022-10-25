@@ -19,6 +19,11 @@ python-dateutil = "^2.8.2"
 regex = "^2022.9.13"
 pytz = "^2022.5"
 jsonpickle = "^2.2.0"
+poetry = "^1.2.2"
+python-dotenv = "^0.21.0"
+paramiko = "^2.11.0"
+scp = "^0.14.4"
+semver = "^2.13.0"
 
 [tool.poetry.dev-dependencies]
 

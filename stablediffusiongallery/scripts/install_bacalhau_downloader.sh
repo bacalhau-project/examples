@@ -1,14 +1,15 @@
 #!/bin/bash
-source /gunicorn/set_env.sh
+# Exit on error
+set -e
 
 mkdir -p "$IMAGE_DOWNLOAD_DIR"
 
-cd "$gunicorndir" || exit
+cd "$GUNICORNDIR" || exit
 
 pip3 install virtualenv
-virtualenv "${pyenvname}"
+virtualenv "${PYENVNAME}"
 # shellcheck source=/dev/null
-source "${pyenvname}"/bin/activate
+source "${PYENVNAME}"/bin/activate
 pip3 install apscheduler
 deactivate
 
@@ -21,9 +22,9 @@ After=multi-user.target
 Type=simple
 User=root
 Restart=always
-ExecStartPre=-${gunicorndir}/check_pid.sh ${BACALHAU_IMAGE_DOWNLOADER_PID_FILE} "downloader_runner.py"
-ExecStart=${gunicorndir}/${pyenvname}/bin/python3 \
-          ${gunicorndir}/downloader_runner.py ${SECONDS_BETWEEN_DOWNLOAD_QUERIES} ${IMAGE_DOWNLOAD_DIR} ${NUM_OF_JOBS_TO_LIST} ${BACALHAU_IMAGE_DOWNLOADER_PID_FILE}
+ExecStartPre=-${GUNICORNDIR}/check_pid.sh ${BACALHAU_IMAGE_DOWNLOADER_PID_FILE} "downloader_runner.py"
+ExecStart=${GUNICORNDIR}/${PYENVNAME}/bin/python3 \
+          ${GUNICORNDIR}/downloader_runner.py ${SECONDS_BETWEEN_DOWNLOAD_QUERIES} ${IMAGE_DOWNLOAD_DIR} ${NUM_OF_JOBS_TO_LIST} ${BACALHAU_IMAGE_DOWNLOADER_PID_FILE}
 ExecStopPost=rm -f ${BACALHAU_IMAGE_DOWNLOADER_PID_FILE}
 ExecReload=/bin/kill -s HUP $MAINPID
 [Install]

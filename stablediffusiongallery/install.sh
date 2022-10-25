@@ -4,8 +4,6 @@ set -e
 # Export poetry requirements to scripts/requirements.txt
 poetry export -f requirements.txt --output scripts/requirements.txt --without-hashes
 
-bash ./.env
-
 # Run the terraform script to create the resources
 cd tf || exit
 
@@ -14,19 +12,30 @@ terraform init && \
     terraform plan -out tf.plan && \
     terraform apply tf.plan
 
-IP=$(terraform output -raw ip_address)
+GENERATED_IP=$(terraform output -raw ip_address)
+export GENERATED_IP
 
 cd ..
 
 # Use sed to replace the sqlite password in the .env file
-SQLITE_KEY=$(openssl rand -base64 28)
+SQLITE_KEY_GENERATED=$(openssl rand -base64 28)
+export SQLITE_KEY_GENERATED
 
-firstString="SQLITE_KEY=\"?.*\"?[^\w\d]"
-secondString="SQLITE_KEY=\"?${SQLITE_KEY}\"?"
+export DOMAIN="pintura.cloud"                      # Example DOMAIN name
+export DOMAIN_PYTHON_SAFE="pintura-cloud"          # Example DOMAIN, no periods or spaces
+export USER="${DOMAIN_PYTHON_SAFE}"
 
-sed -i '' -r "/SQLITE_KEY/ s/${firstString}/${secondString}/" .env
+echo "User: ${USER}"
+echo "Domain: ${DOMAIN}"
+echo "Domain_python_safe: ${DOMAIN_PYTHON_SAFE}"
 
-envsubst < scripts/set_env.sh.template > scripts/set_env.sh
+. envsubst < .env.template > .env
+
+cat .env
+
+./setenv.sh .env
+
+cp .env scripts/.env
 
 # Push the install script to the instance
 # Copy all the files from ./website directory to
