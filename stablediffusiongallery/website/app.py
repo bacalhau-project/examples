@@ -47,7 +47,7 @@ def dbstats():
         conn.close()
 
 
-@app.route("/resetDB", methods=["GET"])
+@app.route("/resetDB", methods=["POST"])
 def resetDB():
     localIPonly()
 
@@ -97,9 +97,9 @@ def varz():
 
 
 def localIPonly():
-    remote = request.remote_addr
+    remote = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
     if remote not in trusted_ips:
-        abort(403)  # Forbidden
+        abort(403, {"message": f"Unauthorized access from {request.environ}"})  # Forbidden
 
 
 if __name__ == "__main__":

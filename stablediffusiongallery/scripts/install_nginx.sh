@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 useradd -r "${USER}" || echo "User already exists."
@@ -69,6 +69,7 @@ chmod 0700 /etc/systemd/system/gunicorn.service.d/
 
 # Copy the generated SQLITE_KEY to the gunicorn.service.d directory
 # so that it can be used by the gunicorn service
+rm -f /etc/systemd/system/gunicorn.service.d/.env
 echo "SQLITE_KEY=${SQLITE_KEY}" > /etc/systemd/system/gunicorn.service.d/.env
 chmod 0600 /etc/systemd/system/gunicorn.service.d/.env
 
@@ -79,6 +80,8 @@ EnvironmentFile=/etc/systemd/system/gunicorn.service.d/.env
 EOF
 
 # Gunicorn.service
+mkdir -p /var/log/gunicorn
+
 cat <<EOF | tee /etc/systemd/system/gunicorn.service > /dev/null
 [Unit]
 Description=gunicorn daemon
@@ -94,7 +97,8 @@ Group=www-data
 RuntimeDirectory=gunicorn
 WorkingDirectory=${APPDIR}
 ExecStart=${GUNICORNDIR}/${PYENVNAME}/bin/gunicorn \
-          --access-logfile - \
+          --access-logfile /var/log/gunicorn/access.log \
+          --error-logfile /var/log/gunicorn/error.log \
           --timeout 120 \
           --workers 1 \
           -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
@@ -108,6 +112,21 @@ PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+cat <<EOF | tee /etc/logrotate.d/gunicorn > /dev/null 
+/var/log/gunicorn/*.log {
+	daily
+	missingok
+	rotate 14
+	compress
+	notifempty
+	create 0640 www-data www-data
+	sharedscripts
+	postrotate
+		systemctl reload your-app
+	endscript
+}
 EOF
 
 sudo systemctl enable gunicorn.socket

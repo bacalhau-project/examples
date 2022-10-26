@@ -108,8 +108,12 @@ def updateDB(c: sqlite3.Cursor, imagesDir: str, lastProcessedDate: str):
     # Walk the images directory and return a list of metadata
     for file in metadataFiles:
         with Path(file).open() as f:
-            # Load metadata from metadata json file
-            o = yaml.safe_load(f)
+            try:
+                # Load metadata from metadata json file
+                o = yaml.safe_load(f)
+            except:
+                # For some reason, the metadata file is not valid YAML - move on
+                continue
 
             stdoutContent = ""
             if "JobState" in o and "Nodes" in o["JobState"]:
