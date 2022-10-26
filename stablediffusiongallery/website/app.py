@@ -1,6 +1,7 @@
 import json
 import os
 from email.policy import default
+from logging.config import valid_ident
 from pathlib import Path
 from threading import local
 from typing import final
@@ -8,7 +9,7 @@ from typing import final
 import db
 import gather
 import jsonpickle
-from flask import Flask, abort, render_template, request
+from flask import Flask, abort, render_template, request, send_file
 
 app = Flask(__name__)
 
@@ -22,7 +23,6 @@ def index():
     try:
         conn, c = db.getCursor()
         metadataStore = gather.GatherMetadata(c)
-        print("\n\n\n" + os.getcwd() + "\n\n\n")
         return render_template("index.html", images=metadataStore)
     finally:
         conn.close()
@@ -81,6 +81,13 @@ def updateDB():
         return jsonpickle.encode(dbStats)
     finally:
         conn.close()
+
+
+@app.route("/images/<id>/<imageFileName>", methods=["GET", "POST"])
+def image(id, imageFileName):
+    print(id)
+    print(imageFileName)
+    return send_file(f"./images/{id}/{imageFileName}")
 
 
 @app.route("/varz")

@@ -11,21 +11,22 @@
 </head>
 
 <body>
-    <ul>
-        {% for image in images: %}
-        <li>{{ image["CreatedAt"] }}</li>
-        {% endfor %}
-    </ul>
     <div id="lightgallery">
-        <a href="img/img1.jpg" data-lg-size="1600-2400">
-            <img alt="img1" src="img/thumb1.jpg" />
-        </a>
-        <a href="img/img2.jpg" data-lg-size="1024-800">
-            <img alt="img2" src="img/thumb2.jpg" />
-        </a>
-        ...
+        <p>
+            {% for image in images: %}
+            <img src="{{url_for('image', id=image.id, imageFileName=image.imageFileName)}}" data-lg-size="1600-2400" />
+            </a>
+            {% endfor %}
+        </p>
     </div>
 
+    <script type="text/javascript">
+        lightGallery(document.getElementById('lightgallery'), {
+            plugins: [lgZoom, lgThumbnail],
+            licenseKey: 'B03B25AC-737E4E24-8EAD2666-584A2E19',
+            speed: 500,
+        });
+    </script>
 </body>
 
 </html>

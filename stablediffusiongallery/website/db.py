@@ -2,7 +2,9 @@ import glob
 import json
 import os
 import sqlite3
+from ast import parse
 from datetime import datetime, timezone
+from email.mime import image
 from pathlib import Path
 from typing import List, Tuple
 
@@ -32,10 +34,10 @@ class DBResponse:
 
 
 class Image:
-    def __init__(self, id: str, prompt: str, absoluteURL: str, createdAt: datetime):
+    def __init__(self, id: str, prompt: str, imageFileName: str, createdAt: datetime):
         self.id = id
         self.prompt = prompt
-        self.absoluteURL = absoluteURL
+        self.imageFileName = imageFileName
         self.createdAt = createdAt
 
     def __str__(self):
@@ -75,7 +77,7 @@ def resetDB(c: sqlite3.Cursor, key: str, imagesDir: str):
         """CREATE TABLE images (
               id TEXT NOT NULL PRIMARY KEY,
 prompt TEXT NOT NULL,
-absoluteURL TEXT NOT NULL,
+imageFileName TEXT NOT NULL,
 createdAt DATE NOT NULL)"""
     )
 
@@ -95,7 +97,10 @@ def updateDB(c: sqlite3.Cursor, imagesDir: str, lastProcessedDate: str):
     # Get list of all files in imagesDir and subdirectories named 'metadata', ordered by modification date
     metadataFiles = filter(os.path.isfile, glob.glob(imagesDir + "/**/metadata", recursive=True))
 
-    lastProcessedDateParsed = parser.parse(lastProcessedDate)
+    try:
+        lastProcessedDateParsed = parser.parse(lastProcessedDate)
+    except parser.ParserError as e:
+        lastProcessedDateParsed = parser.parse(lastProcessedDate, fuzzy=True)
 
     # Filter metadata files by modification date to be larger than maxDate
     metadataFiles = filter(lambda x: os.path.getmtime(x) > lastProcessedDateParsed.timestamp(), metadataFiles)
@@ -136,7 +141,7 @@ def updateDB(c: sqlite3.Cursor, imagesDir: str, lastProcessedDate: str):
                                 image = Image(
                                     id=o["ID"],
                                     prompt=prompt,
-                                    absoluteURL=f"/images/{o['ID']}/{imageName}",
+                                    imageFileName=f"{imageName}",
                                     createdAt=parser.parse(o["CreatedAt"]),
                                 )
                                 upsertImageIntoDB(c, image)
@@ -152,7 +157,7 @@ def getNewestImageFromDB(c: sqlite3.Cursor, imagesDir: str) -> Image:
 
     image = None
     if row is None:
-        image = Image(id="NO-IMAGE", prompt="NO-IMAGE", absoluteURL="NO-IMAGE", createdAt=minDate())
+        image = Image(id="NO-IMAGE", prompt="NO-IMAGE", imageFileName="NO-IMAGE", createdAt=minDate())
     else:
         image = Image(row[0], row[1], row[2], row[3])
 
@@ -162,8 +167,8 @@ def getNewestImageFromDB(c: sqlite3.Cursor, imagesDir: str) -> Image:
 def upsertImageIntoDB(c: sqlite3.Cursor, image: Image):
     # Upsert image into image table
     c.execute(
-        "INSERT OR REPLACE INTO images (id, prompt, absoluteURL, createdAt) VALUES (?, ?, ?, ?)",
-        (image.id, image.prompt, image.absoluteURL, image.createdAt),
+        "INSERT OR REPLACE INTO images (id, prompt, imageFileName, createdAt) VALUES (?, ?, ?, ?)",
+        (image.id, image.prompt, image.imageFileName, image.createdAt),
     )
     c.connection.commit()
 
@@ -181,4 +186,4 @@ def getCursor() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
 
 
 def minDate() -> datetime:
-    return datetime(1900, 1, 1, 1, 1, 1, 0, tzinfo=timezone.utc).astimezone().isoformat()
+    return datetime(1900, 1, 1, 1, 1, 1, 0, tzinfo=timezone.utc).isoformat()

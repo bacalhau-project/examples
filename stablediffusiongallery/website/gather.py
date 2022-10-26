@@ -9,12 +9,12 @@ from typing import List
 import db
 
 
-def GatherMetadata(c: sqlite3.Cursor) -> List:
+def GatherMetadata(c: sqlite3.Cursor) -> List[db.Image]:
     returnList = []
 
     c.execute("SELECT * FROM images ORDER BY createdAt DESC")
     for row in c.fetchall():
-        returnList.append(db.Image(id=row[0], prompt=row[1], absoluteURL=row[2], createdAt=row[3]))
+        returnList.append(db.Image(id=row[0], prompt=row[1], imageFileName=row[2], createdAt=row[3]))
 
     return returnList
 
