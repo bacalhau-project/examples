@@ -48,3 +48,4 @@ test: test-requirements
 
 clean:
 	rm -rf rendered
+	git ls-files -o | xargs rm; find . -type d -empty -delete
