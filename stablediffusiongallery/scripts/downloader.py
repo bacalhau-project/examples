@@ -11,7 +11,7 @@ from typing import Tuple
 
 defaultOutputdir = "./outputs"
 defaultCommand = "bacalhau list -n %s --output json"
-defaultNumberToList = 100
+defaultNumberToList = 10
 
 
 def executeCommand(cmd) -> Tuple[str, str, int]:
@@ -88,7 +88,7 @@ def downloadImages(outputDir: str, numberToList: int) -> None:
                 if (
                     state == "Completed"
                     and "Annotations" in job["Spec"]
-                    and "pintura-test" in job["Spec"]["Annotations"]
+                    and "pintura-default-sd" in job["Spec"]["Annotations"]
                     and "RunOutput" in shard[s]
                 ):
                     # Regex to see if the download got copied over properly
