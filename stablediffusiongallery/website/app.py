@@ -93,7 +93,9 @@ def image(id, imageFileName):
 @app.route("/varz")
 def varz():
     localIPonly()
-    return jsonpickle.encode(os.environ)
+    
+    
+    return "<pre>" + jsonpickle.encode(os.environ) + "</pre>"
 
 
 def localIPonly():

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -e
+set -x
+
+systemctl stop gunicorn.service
+systemctl stop nginx.service
 
 useradd -r "${USER}" || echo "User already exists."
 
@@ -69,6 +73,7 @@ chmod 0700 /etc/systemd/system/gunicorn.service.d/
 
 # Copy the generated SQLITE_KEY to the gunicorn.service.d directory
 # so that it can be used by the gunicorn service
+echo "SQLITE KEY: ${SQLITE_KEY}"
 rm -f /etc/systemd/system/gunicorn.service.d/.env
 echo "SQLITE_KEY=${SQLITE_KEY}" > /etc/systemd/system/gunicorn.service.d/.env
 chmod 0600 /etc/systemd/system/gunicorn.service.d/.env
@@ -81,17 +86,17 @@ EOF
 
 # Gunicorn.service
 mkdir -p /var/log/gunicorn
+chown www-data:www-data /var/log/gunicorn
 
 cat <<EOF | tee /etc/systemd/system/gunicorn.service > /dev/null
 [Unit]
 Description=gunicorn daemon
-Requires=gunicorn.socket
+Requires=gunicorn.socket    
 After=network.target
 
 [Service]
 PermissionsStartOnly=True
 Type=notify
-DynamicUser=yes
 User=www-data
 Group=www-data
 RuntimeDirectory=gunicorn

@@ -120,6 +120,8 @@ sqlLiteKey = "".join([allChars[randint(0, len(allChars) - 1)] for _ in range(30)
 dotenv.set_key(".env", "SQLITE_KEY", sqlLiteKey)
 dotenv.set_key(".env", "IP", ipAddress)
 
+print("SQLITE KEY: %s" % sqlLiteKey)
+
 # Setup SSH connection
 ssh = SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -175,7 +177,7 @@ e = injectEnvVars(envDict)
 
 # Run the install script on the remote machine
 print("Running install nginx script on remote machine ... ", end="")
-stdin, stdout, stderr = ssh.exec_command(f"{e} sudo -E /gunicorn/install_nginx.sh")
+stdin, stdout, stderr = ssh.exec_command(f"{e} sudo -E /gunicorn/install_nginx.sh > /gunicorn/install_nginx.log")
 if exitCode != 0:
     print("Failed to run install nginx script on remote machine:.")
     print(f"Stdout: {stdout.read()}")
@@ -186,7 +188,7 @@ print("done")
 # Run install bacalhau script on the remote machine
 print("Running install bacalhau script on remote machine ... ", end="")
 stdin, stdout, stderr = ssh.exec_command(
-    "sudo -E bash /gunicorn/install_bacalhau.sh 2&1> /dev/null", environment=envDict
+    "sudo -E bash /gunicorn/install_bacalhau.sh 2&1> /gunicorn/install_bacalhau.log", environment=envDict
 )
 if exitCode != 0:
     print("Failed to run install bacalhau script on remote machine:.")
@@ -197,7 +199,9 @@ print("done")
 
 # Run install bacalhau downloader script on the remote machine
 print("Running install bacalhau downloader script on remote machine ... ", end="")
-stdin, stdout, stderr = ssh.exec_command(f"{e} sudo -E /gunicorn/install_bacalhau_downloader.sh")
+stdin, stdout, stderr = ssh.exec_command(
+    f"{e} sudo -E /gunicorn/install_bacalhau_downloader.sh 2&1> /gunicorn/install_bacalhau_downloader.log"
+)
 if exitCode != 0:
     print("Failed to run install bacalhau downloader script on remote machine:.")
     print(f"Stdout: {stdout.read()}")
@@ -207,7 +211,9 @@ print("done")
 
 # Run install bacalhau image creator script on the remote machine
 print("Running install bacalhau image creator script on remote machine ... ", end="")
-stdin, stdout, stderr = ssh.exec_command(f"{e} sudo -E /gunicorn/install_bacalhau_image_creator.sh")
+stdin, stdout, stderr = ssh.exec_command(
+    f"{e} sudo -E /gunicorn/install_bacalhau_image_creator.sh 2&1> /gunicorn/install_bacalhau_image_creator.log"
+)
 if exitCode != 0:
     print("Failed to run install bacalhau image creator script on remote machine:.")
     print(f"Stdout: {stdout.read()}")
@@ -220,7 +226,9 @@ executeCommand(["./update_website.sh"])
 
 # Run restart all services script on the remote machine
 print("Running restart all services script on remote machine ... ", end="")
-stdin, stdout, stderr = ssh.exec_command(f"{e} sudo -E /gunicorn/restart_all_services.sh")
+stdin, stdout, stderr = ssh.exec_command(
+    f"{e} sudo -E /gunicorn/restart_all_services.sh 2&1> /gunicorn/restart_all_services.log"
+)
 if exitCode != 0:
     print("Failed to run restart all services script on remote machine:.")
     print(f"Stdout: {stdout.read()}")
@@ -229,12 +237,12 @@ if exitCode != 0:
 print("done")
 
 # Make all .sh files in the /gunicorn readable only by root
-print("Making all .sh files in /gunicorn readable only by root:group... ", end="")
+print("Making all .sh files in /gunicorn readable only by www-data:www-data... ", end="")
 stdin, stdout, stderr = ssh.exec_command(
-    f"{e} sudo -E chmod 770 /gunicorn/*.sh && {e} sudo -E chown -R www-user:user-data /gunicorn"
+    f"{e} sudo -E chmod 770 /gunicorn/*.sh && {e} sudo -E chown -R www-data:www-data /gunicorn 2&1> /gunicorn/chown.log"
 )
 if exitCode != 0:
-    print("Failed to make all .sh files in /gunicorn readable only by root:group.")
+    print("Failed to make all .sh files in /gunicorn readable only by www-data:www-data.")
     print(f"Stdout: {stdout.read()}")
     print(f"Stderr: {stderr.read()}")
     exit(exitCode)

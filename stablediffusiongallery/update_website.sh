@@ -11,3 +11,7 @@ fi
 rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null" --rsync-path="sudo rsync" \
     website/ ubuntu@pintura.cloud:/var/www/pintura-cloud
+
+ssh ubuntu@pintura.cloud "sudo /gunicorn/update_db.sh update"
+
+# ssh ubuntu@pintura.cloud "sudo /gunicorn/update_db.sh reset"  

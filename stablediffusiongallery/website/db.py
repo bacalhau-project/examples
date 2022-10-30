@@ -69,8 +69,8 @@ def dbstats(c: sqlite3.Cursor) -> DBResponse:
 
 
 def resetDB(c: sqlite3.Cursor, key: str, imagesDir: str):
-    if key != os.environ.get("SQLITE_KEY") or key is None:
-        return DBResponse(message="Invalid key", status=401, numberOfImages=-1, lastUpdated=minDate())
+    # if key != os.environ.get("SQLITE_KEY") or key is None:
+    #     return DBResponse(message="Invalid key", status=401, numberOfImages=-1, lastUpdated=minDate())
 
     c.execute("DROP TABLE IF EXISTS images")
     c.execute(
