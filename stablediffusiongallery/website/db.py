@@ -1,6 +1,7 @@
 import glob
 import json
 import os
+import random
 import sqlite3
 from ast import parse
 from datetime import datetime, timezone
@@ -157,6 +158,40 @@ def getNewestImageFromDB(c: sqlite3.Cursor, imagesDir: str) -> Image:
     ensureImagesTableExists(c, imagesDir=imagesDir)
 
     c.execute("SELECT * FROM images ORDER BY createdAt DESC LIMIT 1")
+    row = c.fetchone()
+
+    image = None
+    if row is None:
+        image = Image(id="NO-IMAGE", prompt="NO-IMAGE", imageFileName="NO-IMAGE", createdAt=minDate())
+    else:
+        image = Image(row[0], row[1], row[2], row[3])
+
+    return image
+
+
+def getOneImageByNumber(c: sqlite3.Cursor, imagesDir: str, imageNumber: int) -> Image:
+    ensureImagesTableExists(c, imagesDir=imagesDir)
+
+    testingGetter = os.environ.get("TESTING_GETTER", None)
+    if testingGetter is not None:
+        c.execute("SELECT count(*) FROM images")
+        row = c.fetchone()
+
+        # Get a random image from the entire catalog
+        imageNumber = random.randint(0, row[0] - 1)
+        print(f"TESTING: Number of images in DB: {row[0]}. Requested image number: {imageNumber}")
+    else:
+        # Ensure the image number is an int and is not negative
+        imageNumber = int(imageNumber)
+
+    c.execute(
+        """SELECT * FROM ( 
+            SELECT id, prompt, imageFileName, createdAt, row_number() 
+            OVER (ORDER BY createdAt DESC) AS rn 
+            FROM images) as imagesWithNumber
+            WHERE rn = ?""",
+        (imageNumber,),
+    )
     row = c.fetchone()
 
     image = None

@@ -9,7 +9,7 @@ from typing import final
 import db
 import gather
 import jsonpickle
-from flask import Flask, abort, render_template, request, send_file
+from flask import Flask, abort, render_template, request, send_file, url_for
 
 app = Flask(__name__)
 
@@ -85,16 +85,29 @@ def updateDB():
 
 @app.route("/images/<id>/<imageFileName>", methods=["GET", "POST"])
 def image(id, imageFileName):
-    print(id)
-    print(imageFileName)
     return send_file(f"./images/{id}/{imageFileName}")
+
+
+@app.route("/getOneImage", methods=["GET"])
+def getOneImageByNumber():
+    try:
+        conn, c = db.getCursor()
+        imagesDir = os.environ.get("IMAGES_DIR", defaultImagesDir)
+        imageNumber = request.args["n"] if "n" in request.args else 0
+        i = db.getOneImageByNumber(c, imagesDir, imageNumber)
+        i.imageURL = url_for("image", id=i.id, imageFileName=i.imageFileName)
+        if i:
+            return jsonpickle.encode(i)
+        else:
+            return jsonpickle.encode({"status": 404, "message": "No images found"})
+    finally:
+        conn.close()
 
 
 @app.route("/varz")
 def varz():
     localIPonly()
-    
-    
+
     return "<pre>" + jsonpickle.encode(os.environ) + "</pre>"
 
 

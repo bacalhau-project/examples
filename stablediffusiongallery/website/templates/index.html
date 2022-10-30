@@ -12,9 +12,10 @@
 
 <body>
     <div id="lightgallery">
-        <p>
+        <p id="lightgalleryimages">
             {% for image in images: %}
-            <img src="{{url_for('image', id=image.id, imageFileName=image.imageFileName)}}" data-lg-size="1600-2400" />
+            <img src="{{url_for('image', id=image.id, imageFileName=image.imageFileName)}}" data-lg-size="1600-2400"
+                data-id="{{ image.id }}" class="lightgalleryimage" />
             </a>
             {% endfor %}
         </p>
@@ -26,6 +27,43 @@
             licenseKey: 'B03B25AC-737E4E24-8EAD2666-584A2E19',
             speed: 500,
         });
+    </script>
+    <script>
+        function getOneImage() {
+            // Get an image from the /getOneImage endpoint on local host with n as a parameter 
+            // that is the number of the image
+            // to get. The image is returned as a json blob.
+            var n = 0
+            const full = location.protocol + '//' + location.host;
+            const url = full + '/getOneImage?n=' + n;
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function () {
+                var imageJSON = JSON.parse(xhr.responseText);
+                // If the imageID is already on the page, we'll skip it.
+                // Look for the data-id field.
+                // This is a hack to avoid duplicates.
+                var imageID = imageJSON.id;
+                var el = document.querySelector(`.lightgalleryimage[data-id="${imageID}"]`);
+                if (el == null) {
+                    var img = document.createElement("img");
+                    img.src = imageJSON.imageURL;
+                    img.setAttribute("data-lg-size", "1600-2400");
+                    img.setAttribute("data-id", imageJSON.id);
+                    // Add the image to the front of the lightgalleryimages div
+                    var lightgalleryimages = document.getElementById("lightgalleryimage");
+                    lightgalleryimages.insertBefore(img, lightgalleryimages.firstChild);
+                } else {
+                    console.log("Skipping image " + imageID + " because it is already on the page.");
+                }
+            }
+            xhr.send();
+
+            setTimeout(getOneImage, 1000);
+        }
+
+        getOneImage();
     </script>
 </body>
 
