@@ -10,14 +10,16 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
+<style>
+    .zoom:hover {
+        transform: scale(3);
+        /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
+    }
+</style>
+
 <body>
     <div id="lightgallery">
         <p id="lightgalleryimages">
-            {% for image in images: %}
-            <img src="{{url_for('image', id=image.id, imageFileName=image.imageFileName)}}" data-lg-size="1600-2400"
-                data-id="{{ image.id }}" class="lightgalleryimage" />
-            </a>
-            {% endfor %}
         </p>
     </div>
 
@@ -33,15 +35,18 @@
             // Get an image from the /getOneImage endpoint on local host with n as a parameter 
             // that is the number of the image
             // to get. The image is returned as a json blob.
-            var n = 0
             const full = location.protocol + '//' + location.host;
-            const url = full + '/getOneImage?n=' + n;
+            const url = full + '/getOneImage';
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = function () {
                 var imageJSON = JSON.parse(xhr.responseText);
-                // If the imageID is already on the page, we'll skip it.
+                if (imageJSON == "") {
+                    console.log("Image was not found");
+                    return;
+                }
+                // If the imageID is already on the page, we will skip it.
                 // Look for the data-id field.
                 // This is a hack to avoid duplicates.
                 var imageID = imageJSON.id;
@@ -51,8 +56,10 @@
                     img.src = imageJSON.imageURL;
                     img.setAttribute("data-lg-size", "1600-2400");
                     img.setAttribute("data-id", imageJSON.id);
+                    img.width = 424;
+                    img.height = 424;
                     // Add the image to the front of the lightgalleryimages div
-                    var lightgalleryimages = document.getElementById("lightgalleryimage");
+                    var lightgalleryimages = document.getElementById("lightgalleryimages");
                     lightgalleryimages.insertBefore(img, lightgalleryimages.firstChild);
                 } else {
                     console.log("Skipping image " + imageID + " because it is already on the page.");
@@ -60,7 +67,7 @@
             }
             xhr.send();
 
-            setTimeout(getOneImage, 1000);
+            setTimeout(getOneImage, 2000);
         }
 
         getOneImage();

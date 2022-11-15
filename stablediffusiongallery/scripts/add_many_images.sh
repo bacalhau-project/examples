@@ -24,10 +24,7 @@ echo $$ > "${PID_FILE}"
 # Loop running the bacalhau binary NUM_IMAGES times
 for i in $(seq 1 "$NUM_IMAGES"); do
     # Add the image to bacalhau
-    bacalhau docker run -u $URL \
-        -l "$LABEL" \
-        --wait=false \
-        docker.io/bacalhauproject/uploader:v0.9.14 \
+
         --id-only
 done 
 

@@ -79,15 +79,18 @@ echo "SQLITE_KEY=${SQLITE_KEY}" > /etc/systemd/system/gunicorn.service.d/.env
 chmod 0600 /etc/systemd/system/gunicorn.service.d/.env
 
 # Gunicorn config file
+echo "Writing gunicorn config file..."
 cat <<EOF | tee /etc/systemd/system/gunicorn.service.d/sqlite_key.conf > /dev/null
 [Service]
 EnvironmentFile=/etc/systemd/system/gunicorn.service.d/.env
 EOF
 
 # Gunicorn.service
+echo "Creating gunicorn log directories..."
 mkdir -p /var/log/gunicorn
 chown www-data:www-data /var/log/gunicorn
 
+echo "Creating gunicorn service unit..."
 cat <<EOF | tee /etc/systemd/system/gunicorn.service > /dev/null
 [Unit]
 Description=gunicorn daemon
@@ -119,6 +122,13 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
 
+# Need to ensure website.db is readable by server
+echo "Reseting gunicorn directory permissions ..."
+chmod 0644 $APPDIR/website.db
+chown www-data:www-data $APPDIR
+chown www-data:www-data $APPDIR/website.db
+
+echo "Restarting gunicorn log rotaters ..."
 cat <<EOF | tee /etc/logrotate.d/gunicorn > /dev/null 
 /var/log/gunicorn/*.log {
 	daily
@@ -134,11 +144,13 @@ cat <<EOF | tee /etc/logrotate.d/gunicorn > /dev/null
 }
 EOF
 
+echo "Restarting all services ... "
 sudo systemctl enable gunicorn.socket
 sudo systemctl enable gunicorn.service 
 
 systemctl daemon-reload
 systemctl restart gunicorn
 systemctl restart nginx
+echo "Done."
 
 # curl --unix-socket /run/gunicorn.sock localhost

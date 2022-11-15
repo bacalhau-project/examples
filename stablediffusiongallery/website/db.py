@@ -7,6 +7,7 @@ from ast import parse
 from datetime import datetime, timezone
 from email.mime import image
 from pathlib import Path
+from re import U
 from typing import List, Tuple
 
 import regex as re
@@ -127,26 +128,26 @@ def updateDB(c: sqlite3.Cursor, imagesDir: str, lastProcessedDate: str):
                             if "RunOutput" in s and "stdout" in s["RunOutput"]:
                                 # Get the prompt: field from Annotations (if it exists)
                                 prompt = "NO-PROMPT-GIVEN"
-                                if "Annotations" in o["Spec"]:
-                                    annotations = o["Spec"]["Annotations"]
-                                    # If there is an annotation string that starts with "prompt:" then that's our prompt.
-                                    # Has the form "prompt: <prompt>"
-                                    # Use regex to get the prompt
-                                    for annotation in annotations:
-                                        if re.match(r"^prompt:", annotation):
-                                            prompt = annotation.split(":")[1].strip()
-                                            break
+                                if "Docker" in o["Spec"] and "Entrypoint" in o["Spec"]["Docker"]:
+                                    prompt = (
+                                        o["Spec"]["Docker"]["Entrypoint"][5]
+                                        if len(o["Spec"]["Docker"]["Entrypoint"]) > 5
+                                        else "NO-PROMPT-GIVEN"
+                                    )
 
-                                stdoutContent = s["RunOutput"]["stdout"]
+                                # See if the image in the imagesDir / id / image0.png exists
+                                imageFileName = "image0.png"
+                                id = o["ID"]
+                                imageFilePath = Path(imagesDir) / id / imageFileName
 
-                                # Regex to find the image name from 'Copying /inputs/500 to /outputs/500'
-                                # Group 1 is the image name
-                                imageName = re.search(r"Copying .*? to /outputs/(.*)\W", stdoutContent).group(1)
-                                # Create a new Image object
+                                # See if imageFilePath exists
+                                if not imageFilePath.exists():
+                                    continue
+
                                 image = Image(
-                                    id=o["ID"],
+                                    id=id,
                                     prompt=prompt,
-                                    imageFileName=f"{imageName}",
+                                    imageFileName=imageFileName,
                                     createdAt=parser.parse(o["CreatedAt"]),
                                 )
                                 upsertImageIntoDB(c, image)
@@ -169,17 +170,21 @@ def getNewestImageFromDB(c: sqlite3.Cursor, imagesDir: str) -> Image:
     return image
 
 
-def getOneImageByNumber(c: sqlite3.Cursor, imagesDir: str, imageNumber: int) -> Image:
+def getOneImageByNumber(c: sqlite3.Cursor, imagesDir: str, imageNumber: str) -> Image:
     ensureImagesTableExists(c, imagesDir=imagesDir)
 
-    testingGetter = os.environ.get("TESTING_GETTER", None)
-    if testingGetter is not None:
+    # Confirm imageNumber is an int
+    try:
+        imageNumber = int(imageNumber)
+    except ValueError:
+        imageNumber = -1
+
+    if imageNumber < 0:
         c.execute("SELECT count(*) FROM images")
         row = c.fetchone()
 
         # Get a random image from the entire catalog
         imageNumber = random.randint(0, row[0] - 1)
-        print(f"TESTING: Number of images in DB: {row[0]}. Requested image number: {imageNumber}")
     else:
         # Ensure the image number is an int and is not negative
         imageNumber = int(imageNumber)

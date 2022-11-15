@@ -1,10 +1,5 @@
-import json
 import os
-from email.policy import default
-from logging.config import valid_ident
 from pathlib import Path
-from threading import local
-from typing import final
 
 import db
 import gather
@@ -83,9 +78,18 @@ def updateDB():
         conn.close()
 
 
-@app.route("/images/<id>/<imageFileName>", methods=["GET", "POST"])
+@app.route("/images/<id>/<imageFileName>", methods=["GET"])
 def image(id, imageFileName):
-    return send_file(f"./images/{id}/{imageFileName}")
+    imagesDir = os.environ.get("IMAGES_DIR", defaultImagesDir)
+    if id == "NO-IMAGE":
+        return ""
+
+    filePath = f"{imagesDir}/{id}/{imageFileName}"
+
+    if not Path(filePath).exists():
+        return ""
+
+    return send_file(filePath, mimetype="image/png")
 
 
 @app.route("/getOneImage", methods=["GET"])
@@ -93,7 +97,7 @@ def getOneImageByNumber():
     try:
         conn, c = db.getCursor()
         imagesDir = os.environ.get("IMAGES_DIR", defaultImagesDir)
-        imageNumber = request.args["n"] if "n" in request.args else 0
+        imageNumber = request.args["n"] if "n" in request.args else -1
         i = db.getOneImageByNumber(c, imagesDir, imageNumber)
         i.imageURL = url_for("image", id=i.id, imageFileName=i.imageFileName)
         if i:

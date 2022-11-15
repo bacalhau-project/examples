@@ -4,13 +4,14 @@ import re
 import shutil
 import subprocess
 import tempfile
+from ast import arg
 from multiprocessing import Pool
 from pathlib import Path
 from sys import argv, stderr
 from typing import Tuple
 
 defaultOutputdir = "./outputs"
-defaultCommand = "bacalhau list -n %s --output json"
+defaultCommand = "bacalhau list -n %s --output json --all"
 defaultNumberToList = 10
 
 
@@ -27,7 +28,7 @@ def downloadFile(downloadParameters: Tuple) -> None:
     # If the finalOutputDir already exists, we can continue
     if finalOutputDir.exists():
         for root, dirs, files in os.walk(finalOutputDir):
-            if len(files) > 0:
+            if len(files) > 1:
                 # Don't care what's in it, just that it's not empty
                 return
         # Since we're here, we know that the directory is empty
@@ -50,7 +51,7 @@ def downloadFile(downloadParameters: Tuple) -> None:
     executeCommand(command)
 
     # Move the image to the finalOutputDir
-    tempOutputVolumePath = Path(tempOutputDir) / "volumes" / "outputs"
+    tempOutputVolumePath = Path(tempOutputDir) / "combined_results" / "outputs"
 
     tempOutputVolumePathString = str(tempOutputVolumePath)
     finalOutputDirString = str(finalOutputDir)
@@ -75,25 +76,32 @@ def downloadImages(outputDir: str, numberToList: int) -> None:
     commandWithNumber = defaultCommand % numberToList
     stdout, stderr, exitCode = executeCommand(commandWithNumber)
 
-    jobs = json.loads(stdout)
+    try:
+        jobs = json.loads(stdout)
+    except:
+        print("Error loading json from stdout. Exiting: %s" % stdout)
+        exit(1)
 
     ids = []
     # For loop where we filter the jobs based on the status and the Annotation
     for job in jobs:
-        nodes = job["JobState"]["Nodes"]
-        for nodeId in nodes:
-            shard = nodes[nodeId]["Shards"]
-            for s in shard:
-                state = shard[s]["State"]
-                if (
-                    state == "Completed"
-                    and "Annotations" in job["Spec"]
-                    and "pintura-default-sd" in job["Spec"]["Annotations"]
-                    and "RunOutput" in shard[s]
-                ):
-                    # Regex to see if the download got copied over properly
-                    regex = re.compile(r"Copying \/inputs\/.*? to \/outputs")
-                    if len(regex.findall(shard[s]["RunOutput"]["stdout"])) > 0:
+        if "Nodes" in job["JobState"]:
+            nodes = job["JobState"]["Nodes"]
+            for nodeId in nodes:
+                shard = nodes[nodeId]["Shards"]
+                for s in shard:
+                    state = shard[s]["State"]
+                    # Print annotations if there are any
+                    if "Annotations" in shard[s]:
+                        annotations = shard[s]["Annotations"]
+                        for annotation in annotations:
+                            print(annotation)
+                    if (
+                        state == "Completed"
+                        and "Annotations" in job["Spec"]
+                        and "pintura-sd" in job["Spec"]["Annotations"]
+                        and "PublishedResults" in shard[s]
+                    ):
                         ids.append(job["ID"])
     try:
         # Create temporary directory using system temp directory
@@ -115,6 +123,11 @@ def downloadImages(outputDir: str, numberToList: int) -> None:
 
 # If main, execute with default settings
 if __name__ == "__main__":
+    if len(argv) < 3:
+        print("Usage: python3 downloader.py <outputdir> <numberToList> <pidfile>", file=stderr)
+        # stop run
+        exit(1)
+
     # If first argument is set, use that as the output directory
     outputDir = argv[1] if len(argv) > 1 else defaultOutputdir
 
@@ -125,7 +138,7 @@ if __name__ == "__main__":
     pidFile = argv[3] if len(argv) > 3 else "/var/run/bacalhau-downloader.pid"
 
     # Exit if the pid file exists
-    if Path(pidFile).exists():
+    if argv[3] == "" and Path(pidFile).exists():
         print("Pid file exists. Exiting.")
         exit(0)
 
