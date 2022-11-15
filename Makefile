@@ -1,51 +1,54 @@
-.PHONY: markdown clean markdown-requirements test-requirements  
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
+PYTHON_RUNNER := poetry run
 
-all: markdown-requirements test-requirements clean markdown test
-
-SRC_DIR := .
-DST_DIR := rendered
-# Markdown files to render
-SRC_FILES := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*" -not -path "./templates/*")
-DST_FILES := $(patsubst $(SRC_DIR)/%.ipynb,$(DST_DIR)/%.md,$(SRC_FILES))
-
-# Image files to copy
-SRC_IMGS := $(shell find . -type f -regex '\(.*jpg\|.*png\|.*jpeg\|.*JPG\|.*PNG\|.*mp4\)' -not -path "./todo/*" -not -path "./rendered/*" -not -path "./templates/*")
-DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
-
-# Need to process these one at a time so that we can extract the right output dir
-# Otherwise the embedded images will be saved with non-relative paths, which are required for docusaurus
-$(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
-	mkdir -p $(@D)
-	jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
-		--TagRemovePreprocessor.enabled=True \
-		--TagRemovePreprocessor.remove_cell_tags=remove_cell \
-		--TagRemovePreprocessor.remove_all_outputs_tags=remove_output \
-		--TagRemovePreprocessor.remove_input_tags=remove_input \
-		$<
-# Remove %%bash from the file (this command works both on bsd/macs and linux)
-	grep -v "%%bash" $@ > temp && mv temp $@
-	@echo
-
-# Copy images to the rendered directory
-$(DST_DIR)/%: $(SRC_DIR)/%
-	mkdir -p $(@D)
-	cp $< $@
+.PHONY: all  
+all: markdown-requirements test-requirements clean markdown convert test
 
 markdown-requirements:
-ifeq (, $(shell which jupyter))
-	$(error "No jupyter in $(PATH), please run pip install nbconvert")
+ifeq (, $(shell poetry run which jupyter))
+	$(error "No jupyter in $(PATH), please run poetry add nbconvert")
 endif
 
 test-requirements:
-ifeq (, $(shell which pytest))
-	$(error "No pytest in $(PATH), please run pip install nbmake")
+	@echo "Checking build environment..."
+ifeq (, $(shell poetry run which pytest))
+	$(error "No pytest in $(PATH), please run poetry add nbmake")
 endif
+ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
+	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
+	@exit 1
+endif
+	@echo "Build environment correct."
 
 markdown: markdown-requirements $(DST_FILES) $(DST_IMGS)
 
+convert:
+	@echo "Converting notebooks to markdown..."
+	$(PYTHON_RUNNER) python build.py
+	@echo "Conversion complete."
+
 test: test-requirements
-	pytest --nbmake --ignore=./todo/ --durations=0
+	${PYTHON_RUNNER} pytest --nbmake --ignore=./todo/ --durations=0
 
 clean:
 	rm -rf rendered
+
+# Run init repo after cloning it
+.PHONY: init
+init:
+	@ops/repo_init.sh 1>/dev/null
+	@echo "Build environment initialized."
+
+# Run install pre-commit
+.PHONY: install-pre-commit
+install-pre-commit:
+	@ops/install_pre_commit.sh 1>/dev/null
+	@echo "Pre-commit installed."
+
+################################################################################
+# Target: precommit
+################################################################################
+.PHONY: precommit
+precommit: test-requirements
+	${PRECOMMIT} run --all 
 	git ls-files -o | xargs rm; find . -type d -empty -delete
