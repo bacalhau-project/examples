@@ -51,3 +51,4 @@ install-pre-commit:
 .PHONY: precommit
 precommit: test-requirements
 	${PRECOMMIT} run --all 
+	git ls-files -o | xargs rm; find . -type d -empty -delete
