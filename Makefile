@@ -16,9 +16,11 @@ convert: init
 	$(PYTHON_RUNNER) python build.py
 	@echo "Conversion complete."
 
+# Usage: Run tests on notebooks with `make test`
+#		 Run tests on a specific notebook with `make test notebook.ipynb`
 .PHONY: test
 test: init
-	${PYTHON_RUNNER} pytest --nbmake --ignore=./todo/ --durations=0
+	${PYTHON_RUNNER} pytest --nbmake --ignore=./todo/ --durations=0 $(filter-out $@, $(MAKECMDGOALS))
 
 .PHONY: clean
 clean:
