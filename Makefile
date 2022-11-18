@@ -24,7 +24,7 @@ DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 # Otherwise the embedded images will be saved with non-relative paths, which are required for docusaurus
 $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 	mkdir -p $(@D)
-	jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
+	${PYTHON_RUNNER} jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
 		--TagRemovePreprocessor.enabled=True \
 		--TagRemovePreprocessor.remove_cell_tags=remove_cell \
 		--TagRemovePreprocessor.remove_all_outputs_tags=remove_output \
