@@ -113,7 +113,7 @@ You can [ignore cells](https://github.com/treebeardtech/nbmake#ignore-a-code-cel
 
 #### Manually Testing
 
-You can run the test manually by running `make test`. Also take a look at the [CI script](.github/workflows/test.yaml) to see the setup.
+You can run test all notebooks with `make test`. If you want to test an individual notebook, you can run something like `make test miscellaneous/Gromacs/index.ipynb`.
 
 ### Developer Help
 
