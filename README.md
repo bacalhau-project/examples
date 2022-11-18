@@ -31,7 +31,7 @@ Please see the [basic-template example](templates/basic-template) for a guide on
 * No spaces in directory names
 * All rendered notebooks must have the required Docusaurus YAML at the top of the file (see the current examples and templates)
 * Try to avoid using HTML in markdown, it will likely break. If you need to, use IPython's HTML class and hide the code cell.
-* Make sure `make markdown` and `make test` succeeds and runs in a reasonable time.
+* Make sure `make render` and `make test` succeeds and runs in a reasonable time.
 * Only commit to the examples repo, the CI will take care of committing to the docs site.
 
 ### Documentation Rendering
@@ -40,7 +40,7 @@ Whenever you push to the main branch on this repository, a github action will au
 
 #### Manually Rendering Docs
 
-If you want to render your docs locally, then run `make markdown`. You can also look at the [CI script](.github/workflows/publish.yaml) to see the setup.
+If you want to render your docs locally, then run `make render`. You can also look at the [CI script](.github/workflows/publish.yaml) to see the setup.
 
 #### Viewing Manually Rendered Docs on a Development Docs.Bacalhau.Org
 
