@@ -1,0 +1,7 @@
+outputs/
+results/
+combined_results/
+output_1100000/
+file.tar.gz
+job_ids.txt
+main.py
