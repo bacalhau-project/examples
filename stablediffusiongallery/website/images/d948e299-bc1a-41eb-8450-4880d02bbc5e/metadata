@@ -1,0 +1,84 @@
+APIVersion: V1alpha1
+ClientID: f2dadf4b6afdeda7c8fa64aeaced905814b2bcc4819f8d398d1897da003a20e3
+CreatedAt: "2022-10-17T23:46:59.116854992Z"
+Deal:
+  Concurrency: 1
+ExecutionPlan:
+  ShardsTotal: 1
+ID: d948e299-bc1a-41eb-8450-4880d02bbc5e
+JobState:
+  Nodes:
+    QmRjLYuFU1wAhWh3u94cm7DgbLRBTkUhCTAx77VyXBDgr4:
+      Shards:
+        "0":
+          NodeId: QmRjLYuFU1wAhWh3u94cm7DgbLRBTkUhCTAx77VyXBDgr4
+          PublishedResults: {}
+          State: Cancelled
+          VerificationResult: {}
+    QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF:
+      Shards:
+        "0":
+          NodeId: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          PublishedResults: {}
+          State: Cancelled
+          VerificationResult: {}
+    QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3:
+      Shards:
+        "0":
+          NodeId: QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
+          PublishedResults:
+            CID: QmdxJzwE5EHp7jRVByHkwLGhGgZJKdi2M7HEvUZBSGKAe1
+            Name: job-d948e299-bc1a-41eb-8450-4880d02bbc5e-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
+            StorageSource: IPFS
+          RunOutput:
+            exitCode: 0
+            runnerError: ""
+            stderr: ""
+            stderrtruncated: false
+            stdout: |-
+              INPUT_PATH is not set, using '/inputs'
+              OUTPUT_PATH is not set, using '/outputs'
+              Walking input path: /inputs
+              Found file: /inputs/500
+              Copying /inputs/500 to /outputs/500
+              Done copying all objects. Final /outputs contents:
+              /outputs
+              /outputs/500
+            stdouttruncated: false
+          State: Completed
+          Status: 'Got results proposal of length: 0'
+          VerificationResult:
+            Complete: true
+            Result: true
+    QmdMDhqqpkw2cAY1dk45cwL8PsKDexYKewN7thrF2TZeUe:
+      Shards:
+        "0":
+          NodeId: QmdMDhqqpkw2cAY1dk45cwL8PsKDexYKewN7thrF2TZeUe
+          PublishedResults: {}
+          State: Cancelled
+          VerificationResult: {}
+RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
+Spec:
+  Annotations:
+  - pintura-test
+  Docker:
+    Image: docker.io/bacalhauproject/uploader:v0.9.14
+  Engine: Docker
+  Language:
+    JobContext: {}
+  Publisher: Estuary
+  Resources:
+    GPU: ""
+  Sharding:
+    BatchSize: 1
+    GlobPatternBasePath: /inputs
+  Verifier: Noop
+  inputs:
+  - StorageSource: URLDownload
+    URL: https://picsum.photos/500/500/
+    path: /inputs
+  outputs:
+  - Name: outputs
+    StorageSource: IPFS
+    path: /outputs
