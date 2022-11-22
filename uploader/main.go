@@ -1,13 +1,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
+	cp "github.com/otiai10/copy"
 )
 
 func main() {
@@ -22,7 +21,6 @@ func main() {
 		fmt.Printf("OUTPUT_PATH is not set, using '/outputs'\n")
 		outputPath = "/outputs"
 	}
-	fs := afero.NewOsFs()
 	allObjects := []string{}
 	allDirs := []string{}
 	allFiles := []string{}
@@ -32,51 +30,58 @@ func main() {
 			return nil
 		}
 		if d.IsDir() {
+			fmt.Printf("Found directory: %s\n", path)
 			allDirs = append(allDirs, path)
 		} else {
+			fmt.Printf("Found file: %s\n", path)
 			allFiles = append(allFiles, path)
 		}
 
 		return nil
 	}
 
+	fmt.Printf("Walking input path: %s\n", inputPath)
 	err := filepath.WalkDir(inputPath, walker)
 	if err != nil {
 		fmt.Printf("Error walking input path: %v", err)
 		return
 	}
 
+	// Putting the objects in order so all Dirs come before all Files
 	allObjects = append(allObjects, allDirs...)
 	allObjects = append(allObjects, allFiles...)
 
-	remainingObjects := []string{}
 	for _, oo := range allObjects {
-		if f, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
+		if oo == inputPath {
 			continue
-		} else if f.IsDir() {
-			fmt.Printf("Moving %s to %s\n", oo, outputPath)
-			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
-			if err != nil {
-				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
-				return
-			}
-		} else {
-			remainingObjects = append(remainingObjects, oo)
+		}
+
+		// See if oo still exists (its parent could have been moved)
+		_, err := os.Stat(oo)
+		if err != nil {
+			fmt.Printf("Error stating object %v:", err)
+			continue
+		}
+		dstPath := strings.Replace(oo, inputPath, outputPath, 1)
+		fmt.Printf("Copying %s to %s\n", oo, dstPath)
+		err = cp.Copy(oo, dstPath)
+		if err != nil {
+			fmt.Printf("Error moving %s to %s: %v", oo, dstPath, err)
+			return
 		}
 	}
 
-	for _, oo := range remainingObjects {
-		if _, err := os.Stat(oo); errors.Is(err, os.ErrNotExist) {
-			continue
-		} else {
-			fmt.Printf("Moving %s to %s\n", oo, outputPath)
-			err = fs.Rename(oo, strings.Replace(oo, inputPath, outputPath, 1))
-			if err != nil {
-				fmt.Printf("Error moving %s to %s: %v", oo, outputPath, err)
-				return
+	fmt.Printf("Done copying all objects. Final /outputs contents:\n")
+	err = filepath.WalkDir(outputPath,
+		func(path string, d os.DirEntry, err error) error {
+			if path == inputPath {
+				return nil
 			}
-		}
+			fmt.Println(path)
+			return nil
+		})
+	if err != nil {
+		fmt.Printf("Error walking output path: %v", err)
 	}
-
 	return
 }
