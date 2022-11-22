@@ -1,6 +1,14 @@
-.PHONY: markdown clean markdown-requirements test-requirements  
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
+PYTHON_RUNNER := poetry run
 
-all: markdown-requirements test-requirements clean markdown test
+.PHONY: all  
+all: init convert test
+
+ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
+	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
+	@exit 1
+endif
+	@echo "Build environment correct."
 
 SRC_DIR := .
 DST_DIR := rendered
@@ -16,7 +24,7 @@ DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 # Otherwise the embedded images will be saved with non-relative paths, which are required for docusaurus
 $(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
 	mkdir -p $(@D)
-	jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
+	${PYTHON_RUNNER} jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
 		--TagRemovePreprocessor.enabled=True \
 		--TagRemovePreprocessor.remove_cell_tags=remove_cell \
 		--TagRemovePreprocessor.remove_all_outputs_tags=remove_output \
@@ -31,21 +39,32 @@ $(DST_DIR)/%: $(SRC_DIR)/%
 	mkdir -p $(@D)
 	cp $< $@
 
-markdown-requirements:
-ifeq (, $(shell which jupyter))
-	$(error "No jupyter in $(PATH), please run pip install nbconvert")
-endif
+convert: init $(DST_FILES) $(DST_IMGS)
 
-test-requirements:
-ifeq (, $(shell which pytest))
-	$(error "No pytest in $(PATH), please run pip install nbmake")
-endif
+# Usage: Run tests on notebooks with `make test`
+#		 Run tests on a specific notebook with `make test notebook.ipynb`
+.PHONY: test
+test: init
+	${PYTHON_RUNNER} pytest --nbmake --ignore=./todo/ --durations=0 $(filter-out $@, $(MAKECMDGOALS))
 
-markdown: markdown-requirements $(DST_FILES) $(DST_IMGS)
-
-test: test-requirements
-	pytest --nbmake --ignore=./todo/ --durations=0
-
+.PHONY: clean
 clean:
 	rm -rf rendered
+
+.PHONY: init
+init:
+	@ops/repo_init.sh
+	@echo "Build environment initialized."
+
+.PHONY: install-pre-commit
+install-pre-commit:
+	@ops/install_pre_commit.sh 1>/dev/null
+	@echo "Pre-commit installed."
+
+################################################################################
+# Target: precommit
+################################################################################
+.PHONY: precommit
+precommit: test-requirements
+	${PRECOMMIT} run --all 
 	git ls-files -o | xargs rm; find . -type d -empty -delete
