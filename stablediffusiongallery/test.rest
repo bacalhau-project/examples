@@ -1,0 +1,33 @@
+### With empty ID
+GET http://127.0.0.1:8000/catalog?id= HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+
+### With No id
+GET http://127.0.0.1:8000/catalog HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+
+### Valid ID
+GET http://127.0.0.1:8000/catalog?id=3b82af1d-740c-4da7-9eff-ba89efff70fc HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+### With invalid ID
+GET http://127.0.0.1:8000/catalog?id=aaaa-740c-4da7-9eff-ba89efff70fc HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+### Test update database via URL
+GET http://127.0.0.1:8000/updateDB HTTP/1.1
+
+### Test reset database via URL with no key
+GET http://127.0.0.1:8000/resetdb HTTP/1.1
+
+### Test reset database via URL with invalid key
+GET http://127.0.0.1:8000/resetdb?key=BADKEY HTTP/1.1
+
+### Test reset database via URL with dev key
+GET http://127.0.0.1:8000/resetdb?key=changeme HTTP/1.1
