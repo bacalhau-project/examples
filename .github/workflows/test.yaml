@@ -1,6 +1,7 @@
 name: test
-on: [push]
-
+on:
+  schedule:
+    - cron: "0 */4 * * *"
 jobs:
   test-ipynb:
     runs-on: ubuntu-latest
@@ -9,5 +10,4 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - run: pip install nbmake
       - run: make test
