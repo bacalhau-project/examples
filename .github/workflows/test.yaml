@@ -2,7 +2,7 @@ name: test
 on:
   schedule:
     - cron: "0 */4 * * *"
-  # push: {} # Always disable this after testing
+  push: {} # Always disable this after testing
 jobs:
   test-ipynb:
     runs-on: ubuntu-latest
