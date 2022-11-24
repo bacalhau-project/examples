@@ -9,7 +9,7 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 
 ## Developer Guide
 
-### Ways of Working
+### Before You Start
 
 All example ideas are tracked as issues in the [Bacalhau Core Repository](https://github.com/filecoin-project/bacalhau/issues?q=is%3Aopen+is%3Aissue+label%3Aexample) with a label of `example`. 
 
@@ -17,21 +17,51 @@ All example ideas are tracked as issues in the [Bacalhau Core Repository](https:
 * If you'd like to work on a example, please find an issue that has not been assigned, then assign the issue to yourself.
 * David and Luke will prioritize the examples that are most useful to the community.
 
-### Basic Example
+### General Process
+
+In summary, the process of developing an example is as follows:
+
+1. Create a new branch and create an `index.ipynb` file in an appropriate directory.
+2. Develop the notebook and make sure `make test path/to/your/notebook.ipynb` passes
+3. Merge into master
+4. The CI will then render the notebook and push it to the [docs.bacalhau.org repository](https://github.com/bacalhau-project/docs.bacalhau.org/)
+5. The tests run on a cron basis to ensure examples continue to work 
+
+### Example Template
 
 Please see the [basic-template example](templates/basic-template) for a guide on how to create a new example.
 
 ### Requirements
 
-* All examples must be ipynb files, only ipynb files are rendered to the docs site
-* Examples must be placed in "task specific" directories in this repository - this structure is mirrored to the documentation site
-* The `todo` and `templates` folder will not be rendered
+The following guidelines aim to maintain the quality of the examples.
+
+#### Example Requirements
+
+* The example should be useful, try to avoid toy datasets
+* Don't repeat yourself, if there is an example of something already available, redirect to that. For example, don't show people how to ingest data into IPFS, there's [an example for that](data-ingestion).
+
+#### Markdown Requirements
+
+* The text should be in English and be free of grammatical mistakes.
+* Remove all formatting other than standard markdown. Examples include rogue page breaks, extra bold formatting in headings (`**`), quotation marks around monospaced code, etc.
+
+#### Dependency Requirements
+
+* If you install anything, use a tagged version. Examples include Docker containers, `pip` installs. Etc.
+
+#### Notebook Requirements
+
+* All examples must be ipynb files
 * Any file named `README.ipynb` or `index.ipynb` will be rendered as the index page for the directory (see the current examples and the docs website)
-* Every rendered directory requires an index.ipynb file, so the HTML index.html file is not empty.
+* Prefer fewer cells, they are easier to edit.
 * No spaces in directory names
+* Every rendered directory requires an index.ipynb file, so the HTML index.html file is not empty.
 * All rendered notebooks must have the required Docusaurus YAML at the top of the file (see the current examples and templates)
 * Try to avoid using HTML in markdown, it will likely break. If you need to, use IPython's HTML class and hide the code cell.
-* Make sure `make render` and `make test` succeeds and runs in a reasonable time.
+
+#### Testing Requirements
+
+* Make sure `make convert` and `make test` succeeds and runs in a reasonable time.
 * Only commit to the examples repo, the CI will take care of committing to the docs site.
 
 ### Documentation Rendering
