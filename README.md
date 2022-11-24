@@ -48,7 +48,7 @@ You can also copy the rendered markdown files across to a local copy of the [doc
 
 ```bash
 cd ~/source/bacalhau-project/examples
-make markdown
+make convert
 cd ~/source/filecoin-project/docs.bacalhau.org
 cp -r ~/source/bacalhau-project/examples/rendered/. docs/examples/.
 yarn start
