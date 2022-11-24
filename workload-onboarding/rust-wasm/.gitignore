@@ -2,3 +2,9 @@ job.txt
 /my-program/
 rustup.sh
 wasm_results/
+bin/
+toolchains/
+update-hashes/
+env
+settings.toml
+tmp/
