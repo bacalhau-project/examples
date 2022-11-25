@@ -13,11 +13,11 @@ endif
 SRC_DIR := .
 DST_DIR := rendered
 # Markdown files to render
-SRC_FILES := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*" -not -path "./templates/*")
+SRC_FILES := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*" -not -path "./templates/*" -not -path "./$(DST_DIR)/*" -not -path "./docs.bacalhau.org/*")
 DST_FILES := $(patsubst $(SRC_DIR)/%.ipynb,$(DST_DIR)/%.md,$(SRC_FILES))
 
 # Image files to copy
-SRC_IMGS := $(shell find . -type f -regex '\(.*jpg\|.*png\|.*jpeg\|.*JPG\|.*PNG\|.*mp4\)' -not -path "./todo/*" -not -path "./rendered/*" -not -path "./templates/*")
+SRC_IMGS := $(shell find . -type f -regex '\(.*jpg\|.*png\|.*jpeg\|.*JPG\|.*PNG\|.*mp4\)' -not -path "./todo/*" -not -path "./$(DST_DIR)/*" -not -path "./templates/*" -not -path "./docs.bacalhau.org/*")
 DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 
 # Need to process these one at a time so that we can extract the right output dir
@@ -50,6 +50,7 @@ test: init
 .PHONY: clean
 clean:
 	rm -rf rendered
+	rm -rf docs.bacalhau.org
 
 .PHONY: init
 init:
@@ -68,3 +69,10 @@ install-pre-commit:
 precommit: test-requirements
 	${PRECOMMIT} run --all 
 	git ls-files -o | xargs rm; find . -type d -empty -delete
+
+.PHONY: docs
+docs: convert
+	@echo "Building docs"
+	if [ ! -d "docs.bacalhau.org" ]; then git clone https://github.com/bacalhau-project/docs.bacalhau.org/; fi
+	cp -r rendered/* docs.bacalhau.org/docs/examples
+	cd docs.bacalhau.org && yarn install && yarn build

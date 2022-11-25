@@ -43,10 +43,12 @@ The following guidelines aim to maintain the quality of the examples.
 #### Markdown Requirements
 
 * The text should be in English and be free of grammatical mistakes.
+* Use good headings and (probably) use numbered top-level headings to show significantly different sections or steps. Use your judgement.
 * Remove all formatting other than standard markdown. Examples include rogue page breaks, extra bold formatting in headings (`**`), quotation marks around monospaced code, etc.
 
 #### Dependency Requirements
 
+* If you have prerequisites, place these at the top of the file just after the introduction at a third level heading (`###`).
 * If you install anything, use a tagged version. Examples include Docker containers, `pip` installs. Etc.
 
 #### Notebook Requirements
@@ -66,23 +68,17 @@ The following guidelines aim to maintain the quality of the examples.
 
 ### Documentation Rendering
 
-Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
+Whenever you push to the main branch on this repository, a github action will automatically render your ipynb's into markdown, test it, and push them to the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
 
 #### Manually Rendering Docs
 
-If you want to render your docs locally, then run `make render`. You can also look at the [CI script](.github/workflows/publish.yaml) to see the setup.
+If you want to render your docs locally, then run `make convert`. You can also look at the [CI script](.github/workflows/publish.yaml) to see the setup.
 
-#### Viewing Manually Rendered Docs on a Development Docs.Bacalhau.Org
+#### Testing Docs.Bacalhau.Org
 
-You can also copy the rendered markdown files across to a local copy of the [docs repository](https://github.com/bacalhau-project/docs.bacalhau.org/). Assuming you have cloned both the examples and docs repositories into a directory called `~/source`:
+To test whether your rendered docs will work on the docs site, run `make docs`.
 
-```bash
-cd ~/source/bacalhau-project/examples
-make convert
-cd ~/source/filecoin-project/docs.bacalhau.org
-cp -r ~/source/bacalhau-project/examples/rendered/. docs/examples/.
-yarn start
-```
+This code is slightly different to the test in the CI, but achieves the same result.
 
 #### Removing Cells From the Rendered Markdown
 

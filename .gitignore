@@ -19,3 +19,4 @@ js-helloworld/outputs/*
 .venv
 temp
 job_id.txt
+docs.bacalhau.org/
