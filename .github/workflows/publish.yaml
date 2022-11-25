@@ -16,9 +16,38 @@ jobs:
           name: rendered
           path: |
             rendered
-  publish:
+
+  test-docusaurus:
     runs-on: ubuntu-latest
     needs: render-ipynb
+    steps:
+      - name: Checkout Docs
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository_owner	 }}/docs.bacalhau.org
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: $(yarn cache dir)"
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Download rendered files
+        uses: actions/download-artifact@v3
+        with:
+          name: rendered
+      - name: Copy Files
+        run: cp -r rendered/* docs/examples
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test-docusaurus
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Download rendered files
