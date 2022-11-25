@@ -40,6 +40,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: rendered
+          path: rendered
       - name: Copy Files
         run: cp -r rendered/* docs/examples
       - run: yarn install --frozen-lockfile
