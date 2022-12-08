@@ -6,6 +6,7 @@ rendered
 **/stdout
 **/stderr
 bacalhau
+**/results/
 
 .vscode/
 **/Dockerfile
