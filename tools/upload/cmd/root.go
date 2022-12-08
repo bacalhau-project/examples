@@ -1,13 +1,15 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/bacalhau-project/examples/tools/upload/config"
 	"github.com/otiai10/copy"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +26,7 @@ in the /outputs directory to Filecoin, via Estuary.`,
 			// You can bind cobra and viper in a few locations, but PersistencePreRunE on the root command works well
 			return initializeConfig(cmd)
 		},
-		Run: executeRootCommand,
+		RunE: executeRootCommand,
 	}
 
 	// Add flags to the root command
@@ -43,17 +45,25 @@ func Execute() {
 
 func initializeConfig(cmd *cobra.Command) error {
 	// Parse final config for log level settings
-	finalConfig := config.ParseGlobalConfig(cmd)
+	finalConfig, err := config.ParseGlobalConfig(cmd)
+	if err != nil {
+		return err
+	}
 
-	// Set log level
-	logrus.SetLevel(logrus.Level(finalConfig.LogLevel))
+	// Set global log level
+	zerolog.SetGlobalLevel(zerolog.Level(finalConfig.LogLevel))
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
 	return nil
 }
 
-func executeRootCommand(cmd *cobra.Command, args []string) {
-	conf := config.ParseGlobalConfig(cmd)
-	logrus.Infof("Copying %s to %s", conf.InputPath, conf.OutputPath)
+func executeRootCommand(cmd *cobra.Command, args []string) error {
+	conf, err := config.ParseGlobalConfig(cmd)
+	if err != nil {
+		return fmt.Errorf("parsing config: %w", err)
+	}
+
+	log.Info().Str("InputPath", conf.InputPath).Str("OutputPath", conf.OutputPath).Msg("Copying files")
 
 	allObjects := []string{}
 	allDirs := []string{}
@@ -64,21 +74,20 @@ func executeRootCommand(cmd *cobra.Command, args []string) {
 			return nil
 		}
 		if d.IsDir() {
-			logrus.Debugf("Found directory: %s\n", path)
+			log.Debug().Str("path", path).Msg("Found directory")
 			allDirs = append(allDirs, path)
 		} else {
-			logrus.Debugf("Found file: %s\n", path)
+			log.Debug().Str("path", path).Msg("Found file")
 			allFiles = append(allFiles, path)
 		}
 
 		return nil
 	}
 
-	logrus.Debugf("Walking input path: %s\n", conf.InputPath)
-	err := filepath.WalkDir(conf.InputPath, walker)
+	log.Debug().Str("InputPath", conf.InputPath).Msg("Walking input path")
+	err = filepath.WalkDir(conf.InputPath, walker)
 	if err != nil {
-		logrus.Errorf("Error walking input path: %v", err)
-		return
+		fmt.Errorf("Error walking input path: %w", err)
 	}
 
 	// Putting the objects in order so all Dirs come before all Files
@@ -93,16 +102,13 @@ func executeRootCommand(cmd *cobra.Command, args []string) {
 		// See if oo still exists (its parent could have been moved)
 		_, err := os.Stat(oo)
 		if err != nil {
-			logrus.Errorf("Error stating object %v:", err)
-			continue
+			return fmt.Errorf("stating object: %w", err)
 		}
-		logrus.Debugf("Destination path calculation %s from %s to %s\n", oo, conf.InputPath, conf.OutputPath)
 		dstPath := strings.Replace(oo, conf.InputPath, conf.OutputPath, 1)
-		logrus.Infof("Copying %s to %s\n", oo, dstPath)
+		log.Info().Str("src", oo).Str("dst", dstPath).Msg("Copying object")
 		err = copy.Copy(oo, dstPath)
 		if err != nil {
-			logrus.Errorf("Error moving %s to %s: %v", oo, dstPath, err)
-			return
+			return fmt.Errorf("copying object: %w", err)
 		}
 	}
 
@@ -116,7 +122,8 @@ func executeRootCommand(cmd *cobra.Command, args []string) {
 			return nil
 		})
 	if err != nil {
-		logrus.Errorf("Error walking output path: %v", err)
+		return fmt.Errorf("walking output path: %w", err)
 	}
-	logrus.Infof("Done copying all objects. Final contents: %s\n", fileList)
+	log.Info().Strs("files", fileList).Msg("Done copying all objects")
+	return nil
 }
