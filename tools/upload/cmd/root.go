@@ -52,7 +52,10 @@ func initializeConfig(cmd *cobra.Command) error {
 
 	// Set global log level
 	zerolog.SetGlobalLevel(zerolog.Level(finalConfig.LogLevel))
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	// Set log format, defaults to json if format isn't "text"
+	if finalConfig.LogFormat == "text" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true})
+	}
 
 	return nil
 }
@@ -87,7 +90,7 @@ func executeRootCommand(cmd *cobra.Command, args []string) error {
 	log.Debug().Str("InputPath", conf.InputPath).Msg("Walking input path")
 	err = filepath.WalkDir(conf.InputPath, walker)
 	if err != nil {
-		fmt.Errorf("Error walking input path: %w", err)
+		return fmt.Errorf("walking input path: %w", err)
 	}
 
 	// Putting the objects in order so all Dirs come before all Files
