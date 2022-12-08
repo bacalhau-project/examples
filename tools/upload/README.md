@@ -13,9 +13,8 @@ This container is a glorified `cp -r /inputs /outputs` command passed to a Bacal
 ### Uploading Data from a URL
 
 ```bash
-TAG=v0.9.4
-URL=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md
-bacalhau docker run -e URL=$URL docker.io/bacalhauproject/uploader:$TAG
+export URL=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md
+bacalhau docker run --input-urls=$URL ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
 ### Uploading Data from S3
@@ -24,4 +23,4 @@ bacalhau docker run -e URL=$URL docker.io/bacalhauproject/uploader:$TAG
 
 ## Building
 
-This container is automatically built and published to Github container registry, using the github action located in `.github/workflows/uploader.yml`.
+This container is automatically built and published to Github container registry, [using the Github action](/.github/workflows/tools-upload.yaml).
