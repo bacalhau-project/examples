@@ -7,7 +7,8 @@ COPY . .
 RUN CGO_ENABLED=0 go build -a -o /upload .
 
 FROM scratch
-WORKDIR /app
+WORKDIR /
+ENV PATH="/"
 COPY --from=builder /upload /upload
-ENTRYPOINT ["/upload"]
-CMD [ "-h" ]
+# Bacalhau will override the entrypoint, so just use a CMD
+CMD [ "upload" ]
