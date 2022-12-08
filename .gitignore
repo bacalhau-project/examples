@@ -9,6 +9,7 @@ bacalhau
 
 .vscode/
 **/Dockerfile
+!tools/**/Dockerfile
 **/.py
 **/requirements.txt
 .vscode
