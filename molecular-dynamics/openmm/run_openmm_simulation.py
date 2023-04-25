@@ -11,7 +11,7 @@ forcefield = ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
 
 # Output
 output_path = '/outputs/final_state.pdbx'
-if not os.path.exists(os.path.dirname(output_path)): # check if ouput dir exists
+if not os.path.exists(os.path.dirname(output_path)): # check if output dir exists
     os.makedirs(os.path.dirname(output_path))
 
 # System Configuration
