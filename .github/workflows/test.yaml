@@ -1,7 +1,7 @@
 name: test
 on:
   schedule:
-    - cron: "0 */4 * * *"
+    - cron: '*/2 * * * *'
   # push: {} # Always disable this after testing
 jobs:
   test-ipynb:
