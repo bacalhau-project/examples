@@ -51,7 +51,7 @@ def downloadFile(downloadParameters: Tuple) -> None:
     executeCommand(command)
 
     # Move the image to the finalOutputDir
-    tempOutputVolumePath = Path(tempOutputDir) / "combined_results" / "outputs"
+    tempOutputVolumePath = Path(tempOutputDir) / "outputs"
 
     tempOutputVolumePathString = str(tempOutputVolumePath)
     finalOutputDirString = str(finalOutputDir)
