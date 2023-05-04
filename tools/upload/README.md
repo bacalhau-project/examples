@@ -14,7 +14,7 @@ This container is a glorified `cp -r /inputs /outputs` command passed to a Bacal
 
 ```bash
 export URL=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md
-bacalhau docker run --input-urls=$URL ghcr.io/bacalhau-project/examples/upload:v1
+bacalhau docker run --input=$URL ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
 ### Uploading Data from S3

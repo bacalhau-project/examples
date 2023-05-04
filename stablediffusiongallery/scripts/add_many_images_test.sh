@@ -27,7 +27,7 @@ for i in $(seq 1 "$NUM_IMAGES"); do
     URL=https://picsum.photos/500/500/
 
     # Add the image to bacalhau
-    bacalhau docker run -u $URL \
+    bacalhau docker run -i $URL \
         -l "$LABEL" \
         --wait=false \
         docker.io/bacalhauproject/uploader:v0.9.14 \
