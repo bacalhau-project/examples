@@ -22,3 +22,7 @@ js-helloworld/outputs/*
 temp
 job_id.txt
 docs.bacalhau.org/
+
+ansible.cfg
+multi-region-bacalhau-sa.json
+.env.json
