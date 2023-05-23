@@ -1,4 +1,4 @@
-REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
+seREMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
 CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1 
 ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N  
 ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C  

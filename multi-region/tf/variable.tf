@@ -6,19 +6,43 @@ variable "app_tag" {
   description = "Environment tag"
   type        = string
 }
-variable "public_key_path" {
-  description = "EC2 Key pair name"
-  type        = string
-}
 variable "locations" {
   description = "region, zone, and ami"
-  type        = list(map(string))
+  type        = map(map(string))
 }
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
 }
-variable "index" {
-  description = "index of the location"
-  type        = number
+variable "bootstrap_region" {
+  description = "Region where the bootstrap node will be created"
+  type        = string
+}
+variable "region" {
+  description = "AWS region"
+  type        = string
+}
+variable "bacalhau_run_file" {
+  type        = string
+  description = "Bacalhau Run File location"
+}
+
+variable "shelluser" {
+  type        = string
+  description = "User to connect to the instance"
+}
+
+variable "public_key" {
+  type        = string
+  description = "Public key file that should appear in authorized_keys"
+}
+
+variable "private_key" {
+  type        = string
+  description = "Private key file used to connect to the instance"
+}
+
+variable "tailscale_key" {
+  description = "Tailscale key"
+  type        = string
 }

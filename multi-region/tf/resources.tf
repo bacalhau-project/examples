@@ -8,17 +8,33 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-1"
+  region = var.region
 }
 
-module "networkModule" {
-  source          = "./modules/network"
-  app_tag         = var.app_tag
-  public_key_path = var.public_key_path
+resource "tls_private_key" "tls_pk" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
 
-  cidr_block_range         = "10.${var.index * 10}.0.0/16"
-  subnet1_cidr_block_range = "10.${var.index * 10}.1.0/24"
-  subnet2_cidr_block_range = "10.${var.index * 10}.2.0/24"
+resource "aws_key_pair" "keypair" {
+  key_name   = "${var.app_tag}-key-pair-${var.region}"
+  public_key = tls_private_key.tls_pk.public_key_openssh
+}
+
+resource "local_sensitive_file" "pem_file" {
+  filename             = pathexpand("./${var.app_tag}-key-pair-${var.region}.pem")
+  file_permission      = "600"
+  directory_permission = "700"
+  content              = tls_private_key.tls_pk.private_key_pem
+}
+module "networkModule" {
+  source            = "./modules/network"
+  app_tag           = var.app_tag
+  availability_zone = var.locations[var.region].availability_zone
+
+  cidr_block_range         = "10.0.0.0/16"
+  subnet1_cidr_block_range = "10.0.1.0/24"
+  subnet2_cidr_block_range = "10.0.2.0/24"
 }
 
 module "securityGroupModule" {
@@ -28,51 +44,25 @@ module "securityGroupModule" {
   app_tag = var.app_tag
 }
 
-# module "tgw" {
-#   source  = "terraform-aws-modules/transit-gateway/aws"
-#   version = "~> 2.0"
-
-#   name        = "my-tgw"
-#   description = "My TGW shared with several other AWS accounts"
-
-#   enable_auto_accept_shared_attachments = true
-
-#   vpc_attachments = {
-#     vpc = {
-#       vpc_id       = module.networkModule.vpc_id
-#       subnet_ids   = module.network.vpc_public_subnets
-#       dns_support  = true
-#       ipv6_support = true
-
-#       tgw_routes = [
-#         {
-#           destination_cidr_block = "30.0.0.0/16"
-#         },
-#         {
-#           blackhole              = true
-#           destination_cidr_block = "40.0.0.0/20"
-#         }
-#       ]
-#     }
-#   }
-
-#   ram_allow_external_principals = true
-#   ram_principals                = [307990089504]
-
-#   tags = {
-#     Purpose = "tgw-complete-example"
-#   }
-# }
-
 module "instanceModule" {
   source = "./modules/instance"
 
   instance_type      = var.instance_type
-  instance_ami       = var.locations[var.index].instance_ami
-  availability_zone  = var.locations[var.index].availability_zone
+  instance_ami       = var.locations[var.region].instance_ami
+  availability_zone  = var.locations[var.region].availability_zone
   vpc_id             = module.networkModule.vpc_id
   subnet_public_id   = module.networkModule.public_subnets[0]
-  key_pair_name      = module.networkModule.ec2keyName
-  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_80]
+  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_1234, module.securityGroupModule.sg_1235]
   app_tag            = var.app_tag
+  bacalhau_run_file  = var.bacalhau_run_file
+  bootstrap_region   = var.bootstrap_region
+  region             = var.region
+
+  key_pair_name    = aws_key_pair.keypair.key_name
+  pem_file_content = local_sensitive_file.pem_file.content
+  shelluser        = var.shelluser
+  public_key       = var.public_key
+  private_key      = var.private_key
+  tailscale_key    = var.tailscale_key
 }
+
