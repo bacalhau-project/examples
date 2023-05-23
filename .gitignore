@@ -24,5 +24,13 @@ job_id.txt
 docs.bacalhau.org/
 
 ansible.cfg
-multi-region-bacalhau-sa.json
+*.pem
 .env.json
+
+.terraform/
+terraform.tfstate.d/
+.terraform.lock.hcl
+*.pem
+tf/.terraform/*
+*.tfstate*
+tf/.terraform/environment
