@@ -2,7 +2,7 @@
 
 cd tf || exit
 # declare -a regions=( "ca-central-1" "ap-southeast-1" "eu-west-1" "eu-east-1" "us-west-1" )
-declare -a regions=( "ca-central-1" )
+declare -a regions=( "ca-central-1" "ap-southeast-1")
 
 # If aurgument is create, then execute first statement, else execute second statement
 if [ "$1" == "create" ]; then

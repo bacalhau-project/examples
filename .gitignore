@@ -34,3 +34,4 @@ terraform.tfstate.d/
 tf/.terraform/*
 *.tfstate*
 tf/.terraform/environment
+bacalhau.run
