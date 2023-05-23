@@ -14,11 +14,12 @@ variable "subnet2_cidr_block_range" {
   type        = string
 }
 
-variable "app_tag" {
-  description = "Environment tag"
+variable "availability_zone" {
+  description = "The availability zone for the subnet"
   type        = string
 }
-variable "public_key_path" {
-  description = "Public key path"
+
+variable "app_tag" {
+  description = "Environment tag"
   type        = string
 }
