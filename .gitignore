@@ -22,3 +22,16 @@ js-helloworld/outputs/*
 temp
 job_id.txt
 docs.bacalhau.org/
+
+ansible.cfg
+*.pem
+.env.json
+
+.terraform/
+terraform.tfstate.d/
+.terraform.lock.hcl
+*.pem
+tf/.terraform/*
+*.tfstate*
+tf/.terraform/environment
+bacalhau.run
