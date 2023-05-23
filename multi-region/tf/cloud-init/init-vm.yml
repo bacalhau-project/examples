@@ -68,11 +68,11 @@ runcmd:
   # - sudo chmod +x /node/install-bacalhau.sh
   # Build bacalhau
   - |
-    git clone "https://github.com/bacalhau-project/bacalhau"
-  - cd bacalhau
-  - git checkout 2482-output-peering-information-to-run
-  - HOME=/home/ubuntu make build
-  - sudo mv bin/linux_amd64/bacalhau /usr/local/bin/bacalhau
+    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/bacalhau-1.0.0-2482 --output /usr/local/bin/bacalhau
+  # wait until bacalhau has been downloaded to /usr/local/bin/bacalhau
+  - while [ ! -f /usr/local/bin/bacalhau ]; do sleep 1; done
+  - echo "Bacalhau downloaded."
+  - sudo chmod +x /usr/local/bin/bacalhau
   - sudo systemctl daemon-reload
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
