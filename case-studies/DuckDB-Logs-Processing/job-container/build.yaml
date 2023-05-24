@@ -1,0 +1,20 @@
+contents:
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    - https://dl-cdn.alpinelinux.org/alpine/edge/main
+  packages:
+    - alpine-base
+    - python3
+    - unzip
+    - python3
+    - python3-pip
+    - curl
+    - wget
+    - lsb-release
+    - gnupg
+
+cmd: /bin/sh -l
+
+# optional environment configuration
+environment:
+  PATH: /usr/sbin:/sbin:/usr/bin:/bin

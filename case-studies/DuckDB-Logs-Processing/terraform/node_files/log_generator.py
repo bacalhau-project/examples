@@ -32,7 +32,7 @@ def main(log_directory):
         log_entry = generate_log_entry()
 
         # Load existing log entries
-        log_file_path = os.path.join(log_directory, "mock_logs.log")
+        log_file_path = os.path.join(log_directory, "fake_logs.log")
         try:
             with open(log_file_path, "r") as log_file:
                 log_entries = json.load(log_file)
@@ -49,7 +49,7 @@ def main(log_directory):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate mock log entries and save them to a specified directory.")
+    parser = argparse.ArgumentParser(description="Generate fake log entries and save them to a specified directory.")
     parser.add_argument("-d", "--directory", type=str, required=True, help="The directory to save the log file.")
     args = parser.parse_args()
 
