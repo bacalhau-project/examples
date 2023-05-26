@@ -35,3 +35,4 @@ tf/.terraform/*
 *.tfstate*
 tf/.terraform/environment
 bacalhau.run
+tf.out

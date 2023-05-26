@@ -1,25 +1,31 @@
-FROM debian:bullseye
+FROM ubuntu:22.04
+
+RUN apt-get clean -y && apt-get update -y
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository -y ppa:deadsnakes/ppa
 
 RUN apt-get clean -y && apt-get update -y
 
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y curl gnupg python3.11 python3-pip lsb-release gnupg wget unzip wget build-essential libncursesw5-dev libssl-dev \
+libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev
+
+# Install Google Cloud SDK and gsutil
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+RUN apt-get update && apt-get install -y google-cloud-sdk
 
-RUN apt-get update && apt-get install -y \
-    wget unzip \
-    && rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN wget https://github.com/duckdb/duckdb/releases/download/v0.7.1/duckdb_cli-linux-amd64.zip \
     && unzip duckdb_cli-linux-amd64.zip -d /usr/local/bin \
     && rm duckdb_cli-linux-amd64.zip
 
-RUN apt-get update && apt-get install -y python3 python3-pip curl wget lsb-release gnupg
+COPY ./requirements.txt /tmp/requirements.txt
 
-# Install Google Cloud SDK and gsutil
-RUN apt-get install google-cloud-sdk -y
-
-RUN pip3 install duckdb requests google-cloud-storage pandas
+RUN pip3 install -r /tmp/requirements.txt
 
 WORKDIR /
 
 COPY ./process.py /process.py
+
+ENTRYPOINT ["python3", "/process.py"]

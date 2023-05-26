@@ -5,46 +5,60 @@ import duckdb
 import tempfile
 import argparse
 import requests
-import pandas as pd
 from google.cloud import storage
 
-def get_metadata(metadata_name):
-    metadata_server_token_url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"
-    token_request_headers = {'Metadata-Flavor': 'Google'}
-    token_response = requests.get(metadata_server_token_url, headers=token_request_headers)
-    jwt = token_response.json()['access_token']
 
-    metadata_server_url = f"http://metadata.google.internal/computeMetadata/v1/instance/{metadata_name}"
-    metadata_request_headers = {'Metadata-Flavor': 'Google', 'Authorization': f'Bearer {jwt}'}
+def getInstanceMetadata(metadataName):
+    url = f"http://metadata.google.internal/computeMetadata/v1/instance/{metadataName}"
+    return getMetadata(url)
+
+
+def getProjectMetadata(metadataName):
+    url = f"http://metadata.google.internal/computeMetadata/v1/project/{metadataName}"
+    return getMetadata(url)
+
+
+def getMetadata(metadata_server_url):
+    metadata_server_token_url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"
+    token_request_headers = {"Metadata-Flavor": "Google"}
+    token_response = requests.get(metadata_server_token_url, headers=token_request_headers)
+    jwt = token_response.json()["access_token"]
+
+    metadata_request_headers = {"Metadata-Flavor": "Google", "Authorization": f"Bearer {jwt}"}
 
     return requests.get(metadata_server_url, headers=metadata_request_headers).text
 
-def main(input_file):
+
+def main(input_file, output_file_label, bucket_name, query):
     # Create an in-memory DuckDB database
-    con = duckdb.connect(database=':memory:', read_only=False)
+    con = duckdb.connect(database=":memory:", read_only=False)
 
     # Create a table from the JSON data
-    con.execute(f"CREATE TABLE log_data AS SELECT * FROM read_json('{input_file}', "
-                f"auto_detect=false, "
-                f"columns={json.dumps({'id': 'varchar', '@timestamp': 'varchar', '@version': 'varchar', 'message': 'varchar'})})")
+    con.execute(
+        f"CREATE TABLE log_data AS SELECT * FROM read_json('{input_file}', "
+        f"auto_detect=false, "
+        f"columns={json.dumps({'id': 'varchar', '@timestamp': 'varchar', '@version': 'varchar', 'message': 'varchar'})})"
+    )
 
     # Execute the DuckDB query on the log data
-    result = con.execute("SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY \"@timestamp\"").fetchdf()
+    # SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY \"@timestamp\"
+    result = con.execute(query).fetchdf()
 
     # Convert the result to JSON
-    result_json = result.to_json(orient='records')
+    result_json = result.to_json(orient="records")
 
     # Generate the output file name
-    output_file_name = f"{get_metadata('name')}-Security-{datetime.now().strftime('%Y%m%d%H%M')}.json"
+    output_file_name = f"{getInstanceMetadata('name')}-{output_file_label}-{datetime.now().strftime('%Y%m%d%H%M')}.json"
 
     # Get the region from the metadata server
-    region = get_metadata("zone").split("/")[3]
+    region = getInstanceMetadata("zone").split("/")[3]
+    projectID = getProjectMetadata("project-id")
 
     # Generate the bucket name
-    bucket_name = f"{region}-node-archive-bucket"
+    bucket_name = f"{projectID}-{region}-{bucket_name}"
 
     # Write the result to a temporary file
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp:
         temp.write(result_json)
         temp.close()
 
@@ -57,13 +71,22 @@ def main(input_file):
         # Remove the temporary file
         os.remove(temp.name)
 
+    outputJSON = {f"{bucket_name}": result.to_json(orient="records")}
+    print(outputJSON)
+
+
 if __name__ == "__main__":
     # Set up the argument parser
     parser = argparse.ArgumentParser(description="Process log data")
     parser.add_argument("input_file", help="Path to the input log file")
+    parser.add_argument("output_file_label", help="Output file label (e.g. 'NODENAME-label-DATETIME'))")
+    parser.add_argument(
+        "bucket_name", help="Name of the GCP bucket to write to - e.g. PROJECTNAME-REGION-archive-bucket"
+    )
+    parser.add_argument("query", help="DuckDB query to execute")
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
     # Call the main function
-    main(args.input_file)
+    main(args.input_file, args.output_file_label, args.bucket_name, args.query)

@@ -27,4 +27,6 @@ bacalhau serve \
   --swarm-port 1235 \
   --api-port 1234 \
   --peer "${CONNECT_PEER}" \
-  --private-internal-ipfs=true
+  --private-internal-ipfs=true \
+  --allow-listed-local-paths '/var/log/logs_to_process/**' \
+  --job-selection-accept-networked

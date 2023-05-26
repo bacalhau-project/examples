@@ -6,6 +6,7 @@ import uuid
 import argparse
 import os
 from faker import Faker
+from pathlib import Path
 
 fake = Faker()
 
@@ -14,7 +15,7 @@ def generate_log_entry():
     service_names = ["Auth", "AppStack", "Database"]
     categories = ["[INFO]", "[WARN]", "[CRITICAL]", "[SECURITY]"]
 
-    with open("clean_words_alpha.txt", "r") as word_file:
+    with open(Path(__file__).parent / "clean_words_alpha.txt", "r") as word_file:
         word_list = word_file.read().splitlines()
 
     log_entry = {
@@ -27,12 +28,12 @@ def generate_log_entry():
     return log_entry
 
 
-def main(log_directory):
+def main(log_directory, appname):
     while True:
         log_entry = generate_log_entry()
 
         # Load existing log entries
-        log_file_path = os.path.join(log_directory, "fake_logs.log")
+        log_file_path = os.path.join(log_directory, f"{appname}_logs.log")
         try:
             with open(log_file_path, "r") as log_file:
                 log_entries = json.load(log_file)
@@ -51,9 +52,10 @@ def main(log_directory):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate fake log entries and save them to a specified directory.")
     parser.add_argument("-d", "--directory", type=str, required=True, help="The directory to save the log file.")
+    parser.add_argument("-n", "--appname", type=str, required=True, help="The application name for the log.")
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
         os.makedirs(args.directory)
 
-    main(args.directory)
+    main(args.directory, args.appname)

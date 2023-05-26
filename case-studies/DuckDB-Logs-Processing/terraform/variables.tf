@@ -1,26 +1,44 @@
 variable "project_id" {
   description = "The project ID to deploy to."
 }
-
-variable "regions" {
-  type    = list(string)
-  default = ["us-central1", "us-east1", "europe-west4"]
+variable "app_name" {
+  type        = string
+  description = "application name to propagate to resources"
 }
 
-variable "machine_types" {
-  type = map(string)
-  default = {
-    "us-central1-a"    = "n1-standard-2"
-    "us-east1-b"       = "n1-standard-2"
-    "europe-west4-a"   = "n1-standard-2"
-  }
+variable "app_tag" {
+  description = "Environment tag"
+  type        = string
+}
+variable "locations" {
+  description = "Locations and resources to deploy"
+  type        = map(map(string))
+}
+variable "bootstrap_zone" {
+  description = "Zone where the bootstrap node will be created"
+  type        = string
+}
+variable "bacalhau_run_file" {
+  type        = string
+  description = "Bacalhau Run File location"
 }
 
-variable "disk_sizes" {
-  type = map(string)
-  default = {
-    "us-central1-a"    = "25"
-    "us-east1-b"       = "25"
-    "europe-west4-a"   = "25"
-  }
+variable "username" {
+  type        = string
+  description = "Username for login"
+}
+
+variable "public_key" {
+  type        = string
+  description = "Public key file that should appear in authorized_keys"
+}
+
+variable "private_key" {
+  type        = string
+  description = "Private key file used to connect to the instance"
+}
+
+variable "tailscale_key" {
+  description = "Tailscale key"
+  type        = string
 }
