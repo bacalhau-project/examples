@@ -1,5 +1,5 @@
 - go to job-container
-- Build updated container: `docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64/v8 --no-cache -t docker.io/bacalhauproject/log-processor:v0.1 .`
+- Build updated container: `docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64/v8 --no-cache -t docker.io/bacalhauproject/log-processor:v0.16 .`
   - Make sure to purge previous files for building (can cause key errors): `docker system prune -a`
 
 - Go to `terraform` folder
@@ -16,7 +16,12 @@
 
 You now have 4 a four node cluster.
 
+`bacalhau docker run bacalhauproject/duckdb-log-processor:v0.16 `
+
 -------
 
-- API_HOST doesn't output public tag
-- Show everything as a flag during `ps` - could leak
+- API_HOST doesn't output public IP
+- Show everything as a flag during `ps` on the node - could leak
+- Have a way to set your Bacalhau CLI client by the target IP - e.g. bacalhau set-target 10.1.1.5
+- Don't set API_HOST to 0.0.0.0
+- Offer a rally-point as a service?  

@@ -8,9 +8,12 @@ packages = [{include = "duckdb_logs_processing"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-duckdb = "^0.8.0"
 requests = "^2.31.0"
 google-cloud-storage = "^2.9.0"
+numpy = "^1.24.3"
+pandas = "^2.0.1"
+duckdb = "0.7.1"
+charset-normalizer = "3.0.1"
 
 
 [build-system]

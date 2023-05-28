@@ -22,7 +22,9 @@ RUN wget https://github.com/duckdb/duckdb/releases/download/v0.7.1/duckdb_cli-li
 
 COPY ./requirements.txt /tmp/requirements.txt
 
-RUN pip3 install -r /tmp/requirements.txt
+# RUN pip3 install --index-url=https://www.piwheels.org/simple --no-cache-dir -r /tmp/requirements.txt
+
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 WORKDIR /
 

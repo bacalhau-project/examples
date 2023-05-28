@@ -18,7 +18,6 @@ resource "google_service_account" "service_account" {
 resource "google_service_account_iam_binding" "storage_iam" {
   for_each = toset([
     "roles/iam.serviceAccountUser",
-    "roles/storage.admin",
   ])
   service_account_id = google_service_account.service_account.id
   role               = each.key
@@ -26,8 +25,6 @@ resource "google_service_account_iam_binding" "storage_iam" {
   members = [
     "serviceAccount:${google_service_account.service_account.email}"
   ]
-
-  project = var.project_id
 }
 
 data "cloudinit_config" "user_data" {
@@ -107,6 +104,7 @@ resource "google_storage_bucket" "node_bucket" {
   }
 
   storage_class = "ARCHIVE"
+  force_destroy = true
 }
 
 resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
