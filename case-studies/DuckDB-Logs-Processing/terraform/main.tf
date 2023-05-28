@@ -18,6 +18,7 @@ resource "google_service_account" "service_account" {
 resource "google_service_account_iam_binding" "storage_iam" {
   for_each = toset([
     "roles/iam.serviceAccountUser",
+    "roles/storage.admin",
   ])
   service_account_id = google_service_account.service_account.id
   role               = each.key

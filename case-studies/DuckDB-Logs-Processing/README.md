@@ -16,7 +16,13 @@
 
 You now have 4 a four node cluster.
 
-`bacalhau docker run bacalhauproject/duckdb-log-processor:v0.16 `
+`bacalhau docker run bacalhauproject/duckdb-log-processor:v0.17`
+
+gcloud storage ls --project bacalhau-duckdb-example
+gcloud storage ls gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/
+gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west9-b-vm-202305281908.json
+
+/var/log/logs_to_process/aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
 
 -------
 
@@ -25,3 +31,9 @@ You now have 4 a four node cluster.
 - Have a way to set your Bacalhau CLI client by the target IP - e.g. bacalhau set-target 10.1.1.5
 - Don't set API_HOST to 0.0.0.0
 - Offer a rally-point as a service?  
+-     Status: 'Could not inspect image "bacalhauproject/duckdb-log-processor:v0.17"
+      - could be due to repo/image not existing, or registry needing authorization:
+      Error response from daemon: manifest unknown: manifest unknown'
+     -> Not a "couldn't find node to execute"
+- What happens when we have 100 nodes, does every job get 99 rejects? - `describe` is super noisy
+- Describe job 

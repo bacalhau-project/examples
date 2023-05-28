@@ -29,9 +29,17 @@ def getMetadata(metadata_server_url):
     return requests.get(metadata_server_url, headers=metadata_request_headers).text
 
 
-def main(input_file, output_file_label, bucket_name, query):
+def main(input_file, bucket_name, query):
     # Create an in-memory DuckDB database
     con = duckdb.connect(database=":memory:", read_only=False)
+
+    usingTempFile = False
+    # If file is .gz, decompress it into a temporary file
+    if input_file.endswith(".gz"):
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as temp:
+            os.system(f"gunzip -c {input_file} > {temp.name}")
+            input_file = temp.name
+            usingTempFile = True
 
     # Create a table from the JSON data
     con.execute(
@@ -48,7 +56,7 @@ def main(input_file, output_file_label, bucket_name, query):
     result_json = result.to_json(orient="records")
 
     # Generate the output file name
-    output_file_name = f"{getInstanceMetadata('name')}-{output_file_label}-{datetime.now().strftime('%Y%m%d%H%M')}.json"
+    output_file_name = f"{getInstanceMetadata('name')}-{datetime.now().strftime('%Y%m%d%H%M')}.json"
 
     # Get the region from the metadata server
     region = getInstanceMetadata("zone").split("/")[3]
@@ -56,6 +64,8 @@ def main(input_file, output_file_label, bucket_name, query):
 
     # Generate the bucket name
     bucket_name = f"{projectID}-{region}-{bucket_name}"
+
+    print("Bucket name: gs://" + bucket_name + "\n")
 
     # Write the result to a temporary file
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp:
@@ -74,19 +84,34 @@ def main(input_file, output_file_label, bucket_name, query):
     outputJSON = {f"{bucket_name}": result.to_json(orient="records")}
     print(outputJSON)
 
+    if usingTempFile:
+        os.remove(input_file)
+
 
 if __name__ == "__main__":
+    # Print a header to a list of files that are available to process
+    print("Files available to process (in /var/log/logs_to_process):")
+    print("--------------------")
+
+    # Print all files in /var/log/logs_to_process to stdout with absolute paths.
+    # If there are no files, print a message that "No files are available to process."
+    files = os.listdir("/var/log/logs_to_process")
+    if len(files) == 0:
+        print("No files are available to process.")
+    else:
+        for file in files:
+            print(f"/var/log/logs_to_process/{file}")
+
+    print("\n")
+
     # Set up the argument parser
     parser = argparse.ArgumentParser(description="Process log data")
     parser.add_argument("input_file", help="Path to the input log file")
-    parser.add_argument("output_file_label", help="Output file label (e.g. 'NODENAME-label-DATETIME'))")
-    parser.add_argument(
-        "bucket_name", help="Name of the GCP bucket to write to - e.g. PROJECTNAME-REGION-archive-bucket"
-    )
+    parser.add_argument("bucket_name", help="Name of the GCP bucket to write to - e.g. PROJECTNAME-REGION-bucketname")
     parser.add_argument("query", help="DuckDB query to execute")
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
     # Call the main function
-    main(args.input_file, args.output_file_label, args.bucket_name, args.query)
+    main(args.input_file, args.bucket_name, args.query)
