@@ -91,18 +91,18 @@ def main(input_file, bucket_name, query):
 
 if __name__ == "__main__":
     # Print a header to a list of files that are available to process
-    print("Files available to process (in /inputs):")
+    print("Files available to process (in /var/log/logs_to_process):")
     print("--------------------")
 
     # Print all files in /var/log/logs_to_process to stdout with absolute paths.
     # If there are no files, print a message that "No files are available to process."
-    files = os.listdir("/inputs")
+    files = os.listdir("/var/log/logs_to_process")
     if len(files) == 0:
         print("No files are available to process.")
     else:
         f = natsorted(files, alg=ns.IGNORECASE)
         for file in f:
-            print(f"/inputs/{file}")
+            print(f"/var/log/logs_to_process/{file}")
 
     print("\n")
 
