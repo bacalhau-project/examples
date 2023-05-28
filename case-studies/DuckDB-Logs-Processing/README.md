@@ -36,4 +36,4 @@ gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west
       Error response from daemon: manifest unknown: manifest unknown'
      -> Not a "couldn't find node to execute"
 - What happens when we have 100 nodes, does every job get 99 rejects? - `describe` is super noisy
-- Describe job 
+- Shouldn't override entrypoint
