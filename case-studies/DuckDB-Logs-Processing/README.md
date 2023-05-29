@@ -37,3 +37,4 @@ gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west
      -> Not a "couldn't find node to execute"
 - What happens when we have 100 nodes, does every job get 99 rejects? - `describe` is super noisy
 - Shouldn't override entrypoint
+- A way to mimic running on the cloud locally - particularly mounting in volumes in the same way

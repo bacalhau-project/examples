@@ -15,20 +15,39 @@ resource "google_service_account" "service_account" {
   display_name = "Bacalhau DuckDB Example Service Account"
 }
 
-resource "google_service_account_iam_binding" "storage_iam" {
-  for_each = toset([
-    "roles/iam.serviceAccountUser",
-    "roles/storage.admin",
-  ])
-  service_account_id = google_service_account.service_account.id
-  role               = each.key
+data "google_iam_policy" "sa_iam_binding" {
+  binding {
+    role = "roles/iam.serviceAccountUser"
+    members = [
+      "serviceAccount:${google_service_account.service_account.email}",
+    ]
+  }
+}
 
-  members = [
-    "serviceAccount:${google_service_account.service_account.email}"
-  ]
+resource "google_project_iam_policy" "sa_iam_policy" {
+  project     = var.project_id
+  policy_data = data.google_iam_policy.sa_iam_binding.policy_data
+  depends_on  = [google_service_account.service_account]
+}
+
+data "google_iam_policy" "storage_iam_binding" {
+  binding {
+    role = "roles/storage.admin"
+    members = [
+      "serviceAccount:${google_service_account.service_account.email}",
+      "user:aronchick@busted.dev"
+    ]
+  }
+}
+
+resource "google_project_iam_policy" "storage_iam_policy" {
+  project     = var.project_id
+  policy_data = data.google_iam_policy.storage_iam_binding.policy_data
+  depends_on  = [google_project_iam_policy.sa_iam_policy]
 }
 
 data "cloudinit_config" "user_data" {
+
   for_each = var.locations
 
   gzip          = false
@@ -57,6 +76,8 @@ data "cloudinit_config" "user_data" {
 
 
 resource "google_compute_instance" "gcp_instance" {
+  depends_on = [google_project_iam_policy.storage_iam_policy]
+
   for_each = var.locations
 
   name         = "${var.app_name}-${each.key}-vm"
@@ -66,6 +87,7 @@ resource "google_compute_instance" "gcp_instance" {
   boot_disk {
     initialize_params {
       image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+      size  = 50
     }
   }
 
