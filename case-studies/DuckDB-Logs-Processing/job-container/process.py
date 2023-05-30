@@ -44,9 +44,10 @@ def main(input_file, bucket_name, query):
 
     # Create a table from the JSON data
     con.execute(
-        f"CREATE TABLE log_data AS SELECT * FROM read_json('{input_file}', "
-        f"auto_detect=false, "
-        f"columns={json.dumps({'id': 'varchar', '@timestamp': 'varchar', '@version': 'varchar', 'message': 'varchar'})})"
+        "CREATE TABLE log_data AS SELECT * FROM read_json(?, "
+        "auto_detect=true,"
+        f"columns={json.dumps({'id': 'varchar', '@timestamp': 'varchar', '@version': 'varchar', 'message': 'varchar'})})",
+        [input_file],
     )
 
     # Execute the DuckDB query on the log data

@@ -24,6 +24,10 @@ gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west
 
 /var/log/logs_to_process/aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
 
+bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v0.27 -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log archive-bucket \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
+
+docker run -v /var/log/logs_to_process/:/var/log/logs_to_process -ti --entrypoint /bin/bash docker.io/bacalhauproject/duckdb-log-processor:v0.24
+
 -------
 
 - API_HOST doesn't output public IP
@@ -36,5 +40,6 @@ gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west
       Error response from daemon: manifest unknown: manifest unknown'
      -> Not a "couldn't find node to execute"
 - What happens when we have 100 nodes, does every job get 99 rejects? - `describe` is super noisy
-- Shouldn't override entrypoint
+- Shouldn't override entrypoint - most jobs require "/bin/bash -c"
 - A way to mimic running on the cloud locally - particularly mounting in volumes in the same way
+- Demonstrate a way to say "downloading context/container" for a job rather than just "running" 

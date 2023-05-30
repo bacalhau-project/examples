@@ -119,7 +119,7 @@ runcmd:
   - python3 -m venv /node/log_generator_env
   - /node/log_generator_env/bin/pip3 install faker
   - |
-    curl https://raw.githubusercontent.com/bacalhau-project/examples/DuckDB-Logs-Processing/case-studies/DuckDB-Logs-Processing/logrotate/clean_words_alpha.txt --output /node/clean_words_alpha.txt
+    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
   # Reload the systemd daemon, enable, and start the service
   - sudo sysctl -w net.core.rmem_max=2500000
   - sudo systemctl daemon-reload
