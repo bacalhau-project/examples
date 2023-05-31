@@ -4,15 +4,13 @@ sidebar_position: 1
 ---
 # MotherDuck/DuckDB
 
-## Deprecated 3/23/23, [see version on Notion for up to date copy](DuckDB is an embedded SQL database tool that is simple to install and is designed to analyze any size set of data without external dependencies or state, that can be embedded locally on any machine.)
-
 ## Overview
 
-DuckDB is an embedded SQL database tool that is simple to install and is designed to analyze any size set of data without external dependencies or state, that can be embedded locally on any machine.
+DuckDB is an embedded SQL database tool that is designed to analyze data without external dependencies or state, that can be embedded locally on any machine.
 
-Because DuckDB allows you to process and store data such as Parquet files and text logs, DuckDB can be an invaluable tool in analyzing system created data such as logs.
+Because DuckDB allows you to process and store data such as Parquet files and text logs, DuckDB can be an invaluable tool in analyzing system created data such as logs while still allowing you to use SQL as a first-class way to interact with it.
 
-However, many topologies only want to present DuckDB on local interfaces for security and compliance  purposes. Bacalhau + DuckDB provides a distributed way to execute many queries against local logs, without having to move the files at all.
+However, many organizations only want to present DuckDB on local interfaces for security and compliance  purposes, so having a central system that can interact with embedded DuckDBs would not be acceptable. Bacalhau + DuckDB provides a distributed way to execute many queries against local logs, without having to move the files at all.
 
 ## Problem
 
