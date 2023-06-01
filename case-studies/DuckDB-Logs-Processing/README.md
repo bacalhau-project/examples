@@ -101,80 +101,119 @@ terraform apply plan.out
 ```
 
 During this process, it will do a series of tasks:
-* It will create a service account for the nodes to use to access the buckets in the project
-* It will use the `terraform/cloud-init/init-vm.yml` to initialize the node. On each node, in order, this will:
+* Create a service account for the nodes to use to access the buckets in the project
+* Use the `terraform/cloud-init/init-vm.yml` to initialize the node. On each node, in order, this will:
   * Move the files from `terraform/node_files` to the node in the directory `/node`. These files include:
     * log_generator.py - a script that generates mock logs
     * /etc/logrotate.d/{app_name} - a logrotate script that rotates the logs which takes the `app_name` from .env.json
     * /etc/systemd/system/log-generator.service - a systemd service that runs the log_generator.py script which takes the `app_name` from .env.json. It writes all logs to `{ logs_dir }` which is hard coded in main.tf (to /var/log/). `log_dir` is set in `main.tf`
     * 
+    * Install a logrotate script in `/etc/cron.hourly` to rotate the logs hourly. It picks up the configuration for this in `/etc/logrotate.conf` (which automatically picks up all the config from `/etc/logrotate.d/`.
+    * Installs `/node/start-bacalhau.sh` script. Inside this script, it:
+      * Sets the `CONNECT_PEER` to "none"
+      * Then pulls the `TAILSCALE_ADDRESS` (if any) and sets that as the preferred address.
+      * If the `/etc/bacalhau-bootstrap` file is present, then it uses that as the environment variables. This will be installed on all worker nodes, but not the bootstrap node.
+      * Starts Bacalhau
+    * Installs `/etc/systemd/system/bacalhau.service` which runs the `/node/start-bacalhau.sh` script, from `/node`.  
+  * Copy the local ssh keys to the server to authorized_keys. This allows you to ssh into the server.
+  * Create the `/node` and `/data` directories.
+  * Install tailscale and add the node to the network (using the `tailscale_key` from .env.json). It also sets a `node_name` based on the `app_name` from .env.json and the region.
+  * Install docker
+  * Install Bacalhau. Currently it does it from a named build (because of some changes not yet in main), but soon it will do it from production.
+  * Creates the `{logs_dir}` directory and the `{logs_to_process` directory. The latter is hard coded (because of the way we install everything, we could not use a variable here).
+  * Install a virtual environment in `/node/log_generator_env` and install the python dependencies `faker`. This is required for the `log_generator.py` script.
+  * Download the list of alphabetical clean words from a public bucket. This should probably be in a github repo.
+  * Expand the memory for `net.core.rmem_max` (needed for IPFS & libp2p)
+  * Restart all the services.
+* Create a VM - it will do so in each `location` from the `.env.json` file.
+* Create a storage bucket. This will be named `'project_id'-'zone'-archive-bucket`.
+* IF BOOTSTRAP NODE:
+  * Wait for bacalhau to start
+  * Then copy the bootstrap information to local (`bacalhau.run`)
+* IF WORKER NODE:
+  * Copy `bacalhau.run` to the node in `/etc/bacalhau-bootstrap`
+  * Run bacalhau with the bootstrap information.
+* In all cases, the Tailscale address (rather than private IP) is used, if available.
 
-
-# Install terraform
-- Download the latest version of terraform from [https://www.terraform.io/downloads.html](https://www.terraform.io/downloads.html)
-- Unzip the file and move the binary to a folder in your path (e.g. /usr/local/bin)
-- Run `terraform --version` to make sure it is installed correctly
-- Run `terraform init` to initialize terraform
-- Run `terraform plan` to make sure everything is working correctly
-- Run `terraform apply` to provision the infrastructure
-- Run `terraform destroy` to destroy the infrastructure
-- Run `terraform apply -auto-approve` to provision the infrastructure without prompting for confirmation
-- Run `terraform destroy -auto-approve` to destroy the infrastructure without prompting for confirmation
-- Run `terraform apply -auto-approve -var="project_id=duckdb-logs-processor"` to provision the infrastructure without prompting for confirmation and with a custom project id
-
+Once that is completed, you will have four nodes that can communicate with each other. To destroy the infrastructure, run:
+```bash
+terraform destroy -plan=plan.out
+```
 
 ## Building the job
-The job for 
+Once the nodes have been provisioned, they will begin producing the logs into the { log_dir }. It will take one hour to rotate the logs into the /var/log/logs_to_process directory. Once that is done, you will be able to run the log processing bacalhau job using Bacalhau.
 
-- go to job-container
-- Build updated container: `docker buildx build --push --no-cache --platform linux/amd64,linux/arm/v7,linux/arm64/v8 --no-cache -t docker.io/bacalhauproject/log-processor:v0.16 .`
-  - Make sure to purge previous files for building (can cause key errors): `docker system prune -a`
+The job container is in the job-container directory. To build it, run:
+```bash
+# Use a container registry that you have access to
+$CONTAINER_ORG=bacalhauproject
+$CONTAINER_NAME=duckdb-log-processor
+$VERSION=v0.28
+docker buildx build --push --platform linux/amd64,linux/arm/v7,linux/arm64/v8 -t "docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION" .
+```
 
-- Go to `terraform` folder
-- Log in to google cloud with `gcloud auth login`
-- Make a copy of .env.json.example and rename it to .env.json
-- Change the fields to make sense. At a minimum, you will need unique names for:
-  - project_id
-  - tailscale_key (go here to provision a tailscale_key - https://login.tailscale.com/admin/settings/keys - it should be "Reusable", "Expiration of 90 days", "Ephemeral" and have a tag of something meaningful to you.)
-  - app_name
-  - username
-  - app_tag
-- Run `terraform plan -out=tf.out -var-file=.env.json`
-- If there are no errors, run `terraform apply tf.out`
+Inside the container there is a file called `process.py`. This is the script that will be run by Bacalhau. It takes the following arguments:
+* `log-dir` - the directory where the logs are located. This is the directory that is rotated into every hour. It is hard coded in `main.tf` to `/var/log/logs_to_process`.
+* `bucket-name` - the label of the bucket to upload the processed logs to. It will prepend by the project_id and zone so it will upload to `{project_id}-{zone}-{label}`. This bucket must already exist.
+* `query` - the query, in quotes, that will be executed over the log.
 
-You now have 4 a four node cluster.
+A sample execution - if you need to test locally - will look like this:
+```bash
+$VERSION=v0.28
+$CONTAINER_ORG=bacalhauproject
+$CONTAINER_NAME=duckdb-log-processor
+$LOCAL_DIR_TO_MOUNT=/var/log/logs_to_process
+$APPNAME=aperitivo
+$BUCKET_NAME=archive-bucket
+$QUERY="SELECT * FROM logs WHERE log_level = 'ERROR'"
+# Example:
+docker run --rm -v $LOCAL_DIR_TO_MOUNT:/var/log/logs_to_process docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION /var/log/logs_to_process/$APPNAME.log.1 $BUCKET_NAME $QUERY
 
-`bacalhau docker run bacalhauproject/duckdb-log-processor:v1.0`
+# After variable substitution, it would look like this:
+docker run --rm -v /var/log/logs_to_process:/var/log/logs_to_process docker.io/bacalhauproject/duckdb-log-processor:v1.0 /var/log/logs_to_process/aperitivo.log.1 archive-bucket  "SELECT * FROM logs WHERE log_level = 'ERROR'"
+```
 
-gcloud storage ls --project bacalhau-duckdb-example
+The job also supports gzip expansion, if necessary.
+
+To actually build the job into a new container, execute the following:
+```bash
+docker buildx build --push --platform linux/amd64,linux/arm/v7,linux/arm64/v8 -t docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION .`
+```
+
+You must have push access to the organization and repository. If you are using docker.io, you will need to log in first.
+
+## Running the Job
+Now that the cluster is set up, you can run the job. 
+
+To download and run the job, first install Bacalahau using this command:
+```bash
+curl -sL https://get.bacalhau.org/install.sh | bash
+```
+
+You will also need to `source` the bacalhau.run file to get the correct environment variables. To do so, this from the main , run:
+```bash
+source terraform/bacalhau.run
+```
+
+You will have to update the `BACALHAU_API_HOST` environment variable with the correct one. You can get this from the `terraform/bacalhau.run` file. It will be the first IP address in your `BACALHAU_PEER_CONNECT` variable. So, for example, if `export BACALHAU_PEER_CONNECT=/ip4/100.76.225.105/tcp/44635/p2p/QmRrs2aDsuTek5rEze6XTHbqSnta7qr3Co1KFRpfvuTBui` was `BACALHAU_PEER_CONNECT` string, the `BACALHAU_API_HOST` would be `export BACALHAU_API_HOST=100.76.225.105`.
+
+You are now ready to run a job. To do so, run:
+```bash
+bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0 -- /bin/bash -c "/var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'ERROR'\""
+```
+
+This will run the job on just one node, but should give you indication that it ran correctly. To see the results, run:
+```bash
+bacalhau describe <JOB ID> # <- will be output at the end of the run
+```
+
+You can also look at the result of the job in the bucket. To do so, run:
+```bash
 gcloud storage ls gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/
-gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/aperitivo-europe-west9-b-vm-202305281908.json
+gcloud cat gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/$APPNAME-<ZONE>-vm-<TIMESTAMP>.json
+```
 
-/var/log/logs_to_process/aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
-
-bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0 -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log archive-bucket \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
-
-docker run -v /var/log/logs_to_process/:/var/log/logs_to_process -ti --entrypoint /bin/bash docker.io/bacalhauproject/duckdb-log-processor:v1.0
-
--------
-
-Challenges with debugging:
-* Hard to shell into a container running on Bacalhau. Basically,
-  * First run the python script (and make sure it's running in the right environment). Also, simulate the mount points and data available
-  * Then bundle into a docker container - run it again locally, again mimicking the  
-
--------
-
-- API_HOST doesn't output public IP
-- Show everything as a flag during `ps` on the node - could leak
-- Have a way to set your Bacalhau CLI client by the target IP - e.g. bacalhau set-target 10.1.1.5
-- Don't set API_HOST to 0.0.0.0
-- Offer a rally-point as a service?  
--     Status: 'Could not inspect image "bacalhauproject/duckdb-log-processor:v0.17"
-      - could be due to repo/image not existing, or registry needing authorization:
-      Error response from daemon: manifest unknown: manifest unknown'
-     -> Not a "couldn't find node to execute"
-- What happens when we have 100 nodes, does every job get 99 rejects? - `describe` is super noisy
-- Shouldn't override entrypoint - most jobs require "/bin/bash -c"
-- A way to mimic running on the cloud locally - particularly mounting in volumes in the same way
-- Demonstrate a way to say "downloading context/container" for a job rather than just "running" 
+To run the job on all nodes, run:
+```bash
+bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0 -- /bin/bash -c "/var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'ERROR'\""
+```

@@ -15,36 +15,46 @@ resource "google_service_account" "service_account" {
   display_name = "Bacalhau DuckDB Example Service Account"
 }
 
-data "google_iam_policy" "sa_iam_binding" {
-  binding {
-    role = "roles/iam.serviceAccountUser"
-    members = [
-      "serviceAccount:${google_service_account.service_account.email}",
-    ]
-  }
+resource "google_project_iam_member" "member_role" {
+  for_each = toset([
+    "roles/iam.serviceAccountUser",
+    "roles/storage.admin",
+  ])
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.service_account.email}"
+  project = var.project_id
 }
 
-resource "google_project_iam_policy" "sa_iam_policy" {
-  project     = var.project_id
-  policy_data = data.google_iam_policy.sa_iam_binding.policy_data
-  depends_on  = [google_service_account.service_account]
-}
+# data "google_iam_policy" "sa_iam_binding" {
+#   binding {
+#     role = "roles/iam.serviceAccountUser"
+#     members = [
+#       "serviceAccount:${google_service_account.service_account.email}",
+#     ]
+#   }
+# }
 
-data "google_iam_policy" "storage_iam_binding" {
-  binding {
-    role = "roles/storage.admin"
-    members = [
-      "serviceAccount:${google_service_account.service_account.email}",
-      "user:aronchick@busted.dev"
-    ]
-  }
-}
+# resource "google_project_iam_policy" "sa_iam_policy" {
+#   project     = var.project_id
+#   policy_data = data.google_iam_policy.sa_iam_binding.policy_data
+#   depends_on  = [google_service_account.service_account]
+# }
 
-resource "google_project_iam_policy" "storage_iam_policy" {
-  project     = var.project_id
-  policy_data = data.google_iam_policy.storage_iam_binding.policy_data
-  depends_on  = [google_project_iam_policy.sa_iam_policy]
-}
+# data "google_iam_policy" "storage_iam_binding" {
+#   binding {
+#     role = "roles/storage.admin"
+#     members = [
+#       "serviceAccount:${google_service_account.service_account.email}",
+#       "user:aronchick@busted.dev"
+#     ]
+#   }
+# }
+
+# resource "google_project_iam_policy" "storage_iam_policy" {
+#   project     = var.project_id
+#   policy_data = data.google_iam_policy.storage_iam_binding.policy_data
+#   depends_on  = [google_project_iam_policy.sa_iam_policy]
+# }
 
 data "cloudinit_config" "user_data" {
 
@@ -70,13 +80,16 @@ data "cloudinit_config" "user_data" {
 
       tailscale_key : var.tailscale_key,
       node_name : "${var.app_tag}-${each.key}-vm",
+      username : var.username,
+      region : each.value.region,
+      zone : each.value.zone,
     })
   }
 }
 
 
 resource "google_compute_instance" "gcp_instance" {
-  depends_on = [google_project_iam_policy.storage_iam_policy]
+  depends_on = [google_project_iam_member.member_role]
 
   for_each = var.locations
 

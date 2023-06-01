@@ -52,23 +52,30 @@ write_files:
     permissions: "0700"
   - encoding: b64
     content: |
-      ${ bacalhau_service }
-    owner: root:root
-    path: /etc/systemd/system/bacalhau.service
-    permissions: "0600"
-  - encoding: b64
-    content: |
       ${ start_bacalhau }
     owner: root:root
     path: /node/start-bacalhau.sh
     permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ bacalhau_service }
+    owner: root:root
+    path: /etc/systemd/system/bacalhau.service
+    permissions: "0600"
+  - content: |
+      export REGION=${ region }
+      export ZONE=${ zone }
+      exportAPPNAME=${ app_name }
+    owner: root:root
+    permissions: "0444"
+    path: /node/env.sh
 
 package_update: true
 
 runcmd:
   - echo "Copying the SSH Key to the server"
   - |
-    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/{ubuntu}/.ssh/authorized_keys
   #
   # Make node directory for all scripts
   #
