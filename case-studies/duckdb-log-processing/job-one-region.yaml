@@ -1,0 +1,21 @@
+Job:
+  APIVersion: V1beta1
+  Spec:
+    Deal:
+      Concurrency: 1
+    Docker:
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - python3 /process.py aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
+      Image: docker.io/bacalhauproject/duckdb-log-processor:v1.0.6
+    Engine: Docker
+    Labels:
+      - ZONE=us-east1-b
+    Network:
+      Type: Full
+    inputs:
+      - Name: file:///var/log/logs_to_process
+        SourcePath: /var/log/logs_to_process
+        StorageSource: LocalDirectory
+        path: /var/log/logs_to_process
