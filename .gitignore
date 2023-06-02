@@ -12,7 +12,6 @@ bacalhau
 **/Dockerfile
 !tools/**/Dockerfile
 **/.py
-**/requirements.txt
 .vscode
 js-helloworld/outputs/*
 .idea/
@@ -35,3 +34,4 @@ tf/.terraform/*
 *.tfstate*
 tf/.terraform/environment
 bacalhau.run
+tf.out
