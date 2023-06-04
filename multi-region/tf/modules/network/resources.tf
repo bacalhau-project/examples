@@ -21,7 +21,7 @@ resource "aws_subnet" "subnet_public" {
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = var.subnet1_cidr_block_range
   map_public_ip_on_launch = "true"
-  availability_zone       = var.availability_zone
+  availability_zone       = var.zone
   tags = {
     App = var.app_tag
   }
