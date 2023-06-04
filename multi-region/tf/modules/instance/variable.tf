@@ -49,7 +49,7 @@ variable "instance_type" {
 
 variable "instance_ami" { type = string }
 
-variable "availability_zone" { type = string }
+variable "zone" { type = string }
 
 variable "region" {
   description = "AWS region"
