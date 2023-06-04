@@ -14,7 +14,12 @@ variable "subnet2_cidr_block_range" {
   type        = string
 }
 
-variable "availability_zone" {
+variable "region" {
+  description = "The availability region for the subnet"
+  type        = string
+}
+
+variable "zone" {
   description = "The availability zone for the subnet"
   type        = string
 }

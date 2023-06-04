@@ -13,6 +13,9 @@ data "cloudinit_config" "user_data" {
       tailscale_key : var.tailscale_key
       node_name : "${var.app_tag}-${var.region}-vm"
       ssh_key : compact(split("\n", file(var.public_key)))[0]
+      region : var.region
+      zone : var.zone
+      app_name : var.app_tag
     })
   }
 }
@@ -23,7 +26,7 @@ resource "aws_instance" "instance" {
   subnet_id              = var.subnet_public_id
   vpc_security_group_ids = var.security_group_ids
   key_name               = var.key_pair_name
-  availability_zone      = var.availability_zone
+  availability_zone      = var.zone
   user_data              = data.cloudinit_config.user_data.rendered
 
   tags = {

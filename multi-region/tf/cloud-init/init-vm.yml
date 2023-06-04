@@ -6,16 +6,23 @@ packages:
 write_files:
   - encoding: b64
     content: |
-      ${ bacalhau_service }
-    owner: root:root
-    path: /etc/systemd/system/bacalhau.service
-    permissions: "0600"
-  - encoding: b64
-    content: |
       ${ start_bacalhau }
     owner: root:root
     path: /node/start-bacalhau.sh
     permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ bacalhau_service }
+    owner: root:root
+    path: /etc/systemd/system/bacalhau.service
+    permissions: "0600"
+  - content: |
+      export REGION=${ region }
+      export ZONE=${ zone }
+      export APPNAME=${ app_name }
+    owner: root:root
+    permissions: "0444"
+    path: /etc/bacalhau-node-info
 
 package_update: true
 
@@ -62,17 +69,25 @@ runcmd:
   - sudo apt -y install git-lfs
   - HOME=/home/ubuntu git lfs install
   #
+  # Install IPFS
+  #
+  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - sudo bash go-ipfs/install.sh
+  - ipfs init
+  #
   # Install Bacalhau
   #
-  # Can't use script until support for BACALHAU_PREFERRED_PEERS
-  # - sudo chmod +x /node/install-bacalhau.sh
-  # Build bacalhau
   - |
-    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/bacalhau-1.0.0-2482 --output /usr/local/bin/bacalhau
-  # wait until bacalhau has been downloaded to /usr/local/bin/bacalhau
-  - while [ ! -f /usr/local/bin/bacalhau ]; do sleep 1; done
+    curl -sL https://get.bacalhau.org/install.sh | bash
   - echo "Bacalhau downloaded."
-  - sudo chmod +x /usr/local/bin/bacalhau
+  #
+  # Start services
+  #
   - sudo systemctl daemon-reload
+  - sudo systemctl enable docker
+  - sudo systemctl restart docker
+  - sudo systemctl enable ipfs
+  - sudo systemctl restart ipfs
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
