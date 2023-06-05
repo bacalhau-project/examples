@@ -1,5 +1,10 @@
 # Instructions to Build From Scratch
 
+## Introduction
+This file is for building the entire system from scratch. It will go through the steps of setting up Google Cloud, Tailscale, and then running the terraform script to create the cluster.
+
+If you would just like to run the job, and not build from scratch, please see the [README.md](../README.md) file.
+
 ## Architecture
 This sample example consists of three components:
 * A container that runs a python script that generates logs
@@ -183,37 +188,4 @@ docker buildx build --push --platform linux/amd64,linux/arm/v7,linux/arm64/v8 -t
 You must have push access to the organization and repository. If you are using docker.io, you will need to log in first.
 
 ## Running the Job
-Now that the cluster is set up, you can run the job. 
-
-To download and run the job, first install Bacalahau using this command:
-```bash
-curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-You will also need to `source` the bacalhau.run file to get the correct environment variables. To do so, this from the main , run:
-```bash
-source terraform/bacalhau.run
-```
-
-You will have to update the `BACALHAU_API_HOST` environment variable with the correct one. You can get this from the `terraform/bacalhau.run` file. It will be the first IP address in your `BACALHAU_PEER_CONNECT` variable. So, for example, if `export BACALHAU_PEER_CONNECT=/ip4/100.76.225.105/tcp/44635/p2p/QmRrs2aDsuTek5rEze6XTHbqSnta7qr3Co1KFRpfvuTBui` was `BACALHAU_PEER_CONNECT` string, the `BACALHAU_API_HOST` would be `export BACALHAU_API_HOST=100.76.225.105`.
-
-You are now ready to run a job. To do so, run:
-```bash
-bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0 -- /bin/bash -c "/var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'ERROR'\""
-```
-
-This will run the job on just one node, but should give you indication that it ran correctly. To see the results, run:
-```bash
-bacalhau describe <JOB ID> # <- will be output at the end of the run
-```
-
-You can also look at the result of the job in the bucket. To do so, run:
-```bash
-gcloud storage ls gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/
-gcloud cat gs://bacalhau-duckdb-example-europe-west9-b-archive-bucket/$APPNAME-<ZONE>-vm-<TIMESTAMP>.json
-```
-
-To run the job on all nodes, run:
-```bash
-bacalhau --concurrency=4 --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0 -- /bin/bash -c "/var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'ERROR'\""
-```
+To run the job, go to the [regular instructions](README.md)

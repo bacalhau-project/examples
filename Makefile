@@ -41,12 +41,11 @@ $(DST_DIR)/%: $(SRC_DIR)/%
 
 convert: init $(DST_FILES) $(DST_IMGS)
 
-# Add the Tailscale file as a dependency for the convert target
-$(DST_DIR)/case-studies/duckdb-log-processing/terraform/Tailscale: $(SRC_DIR)/case-studies/duckdb-log-processing/terraform/main.tf
-	mkdir -p $(@D)
-	cp $< $@
+# Exclude the Terraform folder from conversion
+SRC_FILES_NO_TF := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*" -not -path "./templates/*" -not -path "./$(DST_DIR)/*" -not -path "./docs.bacalhau.org/*" -not -path "./case-studies/duckdb-log-processing/terraform/*")
+DST_FILES_NO_TF := $(patsubst $(SRC_DIR)/%.ipynb,$(DST_DIR)/%.md,$(SRC_FILES_NO_TF))
 
-convert: init $(DST_FILES) $(DST_IMGS) $(DST_DIR)/case-studies/duckdb-log-processing/terraform/main.tf
+convert: init $(DST_FILES_NO_TF) $(DST_IMGS)
 
 
 # Usage: Run tests on notebooks with `make test`
