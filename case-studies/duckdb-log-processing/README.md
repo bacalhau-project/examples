@@ -75,7 +75,7 @@ Then go to the admin console and create a new auth key. [https://login.tailscale
 
 Your key should look like this image:
 
-![Tailscale Auth Key](images/../Tailscale-Auth-Key.png)
+![Tailscale Auth Key](/case-studies/duckdb-log-processing/images/Tailscale-Auth-Key.png)
 
 When you are done, you should get a key like: `tskey-auth-kFGiAS7CNTRL-2dpMswsLF8UdDydPRMiWDUEXAMPLE`.
 
