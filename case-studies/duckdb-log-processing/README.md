@@ -43,7 +43,7 @@ gcloud auth login
 After logging in, you need to create a project. [Full Instructions](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
 
 ```bash
-$PROJECT_ID = "my-project"
+export PROJECT_ID=my-project
 gcloud projects create $PROJECT_ID
 ```
 
@@ -51,7 +51,7 @@ You also need to get your billing account ID.
 
 ```bash
 gcloud beta billing accounts list
-$BILLING_ACCOUNT_ID = "my-billing-account"
+export BILLING_ACCOUNT_ID="my-billing-account"
 ```
 
 Finally, you need to link the billing account to the project. [Full Instructions](https://cloud.google.com/billing/docs/how-to/modify-project).
