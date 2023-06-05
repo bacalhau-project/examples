@@ -42,11 +42,11 @@ $(DST_DIR)/%: $(SRC_DIR)/%
 convert: init $(DST_FILES) $(DST_IMGS)
 
 # Add the Tailscale file as a dependency for the convert target
-$(DST_DIR)/case-studies/duckdb-log-processing/terraform/Tailscale: $(SRC_DIR)/case-studies/duckdb-log-processing/terraform/Tailscale
+$(DST_DIR)/case-studies/duckdb-log-processing/terraform/Tailscale: $(SRC_DIR)/case-studies/duckdb-log-processing/terraform/main.tf
 	mkdir -p $(@D)
 	cp $< $@
 
-convert: init $(DST_FILES) $(DST_IMGS) $(DST_DIR)/case-studies/duckdb-log-processing/terraform/Tailscale
+convert: init $(DST_FILES) $(DST_IMGS) $(DST_DIR)/case-studies/duckdb-log-processing/terraform/main.tf
 
 
 # Usage: Run tests on notebooks with `make test`
