@@ -63,11 +63,11 @@ gcloud beta billing projects link $PROJECT_ID --billing-account $BILLING_ACCOUNT
 Finally, you need to enable the compute API and storage API. [Full Instructions](https://cloud.google.com/apis/docs/getting-started).
 
 ```bash
-gcloud services enable compute.googleapis.com
-gcloud services enable storage.googleapis.com
+gcloud services enable compute.googleapis.com --project $PROJECT_ID
+gcloud services enable storage.googleapis.com --project $PROJECT_ID
 ```
 
-This `$PROJECT_ID` will be used in the .env.json file in `project_id`.
+Add the `$PROJECT_ID` in the .env.json file in `project_id`.
 
 ## Setting up Tailscale
 We will use Tailscale to provide a cross-region network (instead of creating bridge networks between many VPCs). Doing so is very straightforward.
