@@ -33,7 +33,6 @@ The flow looks like the following:
 This is laid out in the architecture below.
 
 
-![duckdb-logs-architechture](/case-studies/duckdb-log-processing/duckdb-logs-architechture.drawio.svg)
 
 ## Tools Used
 
