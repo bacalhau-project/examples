@@ -2,9 +2,8 @@
 sidebar_label: "DuckDB"
 sidebar_position: 1
 ---
-# MotherDuck/DuckDB
+# DuckDB
 
-## Overview
 
 DuckDB is an embedded SQL database tool that is designed to analyze data without external dependencies or state, that can be embedded locally on any machine.
 
