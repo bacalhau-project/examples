@@ -26,6 +26,7 @@ docs.bacalhau.org/
 ansible.cfg
 *.pem
 .env.json
+**/.env.json
 
 .terraform/
 terraform.tfstate.d/

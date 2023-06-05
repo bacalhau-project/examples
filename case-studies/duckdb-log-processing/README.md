@@ -3,8 +3,6 @@
 ## Introduction
 This file is for building the entire system from scratch. It will go through the steps of setting up Google Cloud, Tailscale, and then running the terraform script to create the cluster.
 
-If you would just like to run the job, and not build from scratch, please see the [README.md](../README.md) file.
-
 ## Architecture
 This sample example consists of three components:
 * A container that runs a python script that generates logs
