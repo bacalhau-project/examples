@@ -32,7 +32,7 @@ The flow looks like the following:
 
 This is laid out in the architecture below.
 
-![duckdb-logs-architechture](./duckdb-logs-architechture.drawio.svg)
+
 
 ## Tools Used
 
@@ -48,7 +48,6 @@ Follow the steps below to set up log processing and storage for 3 VMs in differe
 
 #### **Step 1: Set up a “fake log creating” job**
 
-[Setup GCP Infrastructure using Terraform](./Setup-GCP-Infrastructure-Using-Terraform/Setup-GCP-Infrastructure-Using-Terraform.md)
 
 - Output something that looks like real logs -
 - It should be compatible with this - [https://tersesystems.com/blog/2023/03/04/ad-hoc-structured-log-analysis-with-sqlite-and-duckdb/](https://tersesystems.com/blog/2023/03/04/ad-hoc-structured-log-analysis-with-sqlite-and-duckdb/)
@@ -88,7 +87,6 @@ compress
 
 #### **Step 3: The Bacalhau Job**
 
-[The Bacalhau Job](./The Bacalhau Job/The-Bacalhau-Job.md)
 
 - On a second machine, once per hour, trigger a job to run across all nodes identified across regions
 - Pass the log path to the job spec. (Use the local mount feature (can’t use it currently))
