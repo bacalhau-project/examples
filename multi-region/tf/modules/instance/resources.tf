@@ -22,7 +22,7 @@ data "cloudinit_config" "user_data" {
 }
 
 resource "aws_iam_role" "vm_iam_role" {
-  name               = "vm_iam_role"
+  name               = "${var.app_tag}-${var.region}_vm_iam_role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -41,12 +41,12 @@ EOF
 }
 
 resource "aws_iam_instance_profile" "vm_instance_profile" {
-  name = "vm_instance_profile"
+  name = "${var.app_tag}-${var.region}-vm_instance_profile"
   role = aws_iam_role.vm_iam_role.name
 }
 
 resource "aws_iam_role_policy" "vm_iam_role_policy" {
-  name   = "vm_iam_role_policy"
+  name   = "${var.app_tag}-${var.region}-vm_iam_role_policy"
   role   = aws_iam_role.vm_iam_role.id
   policy = <<EOF
 {
@@ -79,8 +79,18 @@ resource "aws_s3_bucket" "images_bucket" {
 }
 
 resource "aws_s3_bucket_acl" "images_bucket_acl" {
+  bucket     = aws_s3_bucket.images_bucket.id
+  acl        = "private"
+  depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
+}
+
+
+# Resource to avoid error "AccessControlListNotSupported: The bucket does not allow ACLs"
+resource "aws_s3_bucket_ownership_controls" "s3_bucket_acl_ownership" {
   bucket = aws_s3_bucket.images_bucket.id
-  acl    = "private"
+  rule {
+    object_ownership = "ObjectWriter"
+  }
 }
 
 resource "aws_s3_bucket_versioning" "images_bucket_versioning" {
