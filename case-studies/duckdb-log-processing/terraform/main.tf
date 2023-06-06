@@ -40,7 +40,7 @@ data "cloudinit_config" "user_data" {
       app_name : var.app_name,
 
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
-      ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
+      ipfs_service : base64encode(file("${path.module}/node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
       logs_dir : "/var/log/${var.app_name}_logs",
       log_generator_py : filebase64("${path.root}/node_files/log_generator.py"),
