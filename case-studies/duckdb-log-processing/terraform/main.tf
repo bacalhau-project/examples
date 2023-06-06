@@ -44,6 +44,7 @@ data "cloudinit_config" "user_data" {
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
       logs_dir : "/var/log/${var.app_name}_logs",
       log_generator_py : filebase64("${path.root}/node_files/log_generator.py"),
+      global_bucket_name : "${var.project_id}-global-archive-bucket",
 
       # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],
@@ -136,6 +137,26 @@ resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
   provisioner "local-exec" {
     command = "ssh -o StrictHostKeyChecking=no ${var.username}@${each.value.network_interface[0].access_config[0].nat_ip} 'sudo cat /run/bacalhau.run' > ${var.bacalhau_run_file}"
   }
+}
+
+
+resource "google_storage_bucket" "global_archive_bucket" {
+  for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
+
+  name     = "${var.project_id}-global-archive-bucket"
+  location = var.locations[each.key].storage_location
+
+  lifecycle_rule {
+    condition {
+      age = "3"
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  storage_class = "ARCHIVE"
+  force_destroy = true
 }
 
 
