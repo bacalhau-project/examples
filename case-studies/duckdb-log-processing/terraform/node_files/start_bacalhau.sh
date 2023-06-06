@@ -28,11 +28,11 @@ if [[ -f /etc/bacalhau-node-info ]]; then
   . /etc/bacalhau-node-info
 fi
 
-labels="${TAILSCALE_ADDRESS}"
+labels="${TAILSCALE_ADDRESS}=ip"
 
 # If REGION is set, then we can assume all labels are set, and we should add it to the labels
 if [[ -n "${REGION}" ]]; then
-  labels="${labels},${REGION},${ZONE},${APPNAME}"
+  labels="${labels},${REGION}=region,${ZONE}=zone,${APPNAME}=appname"
 fi
 
 bacalhau serve \

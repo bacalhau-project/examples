@@ -21,75 +21,6 @@ data "cloudinit_config" "user_data" {
   }
 }
 
-resource "aws_iam_role" "vm_iam_role" {
-  name               = "vm_iam_role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_instance_profile" "vm_instance_profile" {
-  name = "vm_instance_profile"
-  role = aws_iam_role.vm_iam_role.name
-}
-
-resource "aws_iam_role_policy" "vm_iam_role_policy" {
-  name   = "vm_iam_role_policy"
-  role   = aws_iam_role.vm_iam_role.id
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::bucket-name"]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": ["arn:aws:s3:::bucket-name/*"]
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_s3_bucket" "images_bucket" {
-  bucket = "${var.app_tag}-${var.region}-images-bucket"
-  tags = {
-    Name = var.app_tag
-  }
-}
-
-resource "aws_s3_bucket_acl" "images_bucket_acl" {
-  bucket = aws_s3_bucket.images_bucket.id
-  acl    = "private"
-}
-
-resource "aws_s3_bucket_versioning" "images_bucket_versioning" {
-  bucket = aws_s3_bucket.images_bucket.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
 resource "aws_instance" "instance" {
   ami                    = var.instance_ami
   instance_type          = var.instance_type
@@ -98,7 +29,6 @@ resource "aws_instance" "instance" {
   key_name               = var.key_pair_name
   availability_zone      = var.zone
   user_data              = data.cloudinit_config.user_data.rendered
-  iam_instance_profile   = aws_iam_instance_profile.vm_instance_profile.name
 
   tags = {
     App  = var.app_tag
