@@ -2,6 +2,7 @@
 packages:
   - git
   - make
+  - sqlite3
 
 write_files:
   - encoding: b64

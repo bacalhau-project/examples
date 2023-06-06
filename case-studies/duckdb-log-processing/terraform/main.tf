@@ -25,37 +25,6 @@ resource "google_project_iam_member" "member_role" {
   project = var.project_id
 }
 
-# data "google_iam_policy" "sa_iam_binding" {
-#   binding {
-#     role = "roles/iam.serviceAccountUser"
-#     members = [
-#       "serviceAccount:${google_service_account.service_account.email}",
-#     ]
-#   }
-# }
-
-# resource "google_project_iam_policy" "sa_iam_policy" {
-#   project     = var.project_id
-#   policy_data = data.google_iam_policy.sa_iam_binding.policy_data
-#   depends_on  = [google_service_account.service_account]
-# }
-
-# data "google_iam_policy" "storage_iam_binding" {
-#   binding {
-#     role = "roles/storage.admin"
-#     members = [
-#       "serviceAccount:${google_service_account.service_account.email}",
-#       "user:aronchick@busted.dev"
-#     ]
-#   }
-# }
-
-# resource "google_project_iam_policy" "storage_iam_policy" {
-#   project     = var.project_id
-#   policy_data = data.google_iam_policy.storage_iam_binding.policy_data
-#   depends_on  = [google_project_iam_policy.sa_iam_policy]
-# }
-
 data "cloudinit_config" "user_data" {
 
   for_each = var.locations
@@ -71,6 +40,7 @@ data "cloudinit_config" "user_data" {
       app_name : var.app_name,
 
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
+      ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
       logs_dir : "/var/log/${var.app_name}_logs",
       log_generator_py : filebase64("${path.root}/node_files/log_generator.py"),
