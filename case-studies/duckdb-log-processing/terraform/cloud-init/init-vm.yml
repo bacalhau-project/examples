@@ -66,6 +66,7 @@ write_files:
       export REGION=${ region }
       export ZONE=${ zone }
       export APPNAME=${ app_name }
+      export GLOBAL_BUCKET_NAME=${ global_bucket_name }
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
