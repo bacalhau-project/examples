@@ -1,3 +1,3 @@
-output "ip_address" {
-  value = module.instanceModule.instance_eip
+output "ip_addresses" {
+  value = data.azurerm_public_ip.public_ip.*
 }

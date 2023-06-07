@@ -30,7 +30,7 @@ def getMetadata(metadata_server_url):
     return requests.get(metadata_server_url, headers=metadata_request_headers).text
 
 
-def main(input_file, bucket_name, query):
+def main(input_file, query):
     # Create an in-memory DuckDB database
     con = duckdb.connect(database=":memory:", read_only=False)
 
@@ -65,7 +65,7 @@ def main(input_file, bucket_name, query):
     projectID = getProjectMetadata("project-id")
 
     # Generate the bucket name
-    bucket_name = f"{projectID}-{region}-{bucket_name}"
+    bucket_name = f"{projectID}-{region}-archive-bucket"
 
     print("Bucket name: gs://" + bucket_name + "\n")
 
@@ -79,6 +79,12 @@ def main(input_file, bucket_name, query):
         bucket = storage_client.get_bucket(bucket_name)
         blob = bucket.blob(output_file_name)
         blob.upload_from_filename(temp.name)
+
+        # Upload the file to the global bucket
+        global_bucket_name = f"{projectID}-global-archive-bucket"
+        global_bucket = storage_client.get_bucket(global_bucket_name)
+        global_blob = global_bucket.blob(output_file_name)
+        global_blob.upload_from_filename(temp.name)
 
         # Remove the temporary file
         os.remove(temp.name)
@@ -110,11 +116,10 @@ if __name__ == "__main__":
     # Set up the argument parser
     parser = argparse.ArgumentParser(description="Process log data")
     parser.add_argument("input_file", help="Path to the input log file")
-    parser.add_argument("bucket_name", help="Name of the GCP bucket to write to - e.g. PROJECTNAME-REGION-bucketname")
     parser.add_argument("query", help="DuckDB query to execute")
 
     # Parse the command-line arguments
     args = parser.parse_args()
 
     # Call the main function
-    main(args.input_file, args.bucket_name, args.query)
+    main(args.input_file, args.query)

@@ -9,7 +9,7 @@ Environment="BACALHAU_PATH=/data"
 Environment="BACALHAU_DIR=/data"
 Restart=always
 RestartSec=5s
-ExecStart=bash /node/start-bacalhau.sh
+ExecStart=/bin/bash /node/start-bacalhau.sh
 
 [Install]
 WantedBy=multi-user.target

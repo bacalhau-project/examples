@@ -8,7 +8,7 @@ Job:
         - /bin/bash
         - -c
         - python3 /process.py aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
-      Image: docker.io/bacalhauproject/duckdb-log-processor:v1.0.6
+      Image: docker.io/bacalhauproject/duckdb-log-processor:v1.0.7
     Engine: Docker
     Network:
       Type: Full
