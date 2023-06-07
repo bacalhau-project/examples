@@ -78,26 +78,35 @@ resource "aws_s3_bucket" "images_bucket" {
   }
 }
 
-resource "aws_s3_bucket_acl" "images_bucket_acl" {
-  bucket     = aws_s3_bucket.images_bucket.id
-  acl        = "private"
-  depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
+
+resource "aws_iam_policy" "bucket_policy" {
+  name        = "${var.app_tag}-${var.region}-images-bucket-policy"
+  path        = "/"
+  description = "Allow "
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "VisualEditor0",
+        "Effect" : "Allow",
+        "Action" : [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ],
+        "Resource" : [
+          "arn:aws:s3:::*/*",
+          "arn:aws:s3:::${var.app_tag}-${var.region}-images-bucket"
+        ]
+      }
+    ]
+  })
 }
 
-
-# Resource to avoid error "AccessControlListNotSupported: The bucket does not allow ACLs"
-resource "aws_s3_bucket_ownership_controls" "s3_bucket_acl_ownership" {
-  bucket = aws_s3_bucket.images_bucket.id
-  rule {
-    object_ownership = "ObjectWriter"
-  }
-}
-
-resource "aws_s3_bucket_versioning" "images_bucket_versioning" {
-  bucket = aws_s3_bucket.images_bucket.id
-  versioning_configuration {
-    status = "Enabled"
-  }
+resource "aws_iam_role_policy_attachment" "images_bucket_policy" {
+  role       = aws_iam_role.vm_iam_role.name
+  policy_arn = aws_iam_policy.bucket_policy.arn
 }
 
 resource "aws_instance" "instance" {

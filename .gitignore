@@ -36,3 +36,5 @@ tf/.terraform/*
 tf/.terraform/environment
 bacalhau.run
 tf.out
+
+job-[0-9a-z]*

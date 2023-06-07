@@ -7,7 +7,7 @@ Wants=network-online.target systemd-networkd-wait-online.service
 Environment="IPFS_PATH=/data/ipfs"
 Restart=always
 RestartSec=1s
-ExecStart=ipfs daemon
+ExecStart=/usr/local/bin/ipfs daemon
 
 [Install]
 WantedBy=multi-user.target

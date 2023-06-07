@@ -10,6 +10,7 @@ provider "google" {
   project = var.project_id
 }
 
+
 resource "google_service_account" "service_account" {
   account_id   = "bacalhau-duckdb-example-sa"
   display_name = "Bacalhau DuckDB Example Service Account"
@@ -54,6 +55,7 @@ data "cloudinit_config" "user_data" {
       username : var.username,
       region : each.value.region,
       zone : each.value.zone,
+      project_id : var.project_id,
     })
   }
 }
