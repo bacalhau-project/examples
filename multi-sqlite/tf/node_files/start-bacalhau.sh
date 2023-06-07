@@ -35,7 +35,7 @@ if [[ -n "${REGION}" ]]; then
   labels="${labels},region=${REGION},zone=${ZONE},appname=${APPNAME}"
 fi
 
-bacalhau serve \
+/usr/local/bin/bacalhau serve \
   --node-type requester,compute \
   --job-selection-data-locality anywhere \
   --swarm-port 1235 \

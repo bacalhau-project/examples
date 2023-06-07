@@ -1,13 +1,32 @@
 # Variables
 
-variable "access_key" { type = string }
-variable "secret_key" { type = string }
+variable "clientId" {
+  description = "Azure Client ID"
+  type        = string
+}
+
+variable "clientSecret" {
+  description = "Azure Client Secret"
+  type        = string
+}
+
+variable "subscriptionId" {
+  description = "Azure Subscription ID"
+  type        = string
+}
+
+variable "tenantId" {
+  description = "Azure Tenant ID"
+  type        = string
+}
+
+
 variable "app_tag" {
   description = "Environment tag"
   type        = string
 }
 variable "locations" {
-  description = "region, zone, and ami"
+  description = "region"
   type        = map(map(string))
 }
 variable "instance_type" {
@@ -18,18 +37,9 @@ variable "bootstrap_region" {
   description = "Region where the bootstrap node will be created"
   type        = string
 }
-variable "region" {
-  description = "AWS region"
-  type        = string
-}
 variable "bacalhau_run_file" {
   type        = string
   description = "Bacalhau Run File location"
-}
-
-variable "shelluser" {
-  type        = string
-  description = "User to connect to the instance"
 }
 
 variable "public_key" {
@@ -44,5 +54,10 @@ variable "private_key" {
 
 variable "tailscale_key" {
   description = "Tailscale key"
+  type        = string
+}
+
+variable "username" {
+  description = "Username to use for SSH connection"
   type        = string
 }

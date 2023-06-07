@@ -23,7 +23,8 @@ write_files:
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
-  - content: |
+  - encoding: b64
+    content: |
       ${ ipfs_service }
     owner: root:root
     permissions: "0600"

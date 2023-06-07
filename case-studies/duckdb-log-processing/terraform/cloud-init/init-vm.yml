@@ -63,6 +63,7 @@ write_files:
     path: /etc/systemd/system/bacalhau.service
     permissions: "0600"
   - content: |
+      export PROJECT_ID=${ project_id }
       export REGION=${ region }
       export ZONE=${ zone }
       export APPNAME=${ app_name }
@@ -70,7 +71,8 @@ write_files:
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
-  - content: |
+  - encoding: b64
+    content: |
       ${ ipfs_service }
     owner: root:root
     permissions: "0600"
