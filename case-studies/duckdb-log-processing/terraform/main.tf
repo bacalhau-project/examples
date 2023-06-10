@@ -54,7 +54,7 @@ data "cloudinit_config" "user_data" {
       node_name : "${var.app_tag}-${each.key}-vm",
       username : var.username,
       region : each.value.region,
-      zone : each.value.zone,
+      zone : each.key,
       project_id : var.project_id,
     })
   }
@@ -67,8 +67,8 @@ resource "google_compute_instance" "gcp_instance" {
   for_each = var.locations
 
   name         = "${var.app_name}-${each.key}-vm"
-  machine_type = each.value.machine_type
-  zone         = each.value.zone
+  machine_type = var.machine_type
+  zone         = each.key
 
   boot_disk {
     initialize_params {
@@ -98,7 +98,7 @@ resource "google_compute_instance" "gcp_instance" {
 }
 
 resource "google_storage_bucket" "node_bucket" {
-  for_each = { for k, v in var.locations : k => v if v.create_bucket }
+  for_each = var.locations
 
   name     = "${var.project_id}-${each.key}-archive-bucket"
   location = var.locations[each.key].storage_location

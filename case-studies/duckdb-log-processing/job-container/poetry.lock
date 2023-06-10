@@ -15,7 +15,7 @@ files = [
 [[package]]
 name = "certifi"
 version = "2023.5.7"
-description = "Python package for providing Mozilla's CA Bundle."
+description = "Python package for providing Mozilla"s CA Bundle."
 category = "main"
 optional = false
 python-versions = ">=3.6"
@@ -272,7 +272,7 @@ protobuf = ["protobuf (<5.0.0dev)"]
 [[package]]
 name = "google-crc32c"
 version = "1.5.0"
-description = "A python wrapper of the C library 'Google CRC32C'"
+description = "A python wrapper of the C library "Google CRC32C""
 category = "main"
 optional = false
 python-versions = ">=3.7"
