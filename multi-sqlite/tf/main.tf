@@ -43,6 +43,7 @@ data "cloudinit_config" "user_data" {
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
       ipfs_service : base64encode(file("${path.module}/node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start-bacalhau.sh"),
+      sensor_data_generator_py : filebase64("${path.root}/node_files/sensor_data_generator.py"),
 
       # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],

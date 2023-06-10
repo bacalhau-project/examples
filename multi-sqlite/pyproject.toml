@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "multi-sqlite"
+version = "0.1.0"
+description = ""
+authors = ["David Aronchick <aronchick@gmail.com>"]
+readme = "README.md"
+packages = [{include = "multi_sqlite"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+simplejson = "^3.19.1"
+faker = "^18.10.1"
+apscheduler = "^3.10.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

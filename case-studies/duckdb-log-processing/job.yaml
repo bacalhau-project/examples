@@ -1,8 +1,11 @@
 Job:
   APIVersion: V1beta1
   Spec:
-    Deal:
-      Concurrency: 4
+    NodeSelectors:
+      - Key: zone
+        Operator: =
+        Values:
+          - europe-west9-b
     Docker:
       Entrypoint:
         - /bin/bash
