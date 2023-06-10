@@ -14,6 +14,10 @@ variable "locations" {
   description = "Locations and resources to deploy"
   type        = map(map(string))
 }
+variable "machine_type" {
+  type        = string
+  description = "Machine type to use for the instances"
+}
 variable "bootstrap_zone" {
   description = "Zone where the bootstrap node will be created"
   type        = string

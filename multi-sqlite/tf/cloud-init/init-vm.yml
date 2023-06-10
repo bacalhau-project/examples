@@ -7,6 +7,12 @@ packages:
 write_files:
   - encoding: b64
     content: |
+      ${ sensor_data_generator_py }
+    owner: root:root
+    path: /node/sensor_data_generator.py
+    permissions: "0777"
+  - encoding: b64
+    content: |
       ${ start_bacalhau }
     owner: root:root
     path: /node/start-bacalhau.sh
@@ -30,6 +36,22 @@ write_files:
     owner: root:root
     permissions: "0600"
     path: /etc/systemd/system/ipfs.service
+  - content: |
+      [Unit]
+      Description=Generate ${ app_name } data
+      After=network.target
+
+      [Service]
+      User=root
+      WorkingDirectory=/node
+      ExecStart=/node/generator_data_env/bin/python3 /node/sensor_data_generator.py
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    path: /etc/systemd/system/generate-data.service
+    permissions: "0600"
 
 package_update: true
 
