@@ -3,6 +3,10 @@ packages:
   - git
   - make
   - sqlite3
+  - python3
+  - python3.10
+  - python3.10-venv
+  - python3-pip
 
 write_files:
   - encoding: b64
@@ -11,6 +15,12 @@ write_files:
     owner: root:root
     path: /node/sensor_data_generator.py
     permissions: "0777"
+  - encoding: b64
+    content: |
+      ${ requirements_txt }
+    owner: root:root
+    path: /node/requirements.txt
+    permissions: "0444"
   - encoding: b64
     content: |
       ${ start_bacalhau }
@@ -22,7 +32,7 @@ write_files:
       ${ bacalhau_service }
     owner: root:root
     path: /etc/systemd/system/bacalhau.service
-    permissions: "0600"
+    permissions: "0644"
   - content: |
       export REGION=${ region }
       export ZONE=${ zone }
@@ -34,7 +44,7 @@ write_files:
     content: |
       ${ ipfs_service }
     owner: root:root
-    permissions: "0600"
+    permissions: "0644"
     path: /etc/systemd/system/ipfs.service
   - content: |
       [Unit]
@@ -44,14 +54,14 @@ write_files:
       [Service]
       User=root
       WorkingDirectory=/node
-      ExecStart=/node/generator_data_env/bin/python3 /node/sensor_data_generator.py
+      ExecStart=/node/sensor_data_generator_env/bin/python3 /node/sensor_data_generator.py
       Restart=always
 
       [Install]
       WantedBy=multi-user.target
     owner: root:root
     path: /etc/systemd/system/generate-data.service
-    permissions: "0600"
+    permissions: "0644"
 
 package_update: true
 
@@ -62,9 +72,11 @@ runcmd:
   # Set up directory structure and move files
   - sudo mkdir /node
   - sudo mkdir /data
+  - sudo mkdir /db
   - sudo chmod +x /node/*.sh
   - sudo chmod 0700 /node
   - sudo chmod 0700 /data
+  - sudo chmod 0700 /db
   #
   # Install tailscale
   #
@@ -80,6 +92,9 @@ runcmd:
   - sudo rm -fr /usr/local/go /usr/local/bin/go
   - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
   - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  # Install virtualenv
+  - python3 -m venv /node/sensor_data_generator_env
+  - /node/sensor_data_generator_env/bin/pip3 install -r /node/requirements.txt
   #
   # Install docker
   #

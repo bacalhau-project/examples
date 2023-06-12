@@ -13,7 +13,7 @@ import tempfile
 
 from apscheduler.schedulers.background import BlockingScheduler
 
-SQLITEDB = "sensor_data.db"
+SQLITEDB = "/db/sensor_data.db"
 F = Faker()
 
 
@@ -41,7 +41,7 @@ class Sensor(object):
 
 
 def generateEntry():
-    with sqlite3.connect(tempfile.gettempdir() + "/" + SQLITEDB) as conn:
+    with sqlite3.connect(SQLITEDB) as conn:
         conn.execute(
             """CREATE TABLE IF NOT EXISTS sensor_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +71,11 @@ def generateEntry():
                 sensor.whc,
             ),
         )
+        # print("Entered 1")
+        # Append-adds at last
+        # file1 = open("/node/app_log", "a")  # append mode
+        # file1.write("written 1")
+        # file1.close()
 
 
 # Main
@@ -79,11 +84,11 @@ if __name__ == "__main__":
     # Read args
     if len(sys.argv) > 1:
         if sys.argv[1] == "delete":
-            with sqlite3.connect(tempfile.gettempdir() + "/" + SQLITEDB) as conn:
+            with sqlite3.connect(SQLITEDB) as conn:
                 conn.execute("DROP TABLE IF EXISTS sensor_data")
         elif sys.argv[1] == "print":
-            with sqlite3.connect(tempfile.gettempdir() + "/" + SQLITEDB) as conn:
-                cursor = conn.execute("SELECT * FROM sensor_data")
+            with sqlite3.connect(SQLITEDB) as conn:
+                cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
                 rows = cursor.fetchall()
                 for row in rows:
                     print(row)
