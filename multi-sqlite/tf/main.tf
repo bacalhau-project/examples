@@ -44,10 +44,10 @@ data "cloudinit_config" "user_data" {
       ipfs_service : base64encode(file("${path.module}/node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start-bacalhau.sh"),
       sensor_data_generator_py : filebase64("${path.root}/node_files/sensor_data_generator.py"),
+      requirements_txt : filebase64("${path.root}/node_files/requirements.txt"),
 
       # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],
-
       tailscale_key : var.tailscale_key,
       node_name : "${var.app_tag}-${each.key}-vm",
       username : var.username,
@@ -147,7 +147,7 @@ resource "azurerm_linux_virtual_machine" "instance" {
   location              = azurerm_resource_group.rg[each.key].location
   resource_group_name   = azurerm_resource_group.rg[each.key].name
   network_interface_ids = [azurerm_network_interface.nic[each.key].id]
-  size                  = "Standard_B1s"
+  size                  = "Standard_D2s_v3"
   computer_name         = "${var.app_tag}-${each.key}-vm"
   admin_username        = var.username
 
@@ -164,9 +164,9 @@ resource "azurerm_linux_virtual_machine" "instance" {
   }
 
   source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
+    publisher = "canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
     version   = "latest"
   }
 }
