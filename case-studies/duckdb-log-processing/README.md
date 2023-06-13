@@ -1,7 +1,7 @@
 # Instructions to Run this Example
 
 ## Introduction
-These are the instructions for running the example. It assumes you have a cluster setup (see [ClusterSetup.md](Cluster Setup)) and a container to run (see [BuildingContainer.md](Building Container)).
+These are the instructions for running the example. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
 
 ## Architecture
 The overall story of what you are doing here is the following:
@@ -109,7 +109,7 @@ cat job.yaml | bacalhau create
 The above job runs on just one node. To run the same job on all nodes, so you can query every log on your network, you can run the following command:
 ```bash
 NUMBER_OF_NODES=4
-bacalhau --concurrency $NUMBER_OF_NODES --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "/process.py /var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
+bacalhau --concurrency $NUMBER_OF_NODES --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "/process.py /var/log/logs_to_process/aperitivo.log.1  \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
 ```
 
 Breaking down the above flags:
