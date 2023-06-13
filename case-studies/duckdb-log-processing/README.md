@@ -58,7 +58,7 @@ To do something a bit more advanced, let's use DuckDB to process a log file. To 
 
 You can run the job on the europe-west9-a node with the following command:
 ```bash
-bacalhau --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo.log.1 archive-bucket  \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
+bacalhau --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo.log.1 \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
 ```
 
 Breaking down the above flags:
@@ -118,4 +118,36 @@ Breaking down the above flags:
 * `-i file:///var/log/logs_to_process:/var/log/logs_to_process` - this will mount the `/var/log/logs_to_process` directory (form the host node) to the `/var/log/logs_to_process` directory in the container.
 * `docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7` - this will run the docker container `docker.io/bacalhauproject/duckdb-log-processor:v1.0`
 * `--` - separates the docker run command from the command to run in the container.
-* `
+* `/process.py` - the script already built into the container
+* `/var/log/logs_to_process/aperitivo.log.1` - the file to process
+* `SELECT * FROM logs WHERE log_level = 'SECURITY'` - the SQL query to run on the file (must be surrounded by escaped quotes (`\"`))
+
+You can also execute this with the following yaml file:
+```yaml
+Job:
+  APIVersion: V1beta1
+  Spec:
+    Deal:
+      Concurrency: 112
+    Docker:
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - python3 /process.py aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
+      Image: docker.io/bacalhauproject/duckdb-log-processor:v1.0.7
+    Engine: Docker
+    Network:
+      Type: Full
+    inputs:
+      - Name: file:///var/log/logs_to_process
+        SourcePath: /var/log/logs_to_process
+        StorageSource: LocalDirectory
+        path: /var/log/logs_to_process
+```
+
+and the following command:
+```bash
+cat job.yaml | bacalhau create
+```
+
+With all that, you have a system that can run distributed queries across many nodes, in a much more secure and reliable way.
