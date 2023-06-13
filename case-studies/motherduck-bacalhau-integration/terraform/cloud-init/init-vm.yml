@@ -1,0 +1,160 @@
+#cloud-config
+packages:
+  - git
+  - make
+  - python3
+  - python3-pip
+  - python3-venv
+  - python3.11-venv
+  - curl
+  - unzip
+
+write_files:
+  - encoding: b64
+    content: |
+      ${ log_generator_py }
+    owner: root:root
+    path: /node/log_generator.py
+    permissions: "0777"
+  - content: |
+      ${ logs_dir }/*.log {
+          hourly
+          missingok
+          rotate 24
+          compress
+          delaycompress
+          olddir /var/log/logs_to_process
+      }
+    owner: root:root
+    path: /etc/logrotate.d/${ app_name }
+    permissions: "0400"
+  - content: |
+      [Unit]
+      Description=Generate ${ app_name } logs
+      After=network.target
+
+      [Service]
+      User=root
+      WorkingDirectory=/node
+      ExecStart=/node/log_generator_env/bin/python3 /node/log_generator.py -d ${ logs_dir } -n ${ app_name }
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    path: /etc/systemd/system/log-generator.service
+    permissions: "0600"
+  - content: |
+      #!/bin/sh
+      /usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+    owner: root:root
+    path: /etc/cron.hourly/logrotate
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ start_bacalhau }
+    owner: root:root
+    path: /node/start-bacalhau.sh
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ bacalhau_service }
+    owner: root:root
+    path: /etc/systemd/system/bacalhau.service
+    permissions: "0600"
+  - content: |
+      export PROJECT_ID=${ project_id }
+      export REGION=${ region }
+      export ZONE=${ zone }
+      export APPNAME=${ app_name }
+      export GLOBAL_BUCKET_NAME=${ global_bucket_name }
+    owner: root:root
+    permissions: "0444"
+    path: /etc/bacalhau-node-info
+  - encoding: b64
+    content: |
+      ${ ipfs_service }
+    owner: root:root
+    permissions: "0600"
+    path: /etc/systemd/system/ipfs.service
+  - content: |
+      ${ motherduck_key }
+    owner: root:root
+    permissions: "0600"
+    path: /etc/motherduck-key
+
+package_update: true
+
+runcmd:
+  - echo "Copying the SSH Key to the server"
+  - |
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/{ubuntu}/.ssh/authorized_keys
+  #
+  # Make node directory for all scripts
+  #
+  - mkdir -p /node
+  - chmod 0700 /node
+  - mkdir -p /data
+  - chmod 0700 /data
+  - mkdir -p /var/logs
+  - mkdir -p /db
+  - chmod 0700 /db
+  - cp /etc/motherduck-key /db/motherduck-key
+  #
+  # Install tailscale
+  #
+  - |
+    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
+  - apt-get update -y
+  - apt -y install tailscale
+  - sudo tailscale up --authkey ${ tailscale_key } --hostname ${ node_name }
+  #
+  # Install docker
+  #
+  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+  - sudo mkdir -p /etc/apt/keyrings
+  - |
+    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - sudo apt-get update -y
+  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  #
+  # Install IPFS
+  #
+  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - sudo bash go-ipfs/install.sh
+  - IPFS_PATH=/data ipfs init
+  #
+  # Install Bacalhau
+  #
+  - |
+    curl -sL https://get.bacalhau.org/install.sh | bash
+  - echo "Bacalhau downloaded."
+  # Create necessary directory
+  - mkdir ${ logs_dir }
+  # Step 0b: Create the log rotation output directory
+  - sudo mkdir -p /var/log/logs_to_process
+  # Step 0c: Create the /etc/cron.hourly/ directory and set appropriate permissions
+  - sudo mkdir -p /etc/cron.hourly
+  - sudo chown root:root /etc/cron.hourly
+  - sudo chmod 755 /etc/cron.hourly
+  # Install virtualenv
+  - python3 -m venv /node/log_generator_env
+  - /node/log_generator_env/bin/pip3 install faker
+  - |
+    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
+  # Reload the systemd daemon, enable, and start the service
+  - sudo sysctl -w net.core.rmem_max=2500000
+  - sudo systemctl daemon-reload
+  - sudo systemctl enable ipfs
+  - sudo systemctl restart ipfs
+  - sudo systemctl enable docker
+  - sudo systemctl restart docker
+  - sudo systemctl enable bacalhau.service
+  - sudo systemctl restart bacalhau.service
+  - sudo systemctl enable log-generator.service
+  - sudo systemctl start log-generator.service
+  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
+  - sudo /usr/sbin/logrotate -f --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
