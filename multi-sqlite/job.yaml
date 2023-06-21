@@ -1,0 +1,22 @@
+Job:
+  APIVersion: V1beta1
+  Spec:
+    NodeSelectors:
+      - Key: zone
+        Operator: =
+        Values:
+        - northcentralus
+    Docker:
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - python3 /query.py 'select * from sensor_data'
+      Image: docker.io/bacalhauproject/query-sqlite:0.0.1
+    Engine: Docker
+    Network:
+      Type: Full
+    inputs:
+      - Name: file:///db/
+        SourcePath: /db
+        StorageSource: LocalDirectory
+        path: /db

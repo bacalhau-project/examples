@@ -1,0 +1,19 @@
+Job:
+  APIVersion: V1beta1
+  Spec:
+    Deal:
+      Concurrency: 36
+    Docker:
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - python3 /query.py 'SELECT * FROM sensor_data WHERE humidity > 93;'
+      Image: docker.io/bacalhauproject/query-sqlite:0.0.1
+    Engine: Docker
+    Network:
+      Type: Full
+    inputs:
+      - Name: file:///db/
+        SourcePath: /db
+        StorageSource: LocalDirectory
+        path: /db
