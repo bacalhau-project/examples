@@ -4,14 +4,13 @@ import argparse
 
 
 def get_data(query):
-    with sqlite3.connect("/node/sensor_data.db") as conn:
+    with sqlite3.connect("/db/sensor_data.db") as conn:
         cursor = conn.execute(query)
         rows = cursor.fetchall()
         return rows
 
 
-def main():
-    query = input("Enter a query: ")
+def main(query):
     rows = get_data(query)
     for row in rows:
         print(row)

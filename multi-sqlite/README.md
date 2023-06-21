@@ -83,3 +83,73 @@ This will output something like this:
 ```
 
 Paste the contents of this block in your .env.json file.
+
+Build command for jobcontainer:
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 --push -t bacalhauproject/query-sqlite:0.0.1 .
+```
+
+Display all resource groups created:
+```bash
+az group list --query "[?starts_with(name, 'multisqlite')].{name: name, location: location}"
+```
+
+Display the vm in a single resource group:
+```bash
+./display_vm_details.sh multisqlite-bacalhau-koreasouth-rg
+```
+
+List the file on a VM:
+```bash
+ssh daaronch@20.200.169.13 'sudo ls /db'
+```
+
+Run docker on a single VM in the Bacalhau network:
+```bash
+bacalhau docker run -s region=francecentral ubuntu echo "hello francecentral"
+```
+
+Run docker on every node in the Bacalhau network:
+```bash
+bacalhau docker run --concurrency=36 ubuntu echo "hello everybody"
+```
+
+Look at the outputs of the job:
+```bash
+bacalhau describe <JOBID>
+```
+
+Show it having executed 36 times:
+```bash
+bacalhau describe <JOB> | grep "JobID" | wc -l
+```
+
+Get columns of a SQLite table:
+```bash
+bacalhau docker run -i file:///db:/db docker.io/bacalhauproject/query-sqlite:0.0.1 -- /bin/bash -c "python3 /query.py 'PRAGMA table_info(sensor_data);'"
+```
+
+Show the output:
+```bash
+bacalhau describe <JOBID>
+```
+
+Query all the rows from a single instance:
+```bash
+cat job.yaml | bacalhau create
+```
+
+Get the results:
+```bash
+bacalhau get <JOBID>
+```
+
+Query all the rows from every instance and return just the lat/long where the humity is above 93 using SQLite:
+```bash
+cat job.yaml | bacalhau create
+```
+
+SQLite query to return values where the column 'humidity' is greater than 93:
+```bash
+SELECT * FROM sensor_data WHERE humidity > 93;
+```

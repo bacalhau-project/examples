@@ -133,5 +133,7 @@ runcmd:
   - sudo systemctl restart docker
   - sudo systemctl enable ipfs
   - sudo systemctl restart ipfs
+  - sudo systemctl enable generate-data.service
+  - sudo systemctl restart generate-data.service
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
