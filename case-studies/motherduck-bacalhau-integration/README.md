@@ -138,8 +138,9 @@ This will reach out to the network and run the job. If you would like to do this
 bacalhau docker run \
   -i file:///db:/db \
   -i file:///var/log/logs_to_process:/var/log/logs_to_process \
+  --network=full \
   -s zone=europe-west4-b \
-  docker.io/bacalhauproject/motherduck-log-processor:1.0.1 \
+  docker.io/bacalhauproject/motherduck-log-processor:1.0.2 \
   -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
 ```
 
@@ -155,11 +156,11 @@ cat job_multizone.yaml | bacalhau create
 
 To do the same from the command line is nearly the same:
 ```bash
-```bash
 bacalhau docker run \
   -i file:///db:/db \
   -i file:///var/log/logs_to_process:/var/log/logs_to_process \
+  --network=full \
   --concurrency 16 \
-  docker.io/bacalhauproject/motherduck-log-processor:1.0.1 -- \
+  docker.io/bacalhauproject/motherduck-log-processor:1.0.2 -- \
   /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
 ```
