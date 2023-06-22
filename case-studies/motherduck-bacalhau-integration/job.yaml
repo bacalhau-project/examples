@@ -3,7 +3,7 @@ Job:
   Spec:
     NodeSelectors:
       - Key: zone
-        Operator: =
+        Operator: "="
         Values:
           - europe-west4-b
     Docker:
