@@ -139,7 +139,7 @@ bacalhau docker run \
   -i file:///db:/db \
   -i file:///var/log/logs_to_process:/var/log/logs_to_process \
   -s zone=europe-west4-b \
-  docker run docker.io/bacalhauproject/motherduck-log-processor:1.0 \
+  docker.io/bacalhauproject/motherduck-log-processor:1.0.1 \
   -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
 ```
 
@@ -160,6 +160,6 @@ bacalhau docker run \
   -i file:///db:/db \
   -i file:///var/log/logs_to_process:/var/log/logs_to_process \
   --concurrency 16 \
-  docker run docker.io/bacalhauproject/motherduck-log-processor:1.0 \
-  -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
+  docker.io/bacalhauproject/motherduck-log-processor:1.0.1 -- \
+  /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 \"SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'\""
 ```
