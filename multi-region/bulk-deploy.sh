@@ -1,8 +1,14 @@
 #!/bin/bash
 
 cd tf || exit
-# declare -a regions=( "ca-central-1" )
-declare -a regions=( "ca-central-1" "us-west-2" "eu-west-3" "sa-east-1" "ap-southeast-1" )
+
+# Load a list of zones from regions.md, as long as they are not commented out or blank
+regions=()
+while IFS= read -r line; do
+    if [[ $line != \#* ]] && [[ $line != "" ]]; then
+        regions+=("$line")
+    fi
+done < ../regions.md
 
 # If aurgument is create, then execute first statement, else execute second statement
 if [ "$1" == "create" ]; then
