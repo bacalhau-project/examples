@@ -1,14 +1,21 @@
 #!env python3
+import argparse
 import boto3
 import json
 import requests
 
+parser = argparse.ArgumentParser(description='Get latest AMIs from Canonical.')
+parser.add_argument('--owner', default='099720109477', help='The owner of the AMI. Default is Canonical.')
+parser.add_argument('--architecture', default='x86_64', help='The architecture of the AMI. Default is x86_64.')
+parser.add_argument('--name', default='*ubuntu-20.04*', help='The name pattern of the AMI. Default is *ubuntu-20.04*.')
+
+args = parser.parse_args()
 
 def get_latest_ubuntu_ami(region):
     ec2 = boto3.client("ec2", region_name=region)
     response = ec2.describe_images(
-        Owners=["099720109477"],  # Canonical
-        Filters=[{"Name": "architecture", "Values": ["x86_64"]}, {"Name": "name", "Values": ["*ubuntu-20.04*"]}],
+        Owners=[args.owner],  
+        Filters=[{"Name": "architecture", "Values": [args.architecture]}, {"Name": "name", "Values": [args.name]}],
     )
 
     # Sort on creation date and select the most recent
@@ -18,8 +25,6 @@ def get_latest_ubuntu_ami(region):
     else:
         return None
 
-# Curl the following URL to get all AMIs
-# curl -s "https://cloud-images.ubuntu.com/locator/ec2/releasesTable"
 request_url = "https://cloud-images.ubuntu.com/locator/ec2/releasesTable"
 response = requests.get(request_url)
 if response.status_code != 200:
@@ -31,15 +36,6 @@ data = json.loads(response.text)["aaData"]
 # Filter to only Ubuntu 20.04 LTS, the second column
 data = [row for row in data if row[2] == "20.04 LTS" and row[3] == "amd64"]
 
-# Create a dictionary of regions and their AMIs
-# Output should look like this:
-# "sa-east-1": {
-#   "region": "sa-east-1",
-#   "zone": "sa-east-1a",
-#   "instance_ami": "ami-0af6e9042ea5a4e3e"
-# },
-# The instance AMI value is in the 7th column and looks like this:
-# "<a href=\"https://console.aws.amazon.com/ec2/home?region=us-east-1#launchAmi=ami-0d65710e46db3c637\">ami-0d65710e46db3c637</a>",
 completeAMIList = {}
 for row in data:
     region = row[0]
