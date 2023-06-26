@@ -18,7 +18,6 @@ def get_latest_ubuntu_ami(region):
     else:
         return None
 
-
 # Curl the following URL to get all AMIs
 # curl -s "https://cloud-images.ubuntu.com/locator/ec2/releasesTable"
 request_url = "https://cloud-images.ubuntu.com/locator/ec2/releasesTable"
@@ -41,14 +40,12 @@ data = [row for row in data if row[2] == "20.04 LTS" and row[3] == "amd64"]
 # },
 # The instance AMI value is in the 7th column and looks like this:
 # "<a href=\"https://console.aws.amazon.com/ec2/home?region=us-east-1#launchAmi=ami-0d65710e46db3c637\">ami-0d65710e46db3c637</a>",
-
 completeAMIList = {}
 for row in data:
     region = row[0]
     zone = row[0] + "a"
     ami = row[6].split(">")[1].split("<")[0]
     completeAMIList[region] = {"region": region, "zone": zone, "instance_ami": ami}
-
 
 # Load initial JSON blob
 with open("regions.md", "r") as f:
@@ -57,11 +54,13 @@ with open("regions.md", "r") as f:
     # Load the text from the markdown file, where each line is a region, and remove # at the front (if present)
     regions = {line.strip("#").strip(): {} for line in f.readlines()}
 
-
 # Update each region with the latest Ubuntu 20.04 AMI
 outputLocations = {}
 for region in regions:
-    outputLocations[region] = completeAMIList[region]
+    try:
+        outputLocations[region] = completeAMIList[region]
+    except KeyError:
+        print(f"Warning: No AMI data found for region '{region}'. Skipping this region.")
 
 # Save updated JSON blob
 with open("regions.json", "w") as f:
