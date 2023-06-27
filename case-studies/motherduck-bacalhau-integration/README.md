@@ -24,7 +24,6 @@ In the `terraform` directory, there is a file called `.env.json.example`. Copy t
 * private_key: Location of the private key for the account for logging in (e.g. ~/.ssh/id_rsa)
 * app_tag:  This will be used to group manage the resources created by this script (e.g. delete them all at once)
 
-We will go through filling out all these details shortly.
 
 ## Setting up Google Cloud
 First, you need to install the Google Cloud SDK. Depending on your platform, you will need to install from a package manager, or directly compile. Instructions to do so are here. [https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install)

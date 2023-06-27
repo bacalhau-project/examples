@@ -9,7 +9,7 @@ If you would just like to run the job, and not build from scratch, please see th
 This sample example consists of three components:
 * A container that runs a python script that generates logs
 * A container that runs a python script that processes logs and uploads them to a cloud storage bucket
-* A terraform script that provisions a cluster of 4 nodes on Google Cloud
+* A terraform script that provisions a cluster of 16 nodes on Google Cloud
 
 You will also have to login with credentials for Google Cloud, and Tailscale.
 
@@ -18,12 +18,10 @@ In the `terraform` directory, there is a file called `.env.json.example`. Copy t
 * project_id - GCP project ID for the project
 * bootstrap_zone: Zone where the bootstrap node for the network will be created
 * locations - a set of objects that define the locations of the nodes in the cluster. Each object has the following fields:
-  * key - the name of the zone
-  * zone - the name of the zone (should be the same as the key)
-  * machine_type - the machine type for the node - must be available in that zone
-  * storage_location - the location of the storage bucket for the node
-  * iam_access - whether to give the node IAM access to the project
-  * create_bucket - whether to create a storage bucket for the node
+  * key for each entry - the name of the zone
+  * region - the name of the region
+  * storage_location - the location of the storage bucket for the node (if needed)
+* motherduck_key: The API key from motherduck - apply here [app.motherduck.com](app.motherduck.com)
 * tailscale_key: An auth key from Tailscale. You can get one from [https://login.tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys). It should be "Reusable", "Expiration of 90 days", "Ephemeral" and have a tag of something meaningful to you.
 * app_name: A meaningful & unique name - will be used as a prefix on the logs.
 * bacalhau_run_file: When Bacalhau starts on the bootstrap node, it creates a `bacalhau.run` file. This file contains the information needed to connect to the cluster. This field specifies the name (but not location) of that file. It will be created in the `/run` directory (unless the installer does not have permissions). During the installation, the file will be copied to the `terraform` directory for installation in non-bacalhau nodes.
@@ -31,8 +29,6 @@ In the `terraform` directory, there is a file called `.env.json.example`. Copy t
 * public_key: Location of the public key for the account for logging in (e.g. ~/.ssh/id_rsa.pub)
 * private_key: Location of the private key for the account for logging in (e.g. ~/.ssh/id_rsa)
 * app_tag:  This will be used to group manage the resources created by this script (e.g. delete them all at once)
-
-We will go through filling out all these details shortly.
 
 ## Setting up Google Cloud
 First, you need to install the Google Cloud SDK. Depending on your platform, you will need to install from a package manager, or directly compile. Instructions to do so are here. [https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install)
@@ -152,8 +148,8 @@ The job container is in the job-container directory. To build it, run:
 ```bash
 # Use a container registry that you have access to
 $CONTAINER_ORG=bacalhauproject
-$CONTAINER_NAME=duckdb-log-processor
-$VERSION=v0.28
+$CONTAINER_NAME=motherduck-log-processor
+$VERSION=v1.0
 docker buildx build --push --platform linux/amd64,linux/arm/v7,linux/arm64/v8 -t "docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION" .
 ```
 
@@ -164,18 +160,17 @@ Inside the container there is a file called `process.py`. This is the script tha
 
 A sample execution - if you need to test locally - will look like this:
 ```bash
-$VERSION=v0.28
+$VERSION=v1.0
 $CONTAINER_ORG=bacalhauproject
-$CONTAINER_NAME=duckdb-log-processor
+$CONTAINER_NAME=motherduck-log-processor
 $LOCAL_DIR_TO_MOUNT=/var/log/logs_to_process
 $APPNAME=aperitivo
-$BUCKET_NAME=archive-bucket
 $QUERY="SELECT * FROM logs WHERE log_level = 'ERROR'"
 # Example:
-docker run --rm -v $LOCAL_DIR_TO_MOUNT:/var/log/logs_to_process docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION /var/log/logs_to_process/$APPNAME.log.1 $BUCKET_NAME $QUERY
+docker run --rm -v $LOCAL_DIR_TO_MOUNT:/var/log/logs_to_process docker.io/$CONTAINER_ORG/$CONTAINER_NAME:$VERSION /var/log/logs_to_process/$APPNAME.log.1 $QUERY
 
 # After variable substitution, it would look like this:
-docker run --rm -v /var/log/logs_to_process:/var/log/logs_to_process docker.io/bacalhauproject/duckdb-log-processor:v1.0 /var/log/logs_to_process/aperitivo.log.1 archive-bucket  "SELECT * FROM logs WHERE log_level = 'ERROR'"
+docker run --rm -v /var/log/logs_to_process:/var/log/logs_to_process docker.io/bacalhauproject/duckdb-log-processor:v1.0 /var/log/logs_to_process/aperitivo.log.1  "SELECT * FROM logs WHERE log_level = 'ERROR'"
 ```
 
 The job also supports gzip expansion, if necessary.
