@@ -1,12 +1,7 @@
-# Instructions to Run This Example
+# Instructions to Running with MotherDuck
 
 ## Introduction
-This file is for building the entire system from scratch. It will go through the steps of setting up Google Cloud, Tailscale, and then running the terraform script to create the cluster.
-
-If you would just like to run the job, and not build from scratch, please see the [README.md](../README.md) file.
-
-## Architecture
-This sample example consists of three components:
+This example shows how to run a simple log processing pipeline with MotherDuck. The pipeline consists of two components:
 * A container that runs a python script that generates logs
 * A container that runs a python script that processes logs and uploads them to MotherDuck
 
