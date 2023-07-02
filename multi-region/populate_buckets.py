@@ -3,7 +3,23 @@ import os
 import json
 import random
 import boto3
-import terraform
+
+def extract_regions_and_store():
+    # Load the .env.json file
+    with open('./tf/.env.json') as json_file:
+        data = json.load(json_file)
+
+    # Extract app_tag
+    app_tag = data["app_tag"]
+
+    # Store the formatted strings in a list
+    bucket_names = []
+    # Iterate through the regions
+    for region in data["locations"].keys():
+        # Format the string and add it to the list
+        bucket_names.append(f'{app_tag}-{region}-images-bucket')
+
+    return bucket_names
 
 def copy_random_images_to_s3_buckets(src_bucket_name, dst_bucket_names, s3, sample_size):
     all_objects = s3.list_objects(Bucket=src_bucket_name)['Contents']
@@ -19,27 +35,20 @@ def copy_random_images_to_s3_buckets(src_bucket_name, dst_bucket_names, s3, samp
             s3.copy(copy_source, dst_bucket_name, image_name)
             print(f"Copied {image_name} from {src_bucket_name} to {dst_bucket_name}")
 
-def retrieve_s3_bucket_info(src_bucket_name, working_dir, sample_size):
+def retrieve_s3_bucket_info(src_bucket_name, sample_size):
     s3 = boto3.client("s3", region_name="eu-north-1")
-    tf = terraform.Terraform(working_dir)
-    tf.init()
-    tf.refresh()
 
-    state = tf.state()
-    s3_buckets = state.get_resources_by_type("aws_s3_bucket")
-    dst_bucket_names = [bucket["name"] for bucket in s3_buckets]
+    dst_bucket_names = extract_regions_and_store()
 
     copy_random_images_to_s3_buckets(src_bucket_name, dst_bucket_names, s3, sample_size)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrieve S3 bucket information using Terraform and copy a random set of images from a source S3 bucket.")
 
-    parser.add_argument("working_dir", type=str, nargs="?", default=os.getcwd(), 
-                        help="Path to the Terraform working directory. Default: current working directory")
     parser.add_argument("--sample_size", type=int, default=10, 
                         help="Number of images to sample from the source S3 bucket. Default: 10")
 
     args = parser.parse_args()
     src_bucket_name = "sam-coco"
     
-    retrieve_s3_bucket_info(src_bucket_name, args.working_dir, args.sample_size)
+    retrieve_s3_bucket_info(src_bucket_name, args.sample_size)
