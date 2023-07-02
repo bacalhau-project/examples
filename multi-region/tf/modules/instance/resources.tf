@@ -129,6 +129,12 @@ resource "aws_instance" "instance" {
   user_data              = data.cloudinit_config.user_data.rendered
   iam_instance_profile   = aws_iam_instance_profile.vm_instance_profile.name
 
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = 1024  // Update this to your desired size in GB
+    delete_on_termination = true
+  }
+
   tags = {
     App  = var.app_tag
     Name = "${var.app_tag}-vm"
