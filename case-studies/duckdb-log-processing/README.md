@@ -1,4 +1,4 @@
-# Instructions to Run this Example
+# Instructions to Running DuckDB with Bacalhau
 
 ## Introduction
 These are the instructions for running the example. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
