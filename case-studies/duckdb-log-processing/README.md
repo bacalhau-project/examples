@@ -1,20 +1,20 @@
-# Instructions to Run this Example
+# Instructions to Running Bacalhau with DuckDB
 
 ## Introduction
-These are the instructions for running the example. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
+These are the instructions for running DuckDB with Bacalhau. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
 
 ## Architecture
 The overall story of what you are doing here is the following:
 * You have a set of nodes in a variety of regions.
 * Each node is generating information - log files, metrics, etc.
-* You'd like to process this information at the point of creation - to filter, to get quicker responses, more efficiently, etc.
-* We'll use DuckDB to run the job remotely, and produce these results.
+* You'd like to process this information at the point of creation - to filter, to get quicker responses, more efficiency, etc.
+* We'll use DuckDB to run the job remotely, and produce the filtered results.
 
 ## Node layout
 On each node, the files are laid out in the following way:
 * `/var/log/` - log files
 * `/var/log/aperitivo_logs` - live log files for aperitivo
-* `/var/log/logs_to_process` - log files that have been rotated out. These are the files that we want to process.
+* `/var/log/logs_to_process` - log files that have been rotated out - these are the files that we want to process
   * `aperitivo_logs.log.1` - the most recent log file, uncompressed
   * `aperitivo_logs.log.2.gz` - the previous log file, compressed
   * `aperitivo_logs.log.N.gz` - the Nth log file, compressed
