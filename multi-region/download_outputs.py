@@ -1,6 +1,7 @@
 import json
 import argparse
 import subprocess
+import os
 
 def extract_buckets_and_regions():
     # Load the .env.json file
@@ -24,6 +25,11 @@ def extract_buckets_and_regions():
     return bucket_region_pairs
 
 def download_buckets_content(bucket_region_pairs, download_path):
+    # Check if the download_path directory exists and create it if it doesn't
+    if not os.path.exists(download_path):
+        os.makedirs(download_path)
+        print(f"Created directory: {download_path}")
+    
     # Iterate over the bucket and region pairs
     for bucket, region in bucket_region_pairs:
         # Form the AWS CLI command
@@ -40,7 +46,8 @@ def download_buckets_content(bucket_region_pairs, download_path):
 parser = argparse.ArgumentParser(description="Download files from AWS S3 buckets")
 
 # Add the arguments
-parser.add_argument('download_path', type=str, help="The path where the files will be downloaded")
+parser.add_argument('--download_path', type=str, default=os.path.join(os.getcwd(), 'outputs'), 
+                    help="The path where the files will be downloaded. Default is './outputs'")
 
 # Parse the arguments
 args = parser.parse_args()
