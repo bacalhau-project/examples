@@ -53,4 +53,4 @@ Generate a tailscale auth key - https://login.tailscale.com/admin/settings/keys
 
 Copy the auth key to the install_tailscale.sh.example script and rename it to install_tailscale.sh
 
-Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspace for every zone in the zone.txt file.
+Follow instuctions and run cells in this [notebook](./run.ipynb)
