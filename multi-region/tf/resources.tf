@@ -31,7 +31,7 @@ module "networkModule" {
   source  = "./modules/network"
   app_tag = var.app_tag
   region  = var.region
-  zone    = var.locations[var.region].zone
+  zone    = var.locations[var.region].availability_zone
 
   cidr_block_range         = "10.0.0.0/16"
   subnet1_cidr_block_range = "10.0.1.0/24"
@@ -51,7 +51,7 @@ module "instanceModule" {
   instance_type      = var.instance_type
   instance_ami       = var.locations[var.region].instance_ami
   region             = var.region
-  zone               = var.locations[var.region].zone
+  zone               = var.locations[var.region].availability_zone
   vpc_id             = module.networkModule.vpc_id
   subnet_public_id   = module.networkModule.public_subnets[0]
   security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_1234, module.securityGroupModule.sg_1235]
