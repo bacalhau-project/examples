@@ -2,6 +2,7 @@
 packages:
   - git
   - make
+  - coreutils  # This package provides shuf, but is usually installed by default.
 
 write_files:
   - encoding: b64
@@ -87,6 +88,14 @@ runcmd:
   - |
     curl -sL https://get.bacalhau.org/install.sh | bash
   - echo "Bacalhau downloaded."
+  #
+  # Clone the repository and pick 25 random images
+  #
+  - git clone https://huggingface.co/datasets/VedantPadwal/brain-tumor /tmp/brain-tumor
+  - sudo mkdir /images
+  - sudo chmod 777 /images
+  - shuf -n 25 -e /tmp/brain-tumor/*.jpg | xargs -I {} cp {} /images/
+  - sudo rm -rf /tmp/brain-tumor
   #
   # Start services
   #
