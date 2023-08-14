@@ -21,7 +21,7 @@ commands = []
 # Iterate through the regions
 for region in data["locations"].keys():
     # Define input and output bucket names
-    output_bucket = f'{app_tag}-{region}-o-images-bucket'
+    output_bucket = f"{app_tag}-{region}-o-images-bucket"
     
     # Format the Docker run command
     command = (f'bacalhau docker run --gpu 1 -i file:///images '
