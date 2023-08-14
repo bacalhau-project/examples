@@ -1,7 +1,6 @@
 import json
 import subprocess
 import random
-import concurrent.futures
 
 def extract_buckets_and_regions():
     with open('./tf/.env.json') as json_file:
@@ -32,8 +31,12 @@ def sync_to_random_bucket(bucket_region_pairs):
     print(f"\nAll gradients synced to bucket: {target_bucket} in region: {target_region}")
     return target_bucket, target_region
 
+def generate_s3_url(target_bucket, target_region):
+    url = f"https://s3.console.aws.amazon.com/s3/object/{target_bucket}?region={target_region}&prefix=*/outputs/brain_tumor_classifier_updated.h5"
+    return url
+
 def run_docker_commands(target_bucket, target_region):
-    command = (f'bacalhau docker run --gpu 1 -i s3://{target_bucket}/gradients/*,opt=region={target_region} '
+    command = (f'bacalhau docker run --id-only --gpu 1 -i s3://{target_bucket}/gradients/*,opt=region={target_region} '
                f'-p s3://{target_bucket}/*,opt=region={target_region} -s region={target_region} '
                f'expanso/federated:new -- python update_model.py --model_path brain_tumor_classifier.h5 '
                f'--saved_gradients /inputs --dataset_path brain-tumor-train.csv --save_path /outputs/brain_tumor_classifier_updated.h5')
@@ -51,3 +54,5 @@ if __name__ == "__main__":
     bucket_region_pairs = extract_buckets_and_regions()
     target_bucket, target_region = sync_to_random_bucket(bucket_region_pairs)
     run_docker_commands(target_bucket, target_region)
+    s3_url = generate_s3_url(target_bucket, target_region)
+    print(f"\nS3 URL to the model: {s3_url}\n")
