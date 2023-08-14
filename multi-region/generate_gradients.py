@@ -26,7 +26,7 @@ for region in data["locations"].keys():
     # Format the Docker run command
     command = (f'bacalhau docker run --gpu 1 -i file:///images '
                f'-p s3://{output_bucket}/*,opt=region={region} -s region={region} '
-               f'expanso/federated -- python gen_gradients.py  --image_dir /images '
+               f'expanso/federated -- python gen_gradients.py  --image_dir /inputs '
                f'--gradients_save_path /outputs --model_path model.h5')
     
     # Add command to the list
