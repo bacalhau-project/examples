@@ -1,6 +1,7 @@
 import json
 import subprocess
-import argparse
+import random
+import concurrent.futures
 
 def extract_buckets_and_regions():
     with open('./tf/.env.json') as json_file:
@@ -15,7 +16,8 @@ def extract_buckets_and_regions():
 
     return bucket_region_pairs
 
-def sync_to_specified_bucket(bucket_region_pairs, target_bucket, target_region):
+def sync_to_random_bucket(bucket_region_pairs):
+    target_bucket, target_region = random.choice(bucket_region_pairs)
     bucket_region_pairs.remove((target_bucket, target_region))
     
     for source_bucket, source_region in bucket_region_pairs:
@@ -46,12 +48,6 @@ def run_command(cmd):
     return stdout, stderr, process.returncode
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Sync gradients to a specified bucket and run Docker commands.')
-    parser.add_argument('--target_bucket', type=str, required=True, help='Target bucket to which gradients will be synced.')
-    parser.add_argument('--target_region', type=str, required=True, help='AWS region of the target bucket.')
-
-    args = parser.parse_args()
-    
     bucket_region_pairs = extract_buckets_and_regions()
-    sync_to_specified_bucket(bucket_region_pairs, args.target_bucket, args.target_region)
-    run_docker_commands(args.target_bucket, args.target_region)
+    target_bucket, target_region = sync_to_random_bucket(bucket_region_pairs)
+    run_docker_commands(target_bucket, target_region)
