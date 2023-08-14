@@ -34,9 +34,9 @@ def sync_to_random_bucket(bucket_region_pairs):
 
 def run_docker_commands(target_bucket, target_region):
     command = (f'bacalhau docker run --gpu 1 -i s3://{target_bucket}/*,opt=region={target_region} '
-               f'-p s3://{target_bucket}/*,opt=region={target_region} -s region={target_region} '
-               f'expanso/federated -- python update_model.py --model_path model.h5 '
-               f'--saved_gradients /inputs --dataset_path brain-tumor-train.csv')
+               f'-p s3://{target_bucket}/model,opt=region={target_region} -s region={target_region} '
+               f'expanso/federated:new -- python update_model.py --model_path brain_tumor_classifier.h5'
+               f'--saved_gradients /inputs --dataset_path brain-tumor-train.csv --save_path /outputs/brain_tumor_classifier_updated.h5')
     
     stdout, stderr, returncode = run_command(command)
 
