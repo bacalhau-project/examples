@@ -21,7 +21,7 @@ def sync_to_random_bucket(bucket_region_pairs):
     bucket_region_pairs.remove((target_bucket, target_region))
     
     for source_bucket, source_region in bucket_region_pairs:
-        command = f"aws s3 sync s3://{source_bucket}/*/outputs/ s3://{target_bucket}/ --source-region {source_region}"
+        command = f"aws s3 sync s3://{source_bucket}/*/outputs/ s3://{target_bucket}/gradients --source-region {source_region}"
         
         try:
             subprocess.check_call(command, shell=True)
