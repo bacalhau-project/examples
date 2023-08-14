@@ -11,11 +11,11 @@ data "cloudinit_config" "user_data" {
       bacalhau_service : base64encode(file("${path.module}/../../node_files/bacalhau.service")),
       ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
       start_bacalhau : base64encode(file("${path.module}/../../node_files/start-bacalhau.sh")),
-      tailscale_key : var.tailscale_key
-      node_name : "${var.app_tag}-${var.region}-vm"
-      ssh_key : compact(split("\n", file(var.public_key)))[0]
-      region : var.region
-      zone : var.zone
+      tailscale_key : var.tailscale_key,
+      node_name : "${var.app_tag}-${var.region}-vm",
+      ssh_key : compact(split("\n", file(var.public_key)))[0],
+      region : var.region,
+      zone : var.zone,
       app_name : var.app_tag
     })
   }
@@ -55,7 +55,7 @@ resource "aws_iam_role_policy" "vm_iam_role_policy" {
     {
       "Effect": "Allow",
       "Action": ["s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::bucket-name"]
+      "Resource": ["arn:aws:s3:::${var.app_tag}-${var.region}-o-images-bucket"]
     },
     {
       "Effect": "Allow",
@@ -64,7 +64,7 @@ resource "aws_iam_role_policy" "vm_iam_role_policy" {
         "s3:GetObject",
         "s3:DeleteObject"
       ],
-      "Resource": ["arn:aws:s3:::bucket-name/*"]
+      "Resource": ["arn:aws:s3:::${var.app_tag}-${var.region}-o-images-bucket/*"]
     }
   ]
 }
@@ -83,7 +83,7 @@ resource "aws_s3_bucket" "output_images_bucket" {
 resource "aws_iam_policy" "bucket_policy" {
   name        = "${var.app_tag}-${var.region}-images-bucket-policy"
   path        = "/"
-  description = "Allow "
+  description = "Allow operations on the images bucket"
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
@@ -98,7 +98,8 @@ resource "aws_iam_policy" "bucket_policy" {
         ],
         "Resource" : [
           "arn:aws:s3:::*/*",
-          "arn:aws:s3:::${var.app_tag}-${var.region}-images-bucket"
+          "arn:aws:s3:::${var.app_tag}-${var.region}-o-images-bucket/*",
+          "arn:aws:s3:::${var.app_tag}-${var.region}-o-images-bucket"
         ]
       }
     ]
