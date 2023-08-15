@@ -1,4 +1,4 @@
-# Multi-Region Bacalhau Nodes with Tailscale
+# Multi-Region Federated Learning with Bacalhau and Tailscale
 
 ## Overview
 
