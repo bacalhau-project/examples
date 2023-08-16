@@ -79,7 +79,7 @@ To install the AWS CLI and configure it:
 
 ### 4. Bacalhau CLI
 
-1. [Install the AWS CLI](https://docs.bacalhau.org/getting-started/installation).
+1. [Install the Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation).
 
 ## Add your regions to regions.md
 ### Note: The Bootstrap region should be first
