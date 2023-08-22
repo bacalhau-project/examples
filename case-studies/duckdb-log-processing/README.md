@@ -1,7 +1,7 @@
-# Instructions to Running Bacalhau with DuckDB
+# Instructions to Distributed Queries with DuckDB
 
 ## Introduction
-These are the instructions for running DuckDB with Bacalhau. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
+These are the instructions for running the distributed queries with DuckDB. It assumes you have a cluster setup (see [FromScratch.md#Cluster-Setup](Cluster Setup)) and a container to run (see [FromScratch.md#Building-a-Container](Building a Container)).
 
 ## Architecture
 The overall story of what you are doing here is the following:
