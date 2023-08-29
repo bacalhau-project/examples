@@ -23,7 +23,7 @@ def extract_regions_and_store():
 
 def copy_random_images_to_s3_buckets(src_bucket_name, dst_bucket_names, s3, sample_size):
     all_objects = s3.list_objects(Bucket=src_bucket_name)['Contents']
-    all_images = [obj['Key'] for obj in all_objects if obj['Key'].endswith(('.png', '.jpg', '.jpeg'))]
+    all_images = [obj['Key'] for obj in all_objects if obj['Key'].endswith(('.mov', '.mp4'))]
 
     for dst_bucket_name in dst_bucket_names:
         sample_images = random.sample(all_images, sample_size)
@@ -46,9 +46,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrieve S3 bucket information using Terraform and copy a random set of images from a source S3 bucket.")
 
     parser.add_argument("--sample_size", type=int, default=10, 
-                        help="Number of images to sample from the source S3 bucket. Default: 10")
+                        help="Number of videos to sample from the source S3 bucket. Default: 10")
 
     args = parser.parse_args()
-    src_bucket_name = "sam-coco"
+    src_bucket_name = "vriv"
     
     retrieve_s3_bucket_info(src_bucket_name, args.sample_size)

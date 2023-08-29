@@ -12,7 +12,7 @@ def run_command(cmd):
 parser = argparse.ArgumentParser(description="Execute docker commands")
 
 # Add the arguments
-parser.add_argument('--prompt_value', type=str, help="The prompt value for the Docker command", default='person')
+parser.add_argument('--prompt_value', type=str, help="The prompt value for the Docker command", default= "car:car,road:road")
 
 # Parse the arguments
 args = parser.parse_args()
@@ -36,8 +36,8 @@ for region in data["locations"].keys():
     # Format the Docker run command
     command = (f'bacalhau docker run --gpu 1 -i src=s3://{input_bucket}/*,opt=region={region} '
                f'-p s3://{output_bucket}/*,opt=region={region} -s region={region} '
-               f'expanso/sam:new -- /bin/bash -c \'python /sam.py --input "/inputs" '
-               f'--output "/outputs" --prompt "{args.prompt_value}"\'')
+               f'expanso/autotrain -- /bin/bash -c \'python /train.py --videos_folder /inputs/'
+               f'--run_directory /outputs/runs/detect --ontology "{args.prompt_value}"\'')
     
     # Add command to the list
     commands.append(command)
