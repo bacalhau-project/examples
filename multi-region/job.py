@@ -34,7 +34,7 @@ for region in data["locations"].keys():
     output_bucket = f'{app_tag}-{region}-o-images-bucket'
 
     # Format the Docker run command
-    command = (f'bacalhau docker run --timeout 3600 --gpu 1 -i src=s3://{input_bucket}/extracted/*,opt=region={region} '
+    command = (f'bacalhau docker run  --memory 112Gb --timeout 3600 --gpu 1 -i src=s3://{input_bucket}/extracted/*,opt=region={region} '
                f'-p s3://{output_bucket}/*,opt=region={region} -s region={region} '
                f'expanso/autotrain -- python /train.py --videos_folder /inputs/ --run_directory /outputs/runs/detect --ontology "{args.prompt_value}"')
     
