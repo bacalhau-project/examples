@@ -36,7 +36,7 @@ for region in data["locations"].keys():
     # Format the Docker run command
     command = (f'bacalhau docker run --timeout 3600 --gpu 1  -i src=s3://{input_bucket}/extracted/*,opt=region={region} '
                f'-p s3://{output_bucket}/*,opt=region={region} -s region={region} '
-               f'expanso/autotrain -- /bin/bash -c \'python /train.py --videos_folder /inputs/'
+               f'expanso/autotrain -- python /train.py --videos_folder /inputs/'
                f'--run_directory /outputs/runs/detect --ontology "{args.prompt_value}"\'')
     
     # Add command to the list
