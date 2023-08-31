@@ -23,7 +23,7 @@ def extract_regions_and_store():
 
 def copy_random_images_to_s3_buckets(src_bucket_name, dst_bucket_names, s3, sample_size):
     all_objects = s3.list_objects(Bucket=src_bucket_name)['Contents']
-    all_images = [obj['Key'] for obj in all_objects if obj['Key'].endswith(('.mov', '.mp4'))]
+    all_images = [obj['Key'] for obj in all_objects if obj['Key'].endswith(('.mov'))]
 
     for dst_bucket_name in dst_bucket_names:
         sample_images = random.sample(all_images, sample_size)
