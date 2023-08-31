@@ -45,7 +45,7 @@ def retrieve_s3_bucket_info(src_bucket_name, sample_size):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrieve S3 bucket information using Terraform and copy a random set of images from a source S3 bucket.")
 
-    parser.add_argument("--sample_size", type=int, default=10, 
+    parser.add_argument("--sample_size", type=int, default=5, 
                         help="Number of videos to sample from the source S3 bucket. Default: 10")
 
     args = parser.parse_args()
