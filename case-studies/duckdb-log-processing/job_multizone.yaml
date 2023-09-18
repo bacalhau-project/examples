@@ -2,7 +2,7 @@ Job:
   APIVersion: V1beta1
   Spec:
     Deal:
-      Concurrency: 112
+      Concurrency: 106
     Docker:
       Entrypoint:
         - /bin/bash

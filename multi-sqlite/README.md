@@ -1,67 +1,40 @@
-# Multi-SQLite Bacalhau Nodes with Tailscale
+# Running Multi-SQLite Bacalhau Nodes 
 
 ## Overview
+SQLite is one of the most popular databases in the world, but it, traditionally, runs in process, meaning it isn't available to other processes or nodes. This is a problem, as the data is only available on a single node, making it difficult to port intelligence to other machines or centralize information.
 
+Bacalhau solves this problem by mounting the SQLite file in a container and running a query against it. This allows you to run a query against a SQLite file on a single node or every node in the network.
 
-Create a tailscale account.
-Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
+## Prerequisites for This Example
+* Azure account (if you do not have a Bacalhau cluster already running)
+* Tailscale account
 
-```jsonc
-// Example/default ACLs for unrestricted connections.
-{
-	// Declare static groups of users. Use autogroups for all users or users with a specific role.
-	// "groups": {
-	//  	"group:example": ["alice@example.com", "bob@example.com"],
-	// },
+## Setting up your Tailscale account
+We will use Tailscale to have all the nodes in the network be able to communicate with each other. If you have already set up a Bacalhau cluster, you can skip this step. Additionally, if you have a different way of connecting the nodes, you can skip this step.
 
-	// Define the tags which can be applied to devices and by which users.
-	"tagOwners": {
-    "tag:bacalhau-multi-region-example": ["autogroup:admin"],
-	},
+## Create and Configure Your Tailscale Account
+We will use Tailscale to provide a cross-region network (instead of creating bridge networks between many VPCs). Doing so is very straightforward.
 
-	// Define access control lists for users, groups, autogroups, tags,
-	// Tailscale IP addresses, and subnet ranges.
-	"acls": [
-		// Allow all connections.
-		// Comment this section out if you want to define specific restrictions.
-		{"action": "accept", "src": ["*"], "dst": ["*:*"]},
-	],
+First, create a Tailscale account. [https://login.tailscale.com/start](https://login.tailscale.com/start)
 
-	// Define users and devices that can use Tailscale SSH.
-	"ssh": [
-		// Allow all users to SSH into their own devices in check mode.
-		// Comment this section out if you want to define specific restrictions.
-		{
-			"action": "check",
-			"src":    ["autogroup:members"],
-			"dst":    ["autogroup:self"],
-			"users":  ["autogroup:nonroot", "root"],
-		},
-	],
+Then go to the admin console and create a new auth key. [https://login.tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys). 
 
-	// Test access rules every time they're saved.
-	// "tests": [
-	//  	{
-	//  		"src": "alice@example.com",
-	//  		"accept": ["tag:example"],
-	//  		"deny": ["100.101.102.103:443"],
-	//  	},
-	// ],
-}
-```
-Generate a tailscale auth key - https://login.tailscale.com/admin/settings/keys
+Your key should look like this image:
 
-## Log in to Azure
-Get the Azure client_id, client_secret, and tenant_id from the Azure CLI
+![Tailscale Auth Key](/case-studies/duckdb-log-processing/images/Tailscale-Auth-Key.png)
+
+When you are done, you should get a key like: `tskey-auth-kFGiAS7CNTRL-2dpMswsLF8UdDydPRMiWDUEXAMPLE`.
+
+This key will be used in the .env.json file in `tailscale_key`.
+
+## Configuring Your 
+Now we will create Azure credentials to use on each machine. Get the Azure client_id, client_secret, and tenant_id from the Azure CLI. First, we will log in and get the subscription ID.
 ```bash
 az login
 az account show
-```
-## Get your subscription ID with the az tool 
-```bash
 export SUBSCRIPTION_ID=$(az account list --query "[?isDefault].id" -o tsv)
 ```
-## Create a resource group
+Next we will create a service principal for use with Terraform.
 ```bash
 az ad sp create-for-rbac --name "bacalhau-multi-region-example" --role contributor --scopes /subscriptions/$SUBSCRIPTION_ID --sdk-auth
 ```
