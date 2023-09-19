@@ -80,6 +80,14 @@ resource "aws_s3_bucket" "images_bucket" {
   }
 }
 
+resource "aws_s3_bucket" "output_images_bucket" {
+  bucket = "${var.app_tag}-${var.region}-o-images-bucket"
+  # Force delete even if not empty
+  force_destroy = true
+  tags = {
+    Name = var.app_tag
+  }
+}
 
 resource "aws_iam_policy" "bucket_policy" {
   name        = "${var.app_tag}-${var.region}-images-bucket-policy"
@@ -120,6 +128,12 @@ resource "aws_instance" "instance" {
   availability_zone      = var.zone
   user_data              = data.cloudinit_config.user_data.rendered
   iam_instance_profile   = aws_iam_instance_profile.vm_instance_profile.name
+
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = 1024  // Update this to your desired size in GB
+    delete_on_termination = true
+  }
 
   tags = {
     App  = var.app_tag
