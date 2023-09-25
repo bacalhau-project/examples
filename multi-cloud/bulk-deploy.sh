@@ -11,11 +11,12 @@ while IFS= read -r line; do
     if [[ $line != \#* ]] && [[ $line != "" ]]; then
         aws_regions+=("$line")
     fi
-done < ../regions-aws.md
+done < ../../regions-aws.md
 
 if [[ "$1" == "create" && "$PWD" == "$aws_directory_path" ]]; then
     for r in "${aws_regions[@]}"
     do
+        echo $PWD
         terraform workspace select -or-create "$r"
         terraform init -upgrade
         terraform apply -auto-approve -var "region=$r" -var-file=.env.json
@@ -23,6 +24,7 @@ if [[ "$1" == "create" && "$PWD" == "$aws_directory_path" ]]; then
 elif [[ "$1" == "destroy" && "$PWD" == "$aws_directory_path" ]]; then
     for r in "${aws_regions[@]}"
     do
+        echo $PWD
         terraform workspace select -or-create "$r"
         terraform init -upgrade
         terraform destroy -auto-approve -var "region=$r" -var-file=.env.json
@@ -39,11 +41,13 @@ cd $gcp_directory_path || exit
 # Assume the regions for GCP are also in regions.md
 
 if [[ "$1" == "create" && "$PWD" == "$gcp_directory_path" ]]; then
+    echo $PWD
     terraform init
     terraform plan -out plan.out
     terraform apply plan.out
 
 elif [[ "$1" == "destroy" && "$PWD" == "$gcp_directory_path" ]]; then
+    echo $PWD
     terraform destroy -plan=plan.out
 
 else
