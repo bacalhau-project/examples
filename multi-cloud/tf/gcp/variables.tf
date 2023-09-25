@@ -18,10 +18,6 @@ variable "machine_type" {
   type        = string
   description = "Machine type to use for the instances"
 }
-variable "bootstrap_zone" {
-  description = "Zone where the bootstrap node will be created"
-  type        = string
-}
 variable "bacalhau_run_file" {
   type        = string
   description = "Bacalhau Run File location"

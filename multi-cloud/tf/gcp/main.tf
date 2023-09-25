@@ -37,12 +37,12 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("../cloud-init/init-vm.yml", {
+    content = templatefile("${path.root}/../cloud-init/init-vm.yml", {
       app_name : var.app_name,
 
-      bacalhau_service : filebase64("${path.root}/tf/node_files/bacalhau.service"),
-      ipfs_service : base64encode(file("${path.module}/tf/node_files/ipfs.service")),
-      start_bacalhau : filebase64("${path.root}/tf/node_files/start_bacalhau.sh"),
+      bacalhau_service : filebase64("${path.root}/../node_files/bacalhau.service"),
+      ipfs_service : base64encode(file("${path.module}/../node_files/ipfs.service")),
+      start_bacalhau : filebase64("${path.root}/../node_files/start_bacalhau.sh"),
       global_bucket_name : "${var.project_id}-global-archive-bucket",
 
       # Need to do the below to remove spaces and newlines from public key
@@ -114,55 +114,53 @@ resource "google_storage_bucket" "node_bucket" {
   force_destroy = true
 }
 
-resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
-  // Only run this on the bootstrap node
-  for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
+# resource "google_storage_bucket" "global_archive_bucket" {
+#   for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
 
-  depends_on = [google_compute_instance.gcp_instance]
+#   name     = "${var.project_id}-global-archive-bucket"
+#   location = var.locations[each.key].storage_location
 
-  connection {
-    host        = each.value.network_interface[0].access_config[0].nat_ip
-    port        = 22
-    user        = var.username
-    private_key = file(var.private_key)
-  }
+#   lifecycle_rule {
+#     condition {
+#       age = "3"
+#     }
+#     action {
+#       type = "Delete"
+#     }
+#   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "echo 'SSHD is now alive.'",
-      "timeout 300 bash -c 'until [[ -s /run/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
-    ]
-  }
+#   storage_class = "ARCHIVE"
+#   force_destroy = true
+# }
 
-  provisioner "local-exec" {
-    command = "ssh -o StrictHostKeyChecking=no ${var.username}@${each.value.network_interface[0].access_config[0].nat_ip} 'sudo cat /run/bacalhau.run' > ${var.bacalhau_run_file}"
-  }
-}
+# resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
+#   // Only run this on the bootstrap node
+#   for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
 
+#   depends_on = [google_compute_instance.gcp_instance]
 
-resource "google_storage_bucket" "global_archive_bucket" {
-  for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
+#   connection {
+#     host        = each.value.network_interface[0].access_config[0].nat_ip
+#     port        = 22
+#     user        = var.username
+#     private_key = file(var.private_key)
+#   }
 
-  name     = "${var.project_id}-global-archive-bucket"
-  location = var.locations[each.key].storage_location
+#   provisioner "remote-exec" {
+#     inline = [
+#       "echo 'SSHD is now alive.'",
+#       "timeout 300 bash -c 'until [[ -s /run/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
+#     ]
+#   }
 
-  lifecycle_rule {
-    condition {
-      age = "3"
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
-  storage_class = "ARCHIVE"
-  force_destroy = true
-}
-
+#   provisioner "local-exec" {
+#     command = "ssh -o StrictHostKeyChecking=no ${var.username}@${each.value.network_interface[0].access_config[0].nat_ip} 'sudo cat /run/bacalhau.run' > ${var.bacalhau_run_file}"
+#   }
+# }
 
 resource "null_resource" "copy-to-node-if-worker" {
   // Only run this on worker nodes, not the bootstrap node
-  for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone != var.bootstrap_zone }
+  for_each = { for k, v in google_compute_instance.gcp_instance : k => v }
 
   depends_on = [null_resource.copy-bacalhau-bootstrap-to-local]
 

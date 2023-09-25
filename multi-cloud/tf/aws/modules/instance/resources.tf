@@ -136,31 +136,9 @@ resource "aws_eip" "instanceeip" {
   }
 }
 
-resource "null_resource" "copy-to-node-if-worker" {
-  count = var.bootstrap_region == var.region ? 0 : 1
-
-  connection {
-    host        = aws_eip.instanceeip.public_ip
-    port        = 22
-    user        = "ubuntu"
-    private_key = file(var.private_key)
-  }
-
-  provisioner "file" {
-    destination = "/home/ubuntu/bacalhau-bootstrap"
-    content     = file(var.bacalhau_run_file)
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo mv /home/ubuntu/bacalhau-bootstrap /etc/bacalhau-bootstrap",
-      "sudo systemctl daemon-reload",
-      "sudo systemctl restart bacalhau.service",
-    ]
-  }
-}
-
 resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
+  // Only run this on the bootstrap node
+
   count = var.bootstrap_region == var.region ? 1 : 0
 
   depends_on = [aws_instance.instance]
@@ -184,4 +162,29 @@ resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
     command = "ssh -o StrictHostKeyChecking=no ubuntu@${aws_eip.instanceeip.public_ip} 'sudo cat /run/bacalhau.run' > ${var.bacalhau_run_file}"
   }
 
+}
+
+resource "null_resource" "copy-to-node-if-worker" {
+  // Only run this on worker nodes, not the bootstrap node
+  count = var.bootstrap_region == var.region ? 0 : 1
+
+  connection {
+    host        = aws_eip.instanceeip.public_ip
+    port        = 22
+    user        = "ubuntu"
+    private_key = file(var.private_key)
+  }
+
+  provisioner "file" {
+    destination = "/home/ubuntu/bacalhau-bootstrap"
+    content     = file(var.bacalhau_run_file)
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mv /home/ubuntu/bacalhau-bootstrap /etc/bacalhau-bootstrap",
+      "sudo systemctl daemon-reload",
+      "sudo systemctl restart bacalhau.service",
+    ]
+  }
 }
