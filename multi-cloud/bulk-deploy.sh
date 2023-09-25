@@ -11,7 +11,7 @@ while IFS= read -r line; do
     if [[ $line != \#* ]] && [[ $line != "" ]]; then
         aws_regions+=("$line")
     fi
-done < ../regions.md
+done < ../regions-aws.md
 
 if [[ "$1" == "create" && "$PWD" == "$aws_directory_path" ]]; then
     for r in "${aws_regions[@]}"
