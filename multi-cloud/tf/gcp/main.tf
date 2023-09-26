@@ -12,7 +12,7 @@ provider "google" {
 
 
 resource "google_service_account" "service_account" {
-  account_id   = "bacalhau-example-sa"
+  account_id   = "bacalhau-multicloud-example-sa"
   display_name = "Bacalhau  Example Service Account"
 }
 
@@ -42,7 +42,7 @@ data "cloudinit_config" "user_data" {
 
       bacalhau_service : filebase64("${path.root}/../node_files/bacalhau.service"),
       ipfs_service : base64encode(file("${path.module}/../node_files/ipfs.service")),
-      start_bacalhau : filebase64("${path.root}/../node_files/start_bacalhau.sh"),
+      start_bacalhau : filebase64("${path.root}/../node_files/start-bacalhau.sh"),
       global_bucket_name : "${var.project_id}-global-archive-bucket",
 
       # Need to do the below to remove spaces and newlines from public key
@@ -51,7 +51,7 @@ data "cloudinit_config" "user_data" {
       tailscale_key : var.tailscale_key,
       node_name : "${var.app_tag}-${each.key}-vm",
       username : var.username,
-      region : each.value.region,
+      region : each.value.zone,
       zone : each.key,
       project_id : var.project_id,
     })
@@ -161,8 +161,6 @@ resource "google_storage_bucket" "node_bucket" {
 resource "null_resource" "copy-to-node-if-worker" {
   // Only run this on worker nodes, not the bootstrap node
   for_each = { for k, v in google_compute_instance.gcp_instance : k => v }
-
-  depends_on = [null_resource.copy-bacalhau-bootstrap-to-local]
 
   connection {
     host        = each.value.network_interface[0].access_config[0].nat_ip

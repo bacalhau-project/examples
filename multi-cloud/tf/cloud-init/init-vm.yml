@@ -80,7 +80,7 @@ runcmd:
   - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
   - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
   - sudo bash go-ipfs/install.sh
-  - IPFS_PATH=/data ipfs init
+  - sudo IPFS_PATH=/data ipfs init
   #
   # Install Bacalhau
   #
