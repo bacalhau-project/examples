@@ -112,7 +112,7 @@ This will install the Bacalhau client. Additionally, you will have to set up you
 export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/100.118.19.12/tcp/46883/p2p/QmeGoAkQEKedJK5mKNHbNTibdSUwLetKEXAMPLE
 export BACALHAU_API_HOST=0.0.0.0
 export BACALHAU_API_PORT=1234
-export BACALHAU_PEER_CONNECT=/ip4/100.116.19.97/tcp/37063/p2p/Qma5AkfRfaYZ4Ewv2BLYXLTwGKYS2nsWEXAMPLE
+export BACALHAU_NODE_LIBP2P_PEERCONNECT=/ip4/100.116.19.97/tcp/37063/p2p/Qma5AkfRfaYZ4Ewv2BLYXLTwGKYS2nsWEXAMPLE
 ```
 
 You will have to update the `BACALHAU_API_HOST` with the value of the IP address from the `BACALHAU_IPFS_SWARM_ADDRESSES`. So you should execute the following command:
