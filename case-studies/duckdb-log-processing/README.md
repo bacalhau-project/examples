@@ -30,7 +30,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 You will also need to source the bacalhau.run file to get the correct environment variables. To do so, this from the main, run:
 
 ```bash
-# This file will be in your terraform directory, if you used terraform to set up your cluster. Otherwise, it will be on any node in the /run/bacalhau.run file or the variable values will be in the /etc/bacalhau-bootstrap file.
+# This file will be in your terraform directory, if you used terraform to set up your cluster. Otherwise, it will be on any node in the /data/bacalhau.run file or the variable values will be in the /etc/bacalhau-bootstrap file.
 source terraform/bacalhau.run 
 ```
 
