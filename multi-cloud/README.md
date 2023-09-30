@@ -1,7 +1,8 @@
-# Multi-Region Bacalhau Nodes with Tailscale
+# Deploying Multi-Cloud Bacalhau Nodes with Tailscale
 
 ## Overview
-In this example we will deploy bacalhau to AWS and GCP and run jobs accross clouds simultaneously
+In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run jobs across multiple clouds simultaneously.
+
 
 Create a tailscale account.
 Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
@@ -55,13 +56,15 @@ Copy the auth key to the install_tailscale.sh.example script and rename it to in
 
 Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspace for every zone in the zone.txt file.
 
-After terraform deployment is completed successfully, Run these commands in your terminal:
-```
+After successfully completing the Terraform deployment, execute the following commands in your terminal to set up the environment variables:
+
+\```bash
 source tf/aws/baclhau.run
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' ./tf/aws/terraform.tfstate.d/ca-central-1/terraform.tfstate)
-```
+\```
 
-Test the network by running a simple job accross all the nodes on the network:
-```
+To test the network, run a simple job across all nodes using the following command:
+
+\```bash
 bacalhau docker run --target=all ubuntu echo hello
-```
+\```
