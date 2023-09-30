@@ -30,16 +30,16 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 You will also need to source the bacalhau.run file to get the correct environment variables. To do so, this from the main, run:
 
 ```bash
-# This file will be in your terraform directory, if you used terraform to set up your cluster. Otherwise, it will be on any node in the /run/bacalhau.run file or the variable values will be in the /etc/bacalhau-bootstrap file.
+# This file will be in your terraform directory, if you used terraform to set up your cluster. Otherwise, it will be on any node in the /data/bacalhau.run file or the variable values will be in the /etc/bacalhau-bootstrap file.
 source terraform/bacalhau.run 
 ```
 
 You will have to update the BACALHAU_API_HOST environment variable with the correct one. After you set the environment variables, you can run the following command to check that everything is working:
 
 ```bash
-export BACALHAU_PEER_CONNECT=/ip4/100.76.225.105/tcp/44635/p2p/QmRrs2aDsuTek5rEze6XTHbqSnta7qr3Co1KFRpfvuTBui 
-# Command to get the IP address (the second field) in the BACALHAU_PEER_CONNECT variable:
-export BACALHAU_API_HOST=$(echo $BACALHAU_PEER_CONNECT | cut -d'/' -f3)
+export BACALHAU_NODE_LIBP2P_PEERCONNECT=/ip4/100.76.225.105/tcp/44635/p2p/QmRrs2aDsuTek5rEze6XTHbqSnta7qr3Co1KFRpfvuTBui 
+# Command to get the IP address (the second field) in the BACALHAU_NODE_LIBP2P_PEERCONNECT variable:
+export BACALHAU_API_HOST=$(echo $BACALHAU_NODE_LIBP2P_PEERCONNECT | cut -d'/' -f3)
 ```
 
 You are now ready to run a job. To run a quick test, run the following command:

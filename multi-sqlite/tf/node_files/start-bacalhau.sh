@@ -19,7 +19,7 @@ fi
 if [[ -f /etc/bacalhau-bootstrap ]]; then
   # shellcheck disable=SC1090
   source /etc/bacalhau-bootstrap
-  CONNECT_PEER="${BACALHAU_PEER_CONNECT}"
+  CONNECT_PEER="${BACALHAU_NODE_LIBP2P_PEERCONNECT}"
 fi
 
 # If /etc/bacalhau-node-info exists, then load the variables from it
