@@ -1,7 +1,6 @@
-# Multi-Region Federated Learning with Bacalhau and Tailscale
+# Multi-Region Federated Learning with Bacalhau and Tailscale on AWS
 
 ## Overview
-
 
 Create a tailscale account.
 Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
@@ -104,26 +103,41 @@ sudo apt-get install git-lfs
 git lfs install
 ```
 
-##### Clone the repo and follow the instructions in the readme to build your container
+##### Clone the repo and follow the instructions in this [readme](https://huggingface.co/VedantPadwal/federated/blob/main/README) to build your container
 ```
 git clone https://huggingface.co/VedantPadwal/federated/
 ```
 
 ### Running the jobs
 
-#### Run this command. Copy the ENV values and update BACALHAU_API_HOST to the public IP of your bootstrap node
+After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following commands in your terminal:
+
 ```
-cat tf/bacalhau.run
+source tf/aws/baclhau.run
+export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' ./tf/aws/terraform.tfstate.d/ca-central-1/terraform.tfstate)
 ```
 
-#### Job0: Generating the Gradients
-This job is to generate the gradients from the local private data on the nodes and save them to S3
-```
+### Job0: Gradient Generation
+
+**Objective:** Generate gradients from local private data on the nodes and upload them to an S3 bucket.
+
+**Execution Command:**
+
+```bash
 python3 generate_gradients.py
 ```
 
-#### Job1: Update Model with the Gradients
-In this Job we combine the outputs from all the buckets into a single bucket and run the job on the node in the same region as the bucket and save the model in the same bucket
-```
+**Details:** 
+- The script determines the region names from `./tf/.env.json`.
+- For each region and unique bucket name (since bucket names must be unique), the script performs the following operations:
+  1. Mounts training images located at `/images` on the node.
+  2. Fine-tunes the global model.
+  3. Saves the resulting gradients to the specified S3 bucket.
+
+### Job1: Model Update with Gradients
+
+**Objective:** Merge outputs from all S3 buckets into a single bucket. Then, execute the job on a node located in the same region as this bucket, and save the updated model within this bucket.
+
+```bash
 python3 update_model.py
 ```
