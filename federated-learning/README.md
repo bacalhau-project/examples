@@ -110,11 +110,12 @@ git clone https://huggingface.co/VedantPadwal/federated/
 
 ### Running the jobs
 
-After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following commands in your terminal:
+After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following command in your terminal:
 
 ```
 source tf/aws/baclhau.run
-export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' ./tf/aws/terraform.tfstate.d/ca-central-1/terraform.tfstate)
+REGION=$(awk '!/^#/' regions.md | head -n 1)
+export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' "./tf/aws/terraform.tfstate.d/${REGION}/terraform.tfstate")
 ```
 
 ### Job0: Gradient Generation
