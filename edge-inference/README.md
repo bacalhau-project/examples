@@ -1,7 +1,7 @@
-# Multi-Region Bacalhau Nodes with Tailscale
+# Bacalhau Multi-Region Edge-Inference with Tailscale
 
 ## Overview
-
+In this example we will simulate running object detection on the data stored on two edge bacalhau nodes located in two different AWS regions.
 
 Create a tailscale account.
 Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
@@ -97,7 +97,7 @@ cp -r .env.example .env.json
 ./bulk-deploy.sh create
 ```
 
-## Writting the Python Inference Script
+## Writting the Python Inference Script (Optional)
 
 For this example we use the jetson emulator SDK
 To install the package run
@@ -139,19 +139,26 @@ To Build and Push the container run this command
 
 ### Deploying the infra
 
-```python
-%%bash
+```
 ./bulk-deploy.sh create
 ```
-
 ### Running the job
 
-```python
-!bacalhau docker run --concurrency 2 -i https://gist.githubusercontent.com/js-ts/0474dc29b091dc6cf66d9061b2fd5838/raw/bef847a676f1978f5698e38103a355dce00af61e/script.py expanso/jetson -- python inputs/script.py
+After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following command in your terminal:
+
+```
+source tf/aws/baclhau.run
+REGION=$(awk '!/^#/' regions.md | head -n 1)
+export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' "./tf/aws/terraform.tfstate.d/${REGION}/terraform.tfstate")
 ```
 
-### Viewing the outputs 
+### Running the job across all the nodes
+```
+bacalhau docker run --target=all -i https://gist.githubusercontent.com/js-ts/0474dc29b091dc6cf66d9061b2fd5838/raw/bef847a676f1978f5698e38103a355dce00af61e/script.py expanso/jetson -- python inputs/script.py
+```
 
-```python
-!bacalhau logs <YOUR-JOB-ID>
+### Viewing the Output Logs of the Job
+
+```
+bacalhau logs <YOUR-JOB-ID>
 ```
