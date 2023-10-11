@@ -105,7 +105,7 @@ git lfs install
 
 ##### Clone the repo and follow the instructions in this [readme](https://huggingface.co/VedantPadwal/federated/blob/main/README) to build your container
 ```
-git clone https://huggingface.co/VedantPadwal/federated/
+git clone https://huggingface.co/expanso/federated/
 ```
 
 ### Running the jobs
