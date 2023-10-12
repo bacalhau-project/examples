@@ -10,10 +10,9 @@ provider "google" {
   project = var.project_id
 }
 
-
 resource "google_service_account" "service_account" {
-  account_id   = "bacalhau-multicloud-example-sa"
-  display_name = "Bacalhau  Example Service Account"
+  account_id   = "multicloud-imagesearch"
+  display_name = "Bacalhau Example Service Account"
 }
 
 resource "google_project_iam_member" "member_role" {
@@ -27,7 +26,6 @@ resource "google_project_iam_member" "member_role" {
 }
 
 data "cloudinit_config" "user_data" {
-
   for_each = var.locations
 
   gzip          = false
@@ -37,17 +35,13 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.root}/../cloud-init/init-vm.yml", {
+    content = templatefile("${path.root}/../cloud-init/init-vm-gcp.yml", {
       app_name : var.app_name,
-
       bacalhau_service : filebase64("${path.root}/../node_files/bacalhau.service"),
       ipfs_service : base64encode(file("${path.module}/../node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/../node_files/start-bacalhau.sh"),
       global_bucket_name : "${var.project_id}-global-archive-bucket",
-
-      # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],
-
       tailscale_key : var.tailscale_key,
       node_name : "${var.app_tag}-${each.key}-vm",
       username : var.username,
@@ -57,7 +51,6 @@ data "cloudinit_config" "user_data" {
     })
   }
 }
-
 
 resource "google_compute_instance" "gcp_instance" {
   depends_on = [google_project_iam_member.member_role]
@@ -70,12 +63,16 @@ resource "google_compute_instance" "gcp_instance" {
 
   boot_disk {
     initialize_params {
-      image = "projects/nvidia-ngc-public/global/images/nvidia-gpu-cloud-image-20230206"
-      size  = 50
+      image = "projects/deeplearning-platform-release/global/images/common-cu121-v20230925-ubuntu-2004-py310"
+      size  = 100
     }
   }
 
-
+  # Scheduling block added to disable live migration
+  scheduling {
+    on_host_maintenance = "TERMINATE"
+    automatic_restart   = false
+  }
 
   network_interface {
     network = "default"
@@ -93,6 +90,11 @@ resource "google_compute_instance" "gcp_instance" {
     user-data = "${data.cloudinit_config.user_data[each.key].rendered}",
     ssh-keys  = "${var.username}:${file(var.public_key)}",
   }
+
+    guest_accelerator {
+    type  = "${var.accelerator}"
+    count = 1
+    }
 }
 
 resource "google_storage_bucket" "node_bucket" {
@@ -114,52 +116,7 @@ resource "google_storage_bucket" "node_bucket" {
   force_destroy = true
 }
 
-# resource "google_storage_bucket" "global_archive_bucket" {
-#   for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
-
-#   name     = "${var.project_id}-global-archive-bucket"
-#   location = var.locations[each.key].storage_location
-
-#   lifecycle_rule {
-#     condition {
-#       age = "3"
-#     }
-#     action {
-#       type = "Delete"
-#     }
-#   }
-
-#   storage_class = "ARCHIVE"
-#   force_destroy = true
-# }
-
-# resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
-#   // Only run this on the bootstrap node
-#   for_each = { for k, v in google_compute_instance.gcp_instance : k => v if v.zone == var.bootstrap_zone }
-
-#   depends_on = [google_compute_instance.gcp_instance]
-
-#   connection {
-#     host        = each.value.network_interface[0].access_config[0].nat_ip
-#     port        = 22
-#     user        = var.username
-#     private_key = file(var.private_key)
-#   }
-
-#   provisioner "remote-exec" {
-#     inline = [
-#       "echo 'SSHD is now alive.'",
-#       "timeout 300 bash -c 'until [[ -s /run/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
-#     ]
-#   }
-
-#   provisioner "local-exec" {
-#     command = "ssh -o StrictHostKeyChecking=no ${var.username}@${each.value.network_interface[0].access_config[0].nat_ip} 'sudo cat /run/bacalhau.run' > ${var.bacalhau_run_file}"
-#   }
-# }
-
 resource "null_resource" "copy-to-node-if-worker" {
-  // Only run this on worker nodes, not the bootstrap node
   for_each = { for k, v in google_compute_instance.gcp_instance : k => v }
 
   connection {
@@ -176,10 +133,9 @@ resource "null_resource" "copy-to-node-if-worker" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo mv /home/${var.username}/bacalhau-bootstrap /etc/bacalhau-bootstrap",
-      "sudo systemctl daemon-reload",
-      "sudo systemctl restart bacalhau.service",
+    "sudo mv /home/${var.username}/bacalhau-bootstrap /etc/bacalhau-bootstrap",
+    "sudo systemctl daemon-reload",
+    "sudo systemctl restart bacalhau.service",
     ]
   }
 }
-

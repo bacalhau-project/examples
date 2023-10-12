@@ -1,105 +1,47 @@
-#cloud-config
-packages:
-  - git
-  - make
+#!/bin/bash
+# shellcheck disable=SC1091,SC2312,SC2155
+set -euo pipefail
+IFS=$'\n\t'
 
-write_files:
-  - encoding: b64
-    content: |
-      ${ start_bacalhau }
-    owner: root:root
-    path: /node/start-bacalhau.sh
-    permissions: "0700"
-  - encoding: b64
-    content: |
-      ${ bacalhau_service }
-    owner: root:root
-    path: /etc/systemd/system/bacalhau.service
-    permissions: "0600"
-  - content: |
-      export REGION=${ region }
-      export ZONE=${ zone }
-      export APPNAME=${ app_name }
-    owner: root:root
-    permissions: "0444"
-    path: /etc/bacalhau-node-info
-  - encoding: b64
-    content: |
-      ${ ipfs_service }
-    owner: root:root
-    permissions: "0600"
-    path: /etc/systemd/system/ipfs.service
+# we start with none as the default ("none" prevents the node connecting to our default bootstrap list)
+export CONNECT_PEER="none"
 
-package_update: true
+# Special case - get tailscale address if any
+# If the tailscale0 address exists in the command ip
+export TAILSCALE_ADDRESS=$(ip -4 a l tailscale0 | awk '/inet/ {print $2}' | cut -d/ -f1)
 
-runcmd:
-  - echo "Copying the SSH Key to the server"
-  - |
-    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
-  # Set up directory structure and move files
-  - sudo mkdir /node
-  - sudo mkdir /data
-  - sudo chmod +x /node/*.sh
-  - sudo chmod 0700 /node
-  - sudo chmod 0700 /data
-  #
-  # Install tailscale
-  #
-  - |
-    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
-  - apt-get update -y
-  - apt -y install tailscale
-  - sudo tailscale up --authkey ${ tailscale_key } --hostname ${ node_name }
-  #
-  # Install go
-  #
-  - sudo rm -fr /usr/local/go /usr/local/bin/go
-  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
-  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-  #
-  # Install docker
-  #
-  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
-  - sudo mkdir -p /etc/apt/keyrings
-  - |
-    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  - sudo apt-get update -y
-  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-  #
-  # Install git-lfs
-  #
-  - |
-    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
-  - sudo apt -y install git-lfs
-  - HOME=/home/ubuntu git lfs install
-  #
-  # Install IPFS
-  #
-  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
-  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
-  - sudo bash go-ipfs/install.sh
-  - sudo IPFS_PATH=/data ipfs init
-  #
-  # Install Bacalhau
-  #
-  - |
-    curl -sL https://get.bacalhau.org/install.sh | bash
-  - echo "Bacalhau downloaded."
-  #
-  # Clone sea_creatures repository
-  - git clone https://github.com/js-ts/sea_creatures.git /home/ubuntu/sea_creatures
-  # Select 10 random .jpg images from sea_creatures repository and delete the rest
-  - |
-    cd /home/ubuntu/sea_creatures/images
-    shuf -n $(($(ls -1 *.jpg | wc -l) - 10)) -e *.jpg | xargs rm
-  #
-  # Start services
-  - sudo systemctl daemon-reload
-  - sudo systemctl enable docker
-  - sudo systemctl restart docker
-  - sudo systemctl enable ipfs
-  - sudo systemctl restart ipfs
-  - sudo systemctl enable bacalhau.service
-  - sudo systemctl restart bacalhau.service
+# if TAILSCALE_ADDRESS is set, use it to populate the CONNECT_PEER variable
+if [[ -n "${TAILSCALE_ADDRESS}" ]]; then
+  export BACALHAU_PREFERRED_ADDRESS="${TAILSCALE_ADDRESS}"
+fi
+
+# if the file /etc/bacalhau-bootstrap exists, use it to populate the CONNECT_PEER variable
+if [[ -f /etc/bacalhau-bootstrap ]]; then
+  # shellcheck disable=SC1090
+  source /etc/bacalhau-bootstrap
+  CONNECT_PEER="${BACALHAU_NODE_LIBP2P_PEERCONNECT}"
+fi
+
+# If /etc/bacalhau-node-info exists, then load the variables from it
+if [[ -f /etc/bacalhau-node-info ]]; then
+  # shellcheck disable=SC1090
+  . /etc/bacalhau-node-info
+fi
+
+labels="ip=${TAILSCALE_ADDRESS}"
+
+# If REGION is set, then we can assume all labels are set, and we should add it to the labels
+if [[ -n "${REGION}" ]]; then
+  labels="${labels},region=${REGION},zone=${ZONE},appname=${APPNAME}"
+fi
+
+bacalhau serve \
+  --node-type requester,compute \
+  --job-selection-data-locality anywhere \
+  --swarm-port 1235 \
+  --api-port 1234 \
+  --peer "${CONNECT_PEER}" \
+  --private-internal-ipfs=true \
+  --allow-listed-local-paths '/home/ubuntu/sea_creatures/**' \
+  --job-selection-accept-networked \
+  --labels "${labels}"

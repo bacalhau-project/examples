@@ -59,12 +59,17 @@ Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspac
 After successfully completing the Terraform deployment, execute the following commands in your terminal to set up the environment variables:
 
 ```
-cd tf/aws/ && source baclhau.run
+cd tf/aws/ && source bacalhau.run
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
 ```
 
 To test the network, run a simple job across all nodes using the following command:
 
 ```
-bacalhau docker run --target=all --gpu 1 expanso/sam:new -- /bin/bash -c 'python /sam.py --input /home/ubuntu/sea_creatures/ --output /outputs --prompt "fish"'
+bacalhau docker run \
+--target=all \
+--gpu 1 \
+expanso/sam:new \
+-i file:///home/ubuntu/sea_creatures:/inputs \
+-- /bin/bash -c 'python /sam.py --input /inputs --output /outputs --prompt "fish"'
 ```

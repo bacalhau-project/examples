@@ -125,6 +125,12 @@ resource "aws_instance" "instance" {
     App  = var.app_tag
     Name = "${var.app_tag}-vm"
   }
+
+    root_block_device {
+    volume_type           = "gp2"  # General purpose SSD. Change to "io1", "st1", etc. if needed.
+    volume_size           = 100    # Size in GB. Change this value as per your needs.
+    delete_on_termination = true  # This means the EBS volume will be deleted when the EC2 instance is terminated.
+}
 }
 
 resource "aws_eip" "instanceeip" {

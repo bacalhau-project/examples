@@ -42,3 +42,7 @@ variable "tailscale_key" {
   description = "Tailscale key"
   type        = string
 }
+variable "accelerator" {
+  description = "GPU Device Name"
+  type        = string
+}

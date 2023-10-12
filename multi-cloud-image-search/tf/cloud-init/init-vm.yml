@@ -52,6 +52,10 @@ runcmd:
   - apt -y install tailscale
   - sudo tailscale up --authkey ${ tailscale_key } --hostname ${ node_name }
   #
+  # Install GPU drivers
+  #
+  - sudo /opt/deeplearning/install-driver.sh
+  #
   # Install go
   #
   - sudo rm -fr /usr/local/go /usr/local/bin/go
