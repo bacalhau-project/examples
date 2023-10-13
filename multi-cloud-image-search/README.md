@@ -1,7 +1,7 @@
 # Deploying Multi-Cloud-Image-Search Bacalhau Nodes with Tailscale
 
 ## Overview
-In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run jobs across multiple clouds simultaneously.
+In this guide, we will deploy Bacalhau GPU nodes on both AWS and GCP, and demonstrate how to run image search jobs across multiple clouds simultaneously.
 
 
 Create a tailscale account.
@@ -63,13 +63,24 @@ cd tf/aws/ && source bacalhau.run
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
 ```
 
-To test the network, run a simple job across all nodes using the following command:
-
+Run the job across all nodes to search for "fish":
 ```
 bacalhau docker run \
+--memory 20Gb \
 --target=all \
 --gpu 1 \
 expanso/sam:new \
 -i file:///home/ubuntu/sea_creatures:/inputs \
 -- /bin/bash -c 'python /sam.py --input /inputs --output /outputs --prompt "fish"'
+```
+
+Before Downloading make sure that you can access 45337 port
+```
+ nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
+```
+
+Download the outputs (Replace <JOB-ID> with the ID of your job)
+```
+export BACALHAU_IPFS_SWARM_ADDRESSES=$BACALHAU_NODE_IPFS_SWARMADDRESSES
+bacalhau get <JOB-ID> 
 ```
