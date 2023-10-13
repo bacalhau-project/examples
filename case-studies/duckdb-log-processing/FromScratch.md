@@ -72,7 +72,7 @@ gcloud services enable storage.googleapis.com
 ```
 
 This `$PROJECT_ID` will be used in the .env.json file in `project_id`.
-
+****
 ## Setting up Tailscale
 We will use Tailscale to provide a cross-region network (instead of creating bridge networks between many VPCs). Doing so is very straightforward.
 
