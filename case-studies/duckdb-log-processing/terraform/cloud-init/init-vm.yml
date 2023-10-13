@@ -83,7 +83,7 @@ package_update: true
 runcmd:
   - echo "Copying the SSH Key to the server"
   - |
-    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/{ubuntu}/.ssh/authorized_keys
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/${ username }/.ssh/authorized_keys
   #
   # Add Python3
   #
@@ -128,7 +128,7 @@ runcmd:
   # Install Bacalhau
   #
   - |
-    curl -sL https://get.bacalhau.org/install.sh | bash
+    curl -sL https://get.bacalhau.org/install.sh | BACALHAU_DIR=/data bash
   - echo "Bacalhau downloaded."
   # Create necessary directory
   - mkdir ${ logs_dir }

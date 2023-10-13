@@ -151,3 +151,9 @@ cat job.yaml | bacalhau create
 ```
 
 With all that, you have a system that can run distributed queries across many nodes, in a much more secure and reliable way.
+
+
+## Troubleshooting
+If your nodes fail to start at "remote_exec" failure when attempting to download `bacalhau.run`, it may be because your tailscale key has expired. Make sure you still have a valid key (they expire after 90 days maximum). 
+
+[https://login.tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys). 
