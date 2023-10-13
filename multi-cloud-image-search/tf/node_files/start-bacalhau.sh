@@ -42,6 +42,6 @@ bacalhau serve \
   --api-port 1234 \
   --peer "${CONNECT_PEER}" \
   --private-internal-ipfs=true \
-  --allow-listed-local-paths '/var/log/logs_to_process/**' \
+  --allow-listed-local-paths '/home/ubuntu/sea_creatures/**' \
   --job-selection-accept-networked \
   --labels "${labels}"
