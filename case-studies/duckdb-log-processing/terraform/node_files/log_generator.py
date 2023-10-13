@@ -46,7 +46,7 @@ def main(log_directory, appname):
             json.dump(log_entries, log_file, indent=2)
 
         # Sleep for 5 seconds before generating another log entry
-        time.sleep(5)
+        # time.sleep(5)
 
 
 if __name__ == "__main__":

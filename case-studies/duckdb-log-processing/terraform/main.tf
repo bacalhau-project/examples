@@ -72,7 +72,7 @@ resource "google_compute_instance" "gcp_instance" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
       size  = 50
     }
   }
@@ -132,7 +132,7 @@ resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
   provisioner "remote-exec" {
     inline = [
       "echo 'SSHD is now alive.'",
-      "timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
+      "sudo timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
     ]
   }
 
