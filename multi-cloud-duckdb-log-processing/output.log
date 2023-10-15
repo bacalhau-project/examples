@@ -1,0 +1,2306 @@
+/home/vedantpadwalinfi/multi-cloud-duckdb-log-processing/examples/multi-cloud-duckdb-log-processing/tf/aws
+[0m[32mSwitched to workspace "ca-central-1".[0m
+
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- instanceModule in modules/instance
+- networkModule in modules/network
+- securityGroupModule in modules/securityGroup
+
+[0m[1mInitializing provider plugins...[0m
+- Finding hashicorp/aws versions matching "~> 4.0"...
+- Finding latest version of hashicorp/tls...
+- Finding latest version of hashicorp/local...
+- Finding latest version of hashicorp/null...
+- Finding latest version of hashicorp/cloudinit...
+- Using previously-installed hashicorp/cloudinit v2.3.2
+- Using previously-installed hashicorp/aws v4.67.0
+- Using previously-installed hashicorp/tls v4.0.4
+- Using previously-installed hashicorp/local v2.4.0
+- Using previously-installed hashicorp/null v3.2.1
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+[0m[1mmodule.instanceModule.data.cloudinit_config.user_data: Reading...[0m[0m
+[0m[1mmodule.instanceModule.data.cloudinit_config.user_data: Read complete after 0s [id=2611042647][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform will perform the following actions:
+
+[1m  # aws_key_pair.keypair[0m will be created
+[0m  [32m+[0m[0m resource "aws_key_pair" "keypair" {
+      [32m+[0m[0m arn             = (known after apply)
+      [32m+[0m[0m fingerprint     = (known after apply)
+      [32m+[0m[0m id              = (known after apply)
+      [32m+[0m[0m key_name        = "multi-cloud-bacalhau-example-key-pair-ca-central-1"
+      [32m+[0m[0m key_name_prefix = (known after apply)
+      [32m+[0m[0m key_pair_id     = (known after apply)
+      [32m+[0m[0m key_type        = (known after apply)
+      [32m+[0m[0m public_key      = (known after apply)
+      [32m+[0m[0m tags_all        = (known after apply)
+    }
+
+[1m  # local_sensitive_file.pem_file[0m will be created
+[0m  [32m+[0m[0m resource "local_sensitive_file" "pem_file" {
+      [32m+[0m[0m content              = (sensitive value)
+      [32m+[0m[0m content_base64sha256 = (known after apply)
+      [32m+[0m[0m content_base64sha512 = (known after apply)
+      [32m+[0m[0m content_md5          = (known after apply)
+      [32m+[0m[0m content_sha1         = (known after apply)
+      [32m+[0m[0m content_sha256       = (known after apply)
+      [32m+[0m[0m content_sha512       = (known after apply)
+      [32m+[0m[0m directory_permission = "700"
+      [32m+[0m[0m file_permission      = "600"
+      [32m+[0m[0m filename             = "./multi-cloud-bacalhau-example-key-pair-ca-central-1.pem"
+      [32m+[0m[0m id                   = (known after apply)
+    }
+
+[1m  # tls_private_key.tls_pk[0m will be created
+[0m  [32m+[0m[0m resource "tls_private_key" "tls_pk" {
+      [32m+[0m[0m algorithm                     = "RSA"
+      [32m+[0m[0m ecdsa_curve                   = "P224"
+      [32m+[0m[0m id                            = (known after apply)
+      [32m+[0m[0m private_key_openssh           = (sensitive value)
+      [32m+[0m[0m private_key_pem               = (sensitive value)
+      [32m+[0m[0m private_key_pem_pkcs8         = (sensitive value)
+      [32m+[0m[0m public_key_fingerprint_md5    = (known after apply)
+      [32m+[0m[0m public_key_fingerprint_sha256 = (known after apply)
+      [32m+[0m[0m public_key_openssh            = (known after apply)
+      [32m+[0m[0m public_key_pem                = (known after apply)
+      [32m+[0m[0m rsa_bits                      = 4096
+    }
+
+[1m  # module.instanceModule.aws_eip.instanceeip[0m will be created
+[0m  [32m+[0m[0m resource "aws_eip" "instanceeip" {
+      [32m+[0m[0m allocation_id        = (known after apply)
+      [32m+[0m[0m association_id       = (known after apply)
+      [32m+[0m[0m carrier_ip           = (known after apply)
+      [32m+[0m[0m customer_owned_ip    = (known after apply)
+      [32m+[0m[0m domain               = (known after apply)
+      [32m+[0m[0m id                   = (known after apply)
+      [32m+[0m[0m instance             = (known after apply)
+      [32m+[0m[0m network_border_group = (known after apply)
+      [32m+[0m[0m network_interface    = (known after apply)
+      [32m+[0m[0m private_dns          = (known after apply)
+      [32m+[0m[0m private_ip           = (known after apply)
+      [32m+[0m[0m public_dns           = (known after apply)
+      [32m+[0m[0m public_ip            = (known after apply)
+      [32m+[0m[0m public_ipv4_pool     = (known after apply)
+      [32m+[0m[0m tags                 = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc                  = true
+    }
+
+[1m  # module.instanceModule.aws_iam_instance_profile.vm_instance_profile[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_instance_profile" "vm_instance_profile" {
+      [32m+[0m[0m arn         = (known after apply)
+      [32m+[0m[0m create_date = (known after apply)
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m name        = "multi-cloud-bacalhau-example-ca-central-1-vm_instance_profile"
+      [32m+[0m[0m name_prefix = (known after apply)
+      [32m+[0m[0m path        = "/"
+      [32m+[0m[0m role        = "multi-cloud-bacalhau-example-ca-central-1_vm_iam_role"
+      [32m+[0m[0m tags_all    = (known after apply)
+      [32m+[0m[0m unique_id   = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_policy.bucket_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_policy" "bucket_policy" {
+      [32m+[0m[0m arn         = (known after apply)
+      [32m+[0m[0m description = "Allow "
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m name        = "multi-cloud-bacalhau-example-ca-central-1-images-bucket-policy"
+      [32m+[0m[0m name_prefix = (known after apply)
+      [32m+[0m[0m path        = "/"
+      [32m+[0m[0m policy      = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:PutObject",
+                          [32m+[0m[0m "s3:GetObject",
+                          [32m+[0m[0m "s3:ListBucket",
+                          [32m+[0m[0m "s3:DeleteObject",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::*/*",
+                          [32m+[0m[0m "arn:aws:s3:::multi-cloud-bacalhau-example-ca-central-1-images-bucket",
+                        ]
+                      [32m+[0m[0m Sid      = "VisualEditor0"
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m policy_id   = (known after apply)
+      [32m+[0m[0m tags_all    = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role.vm_iam_role[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role" "vm_iam_role" {
+      [32m+[0m[0m arn                   = (known after apply)
+      [32m+[0m[0m assume_role_policy    = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action    = "sts:AssumeRole"
+                      [32m+[0m[0m Effect    = "Allow"
+                      [32m+[0m[0m Principal = {
+                          [32m+[0m[0m Service = "ec2.amazonaws.com"
+                        }
+                      [32m+[0m[0m Sid       = ""
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m create_date           = (known after apply)
+      [32m+[0m[0m force_detach_policies = false
+      [32m+[0m[0m id                    = (known after apply)
+      [32m+[0m[0m managed_policy_arns   = (known after apply)
+      [32m+[0m[0m max_session_duration  = 3600
+      [32m+[0m[0m name                  = "multi-cloud-bacalhau-example-ca-central-1_vm_iam_role"
+      [32m+[0m[0m name_prefix           = (known after apply)
+      [32m+[0m[0m path                  = "/"
+      [32m+[0m[0m role_last_used        = (known after apply)
+      [32m+[0m[0m tags_all              = (known after apply)
+      [32m+[0m[0m unique_id             = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role_policy.vm_iam_role_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy" "vm_iam_role_policy" {
+      [32m+[0m[0m id     = (known after apply)
+      [32m+[0m[0m name   = "multi-cloud-bacalhau-example-ca-central-1-vm_iam_role_policy"
+      [32m+[0m[0m policy = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:ListBucket",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::bucket-name",
+                        ]
+                    },
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:PutObject",
+                          [32m+[0m[0m "s3:GetObject",
+                          [32m+[0m[0m "s3:DeleteObject",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::bucket-name/*",
+                        ]
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m role   = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "images_bucket_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = (known after apply)
+      [32m+[0m[0m role       = "multi-cloud-bacalhau-example-ca-central-1_vm_iam_role"
+    }
+
+[1m  # module.instanceModule.aws_instance.instance[0m will be created
+[0m  [32m+[0m[0m resource "aws_instance" "instance" {
+      [32m+[0m[0m ami                                  = "ami-0ea18256de20ecdfc"
+      [32m+[0m[0m arn                                  = (known after apply)
+      [32m+[0m[0m associate_public_ip_address          = (known after apply)
+      [32m+[0m[0m availability_zone                    = "ca-central-1a"
+      [32m+[0m[0m cpu_core_count                       = (known after apply)
+      [32m+[0m[0m cpu_threads_per_core                 = (known after apply)
+      [32m+[0m[0m disable_api_stop                     = (known after apply)
+      [32m+[0m[0m disable_api_termination              = (known after apply)
+      [32m+[0m[0m ebs_optimized                        = (known after apply)
+      [32m+[0m[0m get_password_data                    = false
+      [32m+[0m[0m host_id                              = (known after apply)
+      [32m+[0m[0m host_resource_group_arn              = (known after apply)
+      [32m+[0m[0m iam_instance_profile                 = "multi-cloud-bacalhau-example-ca-central-1-vm_instance_profile"
+      [32m+[0m[0m id                                   = (known after apply)
+      [32m+[0m[0m instance_initiated_shutdown_behavior = (known after apply)
+      [32m+[0m[0m instance_state                       = (known after apply)
+      [32m+[0m[0m instance_type                        = "t2.large"
+      [32m+[0m[0m ipv6_address_count                   = (known after apply)
+      [32m+[0m[0m ipv6_addresses                       = (known after apply)
+      [32m+[0m[0m key_name                             = "multi-cloud-bacalhau-example-key-pair-ca-central-1"
+      [32m+[0m[0m monitoring                           = (known after apply)
+      [32m+[0m[0m outpost_arn                          = (known after apply)
+      [32m+[0m[0m password_data                        = (known after apply)
+      [32m+[0m[0m placement_group                      = (known after apply)
+      [32m+[0m[0m placement_partition_number           = (known after apply)
+      [32m+[0m[0m primary_network_interface_id         = (known after apply)
+      [32m+[0m[0m private_dns                          = (known after apply)
+      [32m+[0m[0m private_ip                           = (known after apply)
+      [32m+[0m[0m public_dns                           = (known after apply)
+      [32m+[0m[0m public_ip                            = (known after apply)
+      [32m+[0m[0m secondary_private_ips                = (known after apply)
+      [32m+[0m[0m security_groups                      = (known after apply)
+      [32m+[0m[0m source_dest_check                    = true
+      [32m+[0m[0m subnet_id                            = (known after apply)
+      [32m+[0m[0m tags                                 = {
+          [32m+[0m[0m "App"  = "multi-cloud-bacalhau-example"
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example-vm"
+        }
+      [32m+[0m[0m tags_all                             = {
+          [32m+[0m[0m "App"  = "multi-cloud-bacalhau-example"
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example-vm"
+        }
+      [32m+[0m[0m tenancy                              = (known after apply)
+      [32m+[0m[0m user_data                            = "9c6c9447909b5a1e48298b5d63ea00ee999af116"
+      [32m+[0m[0m user_data_base64                     = (known after apply)
+      [32m+[0m[0m user_data_replace_on_change          = false
+      [32m+[0m[0m vpc_security_group_ids               = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_s3_bucket.images_bucket[0m will be created
+[0m  [32m+[0m[0m resource "aws_s3_bucket" "images_bucket" {
+      [32m+[0m[0m acceleration_status         = (known after apply)
+      [32m+[0m[0m acl                         = (known after apply)
+      [32m+[0m[0m arn                         = (known after apply)
+      [32m+[0m[0m bucket                      = "multi-cloud-bacalhau-example-ca-central-1-images-bucket"
+      [32m+[0m[0m bucket_domain_name          = (known after apply)
+      [32m+[0m[0m bucket_prefix               = (known after apply)
+      [32m+[0m[0m bucket_regional_domain_name = (known after apply)
+      [32m+[0m[0m force_destroy               = true
+      [32m+[0m[0m hosted_zone_id              = (known after apply)
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m object_lock_enabled         = (known after apply)
+      [32m+[0m[0m policy                      = (known after apply)
+      [32m+[0m[0m region                      = (known after apply)
+      [32m+[0m[0m request_payer               = (known after apply)
+      [32m+[0m[0m tags                        = {
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                    = {
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m website_domain              = (known after apply)
+      [32m+[0m[0m website_endpoint            = (known after apply)
+    }
+
+[1m  # module.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0][0m will be created
+[0m  [32m+[0m[0m resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
+      [32m+[0m[0m id = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_internet_gateway.igw[0m will be created
+[0m  [32m+[0m[0m resource "aws_internet_gateway" "igw" {
+      [32m+[0m[0m arn      = (known after apply)
+      [32m+[0m[0m id       = (known after apply)
+      [32m+[0m[0m owner_id = (known after apply)
+      [32m+[0m[0m tags     = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id   = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_route_table.rtb_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_route_table" "rtb_public" {
+      [32m+[0m[0m arn              = (known after apply)
+      [32m+[0m[0m id               = (known after apply)
+      [32m+[0m[0m owner_id         = (known after apply)
+      [32m+[0m[0m propagating_vgws = (known after apply)
+      [32m+[0m[0m route            = [
+          [32m+[0m[0m {
+              [32m+[0m[0m carrier_gateway_id         = ""
+              [32m+[0m[0m cidr_block                 = "0.0.0.0/0"
+              [32m+[0m[0m core_network_arn           = ""
+              [32m+[0m[0m destination_prefix_list_id = ""
+              [32m+[0m[0m egress_only_gateway_id     = ""
+              [32m+[0m[0m gateway_id                 = (known after apply)
+              [32m+[0m[0m instance_id                = ""
+              [32m+[0m[0m ipv6_cidr_block            = ""
+              [32m+[0m[0m local_gateway_id           = ""
+              [32m+[0m[0m nat_gateway_id             = ""
+              [32m+[0m[0m network_interface_id       = ""
+              [32m+[0m[0m transit_gateway_id         = ""
+              [32m+[0m[0m vpc_endpoint_id            = ""
+              [32m+[0m[0m vpc_peering_connection_id  = ""
+            },
+        ]
+      [32m+[0m[0m tags             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all         = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id           = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_route_table_association.rta_subnet_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_route_table_association" "rta_subnet_public" {
+      [32m+[0m[0m id             = (known after apply)
+      [32m+[0m[0m route_table_id = (known after apply)
+      [32m+[0m[0m subnet_id      = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_subnet.subnet_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_subnet" "subnet_public" {
+      [32m+[0m[0m arn                                            = (known after apply)
+      [32m+[0m[0m assign_ipv6_address_on_creation                = false
+      [32m+[0m[0m availability_zone                              = "ca-central-1a"
+      [32m+[0m[0m availability_zone_id                           = (known after apply)
+      [32m+[0m[0m cidr_block                                     = "10.0.1.0/24"
+      [32m+[0m[0m enable_dns64                                   = false
+      [32m+[0m[0m enable_resource_name_dns_a_record_on_launch    = false
+      [32m+[0m[0m enable_resource_name_dns_aaaa_record_on_launch = false
+      [32m+[0m[0m id                                             = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block_association_id                 = (known after apply)
+      [32m+[0m[0m ipv6_native                                    = false
+      [32m+[0m[0m map_public_ip_on_launch                        = true
+      [32m+[0m[0m owner_id                                       = (known after apply)
+      [32m+[0m[0m private_dns_hostname_type_on_launch            = (known after apply)
+      [32m+[0m[0m tags                                           = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                                       = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                                         = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_vpc.vpc[0m will be created
+[0m  [32m+[0m[0m resource "aws_vpc" "vpc" {
+      [32m+[0m[0m arn                                  = (known after apply)
+      [32m+[0m[0m cidr_block                           = "10.0.0.0/16"
+      [32m+[0m[0m default_network_acl_id               = (known after apply)
+      [32m+[0m[0m default_route_table_id               = (known after apply)
+      [32m+[0m[0m default_security_group_id            = (known after apply)
+      [32m+[0m[0m dhcp_options_id                      = (known after apply)
+      [32m+[0m[0m enable_classiclink                   = (known after apply)
+      [32m+[0m[0m enable_classiclink_dns_support       = (known after apply)
+      [32m+[0m[0m enable_dns_hostnames                 = true
+      [32m+[0m[0m enable_dns_support                   = true
+      [32m+[0m[0m enable_network_address_usage_metrics = (known after apply)
+      [32m+[0m[0m id                                   = (known after apply)
+      [32m+[0m[0m instance_tenancy                     = "default"
+      [32m+[0m[0m ipv6_association_id                  = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block                      = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block_network_border_group = (known after apply)
+      [32m+[0m[0m main_route_table_id                  = (known after apply)
+      [32m+[0m[0m owner_id                             = (known after apply)
+      [32m+[0m[0m tags                                 = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_1234[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_1234" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 1234
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 1234
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_1234"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_1235[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_1235" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 1235
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 1235
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_1235"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_22[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_22" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 22
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 22
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_22"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1mPlan:[0m 20 to add, 0 to change, 0 to destroy.
+[0m
+Changes to Outputs:
+  [32m+[0m[0m ip_address = (known after apply)
+[0m[1mtls_private_key.tls_pk: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_policy.bucket_policy: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role.vm_iam_role: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_s3_bucket.images_bucket: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_policy.bucket_policy: Creation complete after 2s [id=arn:aws:iam::284305717835:policy/multi-cloud-bacalhau-example-ca-central-1-images-bucket-policy][0m
+[0m[1mmodule.instanceModule.aws_iam_role.vm_iam_role: Creation complete after 2s [id=multi-cloud-bacalhau-example-ca-central-1_vm_iam_role][0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy.vm_iam_role_policy: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_instance_profile.vm_instance_profile: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy.vm_iam_role_policy: Creation complete after 1s [id=multi-cloud-bacalhau-example-ca-central-1_vm_iam_role:multi-cloud-bacalhau-example-ca-central-1-vm_iam_role_policy][0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy: Creation complete after 1s [id=multi-cloud-bacalhau-example-ca-central-1_vm_iam_role-20231015113746296900000001][0m
+[0m[1mmodule.instanceModule.aws_iam_instance_profile.vm_instance_profile: Creation complete after 2s [id=multi-cloud-bacalhau-example-ca-central-1-vm_instance_profile][0m
+[0m[1mtls_private_key.tls_pk: Creation complete after 5s [id=7f19a6cde0b90d0d732bc1448ba59f00c310b431][0m
+[0m[1maws_key_pair.keypair: Creating...[0m[0m
+[0m[1mlocal_sensitive_file.pem_file: Creating...[0m[0m
+[0m[1mlocal_sensitive_file.pem_file: Creation complete after 0s [id=c0087ef3b8e24e7eed8732a4cd715b951caec562][0m
+[0m[1maws_key_pair.keypair: Creation complete after 0s [id=multi-cloud-bacalhau-example-key-pair-ca-central-1][0m
+[0m[1mmodule.instanceModule.aws_s3_bucket.images_bucket: Creation complete after 6s [id=multi-cloud-bacalhau-example-ca-central-1-images-bucket][0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Creation complete after 16s [id=vpc-075efd1edcc22c805][0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_internet_gateway.igw: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1235: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1234: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_22: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_internet_gateway.igw: Creation complete after 2s [id=igw-025109d0b9bd828bc][0m
+[0m[1mmodule.networkModule.aws_route_table.rtb_public: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_route_table.rtb_public: Creation complete after 2s [id=rtb-0d3648b19b2aa303e][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_22: Creation complete after 5s [id=sg-015dcfce9f6fc0a09][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1234: Creation complete after 5s [id=sg-010c0dc592c0651d6][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1235: Creation complete after 5s [id=sg-0d614c2e901c9ceff][0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Creation complete after 12s [id=subnet-0a86a2e67a5107b2a][0m
+[0m[1mmodule.networkModule.aws_route_table_association.rta_subnet_public: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_route_table_association.rta_subnet_public: Creation complete after 1s [id=rtbassoc-015bc9a5b0d7869a8][0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Still creating... [20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Creation complete after 25s [id=i-02507bbd2f81cf559][0m
+[0m[1mmodule.instanceModule.aws_eip.instanceeip: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_eip.instanceeip: Creation complete after 2s [id=eipalloc-0314ab077a2be2476][0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Creating...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Provisioning with 'remote-exec'...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Host: 15.157.23.48
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mConnected!
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mSSHD is now alive.
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [1m50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [2m50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [3m50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [4m50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (remote-exec):[0m [0mBacalhau is now alive.
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Provisioning with 'local-exec'...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (local-exec):[0m [0mExecuting: ["/bin/sh" "-c" "ssh -o StrictHostKeyChecking=no ubuntu@15.157.23.48 'sudo cat /data/bacalhau.run' > bacalhau.run"]
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0] (local-exec):[0m [0mWarning: Permanently added '15.157.23.48' (ECDSA) to the list of known hosts.
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Still creating... [5m50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-bacalhau-bootstrap-to-local[0]: Creation complete after 5m52s [id=1240817675788888140][0m
+[0m[1m[32m
+Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
+[0m[0m[1m[32m
+Outputs:
+
+[0mip_address = "15.157.23.48"
+/home/vedantpadwalinfi/multi-cloud-duckdb-log-processing/examples/multi-cloud-duckdb-log-processing/tf/aws
+[0m[32mSwitched to workspace "us-west-2".[0m
+
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- instanceModule in modules/instance
+- networkModule in modules/network
+- securityGroupModule in modules/securityGroup
+
+[0m[1mInitializing provider plugins...[0m
+- Finding hashicorp/aws versions matching "~> 4.0"...
+- Finding latest version of hashicorp/tls...
+- Finding latest version of hashicorp/local...
+- Finding latest version of hashicorp/null...
+- Finding latest version of hashicorp/cloudinit...
+- Using previously-installed hashicorp/local v2.4.0
+- Using previously-installed hashicorp/null v3.2.1
+- Using previously-installed hashicorp/cloudinit v2.3.2
+- Using previously-installed hashicorp/aws v4.67.0
+- Using previously-installed hashicorp/tls v4.0.4
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+[0m[1mmodule.instanceModule.data.cloudinit_config.user_data: Reading...[0m[0m
+[0m[1mmodule.instanceModule.data.cloudinit_config.user_data: Read complete after 0s [id=1869905967][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform will perform the following actions:
+
+[1m  # aws_key_pair.keypair[0m will be created
+[0m  [32m+[0m[0m resource "aws_key_pair" "keypair" {
+      [32m+[0m[0m arn             = (known after apply)
+      [32m+[0m[0m fingerprint     = (known after apply)
+      [32m+[0m[0m id              = (known after apply)
+      [32m+[0m[0m key_name        = "multi-cloud-bacalhau-example-key-pair-us-west-2"
+      [32m+[0m[0m key_name_prefix = (known after apply)
+      [32m+[0m[0m key_pair_id     = (known after apply)
+      [32m+[0m[0m key_type        = (known after apply)
+      [32m+[0m[0m public_key      = (known after apply)
+      [32m+[0m[0m tags_all        = (known after apply)
+    }
+
+[1m  # local_sensitive_file.pem_file[0m will be created
+[0m  [32m+[0m[0m resource "local_sensitive_file" "pem_file" {
+      [32m+[0m[0m content              = (sensitive value)
+      [32m+[0m[0m content_base64sha256 = (known after apply)
+      [32m+[0m[0m content_base64sha512 = (known after apply)
+      [32m+[0m[0m content_md5          = (known after apply)
+      [32m+[0m[0m content_sha1         = (known after apply)
+      [32m+[0m[0m content_sha256       = (known after apply)
+      [32m+[0m[0m content_sha512       = (known after apply)
+      [32m+[0m[0m directory_permission = "700"
+      [32m+[0m[0m file_permission      = "600"
+      [32m+[0m[0m filename             = "./multi-cloud-bacalhau-example-key-pair-us-west-2.pem"
+      [32m+[0m[0m id                   = (known after apply)
+    }
+
+[1m  # tls_private_key.tls_pk[0m will be created
+[0m  [32m+[0m[0m resource "tls_private_key" "tls_pk" {
+      [32m+[0m[0m algorithm                     = "RSA"
+      [32m+[0m[0m ecdsa_curve                   = "P224"
+      [32m+[0m[0m id                            = (known after apply)
+      [32m+[0m[0m private_key_openssh           = (sensitive value)
+      [32m+[0m[0m private_key_pem               = (sensitive value)
+      [32m+[0m[0m private_key_pem_pkcs8         = (sensitive value)
+      [32m+[0m[0m public_key_fingerprint_md5    = (known after apply)
+      [32m+[0m[0m public_key_fingerprint_sha256 = (known after apply)
+      [32m+[0m[0m public_key_openssh            = (known after apply)
+      [32m+[0m[0m public_key_pem                = (known after apply)
+      [32m+[0m[0m rsa_bits                      = 4096
+    }
+
+[1m  # module.instanceModule.aws_eip.instanceeip[0m will be created
+[0m  [32m+[0m[0m resource "aws_eip" "instanceeip" {
+      [32m+[0m[0m allocation_id        = (known after apply)
+      [32m+[0m[0m association_id       = (known after apply)
+      [32m+[0m[0m carrier_ip           = (known after apply)
+      [32m+[0m[0m customer_owned_ip    = (known after apply)
+      [32m+[0m[0m domain               = (known after apply)
+      [32m+[0m[0m id                   = (known after apply)
+      [32m+[0m[0m instance             = (known after apply)
+      [32m+[0m[0m network_border_group = (known after apply)
+      [32m+[0m[0m network_interface    = (known after apply)
+      [32m+[0m[0m private_dns          = (known after apply)
+      [32m+[0m[0m private_ip           = (known after apply)
+      [32m+[0m[0m public_dns           = (known after apply)
+      [32m+[0m[0m public_ip            = (known after apply)
+      [32m+[0m[0m public_ipv4_pool     = (known after apply)
+      [32m+[0m[0m tags                 = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc                  = true
+    }
+
+[1m  # module.instanceModule.aws_iam_instance_profile.vm_instance_profile[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_instance_profile" "vm_instance_profile" {
+      [32m+[0m[0m arn         = (known after apply)
+      [32m+[0m[0m create_date = (known after apply)
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m name        = "multi-cloud-bacalhau-example-us-west-2-vm_instance_profile"
+      [32m+[0m[0m name_prefix = (known after apply)
+      [32m+[0m[0m path        = "/"
+      [32m+[0m[0m role        = "multi-cloud-bacalhau-example-us-west-2_vm_iam_role"
+      [32m+[0m[0m tags_all    = (known after apply)
+      [32m+[0m[0m unique_id   = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_policy.bucket_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_policy" "bucket_policy" {
+      [32m+[0m[0m arn         = (known after apply)
+      [32m+[0m[0m description = "Allow "
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m name        = "multi-cloud-bacalhau-example-us-west-2-images-bucket-policy"
+      [32m+[0m[0m name_prefix = (known after apply)
+      [32m+[0m[0m path        = "/"
+      [32m+[0m[0m policy      = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:PutObject",
+                          [32m+[0m[0m "s3:GetObject",
+                          [32m+[0m[0m "s3:ListBucket",
+                          [32m+[0m[0m "s3:DeleteObject",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::*/*",
+                          [32m+[0m[0m "arn:aws:s3:::multi-cloud-bacalhau-example-us-west-2-images-bucket",
+                        ]
+                      [32m+[0m[0m Sid      = "VisualEditor0"
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m policy_id   = (known after apply)
+      [32m+[0m[0m tags_all    = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role.vm_iam_role[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role" "vm_iam_role" {
+      [32m+[0m[0m arn                   = (known after apply)
+      [32m+[0m[0m assume_role_policy    = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action    = "sts:AssumeRole"
+                      [32m+[0m[0m Effect    = "Allow"
+                      [32m+[0m[0m Principal = {
+                          [32m+[0m[0m Service = "ec2.amazonaws.com"
+                        }
+                      [32m+[0m[0m Sid       = ""
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m create_date           = (known after apply)
+      [32m+[0m[0m force_detach_policies = false
+      [32m+[0m[0m id                    = (known after apply)
+      [32m+[0m[0m managed_policy_arns   = (known after apply)
+      [32m+[0m[0m max_session_duration  = 3600
+      [32m+[0m[0m name                  = "multi-cloud-bacalhau-example-us-west-2_vm_iam_role"
+      [32m+[0m[0m name_prefix           = (known after apply)
+      [32m+[0m[0m path                  = "/"
+      [32m+[0m[0m role_last_used        = (known after apply)
+      [32m+[0m[0m tags_all              = (known after apply)
+      [32m+[0m[0m unique_id             = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role_policy.vm_iam_role_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy" "vm_iam_role_policy" {
+      [32m+[0m[0m id     = (known after apply)
+      [32m+[0m[0m name   = "multi-cloud-bacalhau-example-us-west-2-vm_iam_role_policy"
+      [32m+[0m[0m policy = jsonencode(
+            {
+              [32m+[0m[0m Statement = [
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:ListBucket",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::bucket-name",
+                        ]
+                    },
+                  [32m+[0m[0m {
+                      [32m+[0m[0m Action   = [
+                          [32m+[0m[0m "s3:PutObject",
+                          [32m+[0m[0m "s3:GetObject",
+                          [32m+[0m[0m "s3:DeleteObject",
+                        ]
+                      [32m+[0m[0m Effect   = "Allow"
+                      [32m+[0m[0m Resource = [
+                          [32m+[0m[0m "arn:aws:s3:::bucket-name/*",
+                        ]
+                    },
+                ]
+              [32m+[0m[0m Version   = "2012-10-17"
+            }
+        )
+      [32m+[0m[0m role   = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy[0m will be created
+[0m  [32m+[0m[0m resource "aws_iam_role_policy_attachment" "images_bucket_policy" {
+      [32m+[0m[0m id         = (known after apply)
+      [32m+[0m[0m policy_arn = (known after apply)
+      [32m+[0m[0m role       = "multi-cloud-bacalhau-example-us-west-2_vm_iam_role"
+    }
+
+[1m  # module.instanceModule.aws_instance.instance[0m will be created
+[0m  [32m+[0m[0m resource "aws_instance" "instance" {
+      [32m+[0m[0m ami                                  = "ami-0fcf52bcf5db7b003"
+      [32m+[0m[0m arn                                  = (known after apply)
+      [32m+[0m[0m associate_public_ip_address          = (known after apply)
+      [32m+[0m[0m availability_zone                    = "us-west-2a"
+      [32m+[0m[0m cpu_core_count                       = (known after apply)
+      [32m+[0m[0m cpu_threads_per_core                 = (known after apply)
+      [32m+[0m[0m disable_api_stop                     = (known after apply)
+      [32m+[0m[0m disable_api_termination              = (known after apply)
+      [32m+[0m[0m ebs_optimized                        = (known after apply)
+      [32m+[0m[0m get_password_data                    = false
+      [32m+[0m[0m host_id                              = (known after apply)
+      [32m+[0m[0m host_resource_group_arn              = (known after apply)
+      [32m+[0m[0m iam_instance_profile                 = "multi-cloud-bacalhau-example-us-west-2-vm_instance_profile"
+      [32m+[0m[0m id                                   = (known after apply)
+      [32m+[0m[0m instance_initiated_shutdown_behavior = (known after apply)
+      [32m+[0m[0m instance_state                       = (known after apply)
+      [32m+[0m[0m instance_type                        = "t2.large"
+      [32m+[0m[0m ipv6_address_count                   = (known after apply)
+      [32m+[0m[0m ipv6_addresses                       = (known after apply)
+      [32m+[0m[0m key_name                             = "multi-cloud-bacalhau-example-key-pair-us-west-2"
+      [32m+[0m[0m monitoring                           = (known after apply)
+      [32m+[0m[0m outpost_arn                          = (known after apply)
+      [32m+[0m[0m password_data                        = (known after apply)
+      [32m+[0m[0m placement_group                      = (known after apply)
+      [32m+[0m[0m placement_partition_number           = (known after apply)
+      [32m+[0m[0m primary_network_interface_id         = (known after apply)
+      [32m+[0m[0m private_dns                          = (known after apply)
+      [32m+[0m[0m private_ip                           = (known after apply)
+      [32m+[0m[0m public_dns                           = (known after apply)
+      [32m+[0m[0m public_ip                            = (known after apply)
+      [32m+[0m[0m secondary_private_ips                = (known after apply)
+      [32m+[0m[0m security_groups                      = (known after apply)
+      [32m+[0m[0m source_dest_check                    = true
+      [32m+[0m[0m subnet_id                            = (known after apply)
+      [32m+[0m[0m tags                                 = {
+          [32m+[0m[0m "App"  = "multi-cloud-bacalhau-example"
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example-vm"
+        }
+      [32m+[0m[0m tags_all                             = {
+          [32m+[0m[0m "App"  = "multi-cloud-bacalhau-example"
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example-vm"
+        }
+      [32m+[0m[0m tenancy                              = (known after apply)
+      [32m+[0m[0m user_data                            = "eaa7975b432692748abd17886464a9bbb653774a"
+      [32m+[0m[0m user_data_base64                     = (known after apply)
+      [32m+[0m[0m user_data_replace_on_change          = false
+      [32m+[0m[0m vpc_security_group_ids               = (known after apply)
+    }
+
+[1m  # module.instanceModule.aws_s3_bucket.images_bucket[0m will be created
+[0m  [32m+[0m[0m resource "aws_s3_bucket" "images_bucket" {
+      [32m+[0m[0m acceleration_status         = (known after apply)
+      [32m+[0m[0m acl                         = (known after apply)
+      [32m+[0m[0m arn                         = (known after apply)
+      [32m+[0m[0m bucket                      = "multi-cloud-bacalhau-example-us-west-2-images-bucket"
+      [32m+[0m[0m bucket_domain_name          = (known after apply)
+      [32m+[0m[0m bucket_prefix               = (known after apply)
+      [32m+[0m[0m bucket_regional_domain_name = (known after apply)
+      [32m+[0m[0m force_destroy               = true
+      [32m+[0m[0m hosted_zone_id              = (known after apply)
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m object_lock_enabled         = (known after apply)
+      [32m+[0m[0m policy                      = (known after apply)
+      [32m+[0m[0m region                      = (known after apply)
+      [32m+[0m[0m request_payer               = (known after apply)
+      [32m+[0m[0m tags                        = {
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                    = {
+          [32m+[0m[0m "Name" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m website_domain              = (known after apply)
+      [32m+[0m[0m website_endpoint            = (known after apply)
+    }
+
+[1m  # module.instanceModule.null_resource.copy-to-node-if-worker[0][0m will be created
+[0m  [32m+[0m[0m resource "null_resource" "copy-to-node-if-worker" {
+      [32m+[0m[0m id = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_internet_gateway.igw[0m will be created
+[0m  [32m+[0m[0m resource "aws_internet_gateway" "igw" {
+      [32m+[0m[0m arn      = (known after apply)
+      [32m+[0m[0m id       = (known after apply)
+      [32m+[0m[0m owner_id = (known after apply)
+      [32m+[0m[0m tags     = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id   = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_route_table.rtb_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_route_table" "rtb_public" {
+      [32m+[0m[0m arn              = (known after apply)
+      [32m+[0m[0m id               = (known after apply)
+      [32m+[0m[0m owner_id         = (known after apply)
+      [32m+[0m[0m propagating_vgws = (known after apply)
+      [32m+[0m[0m route            = [
+          [32m+[0m[0m {
+              [32m+[0m[0m carrier_gateway_id         = ""
+              [32m+[0m[0m cidr_block                 = "0.0.0.0/0"
+              [32m+[0m[0m core_network_arn           = ""
+              [32m+[0m[0m destination_prefix_list_id = ""
+              [32m+[0m[0m egress_only_gateway_id     = ""
+              [32m+[0m[0m gateway_id                 = (known after apply)
+              [32m+[0m[0m instance_id                = ""
+              [32m+[0m[0m ipv6_cidr_block            = ""
+              [32m+[0m[0m local_gateway_id           = ""
+              [32m+[0m[0m nat_gateway_id             = ""
+              [32m+[0m[0m network_interface_id       = ""
+              [32m+[0m[0m transit_gateway_id         = ""
+              [32m+[0m[0m vpc_endpoint_id            = ""
+              [32m+[0m[0m vpc_peering_connection_id  = ""
+            },
+        ]
+      [32m+[0m[0m tags             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all         = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id           = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_route_table_association.rta_subnet_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_route_table_association" "rta_subnet_public" {
+      [32m+[0m[0m id             = (known after apply)
+      [32m+[0m[0m route_table_id = (known after apply)
+      [32m+[0m[0m subnet_id      = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_subnet.subnet_public[0m will be created
+[0m  [32m+[0m[0m resource "aws_subnet" "subnet_public" {
+      [32m+[0m[0m arn                                            = (known after apply)
+      [32m+[0m[0m assign_ipv6_address_on_creation                = false
+      [32m+[0m[0m availability_zone                              = "us-west-2a"
+      [32m+[0m[0m availability_zone_id                           = (known after apply)
+      [32m+[0m[0m cidr_block                                     = "10.0.1.0/24"
+      [32m+[0m[0m enable_dns64                                   = false
+      [32m+[0m[0m enable_resource_name_dns_a_record_on_launch    = false
+      [32m+[0m[0m enable_resource_name_dns_aaaa_record_on_launch = false
+      [32m+[0m[0m id                                             = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block_association_id                 = (known after apply)
+      [32m+[0m[0m ipv6_native                                    = false
+      [32m+[0m[0m map_public_ip_on_launch                        = true
+      [32m+[0m[0m owner_id                                       = (known after apply)
+      [32m+[0m[0m private_dns_hostname_type_on_launch            = (known after apply)
+      [32m+[0m[0m tags                                           = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                                       = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                                         = (known after apply)
+    }
+
+[1m  # module.networkModule.aws_vpc.vpc[0m will be created
+[0m  [32m+[0m[0m resource "aws_vpc" "vpc" {
+      [32m+[0m[0m arn                                  = (known after apply)
+      [32m+[0m[0m cidr_block                           = "10.0.0.0/16"
+      [32m+[0m[0m default_network_acl_id               = (known after apply)
+      [32m+[0m[0m default_route_table_id               = (known after apply)
+      [32m+[0m[0m default_security_group_id            = (known after apply)
+      [32m+[0m[0m dhcp_options_id                      = (known after apply)
+      [32m+[0m[0m enable_classiclink                   = (known after apply)
+      [32m+[0m[0m enable_classiclink_dns_support       = (known after apply)
+      [32m+[0m[0m enable_dns_hostnames                 = true
+      [32m+[0m[0m enable_dns_support                   = true
+      [32m+[0m[0m enable_network_address_usage_metrics = (known after apply)
+      [32m+[0m[0m id                                   = (known after apply)
+      [32m+[0m[0m instance_tenancy                     = "default"
+      [32m+[0m[0m ipv6_association_id                  = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block                      = (known after apply)
+      [32m+[0m[0m ipv6_cidr_block_network_border_group = (known after apply)
+      [32m+[0m[0m main_route_table_id                  = (known after apply)
+      [32m+[0m[0m owner_id                             = (known after apply)
+      [32m+[0m[0m tags                                 = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all                             = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_1234[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_1234" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 1234
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 1234
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_1234"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_1235[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_1235" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 1235
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 1235
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_1235"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1m  # module.securityGroupModule.aws_security_group.sg_22[0m will be created
+[0m  [32m+[0m[0m resource "aws_security_group" "sg_22" {
+      [32m+[0m[0m arn                    = (known after apply)
+      [32m+[0m[0m description            = "Managed by Terraform"
+      [32m+[0m[0m egress                 = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 0
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "-1"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 0
+            },
+        ]
+      [32m+[0m[0m id                     = (known after apply)
+      [32m+[0m[0m ingress                = [
+          [32m+[0m[0m {
+              [32m+[0m[0m cidr_blocks      = [
+                  [32m+[0m[0m "0.0.0.0/0",
+                ]
+              [32m+[0m[0m description      = ""
+              [32m+[0m[0m from_port        = 22
+              [32m+[0m[0m ipv6_cidr_blocks = []
+              [32m+[0m[0m prefix_list_ids  = []
+              [32m+[0m[0m protocol         = "tcp"
+              [32m+[0m[0m security_groups  = []
+              [32m+[0m[0m self             = false
+              [32m+[0m[0m to_port          = 22
+            },
+        ]
+      [32m+[0m[0m name                   = "sg_22"
+      [32m+[0m[0m name_prefix            = (known after apply)
+      [32m+[0m[0m owner_id               = (known after apply)
+      [32m+[0m[0m revoke_rules_on_delete = false
+      [32m+[0m[0m tags                   = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m tags_all               = {
+          [32m+[0m[0m "App" = "multi-cloud-bacalhau-example"
+        }
+      [32m+[0m[0m vpc_id                 = (known after apply)
+    }
+
+[1mPlan:[0m 20 to add, 0 to change, 0 to destroy.
+[0m
+Changes to Outputs:
+  [32m+[0m[0m ip_address = (known after apply)
+[0m[1mtls_private_key.tls_pk: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_policy.bucket_policy: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role.vm_iam_role: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_s3_bucket.images_bucket: Creating...[0m[0m
+[0m[1mtls_private_key.tls_pk: Creation complete after 2s [id=6eacc643e3ed0abac9842dd7a8a50ab87f708462][0m
+[0m[1maws_key_pair.keypair: Creating...[0m[0m
+[0m[1mlocal_sensitive_file.pem_file: Creating...[0m[0m
+[0m[1mlocal_sensitive_file.pem_file: Creation complete after 0s [id=5d86412bc1c0a25cda401197af1d6b5342749f32][0m
+[0m[1mmodule.instanceModule.aws_iam_policy.bucket_policy: Creation complete after 1s [id=arn:aws:iam::284305717835:policy/multi-cloud-bacalhau-example-us-west-2-images-bucket-policy][0m
+[0m[1maws_key_pair.keypair: Creation complete after 1s [id=multi-cloud-bacalhau-example-key-pair-us-west-2][0m
+[0m[1mmodule.instanceModule.aws_iam_role.vm_iam_role: Creation complete after 1s [id=multi-cloud-bacalhau-example-us-west-2_vm_iam_role][0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy.vm_iam_role_policy: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_instance_profile.vm_instance_profile: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy_attachment.images_bucket_policy: Creation complete after 1s [id=multi-cloud-bacalhau-example-us-west-2_vm_iam_role-20231015114446718400000001][0m
+[0m[1mmodule.instanceModule.aws_iam_role_policy.vm_iam_role_policy: Creation complete after 1s [id=multi-cloud-bacalhau-example-us-west-2_vm_iam_role:multi-cloud-bacalhau-example-us-west-2-vm_iam_role_policy][0m
+[0m[1mmodule.instanceModule.aws_iam_instance_profile.vm_instance_profile: Creation complete after 2s [id=multi-cloud-bacalhau-example-us-west-2-vm_instance_profile][0m
+[0m[1mmodule.instanceModule.aws_s3_bucket.images_bucket: Creation complete after 5s [id=multi-cloud-bacalhau-example-us-west-2-images-bucket][0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.networkModule.aws_vpc.vpc: Creation complete after 14s [id=vpc-097dabc77d6fe70e5][0m
+[0m[1mmodule.networkModule.aws_internet_gateway.igw: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1234: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_22: Creating...[0m[0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1235: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_internet_gateway.igw: Creation complete after 1s [id=igw-08768f75c958af133][0m
+[0m[1mmodule.networkModule.aws_route_table.rtb_public: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_route_table.rtb_public: Creation complete after 2s [id=rtb-04f989136982f50ba][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1235: Creation complete after 4s [id=sg-0cc037325caf145a0][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_22: Creation complete after 4s [id=sg-026c11b138cdc4f9f][0m
+[0m[1mmodule.securityGroupModule.aws_security_group.sg_1234: Creation complete after 4s [id=sg-0e8c41d71722cd624][0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.networkModule.aws_subnet.subnet_public: Creation complete after 12s [id=subnet-0063976c8733c3f62][0m
+[0m[1mmodule.networkModule.aws_route_table_association.rta_subnet_public: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Creating...[0m[0m
+[0m[1mmodule.networkModule.aws_route_table_association.rta_subnet_public: Creation complete after 0s [id=rtbassoc-01dcf4abaecb31695][0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Still creating... [20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.aws_instance.instance: Creation complete after 24s [id=i-07361a8a0943d33e4][0m
+[0m[1mmodule.instanceModule.aws_eip.instanceeip: Creating...[0m[0m
+[0m[1mmodule.instanceModule.aws_eip.instanceeip: Creation complete after 2s [id=eipalloc-0be54683d3bd0cac1][0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Creating...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Provisioning with 'file'...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [10s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [20s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [30s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [40s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [50s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Still creating... [1m0s elapsed][0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Provisioning with 'remote-exec'...[0m[0m
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Host: 34.210.189.201
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Password: false
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Private key: true
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Certificate: false
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0] (remote-exec):[0m [0mConnected!
+[0m[1mmodule.instanceModule.null_resource.copy-to-node-if-worker[0]: Creation complete after 1m9s [id=8820556617648488361][0m
+[0m[1m[32m
+Apply complete! Resources: 20 added, 0 changed, 0 destroyed.
+[0m[0m[1m[32m
+Outputs:
+
+[0mip_address = "34.210.189.201"
+/home/vedantpadwalinfi/multi-cloud-duckdb-log-processing/examples/multi-cloud-duckdb-log-processing/tf/gcp
+
+[0m[1mInitializing the backend...[0m
+
+[0m[1mInitializing provider plugins...[0m
+- Finding latest version of hashicorp/cloudinit...
+- Finding hashicorp/google versions matching "~> 3.90.0"...
+- Finding latest version of hashicorp/null...
+- Using previously-installed hashicorp/cloudinit v2.3.2
+- Using previously-installed hashicorp/google v3.90.1
+- Using previously-installed hashicorp/null v3.2.1
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+[0m[1mdata.cloudinit_config.user_data["us-east1-b"]: Reading...[0m[0m
+[0m[1mdata.cloudinit_config.user_data["europe-west4-a"]: Reading...[0m[0m
+[0m[1mdata.cloudinit_config.user_data["us-central1-a"]: Reading...[0m[0m
+[0m[1mdata.cloudinit_config.user_data["us-east1-b"]: Read complete after 0s [id=2557814852][0m
+[0m[1mdata.cloudinit_config.user_data["us-central1-a"]: Read complete after 0s [id=2821998647][0m
+[0m[1mdata.cloudinit_config.user_data["europe-west4-a"]: Read complete after 0s [id=511575804][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform will perform the following actions:
+
+[1m  # google_compute_instance.gcp_instance["europe-west4-a"][0m will be created
+[0m  [32m+[0m[0m resource "google_compute_instance" "gcp_instance" {
+      [32m+[0m[0m can_ip_forward       = false
+      [32m+[0m[0m cpu_platform         = (known after apply)
+      [32m+[0m[0m current_status       = (known after apply)
+      [32m+[0m[0m deletion_protection  = false
+      [32m+[0m[0m guest_accelerator    = (known after apply)
+      [32m+[0m[0m id                   = (known after apply)
+      [32m+[0m[0m instance_id          = (known after apply)
+      [32m+[0m[0m label_fingerprint    = (known after apply)
+      [32m+[0m[0m machine_type         = "n1-standard-2"
+      [32m+[0m[0m metadata             = {
+          [32m+[0m[0m "ssh-keys"  = <<-EOT
+                ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default
+            EOT
+          [32m+[0m[0m "user-data" = <<-EOT
+                Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
+                MIME-Version: 1.0
+                
+                --MIMEBOUNDARY
+                Content-Disposition: attachment; filename="cloud-config.yaml"
+                Content-Transfer-Encoding: 7bit
+                Content-Type: text/cloud-config
+                Mime-Version: 1.0
+                
+                #cloud-config
+                packages:
+                  - git
+                  - make
+                  - python3
+                  - python3-pip
+                  - python3-venv
+                  - python3.11-venv
+                  - curl
+                  - unzip
+                
+                write_files:
+                  - encoding: b64
+                    content: |
+                      aW1wb3J0IGpzb24KaW1wb3J0IHRpbWUKZnJvbSBkYXRldGltZSBpbXBvcnQgZGF0ZXRpbWUKZnJvbSByYW5kb20gaW1wb3J0IGNob2ljZSwgY2hvaWNlcwppbXBvcnQgdXVpZAppbXBvcnQgYXJncGFyc2UKaW1wb3J0IG9zCmZyb20gZmFrZXIgaW1wb3J0IEZha2VyCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKZmFrZSA9IEZha2VyKCkKCgpkZWYgZ2VuZXJhdGVfbG9nX2VudHJ5KCk6CiAgICBzZXJ2aWNlX25hbWVzID0gWyJBdXRoIiwgIkFwcFN0YWNrIiwgIkRhdGFiYXNlIl0KICAgIGNhdGVnb3JpZXMgPSBbIltJTkZPXSIsICJbV0FSTl0iLCAiW0NSSVRJQ0FMXSIsICJbU0VDVVJJVFldIl0KCiAgICB3aXRoIG9wZW4oUGF0aChfX2ZpbGVfXykucGFyZW50IC8gImNsZWFuX3dvcmRzX2FscGhhLnR4dCIsICJyIikgYXMgd29yZF9maWxlOgogICAgICAgIHdvcmRfbGlzdCA9IHdvcmRfZmlsZS5yZWFkKCkuc3BsaXRsaW5lcygpCgogICAgbG9nX2VudHJ5ID0gewogICAgICAgICJpZCI6IHN0cih1dWlkLnV1aWQ0KCkpLAogICAgICAgICJAdGltZXN0YW1wIjogZGF0ZXRpbWUubm93KCkuc3RyZnRpbWUoIiVZLSVtLSVkVCVIOiVNOiVTLiVmWiIpLAogICAgICAgICJAdmVyc2lvbiI6ICIxLjEiLAogICAgICAgICJtZXNzYWdlIjogZiJ7Y2hvaWNlKHNlcnZpY2VfbmFtZXMpfSB7Y2hvaWNlKGNhdGVnb3JpZXMpfSB7JyAnLmpvaW4oY2hvaWNlcyh3b3JkX2xpc3QsIGs9NSkpfSIsCiAgICB9CgogICAgcmV0dXJuIGxvZ19lbnRyeQoKCmRlZiBtYWluKGxvZ19kaXJlY3RvcnksIGFwcG5hbWUpOgogICAgd2hpbGUgVHJ1ZToKICAgICAgICBsb2dfZW50cnkgPSBnZW5lcmF0ZV9sb2dfZW50cnkoKQoKICAgICAgICAjIExvYWQgZXhpc3RpbmcgbG9nIGVudHJpZXMKICAgICAgICBsb2dfZmlsZV9wYXRoID0gb3MucGF0aC5qb2luKGxvZ19kaXJlY3RvcnksIGYie2FwcG5hbWV9X2xvZ3MubG9nIikKICAgICAgICB0cnk6CiAgICAgICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAiciIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICAgICAgbG9nX2VudHJpZXMgPSBqc29uLmxvYWQobG9nX2ZpbGUpCiAgICAgICAgZXhjZXB0IChGaWxlTm90Rm91bmRFcnJvciwganNvbi5KU09ORGVjb2RlRXJyb3IpOgogICAgICAgICAgICBsb2dfZW50cmllcyA9IFtdCgogICAgICAgICMgQXBwZW5kIG5ldyBsb2cgZW50cnkgYW5kIHdyaXRlIGJhY2sgdG8gdGhlIGZpbGUKICAgICAgICBsb2dfZW50cmllcy5hcHBlbmQobG9nX2VudHJ5KQogICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAidyIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICBqc29uLmR1bXAobG9nX2VudHJpZXMsIGxvZ19maWxlLCBpbmRlbnQ9MikKCiAgICAgICAgIyBTbGVlcCBmb3IgNSBzZWNvbmRzIGJlZm9yZSBnZW5lcmF0aW5nIGFub3RoZXIgbG9nIGVudHJ5CiAgICAgICAgIyB0aW1lLnNsZWVwKDUpCgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHBhcnNlciA9IGFyZ3BhcnNlLkFyZ3VtZW50UGFyc2VyKGRlc2NyaXB0aW9uPSJHZW5lcmF0ZSBmYWtlIGxvZyBlbnRyaWVzIGFuZCBzYXZlIHRoZW0gdG8gYSBzcGVjaWZpZWQgZGlyZWN0b3J5LiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItZCIsICItLWRpcmVjdG9yeSIsIHR5cGU9c3RyLCByZXF1aXJlZD1UcnVlLCBoZWxwPSJUaGUgZGlyZWN0b3J5IHRvIHNhdmUgdGhlIGxvZyBmaWxlLiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItbiIsICItLWFwcG5hbWUiLCB0eXBlPXN0ciwgcmVxdWlyZWQ9VHJ1ZSwgaGVscD0iVGhlIGFwcGxpY2F0aW9uIG5hbWUgZm9yIHRoZSBsb2cuIikKICAgIGFyZ3MgPSBwYXJzZXIucGFyc2VfYXJncygpCgogICAgaWYgbm90IG9zLnBhdGguZXhpc3RzKGFyZ3MuZGlyZWN0b3J5KToKICAgICAgICBvcy5tYWtlZGlycyhhcmdzLmRpcmVjdG9yeSkKCiAgICBtYWluKGFyZ3MuZGlyZWN0b3J5LCBhcmdzLmFwcG5hbWUpCg==
+                    owner: root:root
+                    path: /node/log_generator.py
+                    permissions: "0777"
+                  - content: |
+                      /var/log/multi-cloud-example_logs/*.log {
+                          hourly
+                          missingok
+                          rotate 24
+                          compress
+                          delaycompress
+                          olddir /var/log/logs_to_process
+                      }
+                    owner: root:root
+                    path: /etc/logrotate.d/multi-cloud-example
+                    permissions: "0400"
+                  - content: |
+                      [Unit]
+                      Description=Generate multi-cloud-example logs
+                      After=network.target
+                      [Service]
+                      User=root
+                      WorkingDirectory=/node
+                      ExecStart=/node/log_generator_env/bin/python3 /node/log_generator.py -d /var/log/multi-cloud-example_logs -n multi-cloud-example
+                      Restart=always
+                      [Install]
+                      WantedBy=multi-user.target
+                    owner: root:root
+                    path: /etc/systemd/system/log-generator.service
+                    permissions: "0600"
+                  - content: |
+                      #!/bin/sh
+                      /usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                    owner: root:root
+                    path: /etc/cron.hourly/logrotate
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      IyEvYmluL2Jhc2gKIyBzaGVsbGNoZWNrIGRpc2FibGU9U0MxMDkxLFNDMjMxMixTQzIxNTUKc2V0IC1ldW8gcGlwZWZhaWwKSUZTPSQnXG5cdCcKCiMgd2Ugc3RhcnQgd2l0aCBub25lIGFzIHRoZSBkZWZhdWx0ICgibm9uZSIgcHJldmVudHMgdGhlIG5vZGUgY29ubmVjdGluZyB0byBvdXIgZGVmYXVsdCBib290c3RyYXAgbGlzdCkKZXhwb3J0IENPTk5FQ1RfUEVFUj0ibm9uZSIKCiMgU3BlY2lhbCBjYXNlIC0gZ2V0IHRhaWxzY2FsZSBhZGRyZXNzIGlmIGFueQojIElmIHRoZSB0YWlsc2NhbGUwIGFkZHJlc3MgZXhpc3RzIGluIHRoZSBjb21tYW5kIGlwCmV4cG9ydCBUQUlMU0NBTEVfQUREUkVTUz0kKGlwIC00IGEgbCB0YWlsc2NhbGUwIHwgYXdrICcvaW5ldC8ge3ByaW50ICQyfScgfCBjdXQgLWQvIC1mMSkKCiMgaWYgVEFJTFNDQUxFX0FERFJFU1MgaXMgc2V0LCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtbiAiJHtUQUlMU0NBTEVfQUREUkVTU30iIF1dOyB0aGVuCiAgZXhwb3J0IEJBQ0FMSEFVX1BSRUZFUlJFRF9BRERSRVNTPSIke1RBSUxTQ0FMRV9BRERSRVNTfSIKZmkKCiMgaWYgdGhlIGZpbGUgL2V0Yy9iYWNhbGhhdS1ib290c3RyYXAgZXhpc3RzLCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcCBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIHNvdXJjZSAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcAogIENPTk5FQ1RfUEVFUj0iJHtCQUNBTEhBVV9OT0RFX0xJQlAyUF9QRUVSQ09OTkVDVH0iCmZpCgojIElmIC9ldGMvYmFjYWxoYXUtbm9kZS1pbmZvIGV4aXN0cywgdGhlbiBsb2FkIHRoZSB2YXJpYWJsZXMgZnJvbSBpdAppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LW5vZGUtaW5mbyBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIC4gL2V0Yy9iYWNhbGhhdS1ub2RlLWluZm8KZmkKCmxhYmVscz0iaXA9JHtUQUlMU0NBTEVfQUREUkVTU30iCgojIElmIFJFR0lPTiBpcyBzZXQsIHRoZW4gd2UgY2FuIGFzc3VtZSBhbGwgbGFiZWxzIGFyZSBzZXQsIGFuZCB3ZSBzaG91bGQgYWRkIGl0IHRvIHRoZSBsYWJlbHMKaWYgW1sgLW4gIiR7UkVHSU9OfSIgXV07IHRoZW4KICBsYWJlbHM9IiR7bGFiZWxzfSxyZWdpb249JHtSRUdJT059LHpvbmU9JHtaT05FfSxhcHBuYW1lPSR7QVBQTkFNRX0iCmZpCgpiYWNhbGhhdSBzZXJ2ZSBcCiAgLS1ub2RlLXR5cGUgcmVxdWVzdGVyLGNvbXB1dGUgXAogIC0tam9iLXNlbGVjdGlvbi1kYXRhLWxvY2FsaXR5IGFueXdoZXJlIFwKICAtLXN3YXJtLXBvcnQgMTIzNSBcCiAgLS1hcGktcG9ydCAxMjM0IFwKICAtLXBlZXIgIiR7Q09OTkVDVF9QRUVSfSIgXAogIC0tcHJpdmF0ZS1pbnRlcm5hbC1pcGZzPXRydWUgXAogIC0tYWxsb3ctbGlzdGVkLWxvY2FsLXBhdGhzICcvdmFyL2xvZy9sb2dzX3RvX3Byb2Nlc3MvKionIFwKICAtLWpvYi1zZWxlY3Rpb24tYWNjZXB0LW5ldHdvcmtlZCBcCiAgLS1sYWJlbHMgIiR7bGFiZWxzfSI=
+                    owner: root:root
+                    path: /node/start-bacalhau.sh
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUJhY2FsaGF1IERhZW1vbgpBZnRlcj1uZXR3b3JrLW9ubGluZS50YXJnZXQKV2FudHM9bmV0d29yay1vbmxpbmUudGFyZ2V0IHN5c3RlbWQtbmV0d29ya2Qtd2FpdC1vbmxpbmUuc2VydmljZQoKW1NlcnZpY2VdCkVudmlyb25tZW50PSJMT0dfVFlQRT1qc29uIgpFbnZpcm9ubWVudD0iQkFDQUxIQVVfUEFUSD0vZGF0YSIKRW52aXJvbm1lbnQ9IkJBQ0FMSEFVX0RJUj0vZGF0YSIKUmVzdGFydD1hbHdheXMKUmVzdGFydFNlYz01cwpFeGVjU3RhcnQ9YmFzaCAvbm9kZS9zdGFydC1iYWNhbGhhdS5zaAoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    path: /etc/systemd/system/bacalhau.service
+                    permissions: "0600"
+                  - content: |
+                      export REGION=europe-west4-a
+                      export ZONE=europe-west4-a
+                      export APPNAME=multi-cloud-example
+                    owner: root:root
+                    permissions: "0444"
+                    path: /etc/bacalhau-node-info
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUlQRlMgRGFlbW9uCkFmdGVyPW5ldHdvcmstb25saW5lLnRhcmdldApXYW50cz1uZXR3b3JrLW9ubGluZS50YXJnZXQgc3lzdGVtZC1uZXR3b3JrZC13YWl0LW9ubGluZS5zZXJ2aWNlCgpbU2VydmljZV0KRW52aXJvbm1lbnQ9IklQRlNfUEFUSD0vZGF0YS9pcGZzIgpSZXN0YXJ0PWFsd2F5cwpSZXN0YXJ0U2VjPTFzCkV4ZWNTdGFydD1pcGZzIGRhZW1vbgoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    permissions: "0600"
+                    path: /etc/systemd/system/ipfs.service
+                
+                package_update: true
+                
+                runcmd:
+                  - echo "Copying the SSH Key to the server"
+                  - |
+                    echo -n "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
+                  # Set up directory structure and move files
+                
+                  #
+                  # Add Python3
+                  #
+                  - add-apt-repository ppa:deadsnakes/ppa -y
+                  - apt-get update -y
+                  - apt-get install python3.11 python3.11-venv python3.11-pip -y
+                  #
+                  # Make node directory for all scripts
+                  #
+                  # Set up directory structure and move files
+                  - sudo mkdir /node
+                  - sudo mkdir /data
+                  - sudo chmod +x /node/*.sh
+                  - sudo chmod 0700 /node
+                  - sudo chmod 0700 /data
+                
+                  #
+                  # Install tailscale
+                  #
+                  - |
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
+                  - apt-get update -y
+                  - apt -y install tailscale
+                  - sudo tailscale up --authkey tskey-auth-k8447s5CNTRL-fg61h3fHqDGiSJ5dCYgtDGCyHMrBSoPRE --hostname multi-cloud-bacalhau-example-europe-west4-a-vm
+                  #
+                  # Install go
+                  #
+                  - sudo rm -fr /usr/local/go /usr/local/bin/go
+                  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+                  #
+                  # Install docker
+                  #
+                  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+                  - sudo mkdir -p /etc/apt/keyrings
+                  - |
+                    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                  - sudo apt-get update -y
+                  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+                  #
+                  # Install git-lfs
+                  #
+                  - |
+                    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
+                  - sudo apt -y install git-lfs
+                  - HOME=/home/ubuntu git lfs install
+                  #
+                  # Install IPFS
+                  #
+                  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - sudo bash go-ipfs/install.sh
+                  - sudo IPFS_PATH=/data/ipfs ipfs init
+                  #
+                  # Install Bacalhau
+                  #
+                  - |
+                    curl -sL https://get.bacalhau.org/install.sh | bash
+                  - echo "Bacalhau downloaded."
+                  # Create necessary directory
+                  - mkdir /var/log/multi-cloud-example_logs
+                  # Step 0b: Create the log rotation output directory
+                  - sudo mkdir -p /var/log/logs_to_process
+                  # Step 0c: Create the /etc/cron.hourly/ directory and set appropriate permissions
+                  - sudo mkdir -p /etc/cron.hourly
+                  - sudo chown root:root /etc/cron.hourly
+                  - sudo chmod 755 /etc/cron.hourly
+                  # Install virtualenv
+                  - python3 -m venv /node/log_generator_env
+                  - /node/log_generator_env/bin/pip3 install faker
+                  - |
+                    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
+                  # Reload the systemd daemon, enable, and start the service
+                  - sudo sysctl -w net.core.rmem_max=2500000
+                  - sudo systemctl daemon-reload
+                  - sudo systemctl enable ipfs
+                  - sudo systemctl restart ipfs
+                  - sudo systemctl enable docker
+                  - sudo systemctl restart docker
+                  - sudo systemctl enable bacalhau.service
+                  - sudo systemctl restart bacalhau.service
+                  - sudo systemctl enable log-generator.service
+                  - sudo systemctl start log-generator.service
+                  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
+                  - sudo /usr/sbin/logrotate -f --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                
+                --MIMEBOUNDARY--
+            EOT
+        }
+      [32m+[0m[0m metadata_fingerprint = (known after apply)
+      [32m+[0m[0m min_cpu_platform     = (known after apply)
+      [32m+[0m[0m name                 = "multi-cloud-example-europe-west4-a-vm"
+      [32m+[0m[0m project              = (known after apply)
+      [32m+[0m[0m self_link            = (known after apply)
+      [32m+[0m[0m tags_fingerprint     = (known after apply)
+      [32m+[0m[0m zone                 = "europe-west4-a"
+
+      [32m+[0m[0m boot_disk {
+          [32m+[0m[0m auto_delete                = true
+          [32m+[0m[0m device_name                = (known after apply)
+          [32m+[0m[0m disk_encryption_key_sha256 = (known after apply)
+          [32m+[0m[0m kms_key_self_link          = (known after apply)
+          [32m+[0m[0m mode                       = "READ_WRITE"
+          [32m+[0m[0m source                     = (known after apply)
+
+          [32m+[0m[0m initialize_params {
+              [32m+[0m[0m image  = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+              [32m+[0m[0m labels = (known after apply)
+              [32m+[0m[0m size   = 50
+              [32m+[0m[0m type   = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m network_interface {
+          [32m+[0m[0m ipv6_access_type   = (known after apply)
+          [32m+[0m[0m name               = (known after apply)
+          [32m+[0m[0m network            = "default"
+          [32m+[0m[0m network_ip         = (known after apply)
+          [32m+[0m[0m stack_type         = (known after apply)
+          [32m+[0m[0m subnetwork         = (known after apply)
+          [32m+[0m[0m subnetwork_project = (known after apply)
+
+          [32m+[0m[0m access_config {
+              [32m+[0m[0m nat_ip       = (known after apply)
+              [32m+[0m[0m network_tier = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m service_account {
+          [32m+[0m[0m email  = (known after apply)
+          [32m+[0m[0m scopes = [
+              [32m+[0m[0m "https://www.googleapis.com/auth/cloud-platform",
+            ]
+        }
+    }
+
+[1m  # google_compute_instance.gcp_instance["us-central1-a"][0m will be created
+[0m  [32m+[0m[0m resource "google_compute_instance" "gcp_instance" {
+      [32m+[0m[0m can_ip_forward       = false
+      [32m+[0m[0m cpu_platform         = (known after apply)
+      [32m+[0m[0m current_status       = (known after apply)
+      [32m+[0m[0m deletion_protection  = false
+      [32m+[0m[0m guest_accelerator    = (known after apply)
+      [32m+[0m[0m id                   = (known after apply)
+      [32m+[0m[0m instance_id          = (known after apply)
+      [32m+[0m[0m label_fingerprint    = (known after apply)
+      [32m+[0m[0m machine_type         = "n1-standard-2"
+      [32m+[0m[0m metadata             = {
+          [32m+[0m[0m "ssh-keys"  = <<-EOT
+                ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default
+            EOT
+          [32m+[0m[0m "user-data" = <<-EOT
+                Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
+                MIME-Version: 1.0
+                
+                --MIMEBOUNDARY
+                Content-Disposition: attachment; filename="cloud-config.yaml"
+                Content-Transfer-Encoding: 7bit
+                Content-Type: text/cloud-config
+                Mime-Version: 1.0
+                
+                #cloud-config
+                packages:
+                  - git
+                  - make
+                  - python3
+                  - python3-pip
+                  - python3-venv
+                  - python3.11-venv
+                  - curl
+                  - unzip
+                
+                write_files:
+                  - encoding: b64
+                    content: |
+                      aW1wb3J0IGpzb24KaW1wb3J0IHRpbWUKZnJvbSBkYXRldGltZSBpbXBvcnQgZGF0ZXRpbWUKZnJvbSByYW5kb20gaW1wb3J0IGNob2ljZSwgY2hvaWNlcwppbXBvcnQgdXVpZAppbXBvcnQgYXJncGFyc2UKaW1wb3J0IG9zCmZyb20gZmFrZXIgaW1wb3J0IEZha2VyCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKZmFrZSA9IEZha2VyKCkKCgpkZWYgZ2VuZXJhdGVfbG9nX2VudHJ5KCk6CiAgICBzZXJ2aWNlX25hbWVzID0gWyJBdXRoIiwgIkFwcFN0YWNrIiwgIkRhdGFiYXNlIl0KICAgIGNhdGVnb3JpZXMgPSBbIltJTkZPXSIsICJbV0FSTl0iLCAiW0NSSVRJQ0FMXSIsICJbU0VDVVJJVFldIl0KCiAgICB3aXRoIG9wZW4oUGF0aChfX2ZpbGVfXykucGFyZW50IC8gImNsZWFuX3dvcmRzX2FscGhhLnR4dCIsICJyIikgYXMgd29yZF9maWxlOgogICAgICAgIHdvcmRfbGlzdCA9IHdvcmRfZmlsZS5yZWFkKCkuc3BsaXRsaW5lcygpCgogICAgbG9nX2VudHJ5ID0gewogICAgICAgICJpZCI6IHN0cih1dWlkLnV1aWQ0KCkpLAogICAgICAgICJAdGltZXN0YW1wIjogZGF0ZXRpbWUubm93KCkuc3RyZnRpbWUoIiVZLSVtLSVkVCVIOiVNOiVTLiVmWiIpLAogICAgICAgICJAdmVyc2lvbiI6ICIxLjEiLAogICAgICAgICJtZXNzYWdlIjogZiJ7Y2hvaWNlKHNlcnZpY2VfbmFtZXMpfSB7Y2hvaWNlKGNhdGVnb3JpZXMpfSB7JyAnLmpvaW4oY2hvaWNlcyh3b3JkX2xpc3QsIGs9NSkpfSIsCiAgICB9CgogICAgcmV0dXJuIGxvZ19lbnRyeQoKCmRlZiBtYWluKGxvZ19kaXJlY3RvcnksIGFwcG5hbWUpOgogICAgd2hpbGUgVHJ1ZToKICAgICAgICBsb2dfZW50cnkgPSBnZW5lcmF0ZV9sb2dfZW50cnkoKQoKICAgICAgICAjIExvYWQgZXhpc3RpbmcgbG9nIGVudHJpZXMKICAgICAgICBsb2dfZmlsZV9wYXRoID0gb3MucGF0aC5qb2luKGxvZ19kaXJlY3RvcnksIGYie2FwcG5hbWV9X2xvZ3MubG9nIikKICAgICAgICB0cnk6CiAgICAgICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAiciIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICAgICAgbG9nX2VudHJpZXMgPSBqc29uLmxvYWQobG9nX2ZpbGUpCiAgICAgICAgZXhjZXB0IChGaWxlTm90Rm91bmRFcnJvciwganNvbi5KU09ORGVjb2RlRXJyb3IpOgogICAgICAgICAgICBsb2dfZW50cmllcyA9IFtdCgogICAgICAgICMgQXBwZW5kIG5ldyBsb2cgZW50cnkgYW5kIHdyaXRlIGJhY2sgdG8gdGhlIGZpbGUKICAgICAgICBsb2dfZW50cmllcy5hcHBlbmQobG9nX2VudHJ5KQogICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAidyIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICBqc29uLmR1bXAobG9nX2VudHJpZXMsIGxvZ19maWxlLCBpbmRlbnQ9MikKCiAgICAgICAgIyBTbGVlcCBmb3IgNSBzZWNvbmRzIGJlZm9yZSBnZW5lcmF0aW5nIGFub3RoZXIgbG9nIGVudHJ5CiAgICAgICAgIyB0aW1lLnNsZWVwKDUpCgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHBhcnNlciA9IGFyZ3BhcnNlLkFyZ3VtZW50UGFyc2VyKGRlc2NyaXB0aW9uPSJHZW5lcmF0ZSBmYWtlIGxvZyBlbnRyaWVzIGFuZCBzYXZlIHRoZW0gdG8gYSBzcGVjaWZpZWQgZGlyZWN0b3J5LiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItZCIsICItLWRpcmVjdG9yeSIsIHR5cGU9c3RyLCByZXF1aXJlZD1UcnVlLCBoZWxwPSJUaGUgZGlyZWN0b3J5IHRvIHNhdmUgdGhlIGxvZyBmaWxlLiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItbiIsICItLWFwcG5hbWUiLCB0eXBlPXN0ciwgcmVxdWlyZWQ9VHJ1ZSwgaGVscD0iVGhlIGFwcGxpY2F0aW9uIG5hbWUgZm9yIHRoZSBsb2cuIikKICAgIGFyZ3MgPSBwYXJzZXIucGFyc2VfYXJncygpCgogICAgaWYgbm90IG9zLnBhdGguZXhpc3RzKGFyZ3MuZGlyZWN0b3J5KToKICAgICAgICBvcy5tYWtlZGlycyhhcmdzLmRpcmVjdG9yeSkKCiAgICBtYWluKGFyZ3MuZGlyZWN0b3J5LCBhcmdzLmFwcG5hbWUpCg==
+                    owner: root:root
+                    path: /node/log_generator.py
+                    permissions: "0777"
+                  - content: |
+                      /var/log/multi-cloud-example_logs/*.log {
+                          hourly
+                          missingok
+                          rotate 24
+                          compress
+                          delaycompress
+                          olddir /var/log/logs_to_process
+                      }
+                    owner: root:root
+                    path: /etc/logrotate.d/multi-cloud-example
+                    permissions: "0400"
+                  - content: |
+                      [Unit]
+                      Description=Generate multi-cloud-example logs
+                      After=network.target
+                      [Service]
+                      User=root
+                      WorkingDirectory=/node
+                      ExecStart=/node/log_generator_env/bin/python3 /node/log_generator.py -d /var/log/multi-cloud-example_logs -n multi-cloud-example
+                      Restart=always
+                      [Install]
+                      WantedBy=multi-user.target
+                    owner: root:root
+                    path: /etc/systemd/system/log-generator.service
+                    permissions: "0600"
+                  - content: |
+                      #!/bin/sh
+                      /usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                    owner: root:root
+                    path: /etc/cron.hourly/logrotate
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      IyEvYmluL2Jhc2gKIyBzaGVsbGNoZWNrIGRpc2FibGU9U0MxMDkxLFNDMjMxMixTQzIxNTUKc2V0IC1ldW8gcGlwZWZhaWwKSUZTPSQnXG5cdCcKCiMgd2Ugc3RhcnQgd2l0aCBub25lIGFzIHRoZSBkZWZhdWx0ICgibm9uZSIgcHJldmVudHMgdGhlIG5vZGUgY29ubmVjdGluZyB0byBvdXIgZGVmYXVsdCBib290c3RyYXAgbGlzdCkKZXhwb3J0IENPTk5FQ1RfUEVFUj0ibm9uZSIKCiMgU3BlY2lhbCBjYXNlIC0gZ2V0IHRhaWxzY2FsZSBhZGRyZXNzIGlmIGFueQojIElmIHRoZSB0YWlsc2NhbGUwIGFkZHJlc3MgZXhpc3RzIGluIHRoZSBjb21tYW5kIGlwCmV4cG9ydCBUQUlMU0NBTEVfQUREUkVTUz0kKGlwIC00IGEgbCB0YWlsc2NhbGUwIHwgYXdrICcvaW5ldC8ge3ByaW50ICQyfScgfCBjdXQgLWQvIC1mMSkKCiMgaWYgVEFJTFNDQUxFX0FERFJFU1MgaXMgc2V0LCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtbiAiJHtUQUlMU0NBTEVfQUREUkVTU30iIF1dOyB0aGVuCiAgZXhwb3J0IEJBQ0FMSEFVX1BSRUZFUlJFRF9BRERSRVNTPSIke1RBSUxTQ0FMRV9BRERSRVNTfSIKZmkKCiMgaWYgdGhlIGZpbGUgL2V0Yy9iYWNhbGhhdS1ib290c3RyYXAgZXhpc3RzLCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcCBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIHNvdXJjZSAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcAogIENPTk5FQ1RfUEVFUj0iJHtCQUNBTEhBVV9OT0RFX0xJQlAyUF9QRUVSQ09OTkVDVH0iCmZpCgojIElmIC9ldGMvYmFjYWxoYXUtbm9kZS1pbmZvIGV4aXN0cywgdGhlbiBsb2FkIHRoZSB2YXJpYWJsZXMgZnJvbSBpdAppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LW5vZGUtaW5mbyBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIC4gL2V0Yy9iYWNhbGhhdS1ub2RlLWluZm8KZmkKCmxhYmVscz0iaXA9JHtUQUlMU0NBTEVfQUREUkVTU30iCgojIElmIFJFR0lPTiBpcyBzZXQsIHRoZW4gd2UgY2FuIGFzc3VtZSBhbGwgbGFiZWxzIGFyZSBzZXQsIGFuZCB3ZSBzaG91bGQgYWRkIGl0IHRvIHRoZSBsYWJlbHMKaWYgW1sgLW4gIiR7UkVHSU9OfSIgXV07IHRoZW4KICBsYWJlbHM9IiR7bGFiZWxzfSxyZWdpb249JHtSRUdJT059LHpvbmU9JHtaT05FfSxhcHBuYW1lPSR7QVBQTkFNRX0iCmZpCgpiYWNhbGhhdSBzZXJ2ZSBcCiAgLS1ub2RlLXR5cGUgcmVxdWVzdGVyLGNvbXB1dGUgXAogIC0tam9iLXNlbGVjdGlvbi1kYXRhLWxvY2FsaXR5IGFueXdoZXJlIFwKICAtLXN3YXJtLXBvcnQgMTIzNSBcCiAgLS1hcGktcG9ydCAxMjM0IFwKICAtLXBlZXIgIiR7Q09OTkVDVF9QRUVSfSIgXAogIC0tcHJpdmF0ZS1pbnRlcm5hbC1pcGZzPXRydWUgXAogIC0tYWxsb3ctbGlzdGVkLWxvY2FsLXBhdGhzICcvdmFyL2xvZy9sb2dzX3RvX3Byb2Nlc3MvKionIFwKICAtLWpvYi1zZWxlY3Rpb24tYWNjZXB0LW5ldHdvcmtlZCBcCiAgLS1sYWJlbHMgIiR7bGFiZWxzfSI=
+                    owner: root:root
+                    path: /node/start-bacalhau.sh
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUJhY2FsaGF1IERhZW1vbgpBZnRlcj1uZXR3b3JrLW9ubGluZS50YXJnZXQKV2FudHM9bmV0d29yay1vbmxpbmUudGFyZ2V0IHN5c3RlbWQtbmV0d29ya2Qtd2FpdC1vbmxpbmUuc2VydmljZQoKW1NlcnZpY2VdCkVudmlyb25tZW50PSJMT0dfVFlQRT1qc29uIgpFbnZpcm9ubWVudD0iQkFDQUxIQVVfUEFUSD0vZGF0YSIKRW52aXJvbm1lbnQ9IkJBQ0FMSEFVX0RJUj0vZGF0YSIKUmVzdGFydD1hbHdheXMKUmVzdGFydFNlYz01cwpFeGVjU3RhcnQ9YmFzaCAvbm9kZS9zdGFydC1iYWNhbGhhdS5zaAoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    path: /etc/systemd/system/bacalhau.service
+                    permissions: "0600"
+                  - content: |
+                      export REGION=us-central1-a
+                      export ZONE=us-central1-a
+                      export APPNAME=multi-cloud-example
+                    owner: root:root
+                    permissions: "0444"
+                    path: /etc/bacalhau-node-info
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUlQRlMgRGFlbW9uCkFmdGVyPW5ldHdvcmstb25saW5lLnRhcmdldApXYW50cz1uZXR3b3JrLW9ubGluZS50YXJnZXQgc3lzdGVtZC1uZXR3b3JrZC13YWl0LW9ubGluZS5zZXJ2aWNlCgpbU2VydmljZV0KRW52aXJvbm1lbnQ9IklQRlNfUEFUSD0vZGF0YS9pcGZzIgpSZXN0YXJ0PWFsd2F5cwpSZXN0YXJ0U2VjPTFzCkV4ZWNTdGFydD1pcGZzIGRhZW1vbgoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    permissions: "0600"
+                    path: /etc/systemd/system/ipfs.service
+                
+                package_update: true
+                
+                runcmd:
+                  - echo "Copying the SSH Key to the server"
+                  - |
+                    echo -n "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
+                  # Set up directory structure and move files
+                
+                  #
+                  # Add Python3
+                  #
+                  - add-apt-repository ppa:deadsnakes/ppa -y
+                  - apt-get update -y
+                  - apt-get install python3.11 python3.11-venv python3.11-pip -y
+                  #
+                  # Make node directory for all scripts
+                  #
+                  # Set up directory structure and move files
+                  - sudo mkdir /node
+                  - sudo mkdir /data
+                  - sudo chmod +x /node/*.sh
+                  - sudo chmod 0700 /node
+                  - sudo chmod 0700 /data
+                
+                  #
+                  # Install tailscale
+                  #
+                  - |
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
+                  - apt-get update -y
+                  - apt -y install tailscale
+                  - sudo tailscale up --authkey tskey-auth-k8447s5CNTRL-fg61h3fHqDGiSJ5dCYgtDGCyHMrBSoPRE --hostname multi-cloud-bacalhau-example-us-central1-a-vm
+                  #
+                  # Install go
+                  #
+                  - sudo rm -fr /usr/local/go /usr/local/bin/go
+                  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+                  #
+                  # Install docker
+                  #
+                  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+                  - sudo mkdir -p /etc/apt/keyrings
+                  - |
+                    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                  - sudo apt-get update -y
+                  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+                  #
+                  # Install git-lfs
+                  #
+                  - |
+                    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
+                  - sudo apt -y install git-lfs
+                  - HOME=/home/ubuntu git lfs install
+                  #
+                  # Install IPFS
+                  #
+                  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - sudo bash go-ipfs/install.sh
+                  - sudo IPFS_PATH=/data/ipfs ipfs init
+                  #
+                  # Install Bacalhau
+                  #
+                  - |
+                    curl -sL https://get.bacalhau.org/install.sh | bash
+                  - echo "Bacalhau downloaded."
+                  # Create necessary directory
+                  - mkdir /var/log/multi-cloud-example_logs
+                  # Step 0b: Create the log rotation output directory
+                  - sudo mkdir -p /var/log/logs_to_process
+                  # Step 0c: Create the /etc/cron.hourly/ directory and set appropriate permissions
+                  - sudo mkdir -p /etc/cron.hourly
+                  - sudo chown root:root /etc/cron.hourly
+                  - sudo chmod 755 /etc/cron.hourly
+                  # Install virtualenv
+                  - python3 -m venv /node/log_generator_env
+                  - /node/log_generator_env/bin/pip3 install faker
+                  - |
+                    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
+                  # Reload the systemd daemon, enable, and start the service
+                  - sudo sysctl -w net.core.rmem_max=2500000
+                  - sudo systemctl daemon-reload
+                  - sudo systemctl enable ipfs
+                  - sudo systemctl restart ipfs
+                  - sudo systemctl enable docker
+                  - sudo systemctl restart docker
+                  - sudo systemctl enable bacalhau.service
+                  - sudo systemctl restart bacalhau.service
+                  - sudo systemctl enable log-generator.service
+                  - sudo systemctl start log-generator.service
+                  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
+                  - sudo /usr/sbin/logrotate -f --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                
+                --MIMEBOUNDARY--
+            EOT
+        }
+      [32m+[0m[0m metadata_fingerprint = (known after apply)
+      [32m+[0m[0m min_cpu_platform     = (known after apply)
+      [32m+[0m[0m name                 = "multi-cloud-example-us-central1-a-vm"
+      [32m+[0m[0m project              = (known after apply)
+      [32m+[0m[0m self_link            = (known after apply)
+      [32m+[0m[0m tags_fingerprint     = (known after apply)
+      [32m+[0m[0m zone                 = "us-central1-a"
+
+      [32m+[0m[0m boot_disk {
+          [32m+[0m[0m auto_delete                = true
+          [32m+[0m[0m device_name                = (known after apply)
+          [32m+[0m[0m disk_encryption_key_sha256 = (known after apply)
+          [32m+[0m[0m kms_key_self_link          = (known after apply)
+          [32m+[0m[0m mode                       = "READ_WRITE"
+          [32m+[0m[0m source                     = (known after apply)
+
+          [32m+[0m[0m initialize_params {
+              [32m+[0m[0m image  = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+              [32m+[0m[0m labels = (known after apply)
+              [32m+[0m[0m size   = 50
+              [32m+[0m[0m type   = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m network_interface {
+          [32m+[0m[0m ipv6_access_type   = (known after apply)
+          [32m+[0m[0m name               = (known after apply)
+          [32m+[0m[0m network            = "default"
+          [32m+[0m[0m network_ip         = (known after apply)
+          [32m+[0m[0m stack_type         = (known after apply)
+          [32m+[0m[0m subnetwork         = (known after apply)
+          [32m+[0m[0m subnetwork_project = (known after apply)
+
+          [32m+[0m[0m access_config {
+              [32m+[0m[0m nat_ip       = (known after apply)
+              [32m+[0m[0m network_tier = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m service_account {
+          [32m+[0m[0m email  = (known after apply)
+          [32m+[0m[0m scopes = [
+              [32m+[0m[0m "https://www.googleapis.com/auth/cloud-platform",
+            ]
+        }
+    }
+
+[1m  # google_compute_instance.gcp_instance["us-east1-b"][0m will be created
+[0m  [32m+[0m[0m resource "google_compute_instance" "gcp_instance" {
+      [32m+[0m[0m can_ip_forward       = false
+      [32m+[0m[0m cpu_platform         = (known after apply)
+      [32m+[0m[0m current_status       = (known after apply)
+      [32m+[0m[0m deletion_protection  = false
+      [32m+[0m[0m guest_accelerator    = (known after apply)
+      [32m+[0m[0m id                   = (known after apply)
+      [32m+[0m[0m instance_id          = (known after apply)
+      [32m+[0m[0m label_fingerprint    = (known after apply)
+      [32m+[0m[0m machine_type         = "n1-standard-2"
+      [32m+[0m[0m metadata             = {
+          [32m+[0m[0m "ssh-keys"  = <<-EOT
+                ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default
+            EOT
+          [32m+[0m[0m "user-data" = <<-EOT
+                Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
+                MIME-Version: 1.0
+                
+                --MIMEBOUNDARY
+                Content-Disposition: attachment; filename="cloud-config.yaml"
+                Content-Transfer-Encoding: 7bit
+                Content-Type: text/cloud-config
+                Mime-Version: 1.0
+                
+                #cloud-config
+                packages:
+                  - git
+                  - make
+                  - python3
+                  - python3-pip
+                  - python3-venv
+                  - python3.11-venv
+                  - curl
+                  - unzip
+                
+                write_files:
+                  - encoding: b64
+                    content: |
+                      aW1wb3J0IGpzb24KaW1wb3J0IHRpbWUKZnJvbSBkYXRldGltZSBpbXBvcnQgZGF0ZXRpbWUKZnJvbSByYW5kb20gaW1wb3J0IGNob2ljZSwgY2hvaWNlcwppbXBvcnQgdXVpZAppbXBvcnQgYXJncGFyc2UKaW1wb3J0IG9zCmZyb20gZmFrZXIgaW1wb3J0IEZha2VyCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKZmFrZSA9IEZha2VyKCkKCgpkZWYgZ2VuZXJhdGVfbG9nX2VudHJ5KCk6CiAgICBzZXJ2aWNlX25hbWVzID0gWyJBdXRoIiwgIkFwcFN0YWNrIiwgIkRhdGFiYXNlIl0KICAgIGNhdGVnb3JpZXMgPSBbIltJTkZPXSIsICJbV0FSTl0iLCAiW0NSSVRJQ0FMXSIsICJbU0VDVVJJVFldIl0KCiAgICB3aXRoIG9wZW4oUGF0aChfX2ZpbGVfXykucGFyZW50IC8gImNsZWFuX3dvcmRzX2FscGhhLnR4dCIsICJyIikgYXMgd29yZF9maWxlOgogICAgICAgIHdvcmRfbGlzdCA9IHdvcmRfZmlsZS5yZWFkKCkuc3BsaXRsaW5lcygpCgogICAgbG9nX2VudHJ5ID0gewogICAgICAgICJpZCI6IHN0cih1dWlkLnV1aWQ0KCkpLAogICAgICAgICJAdGltZXN0YW1wIjogZGF0ZXRpbWUubm93KCkuc3RyZnRpbWUoIiVZLSVtLSVkVCVIOiVNOiVTLiVmWiIpLAogICAgICAgICJAdmVyc2lvbiI6ICIxLjEiLAogICAgICAgICJtZXNzYWdlIjogZiJ7Y2hvaWNlKHNlcnZpY2VfbmFtZXMpfSB7Y2hvaWNlKGNhdGVnb3JpZXMpfSB7JyAnLmpvaW4oY2hvaWNlcyh3b3JkX2xpc3QsIGs9NSkpfSIsCiAgICB9CgogICAgcmV0dXJuIGxvZ19lbnRyeQoKCmRlZiBtYWluKGxvZ19kaXJlY3RvcnksIGFwcG5hbWUpOgogICAgd2hpbGUgVHJ1ZToKICAgICAgICBsb2dfZW50cnkgPSBnZW5lcmF0ZV9sb2dfZW50cnkoKQoKICAgICAgICAjIExvYWQgZXhpc3RpbmcgbG9nIGVudHJpZXMKICAgICAgICBsb2dfZmlsZV9wYXRoID0gb3MucGF0aC5qb2luKGxvZ19kaXJlY3RvcnksIGYie2FwcG5hbWV9X2xvZ3MubG9nIikKICAgICAgICB0cnk6CiAgICAgICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAiciIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICAgICAgbG9nX2VudHJpZXMgPSBqc29uLmxvYWQobG9nX2ZpbGUpCiAgICAgICAgZXhjZXB0IChGaWxlTm90Rm91bmRFcnJvciwganNvbi5KU09ORGVjb2RlRXJyb3IpOgogICAgICAgICAgICBsb2dfZW50cmllcyA9IFtdCgogICAgICAgICMgQXBwZW5kIG5ldyBsb2cgZW50cnkgYW5kIHdyaXRlIGJhY2sgdG8gdGhlIGZpbGUKICAgICAgICBsb2dfZW50cmllcy5hcHBlbmQobG9nX2VudHJ5KQogICAgICAgIHdpdGggb3Blbihsb2dfZmlsZV9wYXRoLCAidyIpIGFzIGxvZ19maWxlOgogICAgICAgICAgICBqc29uLmR1bXAobG9nX2VudHJpZXMsIGxvZ19maWxlLCBpbmRlbnQ9MikKCiAgICAgICAgIyBTbGVlcCBmb3IgNSBzZWNvbmRzIGJlZm9yZSBnZW5lcmF0aW5nIGFub3RoZXIgbG9nIGVudHJ5CiAgICAgICAgIyB0aW1lLnNsZWVwKDUpCgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHBhcnNlciA9IGFyZ3BhcnNlLkFyZ3VtZW50UGFyc2VyKGRlc2NyaXB0aW9uPSJHZW5lcmF0ZSBmYWtlIGxvZyBlbnRyaWVzIGFuZCBzYXZlIHRoZW0gdG8gYSBzcGVjaWZpZWQgZGlyZWN0b3J5LiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItZCIsICItLWRpcmVjdG9yeSIsIHR5cGU9c3RyLCByZXF1aXJlZD1UcnVlLCBoZWxwPSJUaGUgZGlyZWN0b3J5IHRvIHNhdmUgdGhlIGxvZyBmaWxlLiIpCiAgICBwYXJzZXIuYWRkX2FyZ3VtZW50KCItbiIsICItLWFwcG5hbWUiLCB0eXBlPXN0ciwgcmVxdWlyZWQ9VHJ1ZSwgaGVscD0iVGhlIGFwcGxpY2F0aW9uIG5hbWUgZm9yIHRoZSBsb2cuIikKICAgIGFyZ3MgPSBwYXJzZXIucGFyc2VfYXJncygpCgogICAgaWYgbm90IG9zLnBhdGguZXhpc3RzKGFyZ3MuZGlyZWN0b3J5KToKICAgICAgICBvcy5tYWtlZGlycyhhcmdzLmRpcmVjdG9yeSkKCiAgICBtYWluKGFyZ3MuZGlyZWN0b3J5LCBhcmdzLmFwcG5hbWUpCg==
+                    owner: root:root
+                    path: /node/log_generator.py
+                    permissions: "0777"
+                  - content: |
+                      /var/log/multi-cloud-example_logs/*.log {
+                          hourly
+                          missingok
+                          rotate 24
+                          compress
+                          delaycompress
+                          olddir /var/log/logs_to_process
+                      }
+                    owner: root:root
+                    path: /etc/logrotate.d/multi-cloud-example
+                    permissions: "0400"
+                  - content: |
+                      [Unit]
+                      Description=Generate multi-cloud-example logs
+                      After=network.target
+                      [Service]
+                      User=root
+                      WorkingDirectory=/node
+                      ExecStart=/node/log_generator_env/bin/python3 /node/log_generator.py -d /var/log/multi-cloud-example_logs -n multi-cloud-example
+                      Restart=always
+                      [Install]
+                      WantedBy=multi-user.target
+                    owner: root:root
+                    path: /etc/systemd/system/log-generator.service
+                    permissions: "0600"
+                  - content: |
+                      #!/bin/sh
+                      /usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                    owner: root:root
+                    path: /etc/cron.hourly/logrotate
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      IyEvYmluL2Jhc2gKIyBzaGVsbGNoZWNrIGRpc2FibGU9U0MxMDkxLFNDMjMxMixTQzIxNTUKc2V0IC1ldW8gcGlwZWZhaWwKSUZTPSQnXG5cdCcKCiMgd2Ugc3RhcnQgd2l0aCBub25lIGFzIHRoZSBkZWZhdWx0ICgibm9uZSIgcHJldmVudHMgdGhlIG5vZGUgY29ubmVjdGluZyB0byBvdXIgZGVmYXVsdCBib290c3RyYXAgbGlzdCkKZXhwb3J0IENPTk5FQ1RfUEVFUj0ibm9uZSIKCiMgU3BlY2lhbCBjYXNlIC0gZ2V0IHRhaWxzY2FsZSBhZGRyZXNzIGlmIGFueQojIElmIHRoZSB0YWlsc2NhbGUwIGFkZHJlc3MgZXhpc3RzIGluIHRoZSBjb21tYW5kIGlwCmV4cG9ydCBUQUlMU0NBTEVfQUREUkVTUz0kKGlwIC00IGEgbCB0YWlsc2NhbGUwIHwgYXdrICcvaW5ldC8ge3ByaW50ICQyfScgfCBjdXQgLWQvIC1mMSkKCiMgaWYgVEFJTFNDQUxFX0FERFJFU1MgaXMgc2V0LCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtbiAiJHtUQUlMU0NBTEVfQUREUkVTU30iIF1dOyB0aGVuCiAgZXhwb3J0IEJBQ0FMSEFVX1BSRUZFUlJFRF9BRERSRVNTPSIke1RBSUxTQ0FMRV9BRERSRVNTfSIKZmkKCiMgaWYgdGhlIGZpbGUgL2V0Yy9iYWNhbGhhdS1ib290c3RyYXAgZXhpc3RzLCB1c2UgaXQgdG8gcG9wdWxhdGUgdGhlIENPTk5FQ1RfUEVFUiB2YXJpYWJsZQppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcCBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIHNvdXJjZSAvZXRjL2JhY2FsaGF1LWJvb3RzdHJhcAogIENPTk5FQ1RfUEVFUj0iJHtCQUNBTEhBVV9OT0RFX0xJQlAyUF9QRUVSQ09OTkVDVH0iCmZpCgojIElmIC9ldGMvYmFjYWxoYXUtbm9kZS1pbmZvIGV4aXN0cywgdGhlbiBsb2FkIHRoZSB2YXJpYWJsZXMgZnJvbSBpdAppZiBbWyAtZiAvZXRjL2JhY2FsaGF1LW5vZGUtaW5mbyBdXTsgdGhlbgogICMgc2hlbGxjaGVjayBkaXNhYmxlPVNDMTA5MAogIC4gL2V0Yy9iYWNhbGhhdS1ub2RlLWluZm8KZmkKCmxhYmVscz0iaXA9JHtUQUlMU0NBTEVfQUREUkVTU30iCgojIElmIFJFR0lPTiBpcyBzZXQsIHRoZW4gd2UgY2FuIGFzc3VtZSBhbGwgbGFiZWxzIGFyZSBzZXQsIGFuZCB3ZSBzaG91bGQgYWRkIGl0IHRvIHRoZSBsYWJlbHMKaWYgW1sgLW4gIiR7UkVHSU9OfSIgXV07IHRoZW4KICBsYWJlbHM9IiR7bGFiZWxzfSxyZWdpb249JHtSRUdJT059LHpvbmU9JHtaT05FfSxhcHBuYW1lPSR7QVBQTkFNRX0iCmZpCgpiYWNhbGhhdSBzZXJ2ZSBcCiAgLS1ub2RlLXR5cGUgcmVxdWVzdGVyLGNvbXB1dGUgXAogIC0tam9iLXNlbGVjdGlvbi1kYXRhLWxvY2FsaXR5IGFueXdoZXJlIFwKICAtLXN3YXJtLXBvcnQgMTIzNSBcCiAgLS1hcGktcG9ydCAxMjM0IFwKICAtLXBlZXIgIiR7Q09OTkVDVF9QRUVSfSIgXAogIC0tcHJpdmF0ZS1pbnRlcm5hbC1pcGZzPXRydWUgXAogIC0tYWxsb3ctbGlzdGVkLWxvY2FsLXBhdGhzICcvdmFyL2xvZy9sb2dzX3RvX3Byb2Nlc3MvKionIFwKICAtLWpvYi1zZWxlY3Rpb24tYWNjZXB0LW5ldHdvcmtlZCBcCiAgLS1sYWJlbHMgIiR7bGFiZWxzfSI=
+                    owner: root:root
+                    path: /node/start-bacalhau.sh
+                    permissions: "0700"
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUJhY2FsaGF1IERhZW1vbgpBZnRlcj1uZXR3b3JrLW9ubGluZS50YXJnZXQKV2FudHM9bmV0d29yay1vbmxpbmUudGFyZ2V0IHN5c3RlbWQtbmV0d29ya2Qtd2FpdC1vbmxpbmUuc2VydmljZQoKW1NlcnZpY2VdCkVudmlyb25tZW50PSJMT0dfVFlQRT1qc29uIgpFbnZpcm9ubWVudD0iQkFDQUxIQVVfUEFUSD0vZGF0YSIKRW52aXJvbm1lbnQ9IkJBQ0FMSEFVX0RJUj0vZGF0YSIKUmVzdGFydD1hbHdheXMKUmVzdGFydFNlYz01cwpFeGVjU3RhcnQ9YmFzaCAvbm9kZS9zdGFydC1iYWNhbGhhdS5zaAoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    path: /etc/systemd/system/bacalhau.service
+                    permissions: "0600"
+                  - content: |
+                      export REGION=us-east1-b
+                      export ZONE=us-east1-b
+                      export APPNAME=multi-cloud-example
+                    owner: root:root
+                    permissions: "0444"
+                    path: /etc/bacalhau-node-info
+                  - encoding: b64
+                    content: |
+                      W1VuaXRdCkRlc2NyaXB0aW9uPUlQRlMgRGFlbW9uCkFmdGVyPW5ldHdvcmstb25saW5lLnRhcmdldApXYW50cz1uZXR3b3JrLW9ubGluZS50YXJnZXQgc3lzdGVtZC1uZXR3b3JrZC13YWl0LW9ubGluZS5zZXJ2aWNlCgpbU2VydmljZV0KRW52aXJvbm1lbnQ9IklQRlNfUEFUSD0vZGF0YS9pcGZzIgpSZXN0YXJ0PWFsd2F5cwpSZXN0YXJ0U2VjPTFzCkV4ZWNTdGFydD1pcGZzIGRhZW1vbgoKW0luc3RhbGxdCldhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0
+                    owner: root:root
+                    permissions: "0600"
+                    path: /etc/systemd/system/ipfs.service
+                
+                package_update: true
+                
+                runcmd:
+                  - echo "Copying the SSH Key to the server"
+                  - |
+                    echo -n "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAFYwM4fhu1VkY6xqR5oX8DdJPoNZ7bcdHqyg6/mGj1zOb3kaNLwCf9buV6ReAApDFbuMeEFexRIGd8R+sq+Vc28FYS0jK7H+1Os3+fSTEMhp19l10FLLksdg5nyK4AIbY0X5Cn3V7jiEWJQWcx4BQmQufv5dIXrcGeP8Y0oJEyP3TsR2VMS1MVRD6bymuRe7y3TFZJlx0I1tu5HYnYKbgwmOFlu4k4AejXdKyYB9CkC2lUjTSebZBPxKPWvesySUkO1PghjsmDYHb3Rr8Puzhd2SM3/VCriuFrpN4FgLP9XoPzXpWKLISAXzIF1sOMZqKDLGbCUqo4HK1t6VacIE9G5JVySEDEI7SS+ik0KBEP64UXgDpDyW1jr06sLxYklbeo1zmdkShk1hvgVfkTZikHUxlim9cCwdNXeLbSC9Gf8qhqaMyMsXga8a79c94TWolDAVZ/8YIz2BEHgVYz9pDuv9sPd1zx01ab16r/zb/zOpKC8SGwB15vWvD9KAgVmgbeqf1U8yR2EarxzVQkvp8OAvzR4d6RUCxiuuzDCMDzPWLmsXD2/HDLSPTwBEWen4iCr9gbDgSclFxMkGW7mJ4c41gt0u51nfyeCitjwlSY9yMaSozf4KLWR1zj3eEHFnYieuD/7LvX1nCsztNYuIG3LEH3pQ5Zd9dRATTj42kwQ== vedantpadwalinfi@cs-681369594429-default" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
+                  # Set up directory structure and move files
+                
+                  #
+                  # Add Python3
+                  #
+                  - add-apt-repository ppa:deadsnakes/ppa -y
+                  - apt-get update -y
+                  - apt-get install python3.11 python3.11-venv python3.11-pip -y
+                  #
+                  # Make node directory for all scripts
+                  #
+                  # Set up directory structure and move files
+                  - sudo mkdir /node
+                  - sudo mkdir /data
+                  - sudo chmod +x /node/*.sh
+                  - sudo chmod 0700 /node
+                  - sudo chmod 0700 /data
+                
+                  #
+                  # Install tailscale
+                  #
+                  - |
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+                    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
+                  - apt-get update -y
+                  - apt -y install tailscale
+                  - sudo tailscale up --authkey tskey-auth-k8447s5CNTRL-fg61h3fHqDGiSJ5dCYgtDGCyHMrBSoPRE --hostname multi-cloud-bacalhau-example-us-east1-b-vm
+                  #
+                  # Install go
+                  #
+                  - sudo rm -fr /usr/local/go /usr/local/bin/go
+                  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+                  #
+                  # Install docker
+                  #
+                  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+                  - sudo mkdir -p /etc/apt/keyrings
+                  - |
+                    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                  - sudo apt-get update -y
+                  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+                  #
+                  # Install git-lfs
+                  #
+                  - |
+                    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
+                  - sudo apt -y install git-lfs
+                  - HOME=/home/ubuntu git lfs install
+                  #
+                  # Install IPFS
+                  #
+                  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+                  - sudo bash go-ipfs/install.sh
+                  - sudo IPFS_PATH=/data/ipfs ipfs init
+                  #
+                  # Install Bacalhau
+                  #
+                  - |
+                    curl -sL https://get.bacalhau.org/install.sh | bash
+                  - echo "Bacalhau downloaded."
+                  # Create necessary directory
+                  - mkdir /var/log/multi-cloud-example_logs
+                  # Step 0b: Create the log rotation output directory
+                  - sudo mkdir -p /var/log/logs_to_process
+                  # Step 0c: Create the /etc/cron.hourly/ directory and set appropriate permissions
+                  - sudo mkdir -p /etc/cron.hourly
+                  - sudo chown root:root /etc/cron.hourly
+                  - sudo chmod 755 /etc/cron.hourly
+                  # Install virtualenv
+                  - python3 -m venv /node/log_generator_env
+                  - /node/log_generator_env/bin/pip3 install faker
+                  - |
+                    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
+                  # Reload the systemd daemon, enable, and start the service
+                  - sudo sysctl -w net.core.rmem_max=2500000
+                  - sudo systemctl daemon-reload
+                  - sudo systemctl enable ipfs
+                  - sudo systemctl restart ipfs
+                  - sudo systemctl enable docker
+                  - sudo systemctl restart docker
+                  - sudo systemctl enable bacalhau.service
+                  - sudo systemctl restart bacalhau.service
+                  - sudo systemctl enable log-generator.service
+                  - sudo systemctl start log-generator.service
+                  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
+                  - sudo /usr/sbin/logrotate -f --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+                
+                --MIMEBOUNDARY--
+            EOT
+        }
+      [32m+[0m[0m metadata_fingerprint = (known after apply)
+      [32m+[0m[0m min_cpu_platform     = (known after apply)
+      [32m+[0m[0m name                 = "multi-cloud-example-us-east1-b-vm"
+      [32m+[0m[0m project              = (known after apply)
+      [32m+[0m[0m self_link            = (known after apply)
+      [32m+[0m[0m tags_fingerprint     = (known after apply)
+      [32m+[0m[0m zone                 = "us-east1-b"
+
+      [32m+[0m[0m boot_disk {
+          [32m+[0m[0m auto_delete                = true
+          [32m+[0m[0m device_name                = (known after apply)
+          [32m+[0m[0m disk_encryption_key_sha256 = (known after apply)
+          [32m+[0m[0m kms_key_self_link          = (known after apply)
+          [32m+[0m[0m mode                       = "READ_WRITE"
+          [32m+[0m[0m source                     = (known after apply)
+
+          [32m+[0m[0m initialize_params {
+              [32m+[0m[0m image  = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+              [32m+[0m[0m labels = (known after apply)
+              [32m+[0m[0m size   = 50
+              [32m+[0m[0m type   = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m network_interface {
+          [32m+[0m[0m ipv6_access_type   = (known after apply)
+          [32m+[0m[0m name               = (known after apply)
+          [32m+[0m[0m network            = "default"
+          [32m+[0m[0m network_ip         = (known after apply)
+          [32m+[0m[0m stack_type         = (known after apply)
+          [32m+[0m[0m subnetwork         = (known after apply)
+          [32m+[0m[0m subnetwork_project = (known after apply)
+
+          [32m+[0m[0m access_config {
+              [32m+[0m[0m nat_ip       = (known after apply)
+              [32m+[0m[0m network_tier = (known after apply)
+            }
+        }
+
+      [32m+[0m[0m service_account {
+          [32m+[0m[0m email  = (known after apply)
+          [32m+[0m[0m scopes = [
+              [32m+[0m[0m "https://www.googleapis.com/auth/cloud-platform",
+            ]
+        }
+    }
+
+[1m  # google_project_iam_member.member_role["roles/iam.serviceAccountUser"][0m will be created
+[0m  [32m+[0m[0m resource "google_project_iam_member" "member_role" {
+      [32m+[0m[0m etag    = (known after apply)
+      [32m+[0m[0m id      = (known after apply)
+      [32m+[0m[0m member  = (known after apply)
+      [32m+[0m[0m project = "bacalhau-development"
+      [32m+[0m[0m role    = "roles/iam.serviceAccountUser"
+    }
+
+[1m  # google_project_iam_member.member_role["roles/storage.admin"][0m will be created
+[0m  [32m+[0m[0m resource "google_project_iam_member" "member_role" {
+      [32m+[0m[0m etag    = (known after apply)
+      [32m+[0m[0m id      = (known after apply)
+      [32m+[0m[0m member  = (known after apply)
+      [32m+[0m[0m project = "bacalhau-development"
+      [32m+[0m[0m role    = "roles/storage.admin"
+    }
+
+[1m  # google_service_account.service_account[0m will be created
+[0m  [32m+[0m[0m resource "google_service_account" "service_account" {
+      [32m+[0m[0m account_id   = "bacalhau-multicloud-example-sa"
+      [32m+[0m[0m disabled     = false
+      [32m+[0m[0m display_name = "Bacalhau  Example Service Account"
+      [32m+[0m[0m email        = (known after apply)
+      [32m+[0m[0m id           = (known after apply)
+      [32m+[0m[0m name         = (known after apply)
+      [32m+[0m[0m project      = (known after apply)
+      [32m+[0m[0m unique_id    = (known after apply)
+    }
+
+[1m  # google_storage_bucket.node_bucket["europe-west4-a"][0m will be created
+[0m  [32m+[0m[0m resource "google_storage_bucket" "node_bucket" {
+      [32m+[0m[0m bucket_policy_only          = (known after apply)
+      [32m+[0m[0m force_destroy               = true
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m location                    = "EU"
+      [32m+[0m[0m name                        = "bacalhau-development-europe-west4-a-archive-bucket"
+      [32m+[0m[0m project                     = (known after apply)
+      [32m+[0m[0m self_link                   = (known after apply)
+      [32m+[0m[0m storage_class               = "ARCHIVE"
+      [32m+[0m[0m uniform_bucket_level_access = (known after apply)
+      [32m+[0m[0m url                         = (known after apply)
+
+      [32m+[0m[0m lifecycle_rule {
+          [32m+[0m[0m action {
+              [32m+[0m[0m type = "Delete"
+            }
+          [32m+[0m[0m condition {
+              [32m+[0m[0m age                   = 3
+              [32m+[0m[0m matches_storage_class = []
+              [32m+[0m[0m with_state            = (known after apply)
+            }
+        }
+    }
+
+[1m  # google_storage_bucket.node_bucket["us-central1-a"][0m will be created
+[0m  [32m+[0m[0m resource "google_storage_bucket" "node_bucket" {
+      [32m+[0m[0m bucket_policy_only          = (known after apply)
+      [32m+[0m[0m force_destroy               = true
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m location                    = "US"
+      [32m+[0m[0m name                        = "bacalhau-development-us-central1-a-archive-bucket"
+      [32m+[0m[0m project                     = (known after apply)
+      [32m+[0m[0m self_link                   = (known after apply)
+      [32m+[0m[0m storage_class               = "ARCHIVE"
+      [32m+[0m[0m uniform_bucket_level_access = (known after apply)
+      [32m+[0m[0m url                         = (known after apply)
+
+      [32m+[0m[0m lifecycle_rule {
+          [32m+[0m[0m action {
+              [32m+[0m[0m type = "Delete"
+            }
+          [32m+[0m[0m condition {
+              [32m+[0m[0m age                   = 3
+              [32m+[0m[0m matches_storage_class = []
+              [32m+[0m[0m with_state            = (known after apply)
+            }
+        }
+    }
+
+[1m  # google_storage_bucket.node_bucket["us-east1-b"][0m will be created
+[0m  [32m+[0m[0m resource "google_storage_bucket" "node_bucket" {
+      [32m+[0m[0m bucket_policy_only          = (known after apply)
+      [32m+[0m[0m force_destroy               = true
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m location                    = "US"
+      [32m+[0m[0m name                        = "bacalhau-development-us-east1-b-archive-bucket"
+      [32m+[0m[0m project                     = (known after apply)
+      [32m+[0m[0m self_link                   = (known after apply)
+      [32m+[0m[0m storage_class               = "ARCHIVE"
+      [32m+[0m[0m uniform_bucket_level_access = (known after apply)
+      [32m+[0m[0m url                         = (known after apply)
+
+      [32m+[0m[0m lifecycle_rule {
+          [32m+[0m[0m action {
+              [32m+[0m[0m type = "Delete"
+            }
+          [32m+[0m[0m condition {
+              [32m+[0m[0m age                   = 3
+              [32m+[0m[0m matches_storage_class = []
+              [32m+[0m[0m with_state            = (known after apply)
+            }
+        }
+    }
+
+[1m  # null_resource.copy-to-node-if-worker["europe-west4-a"][0m will be created
+[0m  [32m+[0m[0m resource "null_resource" "copy-to-node-if-worker" {
+      [32m+[0m[0m id = (known after apply)
+    }
+
+[1m  # null_resource.copy-to-node-if-worker["us-central1-a"][0m will be created
+[0m  [32m+[0m[0m resource "null_resource" "copy-to-node-if-worker" {
+      [32m+[0m[0m id = (known after apply)
+    }
+
+[1m  # null_resource.copy-to-node-if-worker["us-east1-b"][0m will be created
+[0m  [32m+[0m[0m resource "null_resource" "copy-to-node-if-worker" {
+      [32m+[0m[0m id = (known after apply)
+    }
+
+[1mPlan:[0m 12 to add, 0 to change, 0 to destroy.
+[0m[0m[1mgoogle_service_account.service_account: Creating...[0m[0m
+[0m[1mgoogle_storage_bucket.node_bucket["us-east1-b"]: Creating...[0m[0m
+[0m[1mgoogle_storage_bucket.node_bucket["us-central1-a"]: Creating...[0m[0m
+[0m[1mgoogle_storage_bucket.node_bucket["europe-west4-a"]: Creating...[0m[0m
+[0m[1mgoogle_storage_bucket.node_bucket["us-east1-b"]: Creation complete after 2s [id=bacalhau-development-us-east1-b-archive-bucket][0m
+[0m[1mgoogle_service_account.service_account: Creation complete after 2s [id=projects/bacalhau-development/serviceAccounts/bacalhau-multicloud-example-sa@bacalhau-development.iam.gserviceaccount.com][0m
+[0m[1mgoogle_project_iam_member.member_role["roles/iam.serviceAccountUser"]: Creating...[0m[0m
+[0m[1mgoogle_project_iam_member.member_role["roles/storage.admin"]: Creating...[0m[0m
+[0m[1mgoogle_storage_bucket.node_bucket["us-central1-a"]: Creation complete after 2s [id=bacalhau-development-us-central1-a-archive-bucket][0m
+[0m[1mgoogle_storage_bucket.node_bucket["europe-west4-a"]: Creation complete after 4s [id=bacalhau-development-europe-west4-a-archive-bucket][0m
+[0m[1mgoogle_project_iam_member.member_role["roles/storage.admin"]: Creation complete after 10s [id=bacalhau-development/roles/storage.admin/serviceAccount:bacalhau-multicloud-example-sa@bacalhau-development.iam.gserviceaccount.com][0m
+[0m[1mgoogle_project_iam_member.member_role["roles/iam.serviceAccountUser"]: Creation complete after 10s [id=bacalhau-development/roles/iam.serviceAccountUser/serviceAccount:bacalhau-multicloud-example-sa@bacalhau-development.iam.gserviceaccount.com][0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-central1-a"]: Creating...[0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["europe-west4-a"]: Creating...[0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-east1-b"]: Creating...[0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-central1-a"]: Still creating... [10s elapsed][0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["europe-west4-a"]: Still creating... [10s elapsed][0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-east1-b"]: Still creating... [10s elapsed][0m[0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-east1-b"]: Creation complete after 17s [id=projects/bacalhau-development/zones/us-east1-b/instances/multi-cloud-example-us-east1-b-vm][0m
+[0m[1mgoogle_compute_instance.gcp_instance["us-central1-a"]: Creation complete after 18s [id=projects/bacalhau-development/zones/us-central1-a/instances/multi-cloud-example-us-central1-a-vm][0m
+[0m[1mgoogle_compute_instance.gcp_instance["europe-west4-a"]: Creation complete after 20s [id=projects/bacalhau-development/zones/europe-west4-a/instances/multi-cloud-example-europe-west4-a-vm][0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Creating...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Creating...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Creating...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Provisioning with 'file'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Provisioning with 'file'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Provisioning with 'file'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Still creating... [10s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Still creating... [10s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Still creating... [10s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Provisioning with 'remote-exec'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Host: 35.196.13.79
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Password: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Private key: true
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Certificate: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"] (remote-exec):[0m [0mConnected!
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Provisioning with 'remote-exec'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Host: 34.91.133.53
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Password: false
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Private key: true
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Certificate: false
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Still creating... [20s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Still creating... [20s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Still creating... [20s elapsed][0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-east1-b"]: Creation complete after 21s [id=2322087232663527363][0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Provisioning with 'remote-exec'...[0m[0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0mConnecting to remote host via SSH...
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Host: 34.42.35.115
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  User: ubuntu
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Password: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Private key: true
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Certificate: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  SSH Agent: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Checking Host Key: false
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0m  Target Platform: unix
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"] (remote-exec):[0m [0mConnected!
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"] (remote-exec):[0m [0mConnected!
+[0m[1mnull_resource.copy-to-node-if-worker["europe-west4-a"]: Creation complete after 27s [id=3224111882505234072][0m
+[0m[1mnull_resource.copy-to-node-if-worker["us-central1-a"]: Creation complete after 27s [id=2427884394304407705][0m
+[0m[1m[32m
+Apply complete! Resources: 12 added, 0 changed, 0 destroyed.
+[0m

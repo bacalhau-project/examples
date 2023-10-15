@@ -59,7 +59,7 @@ Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspac
 After successfully completing the Terraform deployment, execute the following commands in your terminal to set up the environment variables:
 
 ```
-cd tf/aws/ && source baclhau.run
+cd tf/aws/ && source bacalhau.run
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
 ```
 
