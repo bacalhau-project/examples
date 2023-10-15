@@ -61,11 +61,27 @@ After successfully completing the Terraform deployment, execute the following co
 ```
 cd tf/aws/ && source bacalhau.run
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
+export BACALHAU_IPFS_SWARM_ADDRESSES=$BACALHAU_NODE_IPFS_SWARMADDRESSES
 cd ../../
 ```
-
+To Check whether all the nodes you deployed are in the network run this command
+```
+bacalhau node list
+```
 To test the network, run a simple job across all nodes using the following command:
-
 ```
 bacalhau docker run --target=all ubuntu echo hello
+```
+
+To Run the Log Processing Job accross all the nodes run this command:
+```
+bacalhau create job_multizone.yaml
+```
+Before Downloading make sure that you can access 45337 port
+```
+ nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
+```
+To Fetch the Results of your job run this command (Replace <JOB_ID> with the ID of your job):
+```
+bacalhau get <JOB_ID>
 ```
