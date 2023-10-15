@@ -1,7 +1,7 @@
 # Deploying Multi-Cloud Bacalhau Nodes with Tailscale
 
 ## Overview
-In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run jobs across multiple clouds simultaneously.
+In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run log processing jobs across multiple clouds simultaneously.
 
 
 Create a tailscale account.
