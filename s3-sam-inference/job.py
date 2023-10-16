@@ -34,7 +34,7 @@ for region in data["locations"].keys():
     output_bucket = f'{app_tag}-{region}-o-images-bucket'
 
     # Format the Docker run command
-    command = (f'bacalhau docker run --gpu 1 -i src=s3://{input_bucket}/*,opt=region={region} '
+    command = (f'bacalhau docker run --gpu 1 --memory 20Gb -i src=s3://{input_bucket}/*,opt=region={region} '
                f'-p s3://{output_bucket}/*,opt=region={region} -s region={region} '
                f'expanso/sam:new -- /bin/bash -c \'python /sam.py --input "/inputs" '
                f'--output "/outputs" --prompt "{args.prompt_value}"\'')

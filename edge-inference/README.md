@@ -147,18 +147,18 @@ To Build and Push the container run this command
 After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following command in your terminal:
 
 ```
-source tf/aws/baclhau.run
+cd tf/aws/ && source baclhau.run
 REGION=$(awk '!/^#/' regions.md | head -n 1)
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' "./tf/aws/terraform.tfstate.d/${REGION}/terraform.tfstate")
 ```
 
 ### Running the job across all the nodes
 ```
-bacalhau docker run --target=all -i https://gist.githubusercontent.com/js-ts/0474dc29b091dc6cf66d9061b2fd5838/raw/bef847a676f1978f5698e38103a355dce00af61e/script.py expanso/jetson -- python inputs/script.py
+bacalhau docker run --target=all -i https://raw.githubusercontent.com/bacalhau-project/example-scripts/main/edge-inference/script.py expanso/jetson -- python inputs/script.py
 ```
 
 ### Viewing the Output Logs of the Job
 
 ```
-bacalhau logs <YOUR-JOB-ID>
+bacalhau get <YOUR-JOB-ID>
 ```
