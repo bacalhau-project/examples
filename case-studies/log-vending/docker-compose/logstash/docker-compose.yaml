@@ -1,0 +1,20 @@
+version: '3'
+services:
+  logstash:
+    image: logstash:7.17.13
+    container_name: custom-logstash-container
+    volumes:
+      - /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/pipeline/:/usr/share/logstash/pipeline/   
+      - /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/settings/logstash.yml:/usr/share/logstash/config/logstash.yml
+      # - /Users/walid/test/datasets/server_logs/logfiles-2017.log:/file.log
+      - /Users/walid/test/datasets/zanbil/access.log:/file.log
+      # - /Users/walid/test/datasets/zanbil/22-jan-2019-04-00.log:/file.log
+      - /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/checkpoint.pos:/checkpoint.pos
+      - /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash:/logstash/
+    tty: true
+    networks:
+      - elk
+  
+networks:
+  elk:
+    external: true

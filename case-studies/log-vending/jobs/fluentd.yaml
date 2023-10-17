@@ -1,0 +1,30 @@
+Name: Fluentd Job
+Type: batch
+Count: 1
+Namespace: logging
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: custom-fluentd:latest
+    Resources:
+      CPU: 2
+      Memory: 2Gi
+    InputSources:
+      - Target: /fluentd/etc/fluent.conf
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/fluentd/file.conf
+      - Target: /checkpoint.pos
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/checkpoint.pos
+            ReadWrite: true
+      - Target: /file.log
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/test/datasets/server_logs/logfiles.log

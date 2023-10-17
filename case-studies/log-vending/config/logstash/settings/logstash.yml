@@ -1,0 +1,2 @@
+api.enabled: false
+xpack.monitoring.enabled: false

@@ -1,0 +1,24 @@
+Name: Logstash Job
+Type: batch
+Count: 1
+Namespace: logging
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: logstash:8.10.2
+    Resources:
+      CPU: 2
+      Memory: 2Gi
+    InputSources:
+      - Target: /usr/share/logstash/pipeline/
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/pipeline
+      - Target: /usr/share/logstash/config/logstash.yml
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/settings/logstash.yml
