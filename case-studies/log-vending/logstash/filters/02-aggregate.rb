@@ -7,9 +7,14 @@ def register(params)
       'ip' => {},
       'geoip' => {},
       'user_agent' => {},
+      'bad_page_404' => {},
+      'bad_caller_404' => {},
+      'bad_caller_403' => {},
+      'bad_caller_429' => {},
       'request' => {},
       'total' => {},
     }
+    @start_time = 0
   end
       
   # General function to aggregate data
@@ -27,10 +32,11 @@ def register(params)
     end
   end
 
-  reset_aggregated_data()
   $mutex = Mutex.new
-  @last_flushed = 0
-  @duration = params["duration"]
+  @start_time = 0
+  @duration = params["duration"].to_i
+
+  reset_aggregated_data()
 end
 
 def filter(event)
@@ -48,24 +54,33 @@ def filter(event)
     aggregate_data('total', 'requests')
     aggregate_data('total', 'bytes', event.get('body_bytes_sent'))
 
-    # If this is the first event, set the last_flushed timestamp
-    if @last_flushed == 0
-      @last_flushed = event.get('@timestamp')
+    # Aggregate bad requests
+    case event.get('status')
+    when '404'
+      aggregate_data('bad_page_404', event.get('normalized_request'))
+      aggregate_data('bad_caller_404', event.get('remote_addr'))
+    when '403'
+      aggregate_data('bad_caller_403', event.get('remote_addr'))
+    when '429'
+      aggregate_data('bad_caller_429', event.get('remote_addr'))
+    end
+
+    # If this is the first event, set the start_time timestamp
+    if @start_time == 0
+      @start_time = event.get('@timestamp')
     end
 
     # Flush every @duration seconds
-    if event.get('@timestamp') - @last_flushed > @duration
+    if event.get('@timestamp') - @start_time > @duration
       new_events << LogStash::Event.new(
         'aggregated_data' => @aggregated_data,
-        '@timestamp' => event.get('@timestamp'),
+        '@timestamp' => @start_time,
+        'end_time' => event.get('@timestamp'),
         'tags' => ['_aggregated']
       )
 
       # Reset the counters
       reset_aggregated_data()
-
-      # Update the last flushed timestamp
-      @last_flushed = event.get('@timestamp')
     end
     return new_events
   end

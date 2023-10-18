@@ -1,0 +1,17 @@
+version: '3'
+services:
+  logstash:
+    image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
+    env_file:
+      - .env
+    volumes:
+      - ../logstash:/logstash
+      - ../logstash/pipeline:/usr/share/logstash/pipeline
+      - /Users/walid/test/datasets/zanbil/access.log:/file.log
+    tty: true
+    networks:
+      - elk
+  
+networks:
+  elk:
+    external: true
