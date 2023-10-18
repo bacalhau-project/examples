@@ -1,24 +1,41 @@
 Name: Logstash Job
-Type: batch
-Count: 1
+Type: daemon
 Namespace: logging
 Tasks:
   - Name: main
     Engine:
       Type: docker
       Params:
-        Image: logstash:8.10.2
+        Image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
+        EnvironmentVariables:
+          - ES_HOST=https://search-logs2-hliikolqdocebkhpiyapgicowi.eu-west-1.es.amazonaws.com:443
+          - S3_BUCKET=bacalhau-usecase-log-vending
+          - AWS_REGION=eu-west-1
+          - AGGREGATE_DURATION=30
     Resources:
       CPU: 2
       Memory: 2Gi
+    Network: 
+      Type: Full
     InputSources:
       - Target: /usr/share/logstash/pipeline/
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/pipeline
-      - Target: /usr/share/logstash/config/logstash.yml
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/logstash/pipeline
+      - Target: /logstash
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/config/logstash/settings/logstash.yml
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/logstash
+      - Target: /file.log
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/test/datasets/zanbil/access.log
+      - Target: /checkpoint.pos
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /Users/walid/ProtocolLabs/workspace/bacalhau-examples/case-studies/log-vending/logstash/checkpoint.pos
+            ReadWrite: true

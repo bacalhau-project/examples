@@ -6,12 +6,12 @@ services:
       - .env
     volumes:
       - ../logstash:/logstash
+      - ../logstash/checkpoint.pos:/checkpoint.pos
       - ../logstash/pipeline:/usr/share/logstash/pipeline
       - /Users/walid/test/datasets/zanbil/access.log:/file.log
     tty: true
     networks:
       - elk
-  
 networks:
   elk:
     external: true
