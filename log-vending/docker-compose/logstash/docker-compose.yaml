@@ -1,0 +1,24 @@
+version: '3'
+services:
+  log-generator:
+    image: expanso/nginx-access-log-generator:latest
+    command: ["--rate", "1", "--output-log-file", "/app/output/application.log"]
+    volumes:
+      - ~/loggen-output:/app/output:rw
+  logstash:
+    image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
+    env_file:
+      - .env
+    volumes:
+      - ../../tools/logstash:/logstash
+      - ../../tools/logstash/pipeline:/usr/share/logstash/pipeline
+      - ../../tools/logstash/checkpoint.pos:/app/checkpoint.pos
+      - ~/loggen-output:/app/logs/:ro
+    tty: true
+    networks:
+      - elk
+    depends_on:
+      - log-generator
+networks:
+  elk:
+    external: true
