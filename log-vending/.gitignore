@@ -1,3 +1,4 @@
 checkpoint.pos
 .env
 */log-generator/output
+!*/log-generator/Dockerfile
