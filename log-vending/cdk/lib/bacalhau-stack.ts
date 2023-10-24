@@ -170,7 +170,7 @@ export class BacalhauStack extends cdk.Stack {
 
         // Create OpenSearch instance
         const openSearch = new search.Domain(this, 'BacalhauOpenSearch', {
-            version: search.EngineVersion.OPENSEARCH_2_7,
+            version: search.EngineVersion.openSearch('2.9'),
             capacity: {
                 dataNodeInstanceType: 't3.small.search',
             },
