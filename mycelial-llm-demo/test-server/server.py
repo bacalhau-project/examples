@@ -12,7 +12,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         # Upper case and reverse the message provided
         body["message"] = body["message"].upper()[::1]
 
-        with open(os.path.join("./outputs/", f"{body['id']}.json"), "w") as f:
+        with open(os.path.join("./outputs/", f"{body['key']}.json"), "w") as f:
             json.dump(body, f)
 
         self.send_response(200)
