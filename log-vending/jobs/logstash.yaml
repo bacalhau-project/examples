@@ -1,0 +1,36 @@
+Name: Logstash
+Type: daemon
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - web-server
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-agent:latest
+        EnvironmentVariables:
+          - ES_HOST=https://search-bacalhauopensea-fijijqkh02mf-yuqpxhnstgd3a4opoetp4tbaa4.eu-west-1.es.amazonaws.com:443
+          - S3_BUCKET=bacalhaulogvending-bucket83908e77-ncvj2ymuvtgd
+          - AWS_REGION=eu-west-1
+          - AGGREGATE_DURATION=30
+    Resources:
+      CPU: 1
+      Memory: 3Gi
+    Network: 
+      Type: Full
+    InputSources:
+      - Target: /app/logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-vending/logs
+      - Target: /app/state
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-vending/state
+            ReadWrite: true

@@ -6,13 +6,11 @@ services:
     volumes:
       - ~/loggen-output:/app/output:rw
   logstash:
-    image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
+    image: expanso/nginx-access-log-agent:latest
     env_file:
       - .env
     volumes:
-      - ../../tools/logstash:/logstash
-      - ../../tools/logstash/pipeline:/usr/share/logstash/pipeline
-      - ../../tools/logstash/checkpoint.pos:/app/checkpoint.pos
+      - ../../tools/logstash/:/app/state:rw
       - ~/loggen-output:/app/logs/:ro
     tty: true
     networks:
