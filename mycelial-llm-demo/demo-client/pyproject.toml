@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "llmclient"
+version = "0.1.0"
+description = ""
+authors = ["Ross Jones <ross@register-dynamics.co.uk>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+halo = "^0.0.31"
+pydantic = "^2.4.2"
+pony = "^0.7.17"
+pyyaml = "^6.0.1"
+boxing = "^0.1.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.scripts]
+llmc = "llmclient:main"
