@@ -95,13 +95,22 @@ if __name__ == "__main__":
 
     print("\n")
 
-    # Set up the argument parser
-    parser = argparse.ArgumentParser(description="Process log data")
-    parser.add_argument("input_file", help="Path to the input log file")
-    parser.add_argument("query", help="DuckDB query to execute")
+    print("Environment Variables")
+    print(f"INPUTFILE = {os.environ.get('INPUTFILE')}")
+    print(f"QUERY = {os.environ.get('QUERY')}")
 
-    # Parse the command-line arguments
-    args = parser.parse_args()
+    # If both INPUTFILE and QUERY are set, then use those
+    if os.environ.get("INPUTFILE") and os.environ.get("QUERY"):
+        print("Both INPUTFILE and QUERY are set, so using those")
+        args = argparse.Namespace(input_file=os.environ.get("INPUTFILE"), query=os.environ.get("QUERY"))
+    else:
+        # Set up the argument parser
+        parser = argparse.ArgumentParser(description="Process log data")
+        parser.add_argument("input_file", help="Path to the input log file")
+        parser.add_argument("query", help="DuckDB query to execute")
+
+        # Parse the command-line arguments
+        args = parser.parse_args()
 
     # Call the main function
     main(args.input_file, args.query)
