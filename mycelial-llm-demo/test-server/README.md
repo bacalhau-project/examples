@@ -10,6 +10,7 @@ Message accepted:
 ```json
 {
     "id": "1",
+    "key": "<hexstring md5hash of the message>",
     "message": "hello"
 }
 ```
@@ -19,6 +20,7 @@ Message written to `./outputs/1.json`:
 ```json
 {
     "id": "1",
+    "key": "<hexstring md5hash of the ORIGINAL message>",    
     "message": "OLLEH"
 }
 ```
