@@ -42,10 +42,10 @@ def run(cfg: Config):
 
             time.sleep(0.25)
 
-        spinner.stop()
-
         if result:
-            res = boxing(result.message, style="double", padding=2, margin=1)
-            print(res)
+            spinner.succeed("Query successful")
+            print("")
+            print(result.message)
         else:
-            print("❌ Query took too long...")
+            spinner.fail("Query took too long")
+            print("")
