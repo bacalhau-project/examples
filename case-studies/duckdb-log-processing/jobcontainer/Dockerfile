@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y google-cloud-sdk
 
 RUN rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/duckdb/duckdb/releases/download/v0.8.0/duckdb_cli-linux-amd64.zip \
+RUN wget https://github.com/duckdb/duckdb/releases/download/v0.9.1/duckdb_cli-linux-amd64.zip \
     && unzip duckdb_cli-linux-amd64.zip -d /usr/local/bin \
     && rm duckdb_cli-linux-amd64.zip
 
