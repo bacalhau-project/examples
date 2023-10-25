@@ -72,7 +72,7 @@ function attach-data-disk() {
   if [ "$existing_instance" != "null" ]; then
     if [ "$existing_instance" == "$INSTANCE_ID" ] && [ "$existing_device" == "$DEVICE_PATH" ]; then
       echo "Volume is already attached to the desired instance and device. Nothing to do."
-      exit 0
+      return
     else
       echo "Volume is attached to instance $existing_instance at device $existing_device. Detaching..."
       detach_volume
@@ -153,11 +153,12 @@ function create-directories() {
   mkdir /data/log-vending
   mkdir /data/log-vending/logs # This is where the logs will be generated
   mkdir /data/log-vending/state # This is where logstash checkpoints will be stored
+  chown -R ubuntu:ubuntu /data/log-vending
 }
 
 function install-bacalhau() {
   echo "Installing Bacalhau from release $BACALHAU_VERSION"
-  wget "https://github.com/bacalhau-project/bacalhau/releases/download/$BACALHAU_VERSION/bacalhau_${BACALHAU_VERSION}_${TARGET_PLATFORM}.tar.gz"
+  wget -q "https://github.com/bacalhau-project/bacalhau/releases/download/$BACALHAU_VERSION/bacalhau_${BACALHAU_VERSION}_${TARGET_PLATFORM}.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_${TARGET_PLATFORM}.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }

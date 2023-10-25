@@ -148,7 +148,7 @@ export class BacalhauStack extends cdk.Stack {
                 vpcSubnets: {
                     subnetType: ec2.SubnetType.PUBLIC,
                 },
-                instanceType: ec2.InstanceType.of(ec2.InstanceClass.M7I, ec2.InstanceSize.LARGE),
+                instanceType: ec2.InstanceType.of(ec2.InstanceClass.M7I, ec2.InstanceSize.XLARGE2),
                 machineImage: machineImage,
                 securityGroup: sg,
                 role: computeRole,
@@ -163,11 +163,6 @@ export class BacalhauStack extends cdk.Stack {
             });
         }
 
-        // openSearch master password
-        const openSearchPassword = new secretsmanager.Secret(this, 'BacalhauOpenSearchMasterPassword', {
-            description: 'Initial password for the OpenSearch master user',
-        });
-
         // Create OpenSearch instance
         const openSearch = new search.Domain(this, 'BacalhauOpenSearch', {
             version: search.EngineVersion.openSearch('2.9'),
@@ -175,17 +170,19 @@ export class BacalhauStack extends cdk.Stack {
                 dataNodeInstanceType: 't3.small.search',
             },
             ebs: {
-                volumeSize: 20,
+                volumeSize: 100,
             },
+            accessPolicies: [
+                new iam.PolicyStatement({
+                    actions: ['es:ESHttp*'],
+                    effect: iam.Effect.ALLOW,
+                    principals: [computeRole],
+                    resources: ['*'],
+                }),
+            ],
             removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev/test only
-            useUnsignedBasicAuth: true, // For dev/test only
-            fineGrainedAccessControl: {
-                masterUserName: 'admin',
-                masterUserPassword: openSearchPassword.secretValue,
-            },
         });
-
-        openSearch.grantIndexWrite('aggregated-*', computeRole)
+        openSearch.grantWrite(computeRole)
 
         // Create S3 bucket
         const bucket = new s3.Bucket(this, 'Bucket', {
@@ -215,10 +212,10 @@ export class BacalhauStack extends cdk.Stack {
             description: 'The URL of the OpenSearch dashboard.',
         });
 
-        // Output the OpenSearch master password
-        new cdk.CfnOutput(this, 'OpenSearchMasterCredentials', {
-            value: `aws secretsmanager get-secret-value --secret-id "${openSearchPassword.secretArn}" --query 'SecretString' --output text`,
-            description: 'Run this command to get the OpenSearch master password.',
+        // Output compute role arn
+        new cdk.CfnOutput(this, 'ComputeRoleArn', {
+            value: computeRole.roleArn,
+            description: 'The ARN of the compute role.',
         });
     }
 

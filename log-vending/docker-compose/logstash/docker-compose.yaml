@@ -2,7 +2,7 @@ version: '3'
 services:
   log-generator:
     image: expanso/nginx-access-log-generator:latest
-    command: ["--rate", "1", "--output-log-file", "/app/output/application.log"]
+    command: ["--rate", "0.2", "--output-log-file", "/app/output/application.log"]
     volumes:
       - ~/loggen-output:/app/output:rw
   logstash:

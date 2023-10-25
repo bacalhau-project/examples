@@ -4,6 +4,7 @@ import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import argparse
+import asyncio
 
 """
 Script to simulate log generation. It reads logs from hourly-separated
@@ -15,10 +16,13 @@ Usage:
 """
 
 
-def main(args):
-    log_rate = args.rate
+async def main(args):
+    rate = args.rate
     source_directory = args.input_log_directory
     output_file_path = args.output_log_file
+    await generate_logs(rate, source_directory, output_file_path)
+
+async def generate_logs(rate, source_directory, output_file_path):
 
     # Initialize logging with TimedRotatingFileHandler to handle file rotation
     logger = logging.getLogger("LogGenerator")
@@ -36,7 +40,7 @@ def main(args):
         with open(file_name, "r") as f:
             # Read and publish each line from the current log file
             for line in f:
-                time.sleep(1 / log_rate)
+                await asyncio.sleep(1 / rate)
                 current_time = datetime.now(timezone.utc).strftime("%d/%b/%Y:%H:%M:%S %z")
                 updated_line = line.replace(line.split('[')[1].split(']')[0], current_time)
                 logger.info(updated_line.strip())
@@ -50,7 +54,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        main(args)
+        asyncio.run(main(args))
     except KeyboardInterrupt:
         print("Log generation stopped by user.")
 

@@ -11,12 +11,15 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: expanso/nginx-access-log-generator:latest
+        Image: expanso/nginx-access-log-generator@sha256:d57e98dfe52d0945290c8eca7ceb35ba3ade9b0d8c851037225a387a4ba3d339
         Parameters:
           - --rate
-          - "1"
+          - "10000"
           - --output-log-file
           - /app/output/application.log
+    Resources:
+      CPU: 2
+      Memory: 5Gi
     InputSources:
       - Target: /app/output
         Source:
