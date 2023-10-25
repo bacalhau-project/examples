@@ -15,12 +15,12 @@ SQLite --> Bacalhau --> SQLite
 * Clone this repo
 * `poetry install`
 * Copy config.sample.yaml to config.yaml
-* Edit config.yaml to point to your two file 
+* Edit config.yaml to point to your two file
 
 ## Running the script
 
 ```shell
-$ poetry run llmclient 
+$ poetry run llmc
 ```
 
 Type messages, get replies.
