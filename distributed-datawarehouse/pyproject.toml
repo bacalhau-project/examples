@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ddw"
+version = "0.1.0"
+description = ""
+authors = ["Expanso <team@expanso.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+boto3 = "^1.28.64"
+bacalhau-sdk = "^1.1.1"
+pyyaml = "^6.0.1"
+pydantic = "^2.4.2"
+pydotdict = "^3.3.11"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+ddw = "ddw:main"

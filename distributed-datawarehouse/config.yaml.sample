@@ -1,0 +1,29 @@
+# The IP address of the Bacalhau cluster
+host: 34.155.152.133
+
+# The port to connect to the Bacalhau API on
+port: 1234
+
+# The docker image containing the query engine (in this case duckdb)
+image: rossjones73/duckdb:0.1
+
+# The details required for publishing the query results. You likely
+# only need to change the bucket name, but the compute nodes in the 
+# bacalhau cluster will need AWS credentials to write to that bucket.
+publisher:
+  bucket: bacalhau-usecase-distributed-data-warehouse
+  prefix: "{jobID}/{executionID}"
+
+# Specifies the location of the data file on the compute node, 
+# and the place to mount it inside our docker image.  Using 
+# these values our docker program will be able to read the 
+# file at /inputs/transactions.csv (which will actually be
+# the contents of /node/data/transactions.csv)
+input:
+  source: /node/data/transactions.csv
+  target: /inputs/transactions.csv
+
+# A template for duckdb that allows for a query to write to the 
+# outputs folder.  This removes the need for the user to include 
+# this in every query.
+sql_template: "COPY({}) TO '/outputs/results.csv' (HEADER, DELIMITER ',');"

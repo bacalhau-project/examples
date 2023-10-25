@@ -1,0 +1,18 @@
+Job:
+  APIVersion: V1beta1
+  Spec:
+    Deal:
+      Concurrency: 1
+      TargetingMode: true
+    Docker:
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - python3 /process.py --output_dir=/outputs /var/log/logs_to_process/multi-cloud-bacalhau-example_logs.log.1 "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
+      Image: expanso/duckdb
+    Engine: Docker
+    inputs:
+      - Name: file:///var/log/logs_to_process
+        SourcePath: /var/log/logs_to_process
+        StorageSource: LocalDirectory
+        path: /var/log/logs_to_process
