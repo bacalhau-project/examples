@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import hashlib
+import readline
 import time
 
 from .config import Config
@@ -7,6 +8,18 @@ from .database import get_answers_db, get_questions_db
 
 from boxing import boxing
 from halo import Halo
+
+
+def display_answer(answer=None, spinner=None):
+    if answer:
+        if spinner:
+            spinner.succeed("Query successful")
+        print("")
+        print(answer.message)
+    else:
+        if spinner:
+            spinner.fail("Query took too long")
+        print("")
 
 
 def run(cfg: Config):
@@ -22,6 +35,12 @@ def run(cfg: Config):
 
         key = hashlib.md5(message.encode("utf-8")).hexdigest()
 
+        # Check for existing answer
+        result = Answer.get(key=key)
+        if result is not None:
+            display_answer(result, None)
+            continue
+
         q = Question(key=key, message=message)
         questions.commit()
 
@@ -34,7 +53,6 @@ def run(cfg: Config):
         ## wait for key to turn up in answers table
         finish_before = datetime.now() + timedelta(seconds=cfg.timeout)
 
-        result = None
         while result is None:
             result = Answer.get(key=key)
             if result or datetime.now() > finish_before:
@@ -42,10 +60,4 @@ def run(cfg: Config):
 
             time.sleep(0.25)
 
-        if result:
-            spinner.succeed("Query successful")
-            print("")
-            print(result.message)
-        else:
-            spinner.fail("Query took too long")
-            print("")
+        display_answer(result, spinner)
