@@ -1,5 +1,5 @@
 Job:
-  APIVersion: V1beta1
+  APIVersion: V1beta2
   Spec:
     NodeSelectors:
       - Key: zone
