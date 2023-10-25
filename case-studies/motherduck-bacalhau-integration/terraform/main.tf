@@ -114,7 +114,7 @@ resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
   provisioner "remote-exec" {
     inline = [
       "echo 'SSHD is now alive.'",
-      "timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
+      "sudo timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
     ]
   }
 
