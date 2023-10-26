@@ -1,0 +1,8 @@
+[
+    {
+        "sentence": [
+            "show me when engine 2 last went above 100"
+        ],
+        "query": "SELECT Engine, Thrust, Temperature FROM engine_data where engine=? and temperature > ?"
+    }
+]
