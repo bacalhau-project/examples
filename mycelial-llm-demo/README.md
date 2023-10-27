@@ -56,6 +56,12 @@ Current release 0.1.3
 * Note: you cannot configure the config.yaml until you have performed the configuration steps below.
 
 
+**Data-gen**
+
+Data generator for demo
+
+* Follow instructions in [data-gen README](./data-gen/README.md). 
+
 ## Configuration / Setup 
 
 * Create a directory on disk, referred to as $DIR in rest of instructions.
