@@ -33,6 +33,8 @@ def get_query(sentence, data, limit):
         if all_sentences[most_similar_index] in obj["sentence"]:
             most_similar_object = obj
             break
+
+    if not most_similar_object:
         return None
 
     print(f"Matched sentence: {all_sentences[most_similar_index]}")
