@@ -6,7 +6,7 @@ authors = ["Ross Jones <ross@register-dynamics.co.uk>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.8"
 halo = "^0.0.31"
 pydantic = "^2.4.2"
 pony = "^0.7.17"
