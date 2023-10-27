@@ -11,6 +11,9 @@ files = [
     {file = "annotated_types-0.6.0.tar.gz", hash = "sha256:563339e807e53ffd9c267e99fc6d9ea23eb8443c08f112651963e24e22f84a5d"},
 ]
 
+[package.dependencies]
+typing-extensions = {version = ">=4.0.0", markers = "python_version < \"3.9\""}
+
 [[package]]
 name = "boxing"
 version = "0.1.4"
@@ -325,5 +328,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10"
-content-hash = "fd8ac3c4d5192c9c0eb0e1ed7ee4a44f50f4392fbe8c61c4d5e14b581200570f"
+python-versions = "^3.8"
+content-hash = "121e1d3d7dcfbd4bccef4150181ff5580a5a59c680229cde2d0cb41193ebf8dd"
