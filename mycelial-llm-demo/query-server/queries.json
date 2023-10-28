@@ -1,8 +1,79 @@
 [
     {
         "sentence": [
-            "show me when engine 2 last went above 100"
+            "show me which engines have gone above 100 degrees today",
+            "show me which engines have gone above 100 today"
         ],
-        "query": "SELECT Engine, Thrust, Temperature FROM engine_data where engine=? and temperature > ?"
+        "query": "SELECT Engine, Temperature, Timestamp from engine_data WHERE DATE(Timestamp) > (SELECT date('now','-1 day')) AND DATE(Timestamp) < (SELECT date('now','+1 day'));"
+    },
+    {
+        "sentence": [
+            "when did engine 2 last go below 100",
+            "show me when engine 2 last went below 100"
+        ],
+        "query": "SELECT Engine, Temperature, Timestamp FROM engine_data WHERE Engine=? AND Temperature<? ORDER BY Timestamp DESC LIMIT 1;"
+    },
+    {
+        "sentence": [
+            "show me the average temperate for all engines today"
+        ],
+        "query": "SELECT Engine, AVG(Temperature) FROM engine_data WHERE DATE(Timestamp) > (SELECT date('now','-1 day')) AND DATE(Timestamp) < (SELECT date('now','+1 day')) GROUP BY Engine;"
+    },
+    {
+        "sentence": [
+            "show me the average thrust for all engines today"
+        ],
+        "query": "SELECT Engine, AVG(Thrust) FROM engine_data WHERE DATE(Timestamp) > (SELECT date('now','-1 day')) AND DATE(Timestamp) < (SELECT date('now','+1 day')) GROUP BY Engine;"
+    },
+    {
+        "sentence": [
+            "show me the average temperate for all engines in the last hour"
+        ],
+        "query": "SELECT Engine, AVG(Temperature) FROM engine_data WHERE DATETIME(Timestamp) > (SELECT datetime('now','-1 hour')) GROUP BY Engine;"
+    },
+    {
+        "sentence": [
+            "show me the average thrust for all engines in the last hour"
+        ],
+        "query": "SELECT Engine, AVG(Thrust) FROM engine_data WHERE DATETIME(Timestamp) > (SELECT datetime('now','-1 hour')) GROUP BY Engine;"
+    },
+    {
+        "sentence": [
+            "which engines had 0 thrust today",
+            "which engines had zero thrust today"
+        ],
+        "query": "SELECT Engine, Thrust, Timestamp FROM engine_data WHERE DATE(Timestamp) > (SELECT date('now','-1 day')) AND DATE(Timestamp) < (SELECT date('now','+1 day')) AND Thrust = 0.0;"
+    },
+    {
+        "sentence": [
+            "which engines were off today"
+        ],
+        "query": "SELECT Engine FROM engine_data WHERE DATE(Timestamp) > (SELECT date('now','-1 day')) AND DATE(Timestamp) < (SELECT date('now','+1 day')) AND Temperature = 0.0;"
+    },
+    {
+        "sentence": [
+            "how many engines have exceeded 250 degrees when thrust was low",
+            "how many engines have exceeded 250 when thrust was low"
+        ],
+        "query": "SELECT Engine, Temperature, Trust, Timestamp FROM engine_data WHERE Temperature > ? AND Thrust < 500;"
+    },
+    {
+        "sentence": [
+            "which engine's average temperature is highest?",
+            "the average temperature is highest in which engines?"
+        ],
+        "query": "SELECT Engine, AVG(Temperature) FROM engine_data GROUP BY Engine ORDER BY AVG(Temperature) DESC;"
+    },
+    {
+        "sentence": [
+            "which engine attained the highest thrust?"
+        ],
+        "query": "SELECT Engine, MAX(Thrust) FROM engine_data GROUP BY Engine ORDER BY MAX(Thrust) DESC;"
+    },
+    {
+        "sentence": [
+            "show me the highest average thrust with the highest average temperature"
+        ],
+        "query": "SELECT Engine, AVG(Thrust), AVG(Temperature) FROM engine_data GROUP BY Engine ORDER BY Engine;"
     }
 ]

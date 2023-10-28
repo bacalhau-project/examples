@@ -1,30 +1,70 @@
 from datetime import datetime, timedelta
 import hashlib
-import readline
+import json
+import readline  # importing applies effect
 import time
 
 from .config import Config
-from .database import get_answers_db, get_questions_db
+from .database import get_answers_db, get_data_db, get_questions_db
 
 from boxing import boxing
 from halo import Halo
+from tabulate import tabulate
 
 
-def display_answer(answer=None, spinner=None):
-    if answer:
-        if spinner:
-            spinner.succeed("Query successful")
-        print("")
-        print(answer.message)
-    else:
+def rephrase(spinner=None):
+    if spinner:
+        spinner.succeed("Query complete")
+    print("Please rephrase query\n")
+
+
+def display_answer(data_db, answer=None, spinner=None):
+    if not answer:
         if spinner:
             spinner.fail("Query took too long")
         print("")
+        return
+
+    if answer:
+        result = json.loads(answer.message)
+        if result.get("query", "") == "":
+            rephrase(spinner)
+            return
+
+        if spinner:
+            spinner.succeed("Query successful")
+        print("")
+
+        # Verify we got a safe query
+        qm_count = result["query"].count("?")
+        if qm_count > 0 and qm_count != len(result["replacements"]):
+            rephrase(spinner)
+            return
+
+        if qm_count == 0:
+            result["replacements"] = []
+
+        c = data_db.cursor()
+        c.execute(result["query"], result["replacements"])
+        rows = c.fetchall()
+        columns = [v[0] for v in c.description]
+
+        t = tabulate(
+            rows,
+            headers=columns,
+            floatfmt=".2f",
+            tablefmt="psql",
+        )
+        print(t)
+        # print(columns)
+        # for row in rows:
+        #     print(row)
 
 
 def run(cfg: Config):
     questions, Question = get_questions_db(cfg.questions)
     answers, Answer = get_answers_db(cfg.answers)
+    engines = get_data_db(cfg.data)
 
     while True:
         message = input("> ")
@@ -32,6 +72,9 @@ def run(cfg: Config):
             break
         elif message.strip() == "":
             continue
+
+        # Strip ?
+        message = message.replace("?", "")
 
         key = hashlib.md5(message.encode("utf-8")).hexdigest()
 
@@ -60,4 +103,4 @@ def run(cfg: Config):
 
             time.sleep(0.25)
 
-        display_answer(result, spinner)
+        display_answer(engines, result, spinner)
