@@ -58,18 +58,21 @@ To do something a bit more advanced, let's use DuckDB to process a log file. To 
 
 You can run the job on the europe-west9-a node with the following command:
 ```bash
-bacalhau --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "python3 /process.py /var/log/logs_to_process/aperitivo.log.1 \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
+bacalhau docker run \
+  -i file:///db:/db \
+  -i file:///var/log/logs_to_process:/var/log/logs_to_process \
+  --network=full \
+  -e INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1 \
+  -e QUERY="SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'" \
+  --target=all --memory=4Gb docker.io/bacalhauproject/duckdb-log-processor:1.1
 ```
 
 Breaking down the above flags:
 * `--network=full` - this will run the only on nodes that have networking enabled.
 * `-i file:///var/log/logs_to_process:/var/log/logs_to_process` - this will mount the `/var/log/logs_to_process` directory (form the host node) to the `/var/log/logs_to_process` directory in the container.
-* `docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7` - this will run the docker container `docker.io/bacalhauproject/duckdb-log-processor:v1.0`
-* `-- /bin/bash -c ` - this will run the command in the container on the node (command must have quotes around it). The arguments are: 
-  * `python3 /process.py` - run python3
-  * `/process.py` - the script already built into the container
-  * `/var/log/logs_to_process/aperitivo.log.1` - the file to process
-  * `SELECT * FROM logs WHERE log_level = 'SECURITY'` - the SQL query to run on the file (must be surrounded by escaped quotes (`\"`))
+* `docker run docker.io/bacalhauproject/duckdb-log-processor:1.1` - this will run the duckdb log processor docker container
+* `-e INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1` - sets an environment variable for the log file to be processed
+* `-e QUERY="SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"` - sets an environment variable for SQL query to be run
 
 You can get the results of the job by running the following command:
 ```bash
@@ -108,37 +111,41 @@ cat job.yaml | bacalhau create
 ## Running across all nodes
 The above job runs on just one node. To run the same job on all nodes, so you can query every log on your network, you can run the following command:
 ```bash
-NUMBER_OF_NODES=4
-bacalhau --concurrency $NUMBER_OF_NODES --network=full -i file:///var/log/logs_to_process:/var/log/logs_to_process docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7 -- /bin/bash -c "/process.py /var/log/logs_to_process/aperitivo.log.1  \"SELECT * FROM logs WHERE log_level = 'SECURITY'\""
+bacalhau docker run \
+  -i file:///db:/db \
+  -i file:///var/log/logs_to_process:/var/log/logs_to_process \
+  --network=full \
+  --target all \
+  -e INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1 \
+  -e QUERY="SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'" \
+  --target=all --memory=4Gb docker.io/bacalhauproject/duckdb-log-processor:1.1
 ```
 
-Breaking down the above flags:
-* `--concurrency $NUMBER_OF_NODES` - this will run the job on $NUMBER_OF_NODES nodes.
-* `--network=full` - this will run the only on nodes that have networking enabled.
-* `-i file:///var/log/logs_to_process:/var/log/logs_to_process` - this will mount the `/var/log/logs_to_process` directory (form the host node) to the `/var/log/logs_to_process` directory in the container.
-* `docker run docker.io/bacalhauproject/duckdb-log-processor:v1.0.7` - this will run the docker container `docker.io/bacalhauproject/duckdb-log-processor:v1.0`
-* `--` - separates the docker run command from the command to run in the container.
-* `/process.py` - the script already built into the container
-* `/var/log/logs_to_process/aperitivo.log.1` - the file to process
-* `SELECT * FROM logs WHERE log_level = 'SECURITY'` - the SQL query to run on the file (must be surrounded by escaped quotes (`\"`))
+The above flags only add one flag to the previous command:
+* `--target all` - this will run the job on all nodes in the network.
 
 You can also execute this with the following yaml file:
 ```yaml
 Job:
-  APIVersion: V1beta1
+  APIVersion: V1beta2
   Spec:
     Deal:
-      Concurrency: 112
-    Docker:
-      Entrypoint:
-        - /bin/bash
-        - -c
-        - python3 /process.py aperitivo_logs.log.1 archive-bucket "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
-      Image: docker.io/bacalhauproject/duckdb-log-processor:v1.0.7
-    Engine: Docker
+      Concurrency: 1
+      TargetingMode: true
+    EngineSpec:
+      Params:
+        EnvironmentVariables:
+          - INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1
+          - QUERY=SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'
+        Image: docker.io/bacalhauproject/duckdb-log-processor:1.1
+        WorkingDirectory: ""
+      Type: docker
+    Resources:
+      GPU: ""
+      Memory: 4gb
     Network:
       Type: Full
-    inputs:
+    Inputs:
       - Name: file:///var/log/logs_to_process
         SourcePath: /var/log/logs_to_process
         StorageSource: LocalDirectory
