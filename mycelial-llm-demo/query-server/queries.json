@@ -55,7 +55,7 @@
             "how many engines have exceeded 250 degrees when thrust was low",
             "how many engines have exceeded 250 when thrust was low"
         ],
-        "query": "SELECT Engine, Temperature, Trust, Timestamp FROM engine_data WHERE Temperature > ? AND Thrust < 500;"
+        "query": "SELECT Engine, Temperature, Thrust, Timestamp FROM engine_data WHERE Temperature > ? AND Thrust < 500;"
     },
     {
         "sentence": [
