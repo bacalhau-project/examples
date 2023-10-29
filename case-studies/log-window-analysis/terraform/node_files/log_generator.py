@@ -1,80 +1,72 @@
 import json
 import time
-from datetime import datetime
+import datetime
+from datetime import datetime as dt
 from random import choice, choices
 import uuid
 import argparse
 import os
 from faker import Faker
 from pathlib import Path
-
-fake = Faker()
-
-
-class User:
-    def __init__(self, user_id):
-        self.user_id = user_id
-        self.last_entry = datetime.now()
-        self.count = 1
-
-
-active_users = {}
+import numpy as np
 
 
 def main(log_directory, appname):
+    with open(Path(__file__).parent / "sample_access.log", "r") as sample_log_file:
+        lines = sample_log_file.readlines()
+        line_tuples = []
+        for line in lines:
+            datetimestamp = dt.strptime(line.split("[")[1].split("]")[0], "%Y-%m-%dT%H:%M:%S.%f%z")
+            line_tuples.append((datetimestamp, line.strip("\n")))
+        full_array = np.array(line_tuples)
+        full_array = np.array(sorted(full_array, key=lambda x: x[0]))
+
+    # Load existing log entries
+    log_file_path = os.path.join(log_directory, f"{appname}_logs.log")
+    last_printed_time = full_array[0][0]
+
+    # Adding 4 hours so we get a bunch of logs right now.
+    last_real_time = dt.now(last_printed_time.tzinfo) - datetime.timedelta(hours=4)
+
+    # In a loop, every second, print out the set number of log entries since the last second
     while True:
-        log_entry = generate_log_entry()
+        # Get the current time
+        current_real_time = dt.now(last_printed_time.tzinfo)
+        real_time_diff = current_real_time - last_real_time
+        end_time = last_printed_time + real_time_diff
 
-        # Load existing log entries
-        log_file_path = os.path.join(log_directory, f"{appname}_logs.log")
-        try:
-            with open(log_file_path, "r") as log_file:
-                log_entries = json.load(log_file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            log_entries = []
+        # Get the log entries since the last time we printed
+        log_entries_to_print = full_array[(full_array[:, 0] > last_printed_time) & (full_array[:, 0] <= end_time)]
 
-        # Append new log entry and write back to the file
-        log_entries.append(log_entry)
-        with open(log_file_path, "w") as log_file:
-            json.dump(log_entries, log_file, indent=2)
+        log_entries_string = "\n".join(log_entries_to_print[:, 1])
+        print(log_entries_string)
+        with open(log_file_path, "a") as filehandle:
+            if log_entries_string:
+                filehandle.write(log_entries_string)
+                filehandle.write("\n")
 
-        # Sleep for 5 seconds before generating another log entry
-        time.sleep(5)
+        last_printed_time = end_time
+        last_real_time = current_real_time
+
+        # If the last printed time is bigger than the last in full_array, set last_printed_time to the first in full_array
+        if last_printed_time >= full_array[-1][0]:
+            last_printed_time = full_array[0][0]
+
+        # Sleep for 1 second
+        time.sleep(1)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate fake log entries and save them to a specified directory.")
-    parser.add_argument("-d", "--directory", type=str, required=True, help="The directory to save the log file.")
-    parser.add_argument("-n", "--appname", type=str, required=True, help="The application name for the log.")
+    parser.add_argument(
+        "-d", "--directory", type=str, nargs="?", help="The directory to save the log file.", default="."
+    )
+    parser.add_argument(
+        "-n", "--appname", type=str, nargs="?", help="The application name for the log.", default="aperitivo"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
         os.makedirs(args.directory)
 
     main(args.directory, args.appname)
-
-
-# Generate a full python function that creates a series of log entries of the format:
-# {"timestamp": timestamp, "user_id": user_id_hash (randomly created), "label": label, "page": (randomly selected from a list of pages), "ip": ip}
-# It should be tab delimited, and the timestamp should be in UTC time. The unique label will be a parameter
-# passed into the function. The log entries should always start with "login" and the last one should be "logout"
-# The number of the log entries is random length between 1 and 20, in a power law distribution (i.e. 1/2 of the
-# log entries will be 1, 1/4 will be 2, 1/8 will be 3, etc.) The length of time betmeen each log entry should be
-# random between 1 and 30 seconds.
-
-
-def generate_log_entry(label):
-    with open(Path(__file__).parent / "clean_words_alpha.txt", "r") as word_file:
-        word_list = word_file.read().splitlines()
-
-    log_entries
-
-    log_entry = {
-        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-        "user_id": str(uuid.uuid4()),
-        "label": label,
-        "page": choice(word_list),
-        "ip": fake.ipv4(),
-    }
-
-    return log_entry

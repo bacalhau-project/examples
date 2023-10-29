@@ -18,12 +18,11 @@ write_files:
     permissions: "0777"
   - content: |
       ${ logs_dir }/*.log {
-          hourly
+          daily
           missingok
-          rotate 24
+          rotate 4
           compress
           delaycompress
-          olddir /var/log/logs_to_process
       }
     owner: root:root
     path: /etc/logrotate.d/${ app_name }
