@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 
-from .server import run
+from .server import run, load_data
 
 
 def main():
@@ -13,8 +13,7 @@ def main():
     parser.add_argument(
         "-d",
         "--data",
-        type=argparse.FileType("r"),
-        default="sampl.json",
+        type=str,
         help="Specify a data file",
     )
     parser.add_argument(
@@ -32,6 +31,10 @@ def main():
     )
     args = parser.parse_args()
 
+    if not os.path.exists(args.data):
+        print(f"File '{args.data}' does not seem to exist")
+        return
+
     if not os.path.exists(args.outputs):
         print(f"Directory '{args.outputs}' does not seem to exist")
         return
@@ -40,8 +43,7 @@ def main():
 
     faulthandler.enable()
 
-    data = json.load(args.data)
-    run(data, args.outputs, args.limit)
+    run(args.data, args.outputs, args.limit)
 
 
 # Force download of the model
