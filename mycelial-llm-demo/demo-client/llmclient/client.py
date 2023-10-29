@@ -56,9 +56,6 @@ def display_answer(data_db, answer=None, spinner=None):
             tablefmt="psql",
         )
         print(t)
-        # print(columns)
-        # for row in rows:
-        #     print(row)
 
 
 def run(cfg: Config):
@@ -81,7 +78,7 @@ def run(cfg: Config):
         # Check for existing answer
         result = Answer.get(key=key)
         if result is not None:
-            display_answer(result, None)
+            display_answer(engines, result, None)
             continue
 
         q = Question(key=key, message=message)
