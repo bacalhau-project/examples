@@ -11,7 +11,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: expanso/nginx-access-log-generator@sha256:d57e98dfe52d0945290c8eca7ceb35ba3ade9b0d8c851037225a387a4ba3d339
+        Image: expanso/nginx-access-log-generator:1.0.0
         Parameters:
           - --rate
           - "10"

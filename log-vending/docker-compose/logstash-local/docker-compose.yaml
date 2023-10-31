@@ -1,14 +1,14 @@
 version: '3'
 services:
   log-generator:
-    image: expanso/nginx-access-log-generator:latest
+    image: expanso/nginx-access-log-generator:1.0.0
     command: ["--rate", "0.2", "--output-log-file", "/app/output/application.log"]
     volumes:
       - ./loggen-output:/app/output:rw
   logstash:
     image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
     environment:
-      OS_HOST: https://opensearch:9200
+      OPENSEARCH_ENDPOINT: https://opensearch:9200
       OS_AUTH_TYPE: basic
       OS_BASIC_AUTH_USER: admin
       OS_BASIC_AUTH_PASS: admin

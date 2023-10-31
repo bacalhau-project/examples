@@ -3,6 +3,7 @@ import boto3
 import json
 import logging
 import requests
+import time
 import traceback
 import sys
 
@@ -21,6 +22,8 @@ compute_role_arn = os.environ.get('COMPUTE_ROLE_ARN')
 def get_secret():
     secrets_client = boto3.client('secretsmanager')
     response = secrets_client.get_secret_value(SecretId=os.environ.get('SECRET_ARN'))
+    if not response.get('SecretString'):
+        raise Exception("SecretString not found in response.")
     return HTTPBasicAuth('admin', response['SecretString'])
 
 
@@ -28,19 +31,19 @@ auth = get_secret()
 
 
 def load_saved_objects():
-    session = requests.Session()
-    login_url = f"{dashboard_url}/auth/login"
-    login_headers = {'Content-Type': 'application/json', 'osd-xsrf': 'true'}
-    login_data = json.dumps({"username": auth.username, "password": auth.password})
-
-    login_response = session.post(login_url, headers=login_headers, data=login_data)
-    login_response.raise_for_status()
-    logger.info(f"Successfully logged in: {login_response.json()}")
-
-    url = f'{dashboard_url}/api/saved_objects/_import?overwrite=true'
-    headers = {'osd-xsrf': 'true'}
-
     try:
+        session = requests.Session()
+        login_url = f"{dashboard_url}/auth/login"
+        login_headers = {'Content-Type': 'application/json', 'osd-xsrf': 'true'}
+        login_data = json.dumps({"username": auth.username, "password": auth.password})
+
+        login_response = retry_request(session, login_url, login_headers, login_data)
+        login_response.raise_for_status()
+        logger.info(f"Successfully logged in: {login_response.json()}")
+
+        url = f'{dashboard_url}/api/saved_objects/_import?overwrite=true'
+        headers = {'osd-xsrf': 'true'}
+
         # Read the dashboard file
         with open('dashboard.ndjson', 'rb') as f:
             files = {'file': f}
@@ -98,6 +101,22 @@ def update_role_mapping():
     except Exception as e:
         log_and_exit("An unexpected error occurred.", e)
 
+
+# Retry request http error is encountered as it could be due to OpenSearch Dashboard not being ready
+def retry_request(session, url, headers, data, retries=6, delay=5):
+    for i in range(retries):
+        try:
+            response = session.post(url, headers=headers, data=data)
+            response.raise_for_status()
+            return response
+        except requests.exceptions.HTTPError as e:
+            if i < retries - 1:
+                logger.warning(f"HTTP Error {e.response.status_code} ({e.response.reason}): Retrying in {delay} seconds.")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                logger.error(f"Final attempt failed with HTTP Error {e.response.status_code} ({e.response.reason}).")
+                raise e
 
 def log_and_exit(error_message, exception=None):
     logger.error(error_message)

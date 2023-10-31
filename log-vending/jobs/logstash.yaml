@@ -11,9 +11,9 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: expanso/nginx-access-log-agent@sha256:1817972a749e0e2012a24bc8a0c1d885112e571a7f1801396ea7f4350f3da0da
+        Image: expanso/nginx-access-log-agent:1.0.0
         EnvironmentVariables:
-          - ES_HOST=<OpenSearchEndpoint>
+          - OPENSEARCH_ENDPOINT=<OpenSearchEndpoint>
           - S3_BUCKET=<S3BucketName>
           - AWS_REGION=<AWSRegion>
           - AGGREGATE_DURATION=10

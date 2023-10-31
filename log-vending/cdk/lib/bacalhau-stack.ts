@@ -240,7 +240,7 @@ export class BacalhauStack extends cdk.Stack {
                 SECRET_ARN: openSearchPassword.secretArn,
                 COMPUTE_ROLE_ARN: this.computeRole.roleArn,
             },
-            timeout: cdk.Duration.seconds(60),
+            timeout: cdk.Duration.seconds(300),
             initialPolicy: [
                 new iam.PolicyStatement({
                     actions: ['secretsmanager:GetSecretValue'],
@@ -272,7 +272,7 @@ export class BacalhauStack extends cdk.Stack {
         });
 
         // Output the OpenSearch master password
-        new cdk.CfnOutput(this, 'OpenSearchMasterCredentials', {
+        new cdk.CfnOutput(this, 'OpenSearchPasswordRetriever', {
             value: `aws secretsmanager get-secret-value --secret-id "${openSearchPassword.secretArn}" --query 'SecretString' --output text`,
             description: 'Run this command to get the OpenSearch master password.',
         });
