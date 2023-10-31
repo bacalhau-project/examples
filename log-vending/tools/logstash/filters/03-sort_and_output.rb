@@ -36,6 +36,7 @@ def filter(event)
             'attribute_value' => value,
             'count' => count,
             '@timestamp' => event.get('@timestamp'),
+            'end_time' => event.get('end_time'),
             'tags' => ['_aggregated_stats']
           )
         end

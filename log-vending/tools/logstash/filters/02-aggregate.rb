@@ -43,6 +43,25 @@ def filter(event)
   $mutex.synchronize do
     new_events = []
 
+    # If this is the first event, set the start_time timestamp
+    if @start_time == 0
+      @start_time = event.get('@timestamp')
+    end
+
+    # Flush every @duration seconds
+    if event.get('@timestamp') - @start_time > @duration
+      new_events << LogStash::Event.new(
+        'aggregated_data' => @aggregated_data,
+        '@timestamp' => @start_time,
+        'end_time' => event.get('@timestamp'),
+        'tags' => ['_aggregated']
+      )
+
+      # Reset the counters
+      reset_aggregated_data()
+      @start_time = event.get('@timestamp')
+    end
+
     # Aggregate by various attributes
     aggregate_data('status', event.get('status'))
     aggregate_data('ip', event.get('remote_addr'))
@@ -65,23 +84,6 @@ def filter(event)
       aggregate_data('bad_caller_429', event.get('remote_addr'))
     end
 
-    # If this is the first event, set the start_time timestamp
-    if @start_time == 0
-      @start_time = event.get('@timestamp')
-    end
-
-    # Flush every @duration seconds
-    if event.get('@timestamp') - @start_time > @duration
-      new_events << LogStash::Event.new(
-        'aggregated_data' => @aggregated_data,
-        '@timestamp' => @start_time,
-        'end_time' => event.get('@timestamp'),
-        'tags' => ['_aggregated']
-      )
-
-      # Reset the counters
-      reset_aggregated_data()
-    end
     return new_events
   end
 

@@ -9,7 +9,7 @@ compute_start_cmd="/usr/local/bin/bacalhau serve \\
             --node-type compute \\
             --job-selection-data-locality anywhere \\
             --job-selection-accept-networked \\
-            --allow-listed-local-paths '/data/**:rw' \\
+            --allow-listed-local-paths '/data/log-vending/**:rw' \\
             --max-job-execution-timeout '168h' \\
             --peer /ip4/$BACALHAU_ORCHESTRATOR_IP/tcp/1234/http \\
             --labels $BACALHAU_LABELS"
@@ -111,41 +111,36 @@ function attach-data-disk() {
   echo "Volume successfully attached."
 }
 
+function mount-disk() {
+  local mount_point=$1
+  local devices=("$@")
 
+  echo "Mounting disk at $mount_point"
 
-function mount-data-disk() {
-  echo "Mounting disk"
-  RETRY_COUNT=0
-  MAX_RETRIES=60  # Retrying for 60 seconds
-  SLEEP_TIME=1s  # Sleep for 1 second between each retry
+  local RETRY_COUNT=0
+  local MAX_RETRIES=60
+  local SLEEP_TIME=1s
+  local DEVICE_NAME=""
 
   while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
-    # Check for /dev/sdf
-    if [[ -e /dev/sdf ]]; then
-      DEVICE_NAME="/dev/sdf"
-      break
-    fi
+    for device in "${devices[@]:1}"; do
+      if [[ -e $device ]]; then
+        DEVICE_NAME=$device
+        break 2
+      fi
+    done
 
-    # Check for /dev/nvme1n1
-    if [[ -e /dev/nvme1n1 ]]; then
-      DEVICE_NAME="/dev/nvme1n1"
-      break
-    fi
-    
-    # If device is still not found, sleep and then retry
     sleep $SLEEP_TIME
     ((RETRY_COUNT++))
   done
 
-  # If the device is not found even after retries, exit
   if [[ -z $DEVICE_NAME ]]; then
-    echo "Device not found after $MAX_RETRIES retries"
+    echo "Device not found after $MAX_RETRIES retries."
     exit 1
   fi
-  
-  # Mount at /data
-  mkdir -p /data
-  mount $DEVICE_NAME /data || (sudo mkfs -t ext4 $DEVICE_NAME && sudo mount $DEVICE_NAME /data)
+
+  mkdir -p $mount_point
+  mount $DEVICE_NAME $mount_point || (sudo mkfs -t ext4 $DEVICE_NAME && sudo mount $DEVICE_NAME $mount_point)
 }
 
 function create-directories() {
@@ -202,7 +197,7 @@ function install-common() {
 
   install-aws-cli
   attach-data-disk
-  mount-data-disk
+  mount-disk "/data" "/dev/sdf" "/dev/nvme1n1" # Mount the data disk
   create-directories
   install-bacalhau
 }

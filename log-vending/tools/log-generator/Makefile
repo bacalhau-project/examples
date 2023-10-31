@@ -5,7 +5,7 @@ IMAGE_TAG := latest
 
 # Log generation variables
 RATE := 1
-OUTPUT_PATH := $(PWD)/output
+OUTPUT_PATH := $(PWD)/loggen-output
 OUTPUT_FILE := generated.log
 
 # Build Docker image

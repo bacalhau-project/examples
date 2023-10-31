@@ -1,0 +1,23 @@
+version: '3'
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.9.0
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    networks:
+      - opensearch-net
+  dashboard:
+    image: opensearchproject/opensearch-dashboards:2.9.0
+    ports:
+      - "5601:5601"
+    networks:
+      - opensearch-net
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+    depends_on:
+      - opensearch
+networks:
+  opensearch-net:
+    external: true

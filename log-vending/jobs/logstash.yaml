@@ -11,15 +11,15 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: expanso/nginx-access-log-agent@sha256:72685a4e54d028c0d6d5f9bafdcf76ecc4dae258ec91971d4b850d0414bf43f9
+        Image: expanso/nginx-access-log-agent@sha256:1817972a749e0e2012a24bc8a0c1d885112e571a7f1801396ea7f4350f3da0da
         EnvironmentVariables:
-          - ES_HOST=https://search-bacalhauopensea-ihc4r0qjflma-ntnma3yh6ay33uitdpcrgcgrsi.eu-west-1.es.amazonaws.com:443
-          - S3_BUCKET=bacalhaulogvending-bucket83908e77-ncvj2ymuvtgd
-          - AWS_REGION=eu-west-1
+          - ES_HOST=<OpenSearchEndpoint>
+          - S3_BUCKET=<S3BucketName>
+          - AWS_REGION=<AWSRegion>
           - AGGREGATE_DURATION=10
     Resources:
-      CPU: 1
-      Memory: 5Gi
+      CPU: 0.5
+      Memory: 1Gi
     Network: 
       Type: Full
     InputSources:
