@@ -1,0 +1,28 @@
+version: '3'
+services:
+  log-generator:
+    image: expanso/nginx-access-log-generator:1.0.0
+    command: ["--rate", "0.2", "--output-log-file", "/app/output/application.log"]
+    volumes:
+      - ./loggen-output:/app/output:rw
+  logstash:
+    image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
+    environment:
+      OPENSEARCH_ENDPOINT: https://opensearch:9200
+      OS_AUTH_TYPE: basic
+      OS_BASIC_AUTH_USER: admin
+      OS_BASIC_AUTH_PASS: admin
+      AGGREGATE_DURATION: 10
+    volumes:
+      - ../../tools/logstash:/logstash
+      - ../../tools/logstash/pipeline:/usr/share/logstash/pipeline
+      - .:/app/state:rw
+      - ./loggen-output:/app/logs/:ro
+    tty: true
+    networks:
+      - opensearch-net
+    depends_on:
+      - log-generator
+networks:
+  opensearch-net:
+    external: true
