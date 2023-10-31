@@ -1,0 +1,114 @@
+#cloud-config
+packages:
+  - git
+  - make
+
+write_files:
+  - encoding: b64
+    content: |
+      ${ start_bacalhau }
+    owner: root:root
+    path: /node/start-bacalhau.sh
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ bacalhau_service }
+    owner: root:root
+    path: /etc/systemd/system/bacalhau.service
+    permissions: "0600"
+  - content: |
+      export REGION=${ region }
+      export ZONE=${ zone }
+      export APPNAME=${ app_name }
+    owner: root:root
+    permissions: "0444"
+    path: /etc/bacalhau-node-info
+  - encoding: b64
+    content: |
+      ${ ipfs_service }
+    owner: root:root
+    permissions: "0600"
+    path: /etc/systemd/system/ipfs.service
+
+package_update: true
+
+runcmd:
+  - echo "Copying the SSH Key to the server"
+  - |
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
+  # Set up directory structure and move files
+  - sudo mkdir /node
+  - sudo mkdir /data
+  - sudo chmod +x /node/*.sh
+  - sudo chmod 0700 /node
+  - sudo chmod 0700 /data
+  #
+  # Install tailscale
+  #
+  - |
+    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
+  - apt-get update -y
+  - apt -y install tailscale
+  - sudo tailscale up --authkey ${ tailscale_key } --hostname ${ node_name }
+  #
+  # Install GPU drivers
+  #
+  - sudo /opt/deeplearning/install-driver.sh
+  #
+  # Install go
+  #
+  - sudo rm -fr /usr/local/go /usr/local/bin/go
+  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
+  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  #
+  # Install docker
+  #
+  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
+  - sudo mkdir -p /etc/apt/keyrings
+  - |
+    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - sudo apt-get update -y
+  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  #
+  # Configure Docker daemon
+  #
+  - |
+    echo '{"default-shm-size": "20g"}' | sudo tee /etc/docker/daemon.json
+  #
+  # Install git-lfs
+  #
+  - |
+    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
+  - sudo apt -y install git-lfs
+  - HOME=/home/ubuntu git lfs install
+  #
+  # Install IPFS
+  #
+  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
+  - sudo bash go-ipfs/install.sh
+  - sudo IPFS_PATH=/data/ipfs ipfs init
+  #
+  # Install Bacalhau
+  #
+  - |
+    curl -sL https://get.bacalhau.org/install.sh | bash
+  - echo "Bacalhau downloaded."
+  #
+  # Clone sea_creatures repository
+  - sudo git clone https://huggingface.co/datasets/expanso/sea_creatures.git /home/ubuntu/sea_creatures
+  # Select 10 random .jpg images from sea_creatures repository and delete the rest
+  - |
+    cd /home/ubuntu/sea_creatures/
+    shuf -n $(($(ls -1 *.jpg | wc -l) - 10)) -e *.jpg | xargs rm
+  #
+  # Start services
+  - sudo systemctl daemon-reload
+  - sudo systemctl enable docker
+  - sudo systemctl restart docker
+  - sudo systemctl enable ipfs
+  - sudo systemctl restart ipfs
+  - sudo systemctl enable bacalhau.service
+  - sudo systemctl restart bacalhau.service

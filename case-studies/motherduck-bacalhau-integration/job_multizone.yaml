@@ -1,18 +1,23 @@
 Job:
-  APIVersion: V1beta1
+  APIVersion: V1beta2
   Spec:
     Deal:
-      Concurrency: 16
-    Docker:
-      Entrypoint:
-        - /bin/bash
-        - -c
-        - python3 /process.py /var/log/logs_to_process/aperitivo_logs.log.1 "SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'"
-      Image: docker.io/bacalhauproject/motherduck-log-processor:1.0.2
-    Engine: Docker
+      Concurrency: 1
+      TargetingMode: true
+    EngineSpec:
+      Params:
+        EnvironmentVariables:
+          - INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1
+          - QUERY=SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'
+        Image: docker.io/bacalhauproject/motherduck-log-processor:1.1.6
+        WorkingDirectory: ""
+      Type: docker
+    Resources:
+      GPU: ""
+      Memory: 4gb
     Network:
       Type: Full
-    inputs:
+    Inputs:
       - Name: file:///var/log/logs_to_process
         SourcePath: /var/log/logs_to_process
         StorageSource: LocalDirectory

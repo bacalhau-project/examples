@@ -1,7 +1,7 @@
-# Multi-Region Bacalhau Nodes with Tailscale
+# Multi-Region Bacalhau Inference with Tailscale
 
 ## Overview
-
+In this example 
 
 Create a tailscale account.
 Add a tag to your tailscale account - https://login.tailscale.com/admin/acls

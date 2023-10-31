@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "data-gen"
+version = "0.1.0"
+description = ""
+authors = ["Ross Jones <ross@register-dynamics.co.uk>"]
+readme = "README.md"
+packages = [{ include = "data_gen" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+generate = "data_gen:main"
