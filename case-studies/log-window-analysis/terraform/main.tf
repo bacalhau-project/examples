@@ -6,14 +6,15 @@ terraform {
   }
 }
 
+
 provider "google" {
   project = var.project_id
 }
 
 
 resource "google_service_account" "service_account" {
-  account_id   = "motherduck-bacalhau-sa"
-  display_name = "MotherDuck Bacalhau Service Account"
+  account_id   = "lw-analysis-bacalhau-sa"
+  display_name = "Log Window Analysis Bacalhau Service Account"
 }
 
 resource "google_project_iam_member" "member_role" {
@@ -27,7 +28,6 @@ resource "google_project_iam_member" "member_role" {
 }
 
 data "cloudinit_config" "user_data" {
-
   for_each = var.locations
 
   gzip          = false
@@ -43,20 +43,23 @@ data "cloudinit_config" "user_data" {
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
       ipfs_service : base64encode(file("${path.module}/node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
-      logs_dir : "/var/log/${var.app_name}_logs",
+      logs_dir : "/var/log/www",
       log_generator_py : filebase64("${path.root}/node_files/log_generator.py"),
-      global_bucket_name : "${var.project_id}-global-archive-bucket",
+      generate_sample_logs_py : filebase64("${path.root}/node_files/generate_sample_logs.py"),
+      generate_sample_logs_yaml : filebase64("${path.root}/node_files/generate_sample_logs.yaml"),
+      generate_sample_logs_requirements : filebase64("${path.root}/node_files/requirements.txt"),
 
       # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],
 
       tailscale_key : var.tailscale_key,
       motherduck_key : var.motherduck_key,
-      node_name : "${var.app_tag}-${each.key}-vm",
+      node_name : "${var.app_tag}-${each.key}-vm-${index(keys(var.locations), each.key)}",
       username : var.username,
       region : each.value.region,
       zone : each.key,
       project_id : var.project_id,
+      timezone : each.value.timezone,
     })
   }
 }

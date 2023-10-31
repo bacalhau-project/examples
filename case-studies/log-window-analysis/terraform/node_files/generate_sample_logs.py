@@ -3,7 +3,9 @@ import random
 import pytz
 import numpy as np
 from collections import OrderedDict
+import yaml
 import argparse
+import time
 
 from faker import Faker
 
@@ -83,8 +85,8 @@ def generate_session(start_time: datetime) -> list:
 # def generate_day_for_timezone(number_of_users, utc_offset) -> list:
 
 
-def generate_log_times(days_offset: int, timezone_offset: int, num_users: int) -> list[datetime.datetime]:
-    timezone = pytz.FixedOffset(timezone_offset * 60)
+def generate_log_times(days_offset: int, timezone_offset: str, num_users: int) -> list[datetime.datetime]:
+    timezone = pytz.FixedOffset(int(timezone_offset) * 60 / 100)
 
     times = [
         datetime.datetime.combine(
@@ -122,22 +124,40 @@ def write_log_entry(sess) -> str:
 
 if __name__ == "__main__":
     fake = Faker()
-    filename = "sample_access.log"
 
-    # Get filename, number of days to generate, number of users per day from the command line
-    # using argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename", type=str, help="Name of output file")
-    parser.add_argument("days", type=int, help="Number of days to generate")
-    parser.add_argument("users", type=int, help="Number of users per day")
-    parser.add_argument("timezone", type=int, help="Timezone as an int (offset from UTC)")
+    # Load variables from a yaml file in the current directory called generate_sample_logs.yaml
+    # The yaml file should have the following variables:
+    # filename: the name of the file to write to
+    # days: the number of days to generate logs for
+    # users: the number of users to generate logs for
+    # timezone: the timezone to generate logs for
+    # parser = argparse.ArgumentParser(description="Generate fake log entries and save them to a specified directory.")
+    # parser.add_argument(
+    #     "-f", "--filename", type=str, nargs="?", help="The filename to save the log file.", default="access.log"
+    # )
+    # parser.add_argument(
+    #     "-d", "--days", type=int, nargs="?", help="The number of days to generate logs for.", default=1
+    # )
+    # parser.add_argument(
+    #     "-u", "--users", type=int, nargs="?", help="The number of users to generate logs for.", default=100
+    # )
+    # parser.add_argument(
+    #     "-t", "--timezone", type=int, nargs="?", help="The timezone to generate logs for.", default=0
+    # )
+    # args = parser.parse_args()
 
-    args = parser.parse_args()
+    # filename = args.filename
+    # days = args.days
+    # users_per_day = args.users
+    # timezone = int(args.timezone) / 100
 
-    filename = args.filename
-    days = args.days
-    users_per_day = args.users
-    timezone = args.timezone
+    with open("generate_sample_logs.yaml") as file:
+        data = yaml.safe_load(file)
+
+    filename = data["filename"]
+    days = data["days"]
+    users_per_day = data["users_per_day"]
+    timezone = time.strftime("%z")
 
     for i in range(days):
         log_times = generate_log_times(i, timezone, users_per_day)

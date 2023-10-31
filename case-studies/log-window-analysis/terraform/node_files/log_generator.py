@@ -9,10 +9,15 @@ import os
 from faker import Faker
 from pathlib import Path
 import numpy as np
+import sys
 
 
 def main(log_directory, appname):
-    with open(Path(__file__).parent / "sample_access.log", "r") as sample_log_file:
+    # If /node/sample_access.log doesn't exist, run the generate_sample_logs.py script
+    if not os.path.exists("/node/sample_access.log"):
+        os.system(f"{sys.executable} /node/generate_sample_logs.py")
+
+    with open("/node/sample_access.log", "r") as sample_log_file:
         lines = sample_log_file.readlines()
         line_tuples = []
         for line in lines:
@@ -22,7 +27,7 @@ def main(log_directory, appname):
         full_array = np.array(sorted(full_array, key=lambda x: x[0]))
 
     # Load existing log entries
-    log_file_path = os.path.join(log_directory, f"{appname}_logs.log")
+    log_file_path = os.path.join(log_directory, f"{appname}_access_logs.log")
     last_printed_time = full_array[0][0]
 
     # Adding 4 hours so we get a bunch of logs right now.
@@ -39,7 +44,6 @@ def main(log_directory, appname):
         log_entries_to_print = full_array[(full_array[:, 0] > last_printed_time) & (full_array[:, 0] <= end_time)]
 
         log_entries_string = "\n".join(log_entries_to_print[:, 1])
-        print(log_entries_string)
         with open(log_file_path, "a") as filehandle:
             if log_entries_string:
                 filehandle.write(log_entries_string)

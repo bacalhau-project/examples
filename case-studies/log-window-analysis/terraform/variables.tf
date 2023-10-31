@@ -51,3 +51,4 @@ variable "motherduck_key" {
   description = "Motherduck key"
   type        = string
 }
+

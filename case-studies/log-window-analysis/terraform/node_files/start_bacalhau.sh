@@ -43,6 +43,6 @@ bacalhau serve \
   --peer "${CONNECT_PEER}" \
   --private-internal-ipfs=true \
   --allow-listed-local-paths '/db' \
-  --allow-listed-local-paths '/var/log/logs_to_process/**' \
+  --allow-listed-local-paths '/var/log/www/**' \
   --job-selection-accept-networked \
   --labels "${labels}"
