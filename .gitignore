@@ -40,4 +40,5 @@ tf.out
 job-[0-9a-z]*
 !job-one-zone.yaml
 !case-studies/**/Dockerfile
+!model-inference/**/Dockerfile
 todo/eurec4a/how_to_eurec4a
