@@ -1,0 +1,28 @@
+Job:
+  APIVersion: V1beta2
+  Spec:
+    Deal:
+      Concurrency: 1
+      TargetingMode: true
+    EngineSpec:
+      Params:
+        EnvironmentVariables:
+          - INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1
+          - QUERY=SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'
+        Image: docker.io/bacalhauproject/motherduck-log-processor:1.1.6
+        WorkingDirectory: ""
+      Type: docker
+    Resources:
+      GPU: ""
+      Memory: 4gb
+    Network:
+      Type: Full
+    Inputs:
+      - Name: file:///var/log/logs_to_process
+        SourcePath: /var/log/logs_to_process
+        StorageSource: LocalDirectory
+        path: /var/log/logs_to_process
+      - Name: file:///db/
+        SourcePath: /db
+        StorageSource: LocalDirectory
+        path: /db
