@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "query-server"
+version = "0.1.0"
+description = ""
+authors = ["Ross Jones <ross@register-dynamics.co.uk>"]
+readme = "README.md"
+packages = [{ include = "query_server" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+spacy = "^3.7.2"
+transformers = "^4.34.1"
+sentence-transformers = "^2.2.2"
+torch = "==2.0.*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+models = "query_server:models"
+serve = "query_server:main"

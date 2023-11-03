@@ -1,0 +1,22 @@
+version: '3'
+services:
+  log-generator:
+    image: expanso/nginx-access-log-generator:1.0.0
+    command: ["--rate", "0.2", "--output-log-file", "/app/output/application.log"]
+    volumes:
+      - ./loggen-output:/app/output:rw
+  logstash:
+    image: expanso/nginx-access-log-agent:1.0.0
+    env_file:
+      - .env
+    volumes:
+      - .:/app/state:rw
+      - ./loggen-output:/app/logs/:ro
+    tty: true
+    networks:
+      - opensearch-net
+    depends_on:
+      - log-generator
+networks:
+  opensearch-net:
+    external: true

@@ -1,3 +1,5 @@
+import sqlite3
+
 from pony import orm
 
 
@@ -29,3 +31,7 @@ def get_answers_db(path: str):
     answers.generate_mapping(create_tables=True)
 
     return answers, Answer
+
+
+def get_data_db(path: str):
+    return sqlite3.connect(path)

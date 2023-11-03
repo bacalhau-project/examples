@@ -1,0 +1,4 @@
+checkpoint.pos
+.env
+loggen-output
+!tools/**/Dockerfile
