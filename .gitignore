@@ -18,4 +18,22 @@ js-helloworld/outputs/*
 
 .vscode
 
-js-helloworld/outputs/*
+ansible.cfg
+*.pem
+.env.json
+
+.terraform/
+terraform.tfstate.d/
+.terraform.lock.hcl
+*.pem
+tf/.terraform/*
+*.tfstate*
+tf/.terraform/environment
+bacalhau.run
+tf.out
+
+job-[0-9a-z]*
+!job-one-zone.yaml
+!case-studies/**/Dockerfile
+!model-inference/**/Dockerfile
+todo/eurec4a/how_to_eurec4a

@@ -104,7 +104,7 @@ package_update: true
 runcmd:
   - echo "Copying the SSH Key to the server"
   - |
-    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/${ username }/.ssh/authorized_keys
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/{ubuntu}/.ssh/authorized_keys
   #
   # Make node directory for all scripts
   #
@@ -113,8 +113,6 @@ runcmd:
   - mkdir -p /data
   - chmod 0700 /data
   - mkdir -p /var/logs
-  - mkdir -p /db
-  - chmod 0700 /db
   - cp /etc/motherduck-key /db/motherduck-key
   #
   # Set Timezone
