@@ -2,24 +2,17 @@ version: '3'
 services:
   log-generator:
     image: expanso/nginx-access-log-generator:1.0.0
-    command: ["--rate", "1", "--output-log-file", "/app/output/application.log"]
+    command: ["--rate", "0.2", "--output-log-file", "/app/output/application.log"]
     volumes:
       - ./loggen-output:/app/output:rw
-      - ../../tools/log-generator/log-generator.py:/app/log-generator.py:ro
   logstash:
-    image: expanso/nginx-access-log-agent:1.0.0
-#    image: logstash:7.17.13
-    env_file:
-      - .env
+    image: opensearchproject/logstash-oss-with-opensearch-output-plugin:8.9.0
     environment:
-      OPENSEARCH_ENDPOINT: http://opensearch:9200
+      OPENSEARCH_ENDPOINT: https://opensearch:9200
       OS_AUTH_TYPE: basic
       OS_BASIC_AUTH_USER: admin
       OS_BASIC_AUTH_PASS: admin
       AGGREGATE_DURATION: 10
-      S3_BUCKET: bacalhau-usecases-log-orchestration
-      AWS_REGION: eu-west-1
-#      S3_TIME_FILE: 60
     volumes:
       - ../../tools/logstash:/logstash
       - ../../tools/logstash/pipeline:/usr/share/logstash/pipeline

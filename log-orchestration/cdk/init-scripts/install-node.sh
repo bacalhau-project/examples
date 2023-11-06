@@ -167,7 +167,6 @@ Wants=network-online.target systemd-networkd-wait-online.service
 
 [Service]
 Environment="BACALHAU_DIR=/data/bacalhau"
-Environment="LOG_LEVEL=DEBUG"
 Restart=always
 RestartSec=5s
 ExecStart=$exec_start
@@ -176,7 +175,6 @@ ExecStart=$exec_start
 WantedBy=multi-user.target
 EOL
 
-  sudo systemctl enable bacalhau
   sudo systemctl start bacalhau
 }
 
