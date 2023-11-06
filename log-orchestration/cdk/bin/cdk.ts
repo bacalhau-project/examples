@@ -4,7 +4,7 @@ import {BacalhauStack} from '../lib/bacalhau-stack';
 
 const app = new cdk.App();
 const keyName = app.node.tryGetContext('keyName');
-const bacalhauVersion = app.node.tryGetContext('bacalhauVersion') || 'v1.1.2';
+const bacalhauVersion = app.node.tryGetContext('bacalhauVersion') || 'v1.1.3';
 const targetPlatform = app.node.tryGetContext('targetPlatform') || 'linux_amd64';
 const orchestratorInstanceType = app.node.tryGetContext('orchestratorInstanceType') || 't3.micro';
 const webServerInstanceType = app.node.tryGetContext('webServerInstanceType') || 't3.medium';
