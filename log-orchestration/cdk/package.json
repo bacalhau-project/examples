@@ -1,5 +1,5 @@
 {
-  "name": "bacalhau_log_vending",
+  "name": "bacalhau_log_orchestration",
   "version": "0.1.0",
   "bin": {
     "cdk": "bin/cdk.js"

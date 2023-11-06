@@ -27,10 +27,10 @@ Tasks:
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /data/log-vending/logs
+            SourcePath: /data/log-orchestration/logs
       - Target: /app/state
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /data/log-vending/state
+            SourcePath: /data/log-orchestration/state
             ReadWrite: true

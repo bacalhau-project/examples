@@ -25,5 +25,5 @@ Tasks:
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /data/log-vending/logs
+            SourcePath: /data/log-orchestration/logs
             ReadWrite: true

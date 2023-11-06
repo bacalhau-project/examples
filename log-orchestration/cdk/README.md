@@ -1,8 +1,8 @@
-# Bacalhau Log Vending AWS CDK Stack
+# Bacalhau Log Orchestration AWS CDK Stack
 
 ## Overview
 
-Welcome to Bacalhau AWS CDK Stack for Log Vending! This project provisions a stack for Bacalhau, a distributed compute orchestration framework, using AWS Cloud Development Kit (CDK).
+Welcome to Bacalhau AWS CDK Stack for Log Orchestration! This project provisions a stack for Bacalhau, a distributed compute orchestration framework, using AWS Cloud Development Kit (CDK).
 
 This stack sets up:
 - VPC with public and private subnets
@@ -21,7 +21,7 @@ This stack sets up:
 ### Clone the Repository
 ```
 git clone https://github.com/bacalhau-project/examples.git
-cd log-vending/cdk 
+cd log-orchestration/cdk 
 ```
 
 ### Install Dependencies

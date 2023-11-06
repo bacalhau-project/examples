@@ -2,15 +2,13 @@
 
 # Define start commands using environment variables
 orchestrator_start_cmd="/usr/local/bin/bacalhau serve \\
-            --max-job-execution-timeout '168h' \\
             --node-type requester"
 
 compute_start_cmd="/usr/local/bin/bacalhau serve \\
             --node-type compute \\
             --job-selection-data-locality anywhere \\
             --job-selection-accept-networked \\
-            --allow-listed-local-paths '/data/log-vending/**:rw' \\
-            --max-job-execution-timeout '168h' \\
+            --allow-listed-local-paths '/data/log-orchestration/**:rw' \\
             --peer /ip4/$BACALHAU_ORCHESTRATOR_IP/tcp/1234/http \\
             --labels $BACALHAU_LABELS"
 
@@ -145,10 +143,10 @@ function mount-disk() {
 
 function create-directories() {
   # Create directories and files required by bacalhau jobs
-  mkdir /data/log-vending
-  mkdir /data/log-vending/logs # This is where the logs will be generated
-  mkdir /data/log-vending/state # This is where logstash checkpoints will be stored
-  chown -R ubuntu:ubuntu /data/log-vending
+  mkdir /data/log-orchestration
+  mkdir /data/log-orchestration/logs # This is where the logs will be generated
+  mkdir /data/log-orchestration/state # This is where logstash checkpoints will be stored
+  chown -R ubuntu:ubuntu /data/log-orchestration
 }
 
 function install-bacalhau() {
