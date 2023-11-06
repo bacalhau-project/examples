@@ -11,7 +11,7 @@ const webServerInstanceType = app.node.tryGetContext('webServerInstanceType') ||
 const webServerInstanceCount = app.node.tryGetContext('webServerInstanceCount') || 3;
 const openSearchInstanceType = app.node.tryGetContext('openSearchInstanceType') || 't3.small.search';
 
-new BacalhauStack(app, 'BacalhauLogVending', {
+new BacalhauStack(app, 'BacalhauLogOrchestration', {
     env: {account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION},
     bacalhauVersion: bacalhauVersion,
     targetPlatform: targetPlatform,
