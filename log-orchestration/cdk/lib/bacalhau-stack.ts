@@ -42,6 +42,11 @@ export class BacalhauStack extends cdk.Stack {
 
         this.createOpenSearchDomain();
         this.createS3Bucket();
+
+        new cdk.CfnOutput(this, 'AWSRegion', {
+            value: this.region,
+            description: 'The AWS region of the stack.',
+        });
     }
 
 
