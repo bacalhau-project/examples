@@ -36,7 +36,7 @@ def generate_s3_url(target_bucket, target_region):
     return url
 
 def run_docker_commands(target_bucket, target_region):
-    command = (f'bacalhau docker run --id-only --gpu 1 -i s3://{target_bucket}/gradients/*,opt=region={target_region} '
+    command = (f'bacalhau docker run --id-only --memory 6Gb --gpu 1 -i s3://{target_bucket}/gradients/*,opt=region={target_region} '
                f'-p s3://{target_bucket}/*,opt=region={target_region} -s region={target_region} '
                f'expanso/federated:new -- python update_model.py --model_path brain_tumor_classifier.h5 '
                f'--saved_gradients /inputs --dataset_path brain-tumor-train.csv --save_path /outputs/brain_tumor_classifier_updated.h5')

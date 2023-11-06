@@ -147,8 +147,8 @@ To Build and Push the container run this command
 After successfully completing the Terraform deployment, ensure you've set up the necessary environment variables. Execute the following command in your terminal:
 
 ```
-source tf/aws/baclhau.run
-REGION=$(awk '!/^#/' regions.md | head -n 1)
+cd tf && source bacalhau.run
+REGION=$(awk '!/^#/' ../regions.md | head -n 1)
 export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' "./tf/aws/terraform.tfstate.d/${REGION}/terraform.tfstate")
 ```
 
