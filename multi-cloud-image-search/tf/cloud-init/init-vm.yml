@@ -94,10 +94,10 @@ runcmd:
   - echo "Bacalhau downloaded."
   #
   # Clone sea_creatures repository
-  - sudo git clone https://huggingface.co/datasets/expanso/sea_creatures.git /home/ubuntu/sea_creatures
+  - sudo git clone https://huggingface.co/datasets/expanso/sea_creatures.git /home/ubuntu/images
   # Select 10 random .jpg images from sea_creatures repository and delete the rest
   - |
-    cd /home/ubuntu/sea_creatures/
+    cd /home/ubuntu/images/
     shuf -n $(($(ls -1 *.jpg | wc -l) - 10)) -e *.jpg | xargs rm
   #
   # Start services

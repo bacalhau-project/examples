@@ -97,10 +97,10 @@ resource "google_compute_instance" "gcp_instance" {
     }
 }
 
-resource "google_storage_bucket" "node_bucket" {
+resource "google_storage_bucket" "images_bucket" {
   for_each = var.locations
 
-  name     = "${var.project_id}-${each.key}-archive-bucket"
+  name     = "${var.project_id}-${each.key}-images-bucket"
   location = var.locations[each.key].storage_location
 
   lifecycle_rule {
@@ -112,7 +112,26 @@ resource "google_storage_bucket" "node_bucket" {
     }
   }
 
-  storage_class = "ARCHIVE"
+  storage_class = "STANDARD"
+  force_destroy = true
+}
+
+resource "google_storage_bucket" "output_images_bucket" {
+  for_each = var.locations
+
+  name     = "${var.project_id}-${each.key}-images-bucket"
+  location = var.locations[each.key].storage_location
+
+  lifecycle_rule {
+    condition {
+      age = "3"
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  storage_class = "STANDARD"
   force_destroy = true
 }
 
