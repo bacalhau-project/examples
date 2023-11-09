@@ -80,15 +80,6 @@ resource "aws_s3_bucket" "images_bucket" {
   }
 }
 
-resource "aws_s3_bucket" "output_images_bucket" {
-  bucket = "${var.app_tag}-${var.region}-o-images-bucket"
-  # Force delete even if not empty
-  force_destroy = true
-  tags = {
-    Name = var.app_tag
-  }
-}
-
 
 resource "aws_iam_policy" "bucket_policy" {
   name        = "${var.app_tag}-${var.region}-images-bucket-policy"
