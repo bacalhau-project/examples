@@ -93,8 +93,14 @@ runcmd:
     curl -sL https://get.bacalhau.org/install.sh | bash
   - echo "Bacalhau downloaded."
   #
+  # s3fuse mount
+  - | 
+    sudo apt-get update -y
+    sudo apt install s3fs awscli -y
+    mkdir /home/ubuntu/images
+    sudo s3fs $APPNAME-$REGION-images-bucket /home/ubuntu/images -o iam_role=auto
   # Clone sea_creatures repository
-  - sudo git clone https://huggingface.co/datasets/expanso/sea_creatures.git /home/ubuntu/images
+  - sudo git clone https://huggingface.co/datasets/expanso/sea_creatures.git /home/ubuntu/sea_creatures
   # Select 10 random .jpg images from sea_creatures repository and delete the rest
   - |
     cd /home/ubuntu/images/
