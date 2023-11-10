@@ -5,7 +5,7 @@ query-cluster is a Python application which invokes osquery on the Bacalhau comp
 
 ## Installation
 
-[Poetry](https://python-poetry.org/) is required to install this application.  After following [the installation instructions](https://python-poetry.org/docs/#installation), you can run the following in the current directory to install DDW.
+[Poetry](https://python-poetry.org/) is required to install this application.  After following [the installation instructions](https://python-poetry.org/docs/#installation), you can run the following in the current directory to install query-cluster.
 
 ```
 poetry install
@@ -22,7 +22,7 @@ Typically this will be the IP address of your Bacalhau cluster, and the S3 bucke
 The program has various command line flags that you can see by using 
 
 ```shell
-poetry run ddw --help
+poetry run query-cluster --help
 ```
 
 The key options are:
@@ -73,7 +73,7 @@ Submitted job: 22ce32fe-5dd5-43de-b3ed-16e657dc2f02
 If we want the answers in a single file, we can remove the `-p` to get them in a single JSON file.
 
 ```shell
-$ poetry run ddw -a -s region=EU "SELECT COUNT(*) as Total FROM '/inputs/trxn.csv'"
+$ poetry run query-cluster -p -s region=EU "SELECT COUNT(*) as Total FROM '/inputs/trxn.csv'"
 Submitted job: 31b847a0-44d2-4cf5-8630-01b5a2d6cee3
 Output written to: output-31b847a0.json
 ```
