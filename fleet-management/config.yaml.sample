@@ -1,0 +1,14 @@
+# The IP address of the Bacalhau cluster
+host: FIXME
+
+# The port to connect to the Bacalhau API on
+port: 1234
+
+# The docker image containing the query engine (in this case osquery)
+image: osquery/osquery
+
+# The details required for publishing the query results. Make sure the compute
+# nodes in the bacalhau cluster will need AWS credentials to write to that
+# bucket.
+publisher:
+  bucket: FIXME
