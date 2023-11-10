@@ -75,11 +75,6 @@ def run(config: Config, args: Namespace):
         res = DotDict(states(id).to_dict())
         time.sleep(1)
 
-    # if args.print:
-    #     for e in res.state.executions:
-    #         print(f"Execution: {e.compute_reference}")
-    #         print(e.run_output.stdout)
-
     output_files = [output_file(**e.published_results.s3) for e in res.state.executions]
     temp_folder = download_data(output_files)
 
