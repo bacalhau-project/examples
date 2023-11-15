@@ -24,4 +24,8 @@ Invoke-WebRequest -Uri "https://static.rust-lang.org/rustup/dist/i686-pc-windows
 
 # Github client for build 
 Invoke-WebRequest -Uri "https://central.github.com/deployments/desktop/desktop/latest/win32" -OutFile "github-install.exe"
-github-install.exe 
+
+start ./go1.20.11.windows-amd64.msi
+start ./node-v20.9.0-x64.msi
+start ./rustup-init.exe
+start ./github-install.exe 
