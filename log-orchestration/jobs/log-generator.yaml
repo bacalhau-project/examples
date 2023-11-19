@@ -5,7 +5,7 @@ Constraints:
   - Key: service
     Operator: ==
     Values:
-      - web-server
+      - WebService
 Tasks:
   - Name: main
     Engine:

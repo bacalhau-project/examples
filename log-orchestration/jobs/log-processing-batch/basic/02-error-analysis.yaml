@@ -1,0 +1,34 @@
+# Identify which URLs are most often resulting in 404 errors,
+# which can indicate broken links or user errors in accessing the site.
+Name: Frequent 404 URLs
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT request, COUNT(*) AS error_count
+            FROM logs
+            WHERE status = 404
+            GROUP BY request
+            ORDER BY error_count DESC
+            LIMIT 10;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}

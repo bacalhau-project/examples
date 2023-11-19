@@ -1,0 +1,32 @@
+# Identify the hours with the highest number of requests.
+# This can help in understanding traffic patterns and planning server scaling.
+Name: Peak Traffic Hours
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT HOUR(timestamp) AS hour, COUNT(*) AS request_count
+            FROM logs
+            GROUP BY HOUR(timestamp)
+            ORDER BY request_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}

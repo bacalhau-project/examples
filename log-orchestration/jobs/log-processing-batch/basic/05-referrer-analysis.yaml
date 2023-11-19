@@ -1,0 +1,38 @@
+# Understand which external sites are driving the most traffic.
+Name: Top Referring Sites
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+              SUBSTRING(
+                   REPLACE(REPLACE(http_referer, 'http://', ''), 'https://', ''), 
+                   1, 
+                   POSITION('/' IN REPLACE(REPLACE(http_referer, 'http://', ''), 'https://', '')) - 1
+               ) AS referer, COUNT(*) AS referral_count
+            FROM logs
+            WHERE referer LIKE '__%'
+            GROUP BY referer
+            HAVING referral_count > 1
+            ORDER BY referral_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}

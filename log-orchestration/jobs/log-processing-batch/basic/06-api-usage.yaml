@@ -1,0 +1,32 @@
+# Analyze the performance and usage frequency of different API endpoints.
+Name: API Endpoint Performance
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT request, COUNT(*) AS hit_count
+            FROM logs
+            WHERE request LIKE '/api/%'
+            GROUP BY request
+            ORDER BY hit_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}

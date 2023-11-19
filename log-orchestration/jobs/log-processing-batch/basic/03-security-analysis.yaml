@@ -1,0 +1,33 @@
+# Find IPs with an unusually high number of requests,
+# which could indicate a potential security threat or a bot
+Name: Suspicious Activity
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT remote_addr, COUNT(*) AS request_count
+            FROM logs
+            GROUP BY remote_addr
+            HAVING request_count > 100
+            ORDER BY request_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}

@@ -1,0 +1,32 @@
+# If your site serves files, identify the most downloaded ones.
+Name: Most Downloaded Files
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT request, COUNT(*) AS download_count
+            FROM logs
+            WHERE request LIKE '%.___'
+            GROUP BY request
+            ORDER BY download_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Region: {{.AWSRegion}}
