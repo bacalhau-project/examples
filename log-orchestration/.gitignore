@@ -1,4 +1,5 @@
 checkpoint.pos
 .env
 loggen-output
+cdk/outputs.json
 !tools/**/Dockerfile

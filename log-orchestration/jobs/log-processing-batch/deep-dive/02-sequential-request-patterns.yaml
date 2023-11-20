@@ -1,0 +1,44 @@
+# Identify sequential page requests by users, revealing common navigation patterns.
+# It utilizes window functions to track the next request made by each user,
+# partitioned by source IP and ordered by timestamp.
+Name: Sequential Request Patterns
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+              remote_addr, 
+              request, 
+              LEAD(request) OVER (PARTITION BY remote_addr ORDER BY timestamp) AS next_request
+            FROM 
+              logs
+            WHERE 
+              remote_addr IN (
+                SELECT remote_addr
+                FROM logs
+                GROUP BY remote_addr
+                HAVING COUNT(*) > 1
+              )
+            LIMIT 100;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
+            Region: {{.AWSRegion}}

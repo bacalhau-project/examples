@@ -167,6 +167,7 @@ Wants=network-online.target systemd-networkd-wait-online.service
 
 [Service]
 Environment="BACALHAU_DIR=/data/bacalhau"
+Environment="LOG_LEVEL=DEBUG"
 Restart=always
 RestartSec=5s
 ExecStart=$exec_start
