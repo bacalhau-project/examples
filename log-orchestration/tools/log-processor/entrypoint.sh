@@ -5,7 +5,7 @@ TIME_FORMAT="%Y-%m-%d %H:%M:%S"
 # Initialize variables
 START_TIME=""
 END_TIME=$(date --utc +"${TIME_FORMAT}") # Default end time is now
-LOG_PATH="/logs/[!.]**" # Default log path is all non-hidden files in /logs
+LOG_PATH="/logs/**" # Default log path is all files in /logs, recursively
 QUERY=""
 OTHER_ARGS=()
 

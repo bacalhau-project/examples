@@ -17,9 +17,6 @@ Tasks:
           - "10"
           - --output-log-file
           - /app/output/application.log
-    Resources:
-      CPU: 0.1
-      Memory: 512MB
     InputSources:
       - Target: /app/output
         Source:

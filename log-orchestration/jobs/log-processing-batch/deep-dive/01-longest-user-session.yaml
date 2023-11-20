@@ -34,4 +34,5 @@ Tasks:
           Params:
             Bucket: {{.AccessLogBucket}}
             Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
             Region: {{.AWSRegion}}

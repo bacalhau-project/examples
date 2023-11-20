@@ -17,6 +17,7 @@ Tasks:
           - S3_BUCKET={{.AccessLogBucket}}
           - AWS_REGION={{.AWSRegion}}
           - AGGREGATE_DURATION=10
+          - S3_TIME_FILE=60
     Network:
       Type: Full
     InputSources:
