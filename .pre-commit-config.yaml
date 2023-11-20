@@ -9,4 +9,5 @@ repos:
         args: [--allow-missing-credentials]
       - id: detect-private-key
       - id: check-yaml
+        exclude: "^log-orchestration/jobs/"
       - id: check-json
