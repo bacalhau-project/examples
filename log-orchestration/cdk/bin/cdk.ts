@@ -4,13 +4,13 @@ import {BacalhauStack} from '../lib/bacalhau-stack';
 
 const app = new cdk.App();
 const keyName = app.node.tryGetContext('keyName');
-const bacalhauVersion = app.node.tryGetContext('bacalhauVersion') || 'v1.1.4';
+const bacalhauVersion = app.node.tryGetContext('bacalhauVersion') || 'v1.1.6';
 const targetPlatform = app.node.tryGetContext('targetPlatform') || 'linux_amd64';
-const orchestratorInstanceType = app.node.tryGetContext('orchestratorInstanceType') || 't3.micro';
+const orchestratorInstanceType = app.node.tryGetContext('orchestratorInstanceType') || 't3.small';
 const webServiceInstanceType = app.node.tryGetContext('webServiceInstanceType') || 't3.large';
 const webServiceInstanceCount = app.node.tryGetContext('webServiceInstanceCount') || 3;
-const computeServiceInstanceType = app.node.tryGetContext('computeServiceInstanceType') || 't3.large';
-const computeServiceInstanceCount = app.node.tryGetContext('computeServiceInstanceCount') || 0;
+const computeServiceInstanceType = app.node.tryGetContext('computeServiceInstanceType') || 't3.medium';
+const computeServiceInstanceCount = app.node.tryGetContext('computeServiceInstanceCount') || 3;
 const openSearchInstanceType = app.node.tryGetContext('openSearchInstanceType') || 't3.small.search';
 
 new BacalhauStack(app, 'BacalhauLogOrchestration', {
