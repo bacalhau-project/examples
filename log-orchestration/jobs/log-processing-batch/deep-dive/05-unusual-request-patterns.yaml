@@ -1,0 +1,37 @@
+# Identify IPs with abnormal request patterns,
+# such as a high number of errors or an unusual sequence of page accesses.
+Name: Unusual Request Patterns
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+              remote_addr, 
+              COUNT(*) AS total_requests, 
+              SUM(CASE WHEN status >= 400 THEN 1 ELSE 0 END) AS error_requests
+            FROM logs
+            GROUP BY remote_addr
+            HAVING error_requests > 10 -- or other threshold
+            ORDER BY error_requests DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
+            Region: {{.AWSRegion}}

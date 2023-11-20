@@ -1,0 +1,38 @@
+# Identify user sessions with the longest duration,
+# which requires analyzing the start and end times of a series of requests from the same IP.
+Name: Longest User Sessions
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+              remote_addr, 
+              MIN(timestamp) AS session_start, 
+              MAX(timestamp) AS session_end, 
+              date_diff('minute', session_start, session_end) AS session_duration
+            FROM logs
+            GROUP BY remote_addr
+            ORDER BY session_duration DESC
+            LIMIT 20;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
+            Region: {{.AWSRegion}}
