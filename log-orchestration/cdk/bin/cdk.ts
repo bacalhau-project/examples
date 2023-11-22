@@ -10,7 +10,7 @@ const orchestratorInstanceType = app.node.tryGetContext('orchestratorInstanceTyp
 const webServiceInstanceType = app.node.tryGetContext('webServiceInstanceType') || 't3.large';
 const webServiceInstanceCount = app.node.tryGetContext('webServiceInstanceCount') || 3;
 const computeServiceInstanceType = app.node.tryGetContext('computeServiceInstanceType') || 't3.medium';
-const computeServiceInstanceCount = app.node.tryGetContext('computeServiceInstanceCount') || 3;
+const computeServiceInstanceCount = app.node.tryGetContext('computeServiceInstanceCount') || 0;
 const openSearchInstanceType = app.node.tryGetContext('openSearchInstanceType') || 't3.small.search';
 
 new BacalhauStack(app, 'BacalhauLogOrchestration', {
