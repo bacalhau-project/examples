@@ -1,0 +1,27 @@
+Name: Live logs processing
+Type: ops
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - WebService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - {{.query}}
+          - --start-time
+          - {{or (index . "start-time") ""}}
+          - --end-time
+          - {{or (index . "end-time") ""}}
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-orchestration/logs

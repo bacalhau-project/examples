@@ -1,6 +1,6 @@
 # Identify sequential page requests by users, revealing common navigation patterns.
 # It utilizes window functions to track the next request made by each user,
-# partitioned by source IP and ordered by timestamp.
+# partitioned by source IP and ordered by time_local.
 Name: Sequential Request Patterns
 Type: batch
 Count: 1
@@ -22,7 +22,7 @@ Tasks:
             SELECT 
               remote_addr, 
               request, 
-              LEAD(request) OVER (PARTITION BY remote_addr ORDER BY timestamp) AS next_request
+              LEAD(request) OVER (PARTITION BY remote_addr ORDER BY time_local) AS next_request
             FROM 
               logs
             WHERE 

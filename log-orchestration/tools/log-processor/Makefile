@@ -4,11 +4,11 @@ IMAGE_NAME := nginx-access-log-processor
 IMAGE_TAG := $(shell cat VERSION)
 
 # Log processing variables
-START := "-1 day"
+START := "-1day"
 END :=
 QUERY := "SELECT * FROM logs LIMIT 10"
 LOG_MOUNT :=
-LOG_PATH := "/logs/[!.]*"
+LOG_PATH := "/logs/**"
 
 # Build Docker image
 build:
@@ -26,7 +26,7 @@ build_push:
 run:
 	docker run -it \
 		-v $(LOG_MOUNT):/logs \
-		$(IMAGE_REPOSITORY)/$(IMAGE_NAME):$(IMAGE_TAG) --start-time "$(START)" --end-time "$(END)" --log-path "$(LOG_PATH)" --query "$(QUERY)"
+		$(IMAGE_REPOSITORY)/$(IMAGE_NAME):$(IMAGE_TAG) --start-time "$(START)" --end-time "$(END)" --log-path "$(LOG_PATH)" --query "$(QUERY)" --echo
 
 
 # Bump version

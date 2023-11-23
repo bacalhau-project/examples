@@ -25,8 +25,8 @@ Tasks:
             FROM (
                 SELECT 
                     remote_addr, 
-                    timestamp,
-                    date_diff('second', LAG(timestamp) OVER (PARTITION BY remote_addr ORDER BY timestamp), timestamp) AS time_spent
+                    time_local,
+                    date_diff('second', LAG(time_local) OVER (PARTITION BY remote_addr ORDER BY time_local), time_local) AS time_spent
                 FROM logs
             ) AS UserInteractions
             WHERE time_spent IS NOT NULL
