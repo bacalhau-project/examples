@@ -18,9 +18,9 @@ Tasks:
         Parameters:
           - --query
           - >
-            SELECT HOUR(timestamp) AS hour, COUNT(*) AS request_count
+            SELECT HOUR(time_local) AS hour, COUNT(*) AS request_count
             FROM logs
-            GROUP BY HOUR(timestamp)
+            GROUP BY HOUR(time_local)
             ORDER BY request_count DESC;
     InputSources:
       - Target: /logs
