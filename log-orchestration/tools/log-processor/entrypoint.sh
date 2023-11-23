@@ -82,7 +82,7 @@ fi
 
 FULL_QUERY="
 WITH logs AS (
-    SELECT * FROM read_json(['$LOG_PATH'], columns=$COLUMNS, format='newline_delimited')
+    SELECT * FROM read_json(['$LOG_PATH'], columns=$COLUMNS, format='newline_delimited', ignore_errors=true)
     $TIME_CONDITION
 )
 $QUERY;
