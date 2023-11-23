@@ -176,6 +176,7 @@ ExecStart=$exec_start
 WantedBy=multi-user.target
 EOL
 
+  sudo systemctl enable bacalhau
   sudo systemctl start bacalhau
 }
 

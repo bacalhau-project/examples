@@ -20,8 +20,8 @@ Tasks:
           - >
             SELECT 
               remote_addr, 
-              MIN(timestamp) AS session_start, 
-              MAX(timestamp) AS session_end, 
+              MIN(time_local) AS session_start, 
+              MAX(time_local) AS session_end, 
               date_diff('minute', session_start, session_end) AS session_duration
             FROM logs
             GROUP BY remote_addr

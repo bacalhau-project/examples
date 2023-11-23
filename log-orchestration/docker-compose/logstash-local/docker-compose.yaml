@@ -5,6 +5,7 @@ services:
     command: ["--rate", "1", "--output-log-file", "/app/output/application.log"]
     volumes:
       - ./loggen-output:/app/output:rw
+      - ../../tools/log-generator/log-generator.py:/app/log-generator.py:ro
   logstash:
     image: expanso/nginx-access-log-agent:1.0.0
 #    image: logstash:7.17.13
@@ -17,13 +18,11 @@ services:
       OS_BASIC_AUTH_PASS: admin
       AGGREGATE_DURATION: 10
       S3_BUCKET: bacalhau-usecases-log-orchestration
-#      S3_PREFIX: "log-orchestration/part3/%{+YYYY-MM-dd-HH}"
       AWS_REGION: eu-west-1
 #      S3_TIME_FILE: 60
     volumes:
       - ../../tools/logstash:/logstash
-      - ./pipeline.conf:/usr/share/logstash/pipeline/pipeline.conf
-#      - ../../tools/logstash/pipeline2:/usr/share/logstash/pipeline
+      - ../../tools/logstash/pipeline:/usr/share/logstash/pipeline
       - .:/app/state:rw
       - ./loggen-output:/app/logs/:ro
     tty: true

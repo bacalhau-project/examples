@@ -17,15 +17,15 @@ Tasks:
         Parameters:
           - --query
           - >
-            SELECT a.remote_addr, a.timestamp, a.request
+            SELECT a.remote_addr, a.time_local, a.request
             FROM logs a
             JOIN (
-                SELECT remote_addr, timestamp
+                SELECT remote_addr, time_local
                 FROM logs
                 WHERE status = 404 -- or other error codes
             ) AS ErrorSessions
-            ON a.remote_addr = ErrorSessions.remote_addr AND a.timestamp <= ErrorSessions.timestamp
-            ORDER BY a.remote_addr, a.timestamp;
+            ON a.remote_addr = ErrorSessions.remote_addr AND a.time_local <= ErrorSessions.time_local
+            ORDER BY a.remote_addr, a.time_local;
     InputSources:
       - Target: /logs
         Source:

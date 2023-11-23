@@ -15,7 +15,7 @@ convert_time() {
 
     if [[ -z "$input_time" ]]; then
         echo "" # Return empty string if no input time
-    elif [[ $input_time =~ ^([+-]?\d+)\s*(second|sec|minute|min|hour|hr|day|week|month|year)s?$ ]]; then
+    elif [[ $input_time =~ ^([+-]?[0-9]+)[[:space:]]*(second|sec|minute|min|hour|hr|day|week|month|year)s?$ ]]; then
         date -d "$input_time" --utc +"${TIME_FORMAT}" # Relative time
     else
         echo "$input_time" # Fixed time format
@@ -68,21 +68,21 @@ if [[ $lowercase_query =~ ^[[:space:]]*with[[:space:]] ]]; then
 fi
 
 # Define the schema for nginx access logs
-COLUMNS="{'timestamp': 'TIMESTAMP_MS', 'remote_addr': 'STRING', 'remote_user': 'STRING', 'http_method': 'STRING', 'request': 'STRING', 'http_version': 'STRING', 'status': 'INTEGER', 'body_bytes_sent': 'INTEGER', 'http_referer': 'STRING', 'http_user_agent': 'STRING'}";
+COLUMNS="{'time_local': 'TIMESTAMP_MS', 'remote_addr': 'STRING', 'remote_user': 'STRING', 'http_method': 'STRING', 'request': 'STRING', 'http_version': 'STRING', 'status': 'INTEGER', 'body_bytes_sent': 'INTEGER', 'http_referer': 'STRING', 'http_user_agent': 'STRING'}";
 
 # Construct the DuckDB query
 TIME_CONDITION=""
 if [[ -n "$START_TIME" && -n "$END_TIME" ]]; then
-    TIME_CONDITION="WHERE timestamp BETWEEN '$START_TIME' AND '$END_TIME'"
+    TIME_CONDITION="WHERE time_local BETWEEN '$START_TIME' AND '$END_TIME'"
 elif [[ -n "$START_TIME" ]]; then
-    TIME_CONDITION="WHERE timestamp >= '$START_TIME'"
+    TIME_CONDITION="WHERE time_local >= '$START_TIME'"
 elif [[ -n "$END_TIME" ]]; then
-    TIME_CONDITION="WHERE timestamp <= '$END_TIME'"
+    TIME_CONDITION="WHERE time_local <= '$END_TIME'"
 fi
 
 FULL_QUERY="
 WITH logs AS (
-    SELECT * FROM read_csv_auto(['$LOG_PATH'], columns=$COLUMNS)
+    SELECT * FROM read_json(['$LOG_PATH'], columns=$COLUMNS, format='newline_delimited')
     $TIME_CONDITION
 )
 $QUERY;
