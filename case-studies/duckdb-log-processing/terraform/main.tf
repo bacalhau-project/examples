@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     google = {
-      version = "~> 3.90.0"
+      source  = "hashicorp/google"
+      version = "~>5.7.0"
     }
   }
 }
@@ -12,8 +13,8 @@ provider "google" {
 
 
 resource "google_service_account" "service_account" {
-  account_id   = "bacalhau-duckdb-example-sa"
-  display_name = "Bacalhau DuckDB Example Service Account"
+  account_id   = "${var.project_id}-sa"
+  display_name = "Aronchick DuckDB Example Service Account"
 }
 
 resource "google_project_iam_member" "member_role" {
@@ -112,8 +113,9 @@ resource "google_storage_bucket" "node_bucket" {
     }
   }
 
-  storage_class = "ARCHIVE"
-  force_destroy = true
+  uniform_bucket_level_access = true
+  storage_class               = "ARCHIVE"
+  force_destroy               = true
 }
 
 resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
@@ -157,8 +159,9 @@ resource "google_storage_bucket" "global_archive_bucket" {
     }
   }
 
-  storage_class = "ARCHIVE"
-  force_destroy = true
+  storage_class               = "ARCHIVE"
+  force_destroy               = true
+  uniform_bucket_level_access = true
 }
 
 

@@ -20,17 +20,24 @@ def getProjectMetadata(metadataName):
 
 
 def getMetadata(metadata_server_url):
-    metadata_server_token_url = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"
+    metadata_server_token_url = (
+        "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"
+    )
     token_request_headers = {"Metadata-Flavor": "Google"}
-    token_response = requests.get(metadata_server_token_url, headers=token_request_headers)
+    token_response = requests.get(
+        metadata_server_token_url, headers=token_request_headers
+    )
     jwt = token_response.json()["access_token"]
 
-    metadata_request_headers = {"Metadata-Flavor": "Google", "Authorization": f"Bearer {jwt}"}
+    metadata_request_headers = {
+        "Metadata-Flavor": "Google",
+        "Authorization": f"Bearer {jwt}",
+    }
 
     return requests.get(metadata_server_url, headers=metadata_request_headers).text
 
 
-def main(input_file, query):
+def main(input_file):
     # Create an in-memory DuckDB database
     con = duckdb.connect(database=":memory:", read_only=False)
 
@@ -51,10 +58,22 @@ def main(input_file, query):
 
     mdConnect = duckdb.connect(f"md:?token={token}")
     print("Connected to MotherDuck")
-    mdConnect.execute("CREATE SCHEMA IF NOT EXISTS logs")
+    mdConnect.execute("CREATE SCHEMA IF NOT EXISTS log_aggregation;")
     # Create a table in MotherDuck to store the log data with an autoincrementing ID
     mdConnect.execute(
-        "CREATE TABLE IF NOT EXISTS logs.log_data (projectID VARCHAR, region VARCHAR, nodeName VARCHAR, syncTime VARCHAR, remote_log_id VARCHAR, timestamp VARCHAR, version VARCHAR, message VARCHAR)"
+        """CREATE TABLE IF NOT EXISTS logs.log_aggregation 
+        (projectID VARCHAR, 
+        region VARCHAR, 
+        nodeName VARCHAR, 
+        syncTime VARCHAR, 
+        start_ts VARCHAR, 
+        end_ts VARCHAR, 
+        distinct_ips VARCHAR, 
+        distinct_users VARCHAR,
+        distinct_routes VARCHAR,
+        min_sessions VARCHAR,
+        avg_sessions VARCHAR,
+        max_sessions VARCHAR)"""
     )
 
     # Generate the output file name
@@ -63,54 +82,109 @@ def main(input_file, query):
     nodeName = getInstanceMetadata("name")
     syncTime = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    columns = {"id": "varchar", "@timestamp": "varchar", "@version": "varchar", "message": "varchar"}
+    columns = {
+        "projectID": "varchar",
+        "region": "varchar",
+        "nodeName": "varchar",
+        "syncTime": "varchar",
+        "start_ts": "varchar",
+        "end_ts": "varchar",
+        "distinct_ips": "varchar",
+        "distinct_users": "varchar",
+        "distinct_routes": "varchar",
+        "min_sessions": "varchar",
+        "avg_sessions": "varchar",
+        "max_sessions": "varchar",
+    }
 
     # Create a table from the JSON data
-    raw_query = f"""WITH log_data as (
-                        SELECT '{projectID}', '{region}', '{nodeName}', '{syncTime}', 
-                        * FROM read_json(?, auto_detect=true, columns={columns})
-                    ) 
-                    INSERT INTO logs.log_data {query}"""
-    mdConnect.execute(query=raw_query, parameters=[input_file])
+    raw_query = f"""
+                        create temp table logs as 
+                            from read_csv_auto('{input_file}', delim=' ')
+                            select 
+                                column0 as ip,
+                                -- ignore column1, it's just a hyphen
+                                column2 as user,
+                                column3.replace('[','').replace(']','').strptime('%Y-%m-%dT%H:%M:%S.%f%z') as ts,
+                                column4 as http_type,
+                                column5 as route,
+                                column6 as http_spec,
+                                column7 as http_status,
+                                column8 as value
+                        ;
+                        create temp table time_increments as 
+                            from generate_series(date_trunc('hour', current_timestamp) - interval '1 year', date_trunc('hour', current_timestamp) + interval '1 year', interval '5 minutes' ) t(ts)
+                            select
+                                ts as start_ts,
+                                ts + interval '5 minutes' as end_ts,
+                            where
+                                ts >= ((select min(ts) from logs) - interval '5 minutes')
+                                and ts <= ((select max(ts) from logs) + interval '5 minutes')
+                        ;
+                        create temp table session_duration_and_count as 
+                        with last_login as (
+                            from logs
+                            select 
+                                *,
+                                max(case when route = '/login' then ts end) over (partition by ip, user order by ts rows between unbounded preceding and current row) as last_login_ts,
+                        )
+                        from last_login
+                        select
+                            *,
+                            -- Assuming the first event is always a login
+                            max(ts) over (partition by ip, user, last_login_ts) as last_txn_ts,
+                            last_txn_ts - last_login_ts as session_duration,
+                            sum(case route
+                                when '/login' then 1 
+                                when '/logout' then -1
+                                end) over (order by ts) as session_count,
+                        ;
+                        from session_duration_and_count;
 
-    # With logs as (
-    #   SELECT * FROM read_json(...)
-    # ) INSERT INTO motherduck.logs.log_data {query}
+                        INSERT INTO logs.log_aggregation (
+                        from time_increments increments
+                        left join session_duration_and_count sessions
+                            on increments.start_ts <= sessions.ts
+                            and increments.end_ts > sessions.ts
+                        select
+                            '{projectID}', '{region}', '{nodeName}', '{syncTime}'
+                            start_ts,
+                            end_ts,
+                            count(distinct ip) as distinct_ips,
+                            count(distinct user) as distinct_users,
+                            count(distinct route) as distinct_routes,
+                            min(coalesce(session_count, 0)) as min_sessions,
+                            avg(coalesce(session_count, 0)) as avg_sessions,
+                            max(coalesce(session_count, 0)) as max_sessions,
+                            1
+                        group by all
+                        order by
+                            start_ts
+                            )"""
+
+    mdConnect.execute(query=f"{raw_query}")
+
+
+# With logs as (
+#   SELECT * FROM read_json(...)
+# ) INSERT INTO motherduck.logs.log_data {query}
 
 
 if __name__ == "__main__":
-    # Print a header to a list of files that are available to process
-    print("Files available to process (in /var/log/logs_to_process):")
-    print("--------------------")
-
-    # Print all files in /var/log/logs_to_process to stdout with absolute paths.
-    # If there are no files, print a message that "No files are available to process."
-    files = os.listdir("/var/log/logs_to_process")
-    if len(files) == 0:
-        print("No files are available to process.")
-    else:
-        f = natsorted(files, alg=ns.IGNORECASE)
-        for file in f:
-            print(f"/var/log/logs_to_process/{file}")
-
-    print("\n")
-
     print("Environment Variables")
     print(f"INPUTFILE = {os.environ.get('INPUTFILE')}")
-    print(f"QUERY = {os.environ.get('QUERY')}")
 
     # If both INPUTFILE and QUERY are set, then use those
-    if os.environ.get("INPUTFILE") and os.environ.get("QUERY"):
-        print("Both INPUTFILE and QUERY are set, so using those")
-        args = argparse.Namespace(input_file=os.environ.get("INPUTFILE"), query=os.environ.get("QUERY"))
+    if os.environ.get("INPUTFILE"):
+        print("INPUTFILE is set, so using those")
+        args = argparse.Namespace(input_file=os.environ.get("INPUTFILE"))
     else:
         # Set up the argument parser
         parser = argparse.ArgumentParser(description="Process log data")
         parser.add_argument("input_file", help="Path to the input log file")
-        parser.add_argument("query", help="DuckDB query to execute")
 
         # Parse the command-line arguments
         args = parser.parse_args()
 
     # Call the main function
-    main(args.input_file, args.query)
+    main(args.input_file)
