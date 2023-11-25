@@ -1,0 +1,34 @@
+Name: Logstash
+Type: daemon
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - WebService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-agent:1.0.0
+        EnvironmentVariables:
+          - OPENSEARCH_ENDPOINT={{.OpenSearchEndpoint}}
+          - S3_BUCKET={{.AccessLogBucket}}
+          - AWS_REGION={{.AWSRegion}}
+          - AGGREGATE_DURATION=10
+          - S3_TIME_FILE=60
+    Network:
+      Type: Full
+    InputSources:
+      - Target: /app/logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-orchestration/logs
+      - Target: /app/state
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-orchestration/state
+            ReadWrite: true

@@ -40,12 +40,12 @@ data "cloudinit_config" "user_data" {
       bacalhau_service : filebase64("${path.root}/../node_files/bacalhau.service"),
       ipfs_service : base64encode(file("${path.module}/../node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/../node_files/start-bacalhau.sh"),
-      global_bucket_name : "${var.project_id}-global-archive-bucket",
       ssh_key : compact(split("\n", file(var.public_key)))[0],
       tailscale_key : var.tailscale_key,
       node_name : "${var.app_tag}-${each.key}-vm",
       username : var.username,
       region : each.value.zone,
+      global_bucket_name : "{var.app_tag}-{each.value.zone}-images-bucket",
       zone : each.key,
       project_id : var.project_id,
     })
@@ -97,10 +97,10 @@ resource "google_compute_instance" "gcp_instance" {
     }
 }
 
-resource "google_storage_bucket" "node_bucket" {
+resource "google_storage_bucket" "images_bucket" {
   for_each = var.locations
 
-  name     = "${var.project_id}-${each.key}-archive-bucket"
+  name     = "${var.app_tag}-${each.key}-images-bucket"
   location = var.locations[each.key].storage_location
 
   lifecycle_rule {
@@ -112,7 +112,7 @@ resource "google_storage_bucket" "node_bucket" {
     }
   }
 
-  storage_class = "ARCHIVE"
+  storage_class = "STANDARD"
   force_destroy = true
 }
 

@@ -1,0 +1,37 @@
+# For each error (like 404 or 500), analyze the full sequence of user actions leading up to the error.
+Name: Detailed Error Investigation
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT a.remote_addr, a.time_local, a.request
+            FROM logs a
+            JOIN (
+                SELECT remote_addr, time_local
+                FROM logs
+                WHERE status = 404 -- or other error codes
+            ) AS ErrorSessions
+            ON a.remote_addr = ErrorSessions.remote_addr AND a.time_local <= ErrorSessions.time_local
+            ORDER BY a.remote_addr, a.time_local;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
+            Region: {{.AWSRegion}}

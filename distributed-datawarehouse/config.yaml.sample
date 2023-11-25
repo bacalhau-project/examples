@@ -5,7 +5,7 @@ host: 34.155.152.133
 port: 1234
 
 # The docker image containing the query engine (in this case duckdb)
-image: rossjones73/duckdb:0.1
+image: expanso/duckdb-ddw:0.0.1
 
 # The details required for publishing the query results. You likely
 # only need to change the bucket name, but the compute nodes in the 

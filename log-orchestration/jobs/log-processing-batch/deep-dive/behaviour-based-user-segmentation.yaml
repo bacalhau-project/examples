@@ -1,0 +1,44 @@
+# Segment users based on their specific sequence of actions,
+# time spent on each page, and interaction patterns.
+Name: Behavior-Based User Segmentation
+Type: batch
+Count: 1
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - ComputeService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-processor:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+                remote_addr, 
+                COUNT(*) AS page_views, 
+                CAST(AVG(time_spent) AS INT) AS avg_time_spent
+            FROM (
+                SELECT 
+                    remote_addr, 
+                    time_local,
+                    date_diff('second', LAG(time_local) OVER (PARTITION BY remote_addr ORDER BY time_local), time_local) AS time_spent
+                FROM logs
+            ) AS UserInteractions
+            WHERE time_spent IS NOT NULL
+            GROUP BY remote_addr
+            HAVING COUNT(*) > 10
+            ORDER BY avg_time_spent DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.AccessLogBucket}}
+            Key: {{.AccessLogPrefix}}
+            Filter: {{or (index . "AccessLogPattern") ".*"}}
+            Region: {{.AWSRegion}}

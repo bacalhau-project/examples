@@ -1,0 +1,21 @@
+[node]
+display_name = "Node"
+unique_id = "node"
+storage_path = "node1.sqlite"
+
+[server]
+endpoint = "http://127.0.0.1:8080"
+token = "token"
+
+[[destinations]]
+type = "bacalhau"
+display_name = "Extract task"
+job = "extract"
+jobstore = "c:\\Users\\mycelial\\jobstore\\"
+
+
+[[destinations]]
+type = "bacalhau"
+display_name = "Aggregate task"
+job = "aggregate"
+jobstore = "c:\\Users\\mycelial\\jobstore\\"

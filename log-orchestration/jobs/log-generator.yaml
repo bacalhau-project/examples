@@ -1,0 +1,26 @@
+Name: LogGenerator
+Type: daemon
+Namespace: logging
+Constraints:
+  - Key: service
+    Operator: ==
+    Values:
+      - WebService
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-generator:1.0.0
+        Parameters:
+          - --rate
+          - "10"
+          - --output-log-file
+          - /app/output/application.log
+    InputSources:
+      - Target: /app/output
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-orchestration/logs
+            ReadWrite: true
