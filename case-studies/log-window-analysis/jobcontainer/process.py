@@ -38,9 +38,6 @@ def getMetadata(metadata_server_url):
 
 
 def main(input_file):
-    # Create an in-memory DuckDB database
-    con = duckdb.connect(database=":memory:", read_only=False)
-
     usingTempFile = False
     # If file is .gz, decompress it into a temporary file
     if input_file.endswith(".gz"):
@@ -82,35 +79,32 @@ def main(input_file):
     nodeName = getInstanceMetadata("name")
     syncTime = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    columns = {
-        "projectID": "varchar",
-        "region": "varchar",
-        "nodeName": "varchar",
-        "syncTime": "varchar",
-        "start_ts": "varchar",
-        "end_ts": "varchar",
-        "distinct_ips": "varchar",
-        "distinct_users": "varchar",
-        "distinct_routes": "varchar",
-        "min_sessions": "varchar",
-        "avg_sessions": "varchar",
-        "max_sessions": "varchar",
+    input_columns = {
+        "ip": "varchar",
+        "hyphen": "varchar",
+        "user": "varchar",
+        "ts": "varchar",
+        "http_type": "varchar",
+        "route": "varchar",
+        "http_spec": "varchar",
+        "http_status": "varchar",
+        "value": "varchar",
     }
 
     # Create a table from the JSON data
     raw_query = f"""
                         create temp table logs as 
-                            from read_csv_auto('{input_file}', delim=' ')
+                            from read_csv('{input_file}', delim=' ', columns={input_columns})
                             select 
-                                column0 as ip,
+                                ip as ip,
                                 -- ignore column1, it's just a hyphen
-                                column2 as user,
-                                column3.replace('[','').replace(']','').strptime('%Y-%m-%dT%H:%M:%S.%f%z') as ts,
-                                column4 as http_type,
-                                column5 as route,
-                                column6 as http_spec,
-                                column7 as http_status,
-                                column8 as value
+                                user as user,
+                                ts.replace('[','').replace(']','').strptime('%Y-%m-%dT%H:%M:%S.%f%z') as ts,
+                                http_type as http_type,
+                                route as route,
+                                http_spec as http_spec,
+                                http_status as http_status,
+                                value as value
                         ;
                         create temp table time_increments as 
                             from generate_series(date_trunc('hour', current_timestamp) - interval '1 year', date_trunc('hour', current_timestamp) + interval '1 year', interval '5 minutes' ) t(ts)
