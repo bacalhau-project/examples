@@ -12,6 +12,19 @@ import numpy as np
 import sys
 
 
+def parse_line(line, line_tuples):
+    try:
+        datetimestamp = dt.strptime(
+            line.split("[")[1].split("]")[0], "%Y-%m-%dT%H:%M:%S.%f%z"
+        )
+        line_tuples.append((datetimestamp, line.strip("\n")))
+
+    except Exception as e:
+        print(f"Error parsing line: {line}")
+        print(e)
+        return
+
+
 def main(log_directory, appname):
     # If /node/sample_access.log doesn't exist, run the generate_sample_logs.py script
     if not os.path.exists("/node/sample_access.log"):
@@ -21,8 +34,17 @@ def main(log_directory, appname):
         lines = sample_log_file.readlines()
         line_tuples = []
         for line in lines:
-            datetimestamp = dt.strptime(line.split("[")[1].split("]")[0], "%Y-%m-%dT%H:%M:%S.%f%z")
-            line_tuples.append((datetimestamp, line.strip("\n")))
+            cols = line.split(sep=" ")
+            num_cols = len(cols)
+
+            if num_cols == 9:
+                parse_line(line, line_tuples)
+            elif num_cols == 18:
+                parse_line(" ".join(cols[:9]), line_tuples)
+                parse_line(" ".join(cols[9:]), line_tuples)
+            else:
+                continue
+
         full_array = np.array(line_tuples)
         full_array = np.array(sorted(full_array, key=lambda x: x[0]))
 
@@ -41,7 +63,9 @@ def main(log_directory, appname):
         end_time = last_printed_time + real_time_diff
 
         # Get the log entries since the last time we printed
-        log_entries_to_print = full_array[(full_array[:, 0] > last_printed_time) & (full_array[:, 0] <= end_time)]
+        log_entries_to_print = full_array[
+            (full_array[:, 0] > last_printed_time) & (full_array[:, 0] <= end_time)
+        ]
 
         log_entries_string = "\n".join(log_entries_to_print[:, 1])
         with open(log_file_path, "a") as filehandle:
@@ -61,12 +85,24 @@ def main(log_directory, appname):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate fake log entries and save them to a specified directory.")
-    parser.add_argument(
-        "-d", "--directory", type=str, nargs="?", help="The directory to save the log file.", default="."
+    parser = argparse.ArgumentParser(
+        description="Generate fake log entries and save them to a specified directory."
     )
     parser.add_argument(
-        "-n", "--appname", type=str, nargs="?", help="The application name for the log.", default="aperitivo"
+        "-d",
+        "--directory",
+        type=str,
+        nargs="?",
+        help="The directory to save the log file.",
+        default=".",
+    )
+    parser.add_argument(
+        "-n",
+        "--appname",
+        type=str,
+        nargs="?",
+        help="The application name for the log.",
+        default="aperitivo",
     )
     args = parser.parse_args()
 
