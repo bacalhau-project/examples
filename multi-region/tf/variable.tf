@@ -1,7 +1,6 @@
 # Variables
 
-variable "access_key" { type = string }
-variable "secret_key" { type = string }
+variable "shared_credentials_file" { type = string }
 variable "app_tag" {
   description = "Environment tag"
   type        = string
