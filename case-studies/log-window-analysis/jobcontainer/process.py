@@ -141,7 +141,7 @@ def main(input_file):
                             on increments.start_ts <= sessions.ts
                             and increments.end_ts > sessions.ts
                         select
-                            '{projectID}', '{region}', '{nodeName}', '{syncTime}'
+                            '{projectID}', '{region}', '{nodeName}', '{syncTime}',
                             start_ts,
                             end_ts,
                             count(distinct ip) as distinct_ips,
@@ -149,8 +149,7 @@ def main(input_file):
                             count(distinct route) as distinct_routes,
                             min(coalesce(session_count, 0)) as min_sessions,
                             avg(coalesce(session_count, 0)) as avg_sessions,
-                            max(coalesce(session_count, 0)) as max_sessions,
-                            1
+                            max(coalesce(session_count, 0)) as max_sessions
                         group by all
                         order by
                             start_ts
