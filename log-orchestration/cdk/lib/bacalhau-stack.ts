@@ -64,6 +64,7 @@ export class BacalhauStack extends cdk.Stack {
         return new ec2.Vpc(this, 'Vpc', {
             maxAzs: 3, // Max availability zones
             ipAddresses: ec2.IpAddresses.cidr('10.1.0.0/16'), // CIDR block
+            natGateways: 0, // Number of NAT gateways
             subnetConfiguration: [ // Subnet configuration
                 { cidrMask: 24, name: 'PublicSubnet', subnetType: ec2.SubnetType.PUBLIC },
                 { cidrMask: 24, name: 'PrivateSubnet', subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
