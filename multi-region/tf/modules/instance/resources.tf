@@ -72,7 +72,7 @@ EOF
 }
 
 resource "aws_s3_bucket" "images_bucket" {
-  bucket = "${var.app_tag}-${var.region}-images-bucket"
+  bucket = "${var.app_tag}-${var.region}-images"
   # Force delete even if not empty
   force_destroy = true
   tags = {
@@ -99,7 +99,7 @@ resource "aws_iam_policy" "bucket_policy" {
         ],
         "Resource" : [
           "arn:aws:s3:::*/*",
-          "arn:aws:s3:::${var.app_tag}-${var.region}-images-bucket"
+          "${aws_s3_bucket.images_bucket.arn}"
         ]
       }
     ]
