@@ -2,28 +2,33 @@
 set -e
 set -x
 
-python -m pip install poetry # Install poetry in the newly created virtual environment
+# Ensure poetry is installed
+python -m pip install --user poetry
 
 # If $APPDIR does not exist then create it
 if [ ! -d "$APPDIR" ]; then
-    mkdir -p $APPDIR
+    mkdir -p "$APPDIR"
 fi
 
-cd $APPDIR || exit
+cd "$APPDIR" || exit
 
 # If pyproject.toml isn't there then copy the app files from /tmp
-if [ ! -f "pyproject.toml" ]; then
-    rsync -av --exclude '\.*' --exclude "__*" /tmp/client/* $APPDIR # APPDIR has a leading /
-fi
 
-python -m pip install poetry-plugin-export
+# Install poetry-plugin-export
+python -m pip install --user poetry-plugin-export
+
+# Export dependencies to requirements.txt
 python -m poetry export --without-hashes --format=requirements.txt > requirements.txt
-python -m pip  install virtualenv
-python -m venv ${PYENVNAME}
-# shellcheck source=/dev/null
-source ${PYENVNAME}/bin/activate
 
-# Install all python requirements from requirements.txt
+# Install virtualenv
+python -m pip install --user virtualenv
+
+# Create and activate virtual environment
+python -m venv "${PYENVNAME}"
+source "${PYENVNAME}/bin/activate"
+
+# Install Python dependencies from requirements.txt
 python -m pip install -r requirements.txt
 
+# Deactivate virtual environment
 deactivate

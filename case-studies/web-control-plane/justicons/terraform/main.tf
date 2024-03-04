@@ -45,12 +45,12 @@ data "cloudinit_config" "user_data" {
 
     content = templatefile("cloud-init/init-vm.yml", {
       app_name : var.app_name,
+      siteurl : var.siteurl
 
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
       install_gunicorn_services : filebase64("${path.root}/node_files/install_gunicorn_services.sh"),
       setup_venv : filebase64("${path.root}/node_files/setup_venv.sh"),
-      pyproject_toml : filebase64("${path.root}/../client/pyproject.toml"),
 
       bacalhau_bootstrap : filebase64("${path.root}/bacalhau.run"),
 
@@ -63,6 +63,8 @@ data "cloudinit_config" "user_data" {
       region : each.value.region,
       zone : each.key,
       project_id : var.project_id,
+      relativecodeinrepodir : var.relativecodeinrepodir,
+      nginxupdatetoken : var.nginxupdatetoken,
     })
   }
 }

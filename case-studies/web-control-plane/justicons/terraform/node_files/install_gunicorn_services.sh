@@ -19,13 +19,18 @@ curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.11
 # Clean up old files, just to be sure
 export USERHOME="/home/${APPUSER}"
 export PATH="${USERHOME}/.local/bin:${PATH}"
+export SETUPVENVSCRIPT="${USERHOME}/setup-venv.sh"
 
 echo "USERHOME: ${USERHOME}"
+echo "APPUSER: ${APPUSER}"
 echo "APPDIR: ${APPDIR}"
+echo "PATH: ${PATH}"
 
-# Run the setup-venv.sh with environment variables passed to the script
 echo "Running setup-venv.sh ..."
-sudo -E -u ${APPUSER} env ./setup-venv.sh
+pushd ${APPDIR}
+chown -R ${APPUSER}:${APPUSER} ${SETUPVENVSCRIPT}
+sudo -E -u ${APPUSER} bash -c "source ${ENVFILE} && ${SETUPVENVSCRIPT}"
+popd
 
 mkdir -p /etc/systemd/system/gunicorn.service.d/
 chmod 0700 /etc/systemd/system/gunicorn.service.d/
@@ -92,3 +97,7 @@ echo "Installing lighthttpd for heartbeat"
 apt install -y lighttpd
 systemctl restart lighttpd
 echo -n "ok" | sudo tee /var/www/html/index.lighttpd.html > /dev/null
+
+# Ping itsadash.work/update_sites with a json of the form {"site": "site_name", "ip": "ip_address"}
+echo "Pinging itsadash.work/update ..."
+curl -X POST -H "Content-Type: application/json" -d "{\"site\": \"${SITEURL}\"}" https://itsadash.work/update

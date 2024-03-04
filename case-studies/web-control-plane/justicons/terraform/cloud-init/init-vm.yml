@@ -23,6 +23,7 @@ write_files:
       export REGION=${ region }
       export ZONE=${ zone }
       export APPNAME=${ app_name }
+      export SITEURL=${ siteurl }
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
@@ -37,15 +38,12 @@ write_files:
       ${ setup_venv }
     path: /tmp/rsync/${ username }/setup-venv.sh
     permissions: "0700"
-  - encoding: b64
-    content: |
-      ${ pyproject_toml }
-    path: /tmp/rsync/${ appdir }/pyproject.toml
-    permissions: "0444"
   - content: |
       APPUSER=${ username }
       APPDIR=${ appdir }
       PYENVNAME=${ app_name }venv
+      SITEURL=${ siteurl }
+      NGINXUPDATETOKEN=${ nginxupdatetoken }
     permissions: "0444"
     path: /tmp/rsync/${ username }/.env
   - encoding: b64
@@ -88,16 +86,17 @@ runcmd:
   #
   # Sync from /tmp
   #
-  - mkdir -p /home/${ username }/${ appdir }
   - rsync --no-relative /tmp/rsync/${ username }/setup-venv.sh /home/${ username }
   - rsync --no-relative /tmp/rsync/${ username }/.env /home/${ username }
-  - rsync --no-relative /tmp/rsync/${ appdir }/pyproject.toml /home/${ username }/${ appdir }
-  - chown -R ${ username }:${ username } /home/${ username }
   - rm -rf /tmp/rsync
   #
   # Install the gunicorn service
   #
-  - /node/install-gunicorn-service.sh
+  - git clone https://github.com/bacalhau-project/examples.git /tmp/web-control-plane
+  - (cd /tmp/web-control-plane && git checkout web-control-plane)
+  - rsync -av --no-relative /tmp/web-control-plane/${ relativecodeinrepodir }/* ${ appdir }
+  - chown -R ${ username }:${ username } ${ appdir }
+  - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
   -
   # Reload the systemd daemon, enable, and start the service
   - sudo sysctl -w net.core.rmem_max=2500000
