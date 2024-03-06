@@ -15,7 +15,7 @@ tasks:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: frrist/intel-ml-demo:v2.2-cpu
+        Image: frrist/intel-ml-demo:v2.4-cpu
         EnvironmentVariables:
           # name of the bucket to download videos from. Should be an open bucket
           - VIDEO_BUCKET_NAME=small-set-sample
@@ -31,7 +31,7 @@ tasks:
       Type: s3
       Params:
         Bucket: small-set-sample-output
-        Key: yolo-results/{date}/{jobID}/{executionID}
+        Key: yolo-results/{date}/{time}/{jobID}/{executionID}
         Endpoint: https://storage.googleapis.com
     Network:
       # this job requires networking to download content from buckets
