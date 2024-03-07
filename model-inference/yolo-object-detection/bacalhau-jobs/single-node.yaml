@@ -1,22 +1,9 @@
 name: Perform parallel ML inference over videos in a GCP bucket on all nodes
 # ops means run on all nodes
-type: ops
+type: batch
+count: 1
 tasks:
   - name: Perform yolo inference over data in a bucket
-    InputSources:
-      - Source:
-          Type: localDirectory
-          Params:
-            # the directory on each node tells them their rank and total nodes
-            SourcePath: /local_data
-            ReadWrite: false
-        Target: /local_data
-      - Source:
-          Type: urlDownload
-          Params:
-            URL: https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5m.pt
-        Target: /model
-
     Engine:
       Type: docker
       Params:
@@ -30,8 +17,6 @@ tasks:
           - CLASSES=0
           # path the inference data is written to. Must match the ResultsPaths section.
           - YOLO_PROJECT_DIR=/results
-          # reference the medium model from job input source
-          - YOLO_WEIGHTS_PATH=/model/yolov5m.pt
     ResultPaths:
       - Name: "results"
         Path: "/results"

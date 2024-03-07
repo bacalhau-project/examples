@@ -30,7 +30,8 @@ tasks:
     Publisher:
       Type: s3
       Params:
-        Bucket: small-set-sample-output
+        Bucket: test-bucket-publish
+        Region: us-west1
         Key: yolo-results/{date}/{time}/{jobID}/{executionID}
         Endpoint: https://storage.googleapis.com
     Network:
