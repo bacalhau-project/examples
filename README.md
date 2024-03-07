@@ -1,6 +1,6 @@
 # Bacalhau Code Examples
 
-This is a collection of worked code examples that use Bacalhau.
+This is a collection of examples that use Bacalhau.
 For ease of access, they are rendered in the docs at https://docs.bacalhau.org/examples/
 
 * [Bacalhau Core Repository](https://github.com/filecoin-project/bacalhau)
@@ -11,11 +11,10 @@ For ease of access, they are rendered in the docs at https://docs.bacalhau.org/e
 
 ### Before You Start
 
-All example ideas are tracked as issues in the [Bacalhau Core Repository](https://github.com/filecoin-project/bacalhau/issues?q=is%3Aopen+is%3Aissue+label%3Aexample) with a label of `example`. 
+All example ideas are tracked as issues in the [Bacalhau Core Repository](https://github.com/bacalhau-project/bacalhau/issues?q=is%3Aopen+is%3Aissue+label%3Aexample) with a label of `example`. 
 
 * If you have an idea for an example, please add an issue.
 * If you'd like to work on a example, please find an issue that has not been assigned, then assign the issue to yourself.
-* David and Luke will prioritize the examples that are most useful to the community.
 
 ### General Process
 
@@ -34,11 +33,6 @@ Please see the [basic-template example](templates/basic-template) for a guide on
 ### Requirements
 
 The following guidelines aim to maintain the quality of the examples.
-
-#### Example Requirements
-
-* The example should be useful, try to avoid toy datasets
-* Don't repeat yourself, if there is an example of something already available, redirect to that. For example, don't show people how to ingest data into IPFS, there's [an example for that](data-ingestion).
 
 #### Markdown Requirements
 
@@ -143,4 +137,4 @@ You can run test all notebooks with `make test`. If you want to test an individu
 
 ### Developer Help
 
-If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the #bacalhau channel in [Filecoin Slack](https://filecoin.io/slack).
+If you have any questions or spot anything missing, please reach out to us in the [Bacalhau Slack](https://bit.ly/bacalhau-project-slack)
