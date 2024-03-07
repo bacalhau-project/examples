@@ -64,7 +64,7 @@ data "cloudinit_config" "user_data" {
       zone : each.key,
       project_id : var.project_id,
       relativecodeinrepodir : var.relativecodeinrepodir,
-      nginxupdatetoken : var.nginxupdatetoken,
+      token : var.token,
     })
   }
 }

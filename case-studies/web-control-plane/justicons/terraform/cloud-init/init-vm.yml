@@ -24,6 +24,7 @@ write_files:
       export ZONE=${ zone }
       export APPNAME=${ app_name }
       export SITEURL=${ siteurl }
+      export TOKEN=${ token }
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
@@ -43,7 +44,7 @@ write_files:
       APPDIR=${ appdir }
       PYENVNAME=${ app_name }venv
       SITEURL=${ siteurl }
-      NGINXUPDATETOKEN=${ nginxupdatetoken }
+      TOKEN=${ token }
     permissions: "0444"
     path: /tmp/rsync/${ username }/.env
   - encoding: b64
@@ -70,13 +71,12 @@ runcmd:
   #
   # Install docker
   #
-  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
-  - sudo mkdir -p /etc/apt/keyrings
-  - |
-    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  - sudo apt-get update -y
-  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - apt-get update
+  - apt-get install ca-certificates curl
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   #
   # Install Bacalhau
   #

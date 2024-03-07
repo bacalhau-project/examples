@@ -43,7 +43,7 @@ variable "siteurl" {
   description = "Site URL for the application"
 }
 
-variable "nginxupdatetoken" {
+variable "token" {
   type      = string
   sensitive = true
   description = "Token to use to update the nginx configuration"

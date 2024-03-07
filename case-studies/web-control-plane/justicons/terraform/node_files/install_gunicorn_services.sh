@@ -12,7 +12,7 @@ apt install -y gcc make pkg-config libsqlite3-dev liblzma-dev libbz2-dev libncur
 apt install -y software-properties-common
 add-apt-repository -y ppa:deadsnakes/ppa
 apt update
-apt install -y python3.11 python3.11-venv python3.11-distutils
+apt install -y python3.11 python3.11-venv python3.11-distutils python3.11-tk
 update-alternatives --install /usr/bin/python python /usr/bin/python3.11 0
 curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.11
 
@@ -100,4 +100,5 @@ echo -n "ok" | sudo tee /var/www/html/index.lighttpd.html > /dev/null
 
 # Ping itsadash.work/update_sites with a json of the form {"site": "site_name", "ip": "ip_address"}
 echo "Pinging itsadash.work/update ..."
-curl -X POST -H "Content-Type: application/json" -d "{\"site\": \"${SITEURL}\"}" https://itsadash.work/update
+export PRIVATEIP=$(ip addr | awk '/inet/ && /10\./ {split($2, ip, "/"); print ip[1]}')
+curl -X POST -H "Content-Type: application/json" -d "{\"site\": \"${SITEURL}\", \"TOKEN\": \"${TOKEN}\", \"SERVERIP\": \"${PRIVATEIP}\"  }" http://itsadash.work/update
