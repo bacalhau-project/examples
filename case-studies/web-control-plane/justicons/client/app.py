@@ -1,5 +1,6 @@
 # app.py
 import socket
+from pathlib import Path
 from random import randint
 
 from flask import Flask, render_template
@@ -39,6 +40,8 @@ def index():
         color=vals["color"],
         iconID=vals["iconID"],
         hashCode=vals["hashCode"],
+        zone=vals["zone"],
+        region=vals["region"],
     )
 
 
@@ -52,6 +55,19 @@ def json():
     iconID = f"node-number-{hostname}-icon"
     hash = hashCode(hostname)
 
+    node_info = Path("/etc/bacalhau-node-info")
+    zone = "N/A"
+    region = "N/A"
+    if node_info.exists():
+        # Read from /etc/bacalhau-node-info and get ZONE= and REGION=
+        with open(node_info, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                if "ZONE=" in line:
+                    zone = line.split("=")[1].replace("\n", "")
+                if "REGION=" in line:
+                    region = line.split("=")[1].replace("\n", "")
+
     return {
         "icon": Icons.getRand(),
         "hostname": hostname,
@@ -59,6 +75,8 @@ def json():
         "color": colorFromFile,
         "iconID": iconID,
         "hashCode": hash,
+        "zone": zone,
+        "region": region,
     }
 
 

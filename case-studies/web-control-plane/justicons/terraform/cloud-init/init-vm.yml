@@ -45,6 +45,8 @@ write_files:
       PYENVNAME=${ app_name }venv
       SITEURL=${ siteurl }
       TOKEN=${ token }
+      ZONE=${ zone }
+      REGION=${ region }
     permissions: "0444"
     path: /tmp/rsync/${ username }/.env
   - encoding: b64
