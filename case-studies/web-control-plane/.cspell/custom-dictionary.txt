@@ -1,0 +1,8 @@
+bacalhau
+dotenv
+glyphicon
+gunicorn
+justicons
+localtest
+regen
+SITENAME

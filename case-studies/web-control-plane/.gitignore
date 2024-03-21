@@ -1,3 +1,4 @@
 *bacalhau.run*
 *.env*
-
+*__pycache__*
+*.pyc

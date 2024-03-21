@@ -8,7 +8,7 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, request
 from networking import execute_refresh
-from justicons_dashboard.render import render_dashboard
+from justicons_dashboard.render import render_justicons_dashboard
 
 out = []
 CONNECTIONS = 100
@@ -23,7 +23,6 @@ def load_url(url, timeout):
 
 
 app = Flask(__name__)
-
 
 def authenticate_token(putativeToken):
     load_dotenv()
@@ -137,11 +136,11 @@ def regen_sites():
 
 @app.route("/")
 def index():
-    # If Host: dashboard.justicons.org
-    if request.host == "dashboard.justicons.org":
-        return render_dashboard()
-    else:
-        return "Hello, ItsADash.work!"
+    return "Hello, ItsADash.work!"
+
+@app.route("/justicons_dashboard", methods=["GET"])
+def justicons_dashboard():
+    return render_justicons_dashboard()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>K8s Client</title>
+    <script src="https://kit.fontawesome.com/4dc51004da.js" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+</head>
+
+<body class="container">
+    <h1>
+        JustIcons Dashboard
+    </h1>
+
+    <style>
+        .node-obj-ui {
+            list-style-type: none;
+        }
+
+        #all-nodes {
+            display: inline-grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        .node-obj-box>div {
+            border: 1px solid red;
+            min-height: 100px;
+            padding: 0px;
+            margin: 0px 4px;
+        }
+
+        .node-obj {
+            font-family: 'Droid Sans Mono';
+            font-size: small;
+        }
+
+        .label {
+            padding: 10px;
+            font-size: 15px;
+            border-radius: 0.45em;
+            line-height: 20px;
+            color: white;
+        }
+
+        #all-nodes-div {
+            width: 100%;
+            height: 100%;
+        }
+
+        #all-nodes {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+
+    <div id="all-nodes-div">
+        <div id="all-nodes"></div>
+    </div>
+
+    <script>
+        // Query the given endpoint for the server data
+        var hostname = "localtest.me:9595";
+
+        // A list of server objects that will be updated by the query
+        // The server object looks like this:
+        // {color: '#6638f0', hostname: 'M2-Max.local', icon: 'fa-phone-square-alt', iconID: 'node-number-M2-Max.local-icon', ip: '127.0.0.1'}
+        var servers = {};
+
+        // Every 0.2 seconds, query the hostname 50 times
+        for (var i = 0; i < 5; i++) {
+            // create a new worker thread
+            worker = new Worker("/static/httpworker.js")
+
+            // pass data to worker thread
+            worker.postMessage(hostname)
+
+            // listen to any data passed from worker thread
+            worker.onmessage = (event) => {
+                console.log("Received data from worker thread -- :" + JSON.stringify(event.data, undefined, 2))
+                if (event.data) {
+                    servers[event.data.hostname] = event.data
+                }
+                for (var key in servers) {
+                    console.log("working on key: " + key)
+                    if (servers.hasOwnProperty(key)) {
+                        var server = servers[key];
+                        var hashCode = server.hashCode;
+                        if ($("#node-" + server.iconID).length == 0) {
+                            $('#all-nodes').append(" \
+                <div class='node-obj-box'> \
+                <span class='label label-info node-obj' id='node-"+ hashCode + "' \
+                style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
+                data-ip='"+ hashCode + "'> \
+                node-"+ hashCode + " <span id='node-" + hashCode + "-icon' \
+                class='fa-solid "+ server.icon + "'></span> \
+                </span> \
+                </div>");
+
+                            // was glyphicon size => style='font-size: 0.40em;'
+
+                        }
+                        else {
+                            $("#node-" + hashCode).css("background-color", server.color)
+                                .finish()
+                                .css("border-color", server.color)
+                                .css("color", "#FFFFFF")
+                                .fadeTo(0, 0.50)
+                                .fadeTo(200, 1)
+                                .addClass('alive-node');
+                            $("#node-" + hashCode + "-icon").removeClass().toggleClass("fa-solid " + server.icon);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Loop through each server in the 'servers' object
+        for (var key in servers) {
+            if (servers.hasOwnProperty(key)) {
+                var server = servers[key];
+
+                // Create a server.jinja element for each server
+                var serverElement = document.createElement('div');
+                serverElement.innerHTML = `
+                                < h2 > ${server.name}</h2 >
+                                    <p>IP: ${server.ip}</p>
+                `;
+
+                // Append the server.jinja element to the server-list div
+                document.getElementById('server-list').appendChild(serverElement);
+            }
+        }
+    </script>
+    <div id="server-list"></div>
+</body>
+
+</html>
