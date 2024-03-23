@@ -60,41 +60,47 @@
         }
     </style>
 
+    <button id="start">Start</button>
+    <button id="stop">Stop</button>
+
     <div id="all-nodes-div">
         <div id="all-nodes"></div>
     </div>
 
     <script>
         // Query the given endpoint for the server data
-        var hostname = "localtest.me:9595";
+        var hostname = "127.0.0.1:9595";
 
         // A list of server objects that will be updated by the query
         // The server object looks like this:
         // {color: '#6638f0', hostname: 'M2-Max.local', icon: 'fa-phone-square-alt', iconID: 'node-number-M2-Max.local-icon', ip: '127.0.0.1'}
         var servers = {};
 
-        // Every 0.2 seconds, query the hostname 50 times
-        for (var i = 0; i < 5; i++) {
-            // create a new worker thread
-            worker = new Worker("/static/httpworker.js")
+        document.getElementById('start').addEventListener('click', function () {
+            intervalId = setInterval(function () {
 
-            // pass data to worker thread
-            worker.postMessage(hostname)
+                // Every 0.2 seconds, query the hostname 5 times        
+                for (var i = 0; i < 5; i++) {
+                    // create a new worker thread
+                    worker = new Worker("/static/httpworker.js")
 
-            // listen to any data passed from worker thread
-            worker.onmessage = (event) => {
-                console.log("Received data from worker thread -- :" + JSON.stringify(event.data, undefined, 2))
-                if (event.data) {
-                    servers[event.data.hostname] = event.data
-                }
-                for (var key in servers) {
-                    console.log("working on key: " + key)
-                    if (servers.hasOwnProperty(key)) {
-                        var server = servers[key];
-                        var hashCode = server.hashCode;
-                        var nodeName = "node-" + hashCode;
-                        if ($('#' + nodeName).length == 0) {
-                            $('#all-nodes').append(" \
+                    // pass data to worker thread
+                    worker.postMessage(hostname)
+
+                    // listen to any data passed from worker thread
+                    worker.onmessage = (event) => {
+                        console.log("Received data from worker thread -- :" + JSON.stringify(event.data, undefined, 2))
+                        if (event.data) {
+                            servers[event.data.hostname] = event.data
+                        }
+                        for (var key in servers) {
+                            console.log("working on key: " + key)
+                            if (servers.hasOwnProperty(key)) {
+                                var server = servers[key];
+                                var hashCode = server.hashCode;
+                                var nodeName = "node-" + hashCode;
+                                if ($('#' + nodeName).length == 0) {
+                                    $('#all-nodes').append(" \
                 <div class='node-obj-box'> \
                 <span class='label label-info node-obj' id='"+ nodeName + "' \
                 style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
@@ -104,40 +110,47 @@
                 </span> \
                 </div>");
 
-                            // was glyphicon size => style='font-size: 0.40em;'
+                                    // was glyphicon size => style='font-size: 0.40em;'
 
-                        }
-                        else {
-                            $("#" + nodeName).css("background-color", server.color)
-                                .finish()
-                                .css("border-color", server.color)
-                                .css("color", "#FFFFFF")
-                                .fadeTo(0, 0.50)
-                                .fadeTo(200, 1)
-                                .addClass('alive-node');
-                            $("#node-" + hashCode + "-icon").removeClass().toggleClass("fa-solid " + server.icon);
+                                }
+                                else {
+                                    $("#" + nodeName).css("background-color", server.color)
+                                        .finish()
+                                        .css("border-color", server.color)
+                                        .css("color", "#FFFFFF")
+                                        .fadeTo(0, 0.50)
+                                        .fadeTo(200, 1)
+                                        .addClass('alive-node');
+                                    $("#node-" + hashCode + "-icon").removeClass().toggleClass("fa-solid " + server.icon);
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
+                // Loop through each server in the 'servers' object
+                for (var key in servers) {
+                    if (servers.hasOwnProperty(key)) {
+                        var server = servers[key];
 
-        // Loop through each server in the 'servers' object
-        for (var key in servers) {
-            if (servers.hasOwnProperty(key)) {
-                var server = servers[key];
-
-                // Create a server.jinja element for each server
-                var serverElement = document.createElement('div');
-                serverElement.innerHTML = `
+                        // Create a server.jinja element for each server
+                        var serverElement = document.createElement('div');
+                        serverElement.innerHTML = `
                                 < h2 > ${server.name}</h2 >
                                     <p>IP: ${server.ip}</p>
                 `;
 
-                // Append the server.jinja element to the server-list div
-                document.getElementById('server-list').appendChild(serverElement);
-            }
-        }
+                        // Append the server.jinja element to the server-list div
+                        document.getElementById('server-list').appendChild(serverElement);
+                    }
+                }
+            }, 5000);
+        });
+
+        document.getElementById('stop').addEventListener('click', function () {
+            clearInterval(intervalId);
+        });
+
+
     </script>
     <div id="server-list"></div>
 </body>
