@@ -83,7 +83,7 @@ runcmd:
   # Install Bacalhau
   #
   - |
-    curl -sL https://get.bacalhau.org/install.sh | BACALHAU_DIR=/$GENHOME/data bash
+    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/$GENHOME/data bash
   - echo "Bacalhau downloaded."
   #
   # Sync from /tmp

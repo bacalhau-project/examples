@@ -92,10 +92,11 @@
                     if (servers.hasOwnProperty(key)) {
                         var server = servers[key];
                         var hashCode = server.hashCode;
-                        if ($("#node-" + server.iconID).length == 0) {
+                        var nodeName = "node-" + hashCode;
+                        if ($('#' + nodeName).length == 0) {
                             $('#all-nodes').append(" \
                 <div class='node-obj-box'> \
-                <span class='label label-info node-obj' id='node-"+ hashCode + "' \
+                <span class='label label-info node-obj' id='"+ nodeName + "' \
                 style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
                 data-ip='"+ hashCode + "'> \
                 node-"+ hashCode + " <span id='node-" + hashCode + "-icon' \
@@ -107,7 +108,7 @@
 
                         }
                         else {
-                            $("#node-" + hashCode).css("background-color", server.color)
+                            $("#" + nodeName).css("background-color", server.color)
                                 .finish()
                                 .css("border-color", server.color)
                                 .css("color", "#FFFFFF")
