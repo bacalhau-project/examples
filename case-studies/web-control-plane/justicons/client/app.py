@@ -23,11 +23,12 @@ class Icons:
 
     @staticmethod
     def getRand():
-        return Icons.allIcons[randint(0, len(Icons.allIcons))]
-
-    @staticmethod
-    def get(i):
-        Icons.allIcons[i % len(Icons.allIcons)]
+        length = len(Icons.allIcons)
+        iconNumber = randint(0, length - 1)
+        try:
+            return Icons.allIcons[iconNumber]
+        except IndexError:
+            return 'fa-0'
 
 
 @app.route("/")
@@ -52,7 +53,7 @@ def json_testing():
 
 
 @app.route("/json")
-def json(testing):
+def json(testing=False):
     if testing:
         testNode = test_node()
         ip = testNode["ip"]
