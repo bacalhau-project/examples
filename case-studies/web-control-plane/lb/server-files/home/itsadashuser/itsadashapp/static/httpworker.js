@@ -1,9 +1,9 @@
 self.addEventListener('message', function (e) {
-    console.log('Worker: Message received from main thread', e.data);
+    // console.log('Worker: Message received from main thread', e.data);
 
     var data = {}
     // Perform the asynchronous API call
-    performAPICall(`http://${e.data}/json`)
+    performAPICall(`http://${e.data}/json-test`)
         .then(responseData => {
             // Send the response data back to the main thread
             self.postMessage(responseData);
