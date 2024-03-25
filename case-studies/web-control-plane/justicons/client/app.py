@@ -4,9 +4,9 @@ import socket
 from pathlib import Path
 from random import randint
 
+import yaml
 from flask import Flask, render_template
 from flask_cors import CORS
-
 from icons import allIcons
 
 app = Flask(__name__)
@@ -28,7 +28,7 @@ class Icons:
         try:
             return Icons.allIcons[iconNumber]
         except IndexError:
-            return 'fa-0'
+            return "fa-0"
 
 
 @app.route("/")
@@ -44,6 +44,7 @@ def index():
         hashCode=vals["hashCode"],
         zone=vals["zone"],
         region=vals["region"],
+        nodeID=vals["nodeID"],
     )
 
 
@@ -82,6 +83,21 @@ def json(testing=False):
     iconID = f"node-number-{hostname}-icon"
     hashCodeValue = generateHashCode(hostname)
 
+    node_id = f"n-{hashCodeValue}"
+
+    # If /data/config.yml exists
+    config_file = Path("/data/config.yaml")
+    if config_file.exists():
+        with open(config_file, "r") as file:
+            try:
+                config = yaml.safe_load(file)
+                node = config["node"]
+                node_id = node["name"]
+            except yaml.YAMLError as exc:
+                print(f"Could not read node->name: {exc}")
+    else:
+        print("Could not find /data/config.yaml")
+
     return generate_node(
         icon=Icons.getRand(),
         hostname=hostname,
@@ -91,6 +107,7 @@ def json(testing=False):
         hashCode=hashCodeValue,
         zone=zone,
         region=region,
+        nodeID=node_id,
     )
 
 
@@ -126,7 +143,7 @@ def test_node():
     return {"ip": n[0], "hostname": n[1], "region": n[2], "zone": n[3]}
 
 
-def generate_node(icon, hostname, ip, color, iconID, hashCode, zone, region):
+def generate_node(icon, hostname, ip, color, iconID, hashCode, zone, region, nodeID):
     return {
         "icon": icon,
         "hostname": hostname,
@@ -136,6 +153,7 @@ def generate_node(icon, hostname, ip, color, iconID, hashCode, zone, region):
         "hashCode": hashCode,
         "zone": zone,
         "region": region,
+        "nodeID": nodeID,
     }
 
 

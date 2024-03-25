@@ -1,42 +1,217 @@
 # app.py
 import concurrent.futures
+import json as JSON
 import os
-import re
+import socket
+import sqlite3
 import time
+from functools import wraps
+from io import TextIOWrapper
+from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, request
-from networking import execute_refresh
-from justicons_dashboard.render import render_justicons_dashboard
+from flask import Flask, jsonify, request, render_template
 
 out = []
 CONNECTIONS = 100
 TIMEOUT = 1
 NUM_REQUESTS = 1000
 
+GUNICORN_PORT = 14041
 
-def load_url(url, timeout):
-    # Get JSON body from URL
-    ans = requests.get(url, timeout=timeout)
-    return ans.json()
+SQLITE_FILE = "sqlite.db"
 
+TOKENARGUMENT = "token"  # The token argument to be passed in the request
 
-app = Flask(__name__)
-
-def authenticate_token(putativeToken):
-    load_dotenv()
-
-    if not putativeToken or putativeToken != os.environ.get("TOKEN"):
-        return False
-    return True
+VARIABLES = {"site": "", TOKENARGUMENT: "", "serverip": ""}
 
 
-@app.route("/sites")
+def connect_to_sqlite(sqlite_file) -> sqlite3.Connection:
+    if not os.path.exists(sqlite_file):
+        print(f"Creating {sqlite_file}...")
+        conn = sqlite3.connect(sqlite_file)
+        c = conn.cursor()
+        c.execute(
+            "CREATE TABLE sites (id INTEGER PRIMARY KEY, site TEXT, ip TEXT, last_updated TEXT)"
+        )
+        conn.commit()
+
+    return sqlite3.connect(sqlite_file)
+
+
+def write_to_sqlite(conn, ips: list, site: str, clear_first=False):
+    c = conn.cursor()
+    if clear_first:
+        c.execute("DELETE FROM sites where site = ?", (site,))
+        conn.commit()
+
+    for ip in ips:
+        c.execute(
+            "INSERT INTO sites (site, ip, last_updated) VALUES (?, ?, ?)",
+            (site, ip, time.time()),
+        )
+    conn.commit()
+
+
+def read_from_sqlite(conn, site_name) -> list:
+    c = conn.cursor()
+    c.execute("SELECT * FROM sites where site = ?", (site_name,))
+    rows = c.fetchall()
+    return rows
+
+
+def get_http_content(url, timeout) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme == "":
+        url = "http://" + url
+
+    return requests.get(url=url, timeout=timeout).text
+
+
+def load_url(url, timeout) -> dict:
+    try:
+        site_response = get_http_content(url, timeout)
+        if site_response is None:
+            return {}
+        # Parse the JSON response
+        site_response_parsed = JSON.loads(site_response)
+        return site_response_parsed
+    except (socket.timeout, ConnectionRefusedError):
+        print(f"Timeout on {url}")
+        return {}
+
+
+def populate_variables(f):
+    @wraps(f)
+    def decoratorFn(*args, **kwargs):
+        if request.method == "GET":
+            # Handle GET request with query parameters
+            if request.args:
+                for k, v in request.args.items():
+                    if k.lower() in VARIABLES:
+                        VARIABLES[k.lower()] = v.lower()
+        elif request.method == "POST":
+            # Handle POST request with JSON data
+            data = request.json
+            if data:
+                for k, v in data.items():
+                    if k.lower() in VARIABLES:
+                        VARIABLES[k.lower()] = v.lower()
+            else:
+                return jsonify(error="No JSON data found in request"), 400
+
+        return f(*args, **kwargs)
+
+    return decoratorFn
+
+
+def validate_token(f):
+    @wraps(f)
+    def decoratorFn(*args, **kwargs):
+        load_dotenv(Path(__file__).parent / ".env")
+
+        tokenFromFile = str(os.environ.get(TOKENARGUMENT.upper()))
+
+        postedToken = str(VARIABLES[TOKENARGUMENT])
+
+        if not postedToken:
+            return f"No token posted in {VARIABLES}"
+        elif not confirm_token_matches(tokenFromFile, postedToken):
+            return f"Invalid token: {postedToken}"
+
+        return f(*args, **kwargs)
+
+    return decoratorFn
+
+
+# Broken out so that we can mock more easily
+def confirm_token_matches(tokenFromFile, postedToken) -> bool:
+    return tokenFromFile == postedToken
+
+
+def get_site_config_path(site_name):
+    path = Path(__file__).parent / "sites" / f"{site_name}.conf"
+    if not os.path.exists(path):
+        print(f"Site config file {site_name} does not exist in {path}")
+        return None
+    return path
+
+
+def open_site_config(site_name, mode) -> TextIOWrapper | None:
+    path = get_site_config_path(site_name)
+    if not path:
+        return None
+    return open(path, mode)
+
+
+# Return a set of IPs
+def execute_refresh(site_name) -> list:
+    print(f"Refreshing {site_name}")
+
+    # See if the config file is in the directory - if not, throw an error
+    config_file_path = get_site_config_path(site_name)
+    if not config_file_path:
+        print(f"Site config file {site_name} does not exist. Creating...")
+        config_file_path = Path(__file__).parent / "sites" / f"{site_name}.conf"
+        with open(config_file_path, "w") as f:
+            f.write("")
+        print(f"Created {config_file_path}")
+
+    conn = sqlite3.connect(SQLITE_FILE)
+
+    # First load all the current IPs from the sqlite database
+    # IP addresses are 'server 10.128.0.15:GUNICORN_PORT' and end with a ";"
+    read_ips = set()
+    for row in read_from_sqlite(conn, site_name):
+        read_ips.add(f"http://{row[2]}:{GUNICORN_PORT}/json")
+    read_ips_list = list(read_ips)
+
+    good = []
+    bad = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=CONNECTIONS) as executor:
+        number_of_urls = len(read_ips_list)
+        future_to_url = (
+            executor.submit(load_url, read_ips_list[i % number_of_urls], TIMEOUT)
+            for i in range(number_of_urls * 3)  # Doing it 3x just in case 1 fails
+        )
+
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                data = future.result()
+                # If data is not empty, add it to the good list
+                if data:
+                    good.append(data)
+                else:
+                    bad.append("Bad Query")
+            except Exception as exc:
+                print(str(type(exc)))
+                bad.append("Bad Query")
+
+    print(f"Good: {len(good)}")
+    print(f"Bad: {len(bad)}")
+
+    # Print line break
+    print()
+
+    # Collect all the IPs - make them unique
+    ips = set()
+    for g in good:
+        # Get hostname from URL that looks like https://10.0.0.1:14041
+        ips.add(g["ip"])
+
+    # Print the unique IPs, separated by a newline
+    print(f"Unique IPs: {len(ips)}")
+    print("\n".join(ips))
+
+    return list(ips)
+
+
+@populate_variables
+@validate_token
 def get_sites():
-    if not authenticate_token(request.args.get("token")):
-        return "Invalid token"
-
     # Return a json response of all sites - all sites are of the form sites/SITENAME.conf
     # Get a list of all the files and the contents
 
@@ -49,67 +224,38 @@ def get_sites():
     return sites
 
 
-@app.route("/update", methods=["POST"])
+@populate_variables
+@validate_token
 def update_sites():
-    if not authenticate_token(request.args.get("token")):
-        return "Invalid token"
+    print("Received POST request to /update")
+    print("Request data:", request.data)
+    print("Request JSON:", request.json)
+    # Add more debug statements as needed
 
     # Get the site that needs to be updated
-    site = request.args.get("site")
+    site = VARIABLES["site"]
 
-    # Append site IP to the file - /sites/SITENAME.conf is relative to current file
-    site_file_name = f"./sites/{site}.conf"
+    if VARIABLES["serverip"] != "":
+        requestIP = VARIABLES["serverip"]
+    else:
+        return "Please provide a server IP in 'serverip' request."
 
-    read_ips = []
-    if os.path.exists(site_file_name):
-        with open(site_file_name) as f:
-            all_file_blob = f.read()
-            # Split the file by newline or ;
-            read_ips = re.split(r"\n|;", all_file_blob)
+    conn = connect_to_sqlite(SQLITE_FILE)
+    write_to_sqlite(conn, [requestIP], site)
 
-    requestIP = request.headers["X-Forwarded-For"]
+    # Print out all IPs from DB for site:
+    print(f"IPs for {site}:")
+    for row in read_from_sqlite(conn, site):
+        print(row[2])
 
-    # If the IP is already in the file, don't add it
-    if requestIP in read_ips:
-        return f"IP {requestIP} already in {site_file_name}"
-
-    # Append the IP to read_ips
-    read_ips.append(f"server {requestIP}:14041")
-
-    # Dedupe and compress the list
-    read_ips = list(set(read_ips))
-
-    write_ips = []
-    # If not of the form 'server 10.142.0.28:14041;', with 'server <IP>:14041;', then remove
-    for ip in read_ips:
-        if re.match(r"server \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:14041", ip):
-            write_ips.append(f"{ip};\n")
-
-    # Write the file, truncate and replace
-    with open(site_file_name, "w") as f:
-        for ip in write_ips:
-            f.write(f"{ip}")
-
-    # Restart nginx
-    os.system("sudo nginx -s reload")
-
-    all_headers = request.headers
-    # Print the updated file
-    with open(site_file_name) as f:
-        return f"{site_file_name}\n{f.read()}\n\n{all_headers}"
+    return f"Updated {site} with {requestIP}"
 
 
-@app.route("/regen", methods=["POST"])
+@populate_variables
+@validate_token
 def regen_sites():
-    # Print all parameters
-    print(request.args)
-
-    putativeToken = request.args.get("token")
-    if not authenticate_token(putativeToken):
-        return f"Token Value: {putativeToken} => Invalid token"
-
     # Get the site that needs to be regenerated
-    site = request.args.get("site")
+    site = VARIABLES["site"]
     if not site:
         return "Please provide a site"
 
@@ -119,11 +265,18 @@ def regen_sites():
     if not os.path.exists(site_file_name):
         return f"Site config file {site} does not exist"
 
-    ips = execute_refresh(f"{site}/json")
+    ips = execute_refresh(f"{site}")
+
+    conn = connect_to_sqlite(SQLITE_FILE)
+
+    write_to_sqlite(conn, ips, site, clear_first=True)
+
+    # Delete all the IPs from the sqlite database that match this site
 
     # Truncate and replace sites/SITENAME.conf with the new IPs
     # Each line should be:
     # server <IP>:14041;
+    # Overwrite the existing file
     with open(site_file_name, "w") as f:
         for ip in ips:
             f.write(f"server {ip}:14041;\n")
@@ -134,29 +287,36 @@ def regen_sites():
     return f"Regenerated {site} with {len(ips)} IPs"
 
 
-@app.route("/")
+@populate_variables
 def index():
-    return "Hello, ItsADash.work!"
+    # If Host: dashboard.justicons.org
+    if request.host == "dashboard.justicons.org":
+        return dashboard()
+    else:
+        return "Hello, ItsADash.work!"
 
-@app.route("/justicons_dashboard", methods=["GET"])
+def dashboard():
+    return "Dashboard"
+
 def justicons_dashboard():
     return render_justicons_dashboard()
 
 
+def render_justicons_dashboard():
+    return render_template("justicons_dashboard.html")
+
+flaskApp = Flask("itsadash", static_url_path='/static')
+flaskApp.config.from_pyfile("config.py")
+try:
+    os.makedirs(flaskApp.instance_path)
+except OSError:
+    pass
+
+flaskApp.add_url_rule("/", view_func=index, methods=["GET"])
+flaskApp.add_url_rule("/update", view_func=update_sites, methods=["POST"])
+flaskApp.add_url_rule("/regen", view_func=regen_sites, methods=["POST"])
+flaskApp.add_url_rule("/justicons_dashboard", view_func=justicons_dashboard, methods=["GET"])
+
+
 if __name__ == "__main__":
-    # Get args from command line for URL
-    import sys
-
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
-    else:
-        # Exit with an error notifying we need a URL
-        print("Please provide a URL")
-        sys.exit(1)
-
-    # Execute the refresh
-    time1 = time.time()
-    execute_refresh(url)
-    time2 = time.time()
-
-    print(f"Took {time2-time1:.2f} s")
+    flaskApp.run()

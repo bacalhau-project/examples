@@ -1,4 +1,12 @@
 dotenv
+GUNICORN
+httpworker
+itsadash
+jsonify
 justicons
-TOKEN
+pyfile
+regen
+serverip
 SITENAME
+TOKEN
+TOKENARGUMENT

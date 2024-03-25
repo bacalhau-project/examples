@@ -108,12 +108,10 @@
 
     <div>
         <!-- text boxes adjustable with mouse key that set number of servers, interval, and buffer time -->
-        <label for="bulkRequest">Number of server requests</label>
-        <input type="number" id="bulkRequest" name="bulkRequest" value="50">
-        <label for="updateTime">Outer loop interval time</label>
-        <input type="number" id="updateTime" name="updateTime" value="1000">
-        <label for="bufferTime">Buffer Time</label>
-        <input type="number" id="bufferTime" name="bufferTime" value="250">
+        <label for="intervalTime">Interval time</label>
+        <input type="number" id="intervalTime" name="intervalTime" value="2">
+        <label for="batchSize">Batch size</label>
+        <input type="number" id="batchSize" name="batchSize" value="5">
     </div>
 
     <div id="all-nodes-div">
@@ -123,7 +121,7 @@
 
     <script>
         // Query the given endpoint for the server data
-        var hostname = "127.0.0.1:9595";
+        var hostname = "justicons.org";
 
         // A list of server objects that will be updated by the query
         // The server object looks like this:
@@ -131,27 +129,28 @@
         var servers = {};
         // create a new worker thread
         worker = new Worker("/static/httpworker.js")
+        worker.onmessage = (event) => {
+            updateInnerLoop(event.data)
+            var intervalTime = document.getElementById('intervalTime').value;
 
-        var outerLoopTime = 1000;
-        var bulkRequest = 20;
-        var bufferTime = 250;
-        var intervalToUpdateOver = (outerLoopTime - bufferTime) / bulkRequest;
+            // Wait for the interval to update the next server
+            window.setTimeout(requestLoop, intervalTime);
+        }
+
+
+        var intervalTime = 2;
+        var batchSize = 10;
+        var stopLoop = false;
 
         // Create function to request data from the server
         function requestLoop() {
+            if (stopLoop) {
+                return;
+            }
+            var batchSize = document.getElementById('batchSize').value;
             // pass data to worker thread
-            worker.postMessage(hostname)
-
-            // listen to any data passed from worker thread
-            worker.onmessage = (event) => {
+            for (i = 0; i < batchSize; i++) {
                 worker.postMessage(hostname)
-
-                // listen to any data passed from worker thread
-                worker.onmessage = (event) => {
-                    updateInnerLoop(event.data)
-                    // Wait for the interval to update the next server
-                    window.setTimeout(requestLoop, intervalToUpdateOver);
-                }
             }
         }
 
@@ -180,7 +179,7 @@
                 <span class='label label-info node-obj' id='"+ nodeName + "' \
                 style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
                 data-ip='"+ hashCode + "'> \
-                node-"+ hashCode + " <span id='node-" + hashCode + "-icon' \
+                "+ server.nodeID + " <span id='node-" + hashCode + "-icon' \
                 class='fa-solid "+ server.icon + "'></span> \
                 </span> \
                 </div>");
@@ -200,7 +199,13 @@
         }
 
         document.getElementById('start').addEventListener('click', function () {
-            window.setTimeout(requestLoop, intervalToUpdateOver);
+            stopLoop = false;
+            window.setTimeout(requestLoop, intervalTime);
+        });
+
+        document.getElementById('stop').addEventListener('click', function () {
+            worker.terminate();
+            stopLoop = true;
         });
 
         document.getElementById("updateTime").addEventListener('change', function (e) {
