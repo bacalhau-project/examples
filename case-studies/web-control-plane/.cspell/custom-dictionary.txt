@@ -2,7 +2,13 @@ bacalhau
 dotenv
 glyphicon
 gunicorn
+httpworker
+itsadash
+jsonify
 justicons
 localtest
+pyfile
 regen
+serverip
 SITENAME
+TOKENARGUMENT

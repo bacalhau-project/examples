@@ -1,4 +1,5 @@
 # app.py
+from ast import Tuple
 import concurrent.futures
 import json as JSON
 import os
@@ -12,7 +13,8 @@ from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, render_template, request
+from typing import List
 
 out = []
 CONNECTIONS = 100
@@ -41,16 +43,23 @@ def connect_to_sqlite(sqlite_file) -> sqlite3.Connection:
     return sqlite3.connect(sqlite_file)
 
 
-def write_to_sqlite(conn, ips: list, site: str, clear_first=False):
+def write_to_sqlite(conn, site: str, good_ips: list, bad_ips: list = [],  clear_first=False):
     c = conn.cursor()
     if clear_first:
         c.execute("DELETE FROM sites where site = ?", (site,))
         conn.commit()
 
-    for ip in ips:
+    for ip in good_ips:
         c.execute(
             "INSERT INTO sites (site, ip, last_updated) VALUES (?, ?, ?)",
             (site, ip, time.time()),
+        )
+    conn.commit()
+    
+    for ip in bad_ips:
+        c.execute(
+            "DELETE from sites (site, ip) VALUES (?, ?)",
+            (site, ip),
         )
     conn.commit()
 
@@ -71,16 +80,18 @@ def get_http_content(url, timeout) -> str:
 
 
 def load_url(url, timeout) -> dict:
+    ip_and_port = urlparse(url).netloc
+    ip = ip_and_port.split(":")[0]
     try:
         site_response = get_http_content(url, timeout)
         if site_response is None:
-            return {}
+            return {"ip": ip}
         # Parse the JSON response
         site_response_parsed = JSON.loads(site_response)
         return site_response_parsed
     except (socket.timeout, ConnectionRefusedError):
         print(f"Timeout on {url}")
-        return {}
+        return {"ip": ip}
 
 
 def populate_variables(f):
@@ -147,7 +158,7 @@ def open_site_config(site_name, mode) -> TextIOWrapper | None:
 
 
 # Return a set of IPs
-def execute_refresh(site_name) -> list:
+def execute_refresh(site_name) -> tuple[List[str], List[str]]:
     print(f"Refreshing {site_name}")
 
     # See if the config file is in the directory - if not, throw an error
@@ -185,10 +196,10 @@ def execute_refresh(site_name) -> list:
                 if data:
                     good.append(data)
                 else:
-                    bad.append("Bad Query")
+                    bad.append(data)
             except Exception as exc:
                 print(str(type(exc)))
-                bad.append("Bad Query")
+                bad.append(data)
 
     print(f"Good: {len(good)}")
     print(f"Bad: {len(bad)}")
@@ -197,16 +208,23 @@ def execute_refresh(site_name) -> list:
     print()
 
     # Collect all the IPs - make them unique
-    ips = set()
+    good_ips = set()
     for g in good:
         # Get hostname from URL that looks like https://10.0.0.1:14041
-        ips.add(g["ip"])
+        good_ips.add(g["ip"])
+        
+    bad_ips = set()
+    for b in bad:
+        bad_ips.add(b["ip"])
 
     # Print the unique IPs, separated by a newline
-    print(f"Unique IPs: {len(ips)}")
-    print("\n".join(ips))
+    print(f"Unique Good IPs: {len(good_ips)}")
+    print("\n".join(good_ips))
+    
+    print(f"Unique Bad IPs: {len(bad_ips)}")
+    print("\n".join(bad_ips))
 
-    return list(ips)
+    return list(good_ips), list(bad_ips)
 
 
 @populate_variables
@@ -241,7 +259,7 @@ def update_sites():
         return "Please provide a server IP in 'serverip' request."
 
     conn = connect_to_sqlite(SQLITE_FILE)
-    write_to_sqlite(conn, [requestIP], site)
+    write_to_sqlite(conn, site, [requestIP])
 
     # Print out all IPs from DB for site:
     print(f"IPs for {site}:")
@@ -265,11 +283,11 @@ def regen_sites():
     if not os.path.exists(site_file_name):
         return f"Site config file {site} does not exist"
 
-    ips = execute_refresh(f"{site}")
+    good_ips, bad_ips = execute_refresh(f"{site}")
 
     conn = connect_to_sqlite(SQLITE_FILE)
 
-    write_to_sqlite(conn, ips, site, clear_first=True)
+    write_to_sqlite(conn, site, good_ips, bad_ips, clear_first=False)
 
     # Delete all the IPs from the sqlite database that match this site
 
@@ -278,13 +296,13 @@ def regen_sites():
     # server <IP>:14041;
     # Overwrite the existing file
     with open(site_file_name, "w") as f:
-        for ip in ips:
+        for ip in good_ips:
             f.write(f"server {ip}:14041;\n")
 
     # Restart nginx
     os.system("sudo nginx -s reload")
 
-    return f"Regenerated {site} with {len(ips)} IPs"
+    return f"Regenerated {site} with {len(good_ips)} IPs. Deleted {len(bad_ips)} IPs."
 
 
 @populate_variables
@@ -295,8 +313,10 @@ def index():
     else:
         return "Hello, ItsADash.work!"
 
+
 def dashboard():
     return "Dashboard"
+
 
 def justicons_dashboard():
     return render_justicons_dashboard()
@@ -305,7 +325,26 @@ def justicons_dashboard():
 def render_justicons_dashboard():
     return render_template("justicons_dashboard.html")
 
-flaskApp = Flask("itsadash", static_url_path='/static')
+
+def sqlite_stats():
+    # For every site in './sites', get the number of IPs
+    sites = {}
+    for site in os.listdir("./sites"):
+        with open(f"./sites/{site}") as f:
+            # Get the site name without the .conf. it will be similar to "example.com.conf" and should result in "example.com"
+            site_name = site.rsplit(".", 1)[0]
+            sites[site_name] = {}
+            sites[site_name]["number_of_ips_in_nginx"] = len(f.readlines())
+
+    for site_name in sites.keys():
+        conn = connect_to_sqlite(SQLITE_FILE)
+        rows = read_from_sqlite(conn, site_name)
+        sites[site_name]["servers"] = rows
+
+    return render_template("sqlite_stats.html", sites=sites)
+
+
+flaskApp = Flask("itsadash", static_url_path="/static")
 flaskApp.config.from_pyfile("config.py")
 try:
     os.makedirs(flaskApp.instance_path)
@@ -315,7 +354,10 @@ except OSError:
 flaskApp.add_url_rule("/", view_func=index, methods=["GET"])
 flaskApp.add_url_rule("/update", view_func=update_sites, methods=["POST"])
 flaskApp.add_url_rule("/regen", view_func=regen_sites, methods=["POST"])
-flaskApp.add_url_rule("/justicons_dashboard", view_func=justicons_dashboard, methods=["GET"])
+flaskApp.add_url_rule(
+    "/justicons_dashboard", view_func=justicons_dashboard, methods=["GET"]
+)
+flaskApp.add_url_rule("/sqlite_stats", view_func=sqlite_stats, methods=["GET"])
 
 
 if __name__ == "__main__":

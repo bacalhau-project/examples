@@ -105,6 +105,11 @@ runcmd:
   - chown -R ${ username }:${ username } ${ appdir }
   - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
   -
+  #
+  # Make /data/config.yaml readable by the user
+  #
+  - chmod ugo+rx /data
+  - chmod ugo+r /data/config.yaml
   # Reload the systemd daemon, enable, and start the service
   - sudo sysctl -w net.core.rmem_max=2500000
   - sudo systemctl daemon-reload

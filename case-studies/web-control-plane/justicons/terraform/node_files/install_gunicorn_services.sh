@@ -4,6 +4,7 @@ set -x
 
 export ENVFILE="/home/${APPUSER}/.env"
 
+# shellcheck source=/home/${APPUSER}/.env
 source "${ENVFILE}"
 
 apt update
@@ -38,7 +39,7 @@ chmod 0700 /etc/systemd/system/gunicorn.service.d/
 # Gunicorn.service
 echo "Creating gunicorn log directories..."
 mkdir -p /var/log/gunicorn
-chown ${APPUSER}:${APPUSER} /var/log/gunicorn
+chown "${APPUSER}":"${APPUSER}" /var/log/gunicorn
 
 echo "Creating gunicorn service unit..."
 cat <<EOF | tee /etc/systemd/system/gunicorn.service > /dev/null
@@ -100,5 +101,6 @@ echo -n "ok" | sudo tee /var/www/html/index.lighttpd.html > /dev/null
 
 # Ping itsadash.work/update_sites with a json of the form {"site": "site_name", "ip": "ip_address"}
 echo "Pinging itsadash.work/update ..."
-export PRIVATEIP=$(ip addr | awk '/inet/ && /10\./ {split($2, ip, "/"); print ip[1]}')
+PRIVATEIP=$(ip addr | awk '/inet/ && /10\./ {split($2, ip, "/"); print ip[1]}')
+export PRIVATEIP
 curl -X POST -H "Content-Type: application/json" -d "{\"site\": \"${SITEURL}\", \"TOKEN\": \"${TOKEN}\", \"SERVERIP\": \"${PRIVATEIP}\"  }" http://itsadash.work/update
