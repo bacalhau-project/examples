@@ -1,4 +1,8 @@
+aiohttp
 dotenv
+eventlet
+gevent
+grequests
 GUNICORN
 httpworker
 itsadash
@@ -8,6 +12,8 @@ pyfile
 regen
 serverip
 SITENAME
+socketio
 TOKEN
 TOKENARGUMENT
+webdata
 workerpool

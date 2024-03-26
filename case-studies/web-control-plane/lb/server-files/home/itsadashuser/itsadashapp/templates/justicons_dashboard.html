@@ -12,6 +12,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="/static/workerpool.min.js"></script>
+    <script src="/static/socket.io.min.js"></script>
 </head>
 
 <body class="container">
@@ -105,16 +106,10 @@
     <div>
         <button id="start">Start</button>
         <button id="stop">Stop</button>
+        <input id="timeOutValue" type="number" value="200">
     </div>
 
     <div>
-        <!-- text boxes adjustable with mouse key that set number of servers, interval, and buffer time -->
-        <label for="intervalTime">Interval time</label>
-        <input type="number" id="intervalTime" name="intervalTime" value="100">
-        <label for="batchSize">Batch size</label>
-        <input type="number" id="batchSize" name="batchSize" value="50">
-        <label for="uiDelayTime">UI Delay Time</label>
-        <input type="number" id="uiDelayTime" name="uiDelayTime" value="50">
     </div>
 
     <div id="all-nodes-div">
@@ -122,9 +117,60 @@
         </div>
     </div>
 
+    <div id="websocket-status">
+        <h3 id="websocket-header"></h3>
+    </div>
+
     <script>
         // Query the given endpoint for the server data
         var hostname = "justicons.org";
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+        const socket = io(); //socketio connection to server
+        $(document).ready(function () {
+        });
+        socket.on("connect", () => {
+            console.log("connected");
+            var header = document.getElementById("websocket-header");
+            header.innerHTML = "<h3>" + "Websocket Connected" + "</h3>";
+            header.style.color = "green";
+        });
+
+        socket.on("disconnect", () => {
+            console.log("disconnected");
+            var header = document.getElementById("websocket-header")
+            header.innerHTML = "<h3>" + "Websocket Disconnected" + "</h3>";
+            header.style.color = "red";
+        });
+
+        var updateSet = new Set();
+
+        // Event sent by Server//
+        socket.on("node", function (msg) {
+            let nodeData = JSON.parse(msg);
+            updateSet.add(nodeData);
+        });
+
+        // An event loop that goes through the updateSet every timeOutValue milliseconds and takes
+        // one object off the set. Runs forever.
+        async function updateLoop() {
+            while (true) {
+                var timeOutValue = document.getElementById("timeOutValue").value;
+                if (updateSet.size > 0) {
+                    var nodeData = updateSet.values().next().value;
+                    updateSet.delete(nodeData);
+                    updateInnerLoop(nodeData);
+                }
+                await sleep(timeOutValue);
+            }
+        }
+
+        updateLoop();
+
 
         // A list of server objects that will be updated by the query
         // The server object looks like this:
@@ -132,51 +178,7 @@
         var servers = {};
         var pool = workerpool.pool('/static/httpworker.js', { maxWorkers: 10 });
 
-        var intervalTime = document.getElementById('intervalTime').value;
-        var batchSize = document.getElementById('batchSize').value;
-        var stopLoop = false;
-
-        //             var batchSize = document.getElementById('batchSize').value;
-
-        // Create function to request data from the server
-        async function requestLoop() {
-            if (stopLoop) {
-                return;
-            }
-            var promise = pool.exec('performAPICall', [hostname])
-                .then(function (data) {
-                    updateInnerLoop(data);
-                })
-                .catch(function (error) {
-                    console.log("Error executing: " + error);
-                });
-
-            // Wait for the interval to update the next server
-            window.setTimeout(requestLoop, intervalTime);
-        }
-
-        async function requestLoopConcurrent(batchSize) {
-            if (stopLoop) return;
-
-            const tasks = [];
-            for (let i = 0; i < batchSize; i++) {
-                tasks.push(pool.exec('performAPICall', [hostname]));
-            }
-
-            try {
-                const results = await Promise.all(tasks);
-                for (let i = 0; i < results.length; i++) {
-                    updateInnerLoop(results[i]);
-                    if (stopLoop) break;
-                    // If i is within 10% of the batchSize, execute the loop again
-                    if (i > batchSize * 0.9) {
-                        requestLoopConcurrent(batchSize);
-                    }
-                }
-            } catch (error) {
-                console.error("Error executing batch request: " + error);
-            }
-        }
+        let dataQueue = []; // Queue to hold fetched data
 
         function updateInnerLoop(data) {
             if (data) {
@@ -223,17 +225,20 @@
         }
 
         document.getElementById('start').addEventListener('click', function () {
-            stopLoop = false;
-            window.setInterval(function () {
-                requestLoopConcurrent(batchSize);
-            }, intervalTime);
+            socket.emit("start", { data: "start" }, function () {
+                ;
+            });
         });
 
         document.getElementById('stop').addEventListener('click', function () {
-            stopLoop = true;
-            pool.terminate();
+            socket.emit("stop", function () {
+            });
         });
 
+        // When browser refresh or close, disconnect the socket
+        window.onbeforeunload = function () {
+            socket.disconnect();
+        };
     </script>
     <div id="server-list"></div>
 </body>

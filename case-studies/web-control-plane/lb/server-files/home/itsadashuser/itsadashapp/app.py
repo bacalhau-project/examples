@@ -1,18 +1,26 @@
 # app.py
-import concurrent.futures
-import json as JSON
-import os
-import sqlite3
-import time
-from functools import wraps
-from io import TextIOWrapper
-from pathlib import Path
-from typing import List
-from urllib.parse import urlparse
+import concurrent.futures  # noqa: E402
+import json as JSON  # noqa: E402
+import os  # noqa: E402
+import sqlite3  # noqa: E402
+import time  # noqa: E402
+from functools import wraps  # noqa: E402
+from io import TextIOWrapper  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import List  # noqa: E402
+from urllib.parse import urlparse  # noqa: E402
 
-import requests
-from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+import gevent
+import gevent.monkey
+import gevent.queue
+import grequests  # noqa: E402
+import requests  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from faker import Faker  # noqa: E402
+from flask import Flask, jsonify, render_template, request  # noqa: E402
+from flask_socketio import SocketIO  # noqa: E402
+
+fake = Faker()
 
 out = []
 CONNECTIONS = 100
@@ -358,6 +366,50 @@ flaskApp.add_url_rule(
 )
 flaskApp.add_url_rule("/sqlite_stats", view_func=sqlite_stats, methods=["GET"])
 
+socketio = SocketIO(flaskApp, debug=True, cors_allowed_origins="*", async_mode="gevent")
+
+
+globalDataQueue = gevent.queue.Queue(100)
+runningQueue = gevent.queue.Queue(1)
+runEventLoop = gevent.queue.Queue(1)
+
+
+# Create a websocket service that queries the domain and returns the json response.
+# The websocket service should be able to push a message to the client every 0.1 seconds.
+# The websocket service will maintain a queue of 100 queries from the domain.
+# When the queue is less than 20% full, it will issue another 100 queries to the domain, so it is always providing
+# new data to the client.
+@socketio.on("start")
+def websocket_service(data):
+    runEventLoop.put(True)
+    print("Starting event loop...")
+    while not runEventLoop.empty():
+        if globalDataQueue.qsize() < 20 and not runningQueue.qsize():
+            socketio.start_background_task(fetchBulk, "http://justicons.org/json")
+        for _ in range(5):
+            if not globalDataQueue.empty():
+                data = globalDataQueue.get()
+                socketio.emit("node", data.text)
+        socketio.sleep(1)
+
+
+@socketio.on("stop")
+def stop():
+    runEventLoop.get()
+    print("Stopping event loop...")
+
+
+def fetchBulk(url):
+    try:
+        runningQueue.put(True)
+        requests = [grequests.get(url) for _ in range(100)]
+        results = grequests.map(requests)
+        for result in results:
+            globalDataQueue.put(result)
+    finally:
+        if not runningQueue.empty():
+            runningQueue.get()
+
 
 if __name__ == "__main__":
-    flaskApp.run()
+    socketio.run(flaskApp, debug=True, cors_allowed_origins="*", async_mode="gevent")
