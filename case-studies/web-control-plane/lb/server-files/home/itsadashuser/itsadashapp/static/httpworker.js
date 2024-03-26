@@ -1,22 +1,9 @@
-self.addEventListener('message', function (e) {
-    // console.log('Worker: Message received from main thread', e.data);
+// a simple worker for use in the browser (as Web Worker)
 
-    var data = {}
-    // Perform the asynchronous API call
-    performAPICall(`http://${e.data}/json`)
-        .then(responseData => {
-            // Send the response data back to the main thread
-            self.postMessage(responseData);
-        })
-        .catch(error => {
-            // Handle any errors that occur during the API call
-            console.error('Error:', error);
-        });
+importScripts('/static/workerpool.min.js');
 
-    // Send a message back to the main thread
-}, false);
-
-function performAPICall(url) {
+function performAPICall(raw_url) {
+    url = `http://${raw_url}/json`
     // Create a new Promise to encapsulate the asynchronous API call
     return new Promise((resolve, reject) => {
         // Perform the API call using fetch or any other suitable method
@@ -41,3 +28,20 @@ function performAPICall(url) {
             });
     });
 }
+
+function eventLoop() {
+    while (true) {
+        for (var i = 0; i < batchSize - 1; i++) {
+            requestLoop();
+        }
+        window.setTimeout(requestLoop, intervalTime);
+        if (stopLoop) {
+            break;
+        }
+    }
+}
+// create a worker and register public functions
+workerpool.worker({
+    performAPICall: performAPICall,
+    eventLoop: eventLoop,
+});

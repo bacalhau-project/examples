@@ -10,3 +10,4 @@ serverip
 SITENAME
 TOKEN
 TOKENARGUMENT
+workerpool

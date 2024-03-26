@@ -11,6 +11,7 @@
     <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="/static/workerpool.min.js"></script>
 </head>
 
 <body class="container">
@@ -49,7 +50,7 @@
         }
 
         .label {
-            padding: 10px;
+            padding: 8px 10px 10px 18px;
             font-size: 15px;
             border-radius: 0.45em;
             height: 44px;
@@ -109,9 +110,11 @@
     <div>
         <!-- text boxes adjustable with mouse key that set number of servers, interval, and buffer time -->
         <label for="intervalTime">Interval time</label>
-        <input type="number" id="intervalTime" name="intervalTime" value="2">
+        <input type="number" id="intervalTime" name="intervalTime" value="100">
         <label for="batchSize">Batch size</label>
-        <input type="number" id="batchSize" name="batchSize" value="5">
+        <input type="number" id="batchSize" name="batchSize" value="50">
+        <label for="uiDelayTime">UI Delay Time</label>
+        <input type="number" id="uiDelayTime" name="uiDelayTime" value="50">
     </div>
 
     <div id="all-nodes-div">
@@ -127,30 +130,51 @@
         // The server object looks like this:
         // {color: '#6638f0', hostname: 'M2-Max.local', icon: 'fa-phone-square-alt', iconID: 'node-number-M2-Max.local-icon', ip: '127.0.0.1'}
         var servers = {};
-        // create a new worker thread
-        worker = new Worker("/static/httpworker.js")
-        worker.onmessage = (event) => {
-            updateInnerLoop(event.data)
-            var intervalTime = document.getElementById('intervalTime').value;
+        var pool = workerpool.pool('/static/httpworker.js', { maxWorkers: 10 });
+
+        var intervalTime = document.getElementById('intervalTime').value;
+        var batchSize = document.getElementById('batchSize').value;
+        var stopLoop = false;
+
+        //             var batchSize = document.getElementById('batchSize').value;
+
+        // Create function to request data from the server
+        async function requestLoop() {
+            if (stopLoop) {
+                return;
+            }
+            var promise = pool.exec('performAPICall', [hostname])
+                .then(function (data) {
+                    updateInnerLoop(data);
+                })
+                .catch(function (error) {
+                    console.log("Error executing: " + error);
+                });
 
             // Wait for the interval to update the next server
             window.setTimeout(requestLoop, intervalTime);
         }
 
+        async function requestLoopConcurrent(batchSize) {
+            if (stopLoop) return;
 
-        var intervalTime = 2;
-        var batchSize = 10;
-        var stopLoop = false;
-
-        // Create function to request data from the server
-        function requestLoop() {
-            if (stopLoop) {
-                return;
+            const tasks = [];
+            for (let i = 0; i < batchSize; i++) {
+                tasks.push(pool.exec('performAPICall', [hostname]));
             }
-            var batchSize = document.getElementById('batchSize').value;
-            // pass data to worker thread
-            for (i = 0; i < batchSize; i++) {
-                worker.postMessage(hostname)
+
+            try {
+                const results = await Promise.all(tasks);
+                for (let i = 0; i < results.length; i++) {
+                    updateInnerLoop(results[i]);
+                    if (stopLoop) break;
+                    // If i is within 10% of the batchSize, execute the loop again
+                    if (i > batchSize * 0.9) {
+                        requestLoopConcurrent(batchSize);
+                    }
+                }
+            } catch (error) {
+                console.error("Error executing batch request: " + error);
             }
         }
 
@@ -171,15 +195,15 @@
                     regionBox = $('#region-' + server.region);
                 }
 
-
                 var nodeName = "node-" + hashCode;
+                var nodeShortID = server.nodeID.substring(0, 10);
                 if ($('#' + nodeName).length == 0) {
                     regionBox.append(" \
                 <div class='node-obj-box'> \
                 <span class='label label-info node-obj' id='"+ nodeName + "' \
                 style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
                 data-ip='"+ hashCode + "'> \
-                "+ server.nodeID + " <span id='node-" + hashCode + "-icon' \
+                "+ nodeShortID + " <span id='node-" + hashCode + "-icon' \
                 class='fa-solid "+ server.icon + "'></span> \
                 </span> \
                 </div>");
@@ -200,17 +224,16 @@
 
         document.getElementById('start').addEventListener('click', function () {
             stopLoop = false;
-            window.setTimeout(requestLoop, intervalTime);
+            window.setInterval(function () {
+                requestLoopConcurrent(batchSize);
+            }, intervalTime);
         });
 
         document.getElementById('stop').addEventListener('click', function () {
-            worker.terminate();
             stopLoop = true;
+            pool.terminate();
         });
 
-        document.getElementById("updateTime").addEventListener('change', function (e) {
-            timing = parseInt(this.value);
-        });
     </script>
     <div id="server-list"></div>
 </body>

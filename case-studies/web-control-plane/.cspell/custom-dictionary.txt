@@ -1,3 +1,6 @@
+APPDIR
+APPNAME
+APPUSER
 bacalhau
 dotenv
 glyphicon
@@ -7,8 +10,11 @@ itsadash
 jsonify
 justicons
 localtest
+PYENVNAME
 pyfile
 regen
 serverip
 SITENAME
+SITEURL
 TOKENARGUMENT
+venv

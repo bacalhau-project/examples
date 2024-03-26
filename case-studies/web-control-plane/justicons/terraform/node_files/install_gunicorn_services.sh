@@ -5,6 +5,7 @@ set -x
 export ENVFILE="/home/${APPUSER}/.env"
 
 # shellcheck source=/home/${APPUSER}/.env
+# shellcheck disable=SC1091
 source "${ENVFILE}"
 
 apt update

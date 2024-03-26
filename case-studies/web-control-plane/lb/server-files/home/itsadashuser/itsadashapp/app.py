@@ -1,20 +1,18 @@
 # app.py
-from ast import Tuple
 import concurrent.futures
 import json as JSON
 import os
-import socket
 import sqlite3
 import time
 from functools import wraps
 from io import TextIOWrapper
 from pathlib import Path
+from typing import List
 from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
-from typing import List
 
 out = []
 CONNECTIONS = 100
@@ -43,7 +41,9 @@ def connect_to_sqlite(sqlite_file) -> sqlite3.Connection:
     return sqlite3.connect(sqlite_file)
 
 
-def write_to_sqlite(conn, site: str, good_ips: list, bad_ips: list = [],  clear_first=False):
+def write_to_sqlite(
+    conn, site: str, good_ips: list, bad_ips: list = [], clear_first=False
+):
     c = conn.cursor()
     if clear_first:
         c.execute("DELETE FROM sites where site = ?", (site,))
@@ -55,10 +55,10 @@ def write_to_sqlite(conn, site: str, good_ips: list, bad_ips: list = [],  clear_
             (site, ip, time.time()),
         )
     conn.commit()
-    
+
     for ip in bad_ips:
         c.execute(
-            "DELETE from sites (site, ip) VALUES (?, ?)",
+            "DELETE from sites where site = ? and ip = ?",
             (site, ip),
         )
     conn.commit()
@@ -89,8 +89,8 @@ def load_url(url, timeout) -> dict:
         # Parse the JSON response
         site_response_parsed = JSON.loads(site_response)
         return site_response_parsed
-    except (socket.timeout, ConnectionRefusedError):
-        print(f"Timeout on {url}")
+    except Exception as e:
+        print(f"Timeout on {url}: {e}")
         return {"ip": ip}
 
 
@@ -193,13 +193,12 @@ def execute_refresh(site_name) -> tuple[List[str], List[str]]:
             try:
                 data = future.result()
                 # If data is not empty, add it to the good list
-                if data:
+                if data and "nodeID" in data:
                     good.append(data)
                 else:
                     bad.append(data)
             except Exception as exc:
                 print(str(type(exc)))
-                bad.append(data)
 
     print(f"Good: {len(good)}")
     print(f"Bad: {len(bad)}")
@@ -212,7 +211,7 @@ def execute_refresh(site_name) -> tuple[List[str], List[str]]:
     for g in good:
         # Get hostname from URL that looks like https://10.0.0.1:14041
         good_ips.add(g["ip"])
-        
+
     bad_ips = set()
     for b in bad:
         bad_ips.add(b["ip"])
@@ -220,7 +219,7 @@ def execute_refresh(site_name) -> tuple[List[str], List[str]]:
     # Print the unique IPs, separated by a newline
     print(f"Unique Good IPs: {len(good_ips)}")
     print("\n".join(good_ips))
-    
+
     print(f"Unique Bad IPs: {len(bad_ips)}")
     print("\n".join(bad_ips))
 
