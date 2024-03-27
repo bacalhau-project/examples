@@ -107,6 +107,7 @@
         <button id="start">Start</button>
         <button id="stop">Stop</button>
         <input id="timeOutValue" type="number" value="200">
+        <input id="batchSize" type="number" value="3">
     </div>
 
     <div>
@@ -160,10 +161,13 @@
         async function updateLoop() {
             while (true) {
                 var timeOutValue = document.getElementById("timeOutValue").value;
-                if (updateSet.size > 0) {
-                    var nodeData = updateSet.values().next().value;
-                    updateSet.delete(nodeData);
-                    updateInnerLoop(nodeData);
+                var batchSize = document.getElementById("batchSize").value;
+                for (i = 0; i < batchSize; i += 1) {
+                    if (updateSet.size > 0) {
+                        var nodeData = updateSet.values().next().value;
+                        updateSet.delete(nodeData);
+                        updateInnerLoop(nodeData);
+                    }
                 }
                 await sleep(timeOutValue);
             }

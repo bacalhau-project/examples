@@ -25,6 +25,7 @@ write_files:
       export APPNAME=${ app_name }
       export SITEURL=${ siteurl }
       export TOKEN=${ token }
+      export ABSOLUTE_LOCAL_PATH=${ absolute_local_path }
     owner: root:root
     permissions: "0444"
     path: /etc/bacalhau-node-info
@@ -47,6 +48,7 @@ write_files:
       TOKEN=${ token }
       ZONE=${ zone }
       REGION=${ region }
+      ABSOLUTE_LOCAL_PATH=${ absolute_local_path }
     permissions: "0444"
     path: /tmp/rsync/${ username }/.env
   - encoding: b64
@@ -110,6 +112,10 @@ runcmd:
   #
   - chmod ugo+rx /data
   - chmod ugo+r /data/config.yaml
+  #
+  # Make the app path read/writeable by the user
+  #
+  - chown ugo+rwx ${ appdir }
   # Reload the systemd daemon, enable, and start the service
   - sudo sysctl -w net.core.rmem_max=2500000
   - sudo systemctl daemon-reload

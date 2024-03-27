@@ -1,0 +1,28 @@
+Job:
+  APIVersion: V1beta2
+  Type: ops
+  Spec:
+    NodeSelectors:
+      - Key: region
+        Operator: "="
+        Values:
+          - me-central1
+    EngineSpec:
+      Params:
+        EnvironmentVariables:
+          - COLOR=blue
+          - COLOR_FILE=/justiconsapp/color.txt
+          - TEST_DIRECTORY=/justiconsapp
+        Image: docker.io/bacalhauproject/justicons-editor:v0.0.10
+        WorkingDirectory: ""
+      Type: docker
+    Resources:
+      GPU: ""
+    Network:
+      Type: Full
+    Inputs:
+      - Name: file:///var/log/logs_to_process
+        SourcePath: /home/justiconsrunner/justiconsapp
+        StorageSource: LocalDirectory
+        ReadWrite: true
+        path: /justiconsapp

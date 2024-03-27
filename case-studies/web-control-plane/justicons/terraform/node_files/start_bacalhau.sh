@@ -47,10 +47,10 @@ bacalhau serve \
     --orchestrators=${BACALHAU_NODE_NETWORK_ORCHESTRATORS} \
     --private-internal-ipfs \
     --ipfs-swarm-addrs=${BACALHAU_NODE_IPFS_SWARMADDRESSES} \
+    --allow-listed-local-paths=${ABSOLUTE_LOCAL_PATH} \
     --job-selection-data-locality anywhere \
     --swarm-port 1235 \
     --api-port 1234 \
     --peer "${CONNECT_PEER}" \
-    --private-internal-ipfs=true \
     --job-selection-accept-networked \
     --labels "${labels}"

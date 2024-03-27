@@ -384,7 +384,7 @@ def websocket_service(data):
     runEventLoop.put(True)
     print("Starting event loop...")
     while not runEventLoop.empty():
-        if globalDataQueue.qsize() < 20 and not runningQueue.qsize():
+        if globalDataQueue.qsize() < 40 and not runningQueue.qsize():
             socketio.start_background_task(fetchBulk, "http://justicons.org/json")
         for _ in range(5):
             if not globalDataQueue.empty():
@@ -402,7 +402,7 @@ def stop():
 def fetchBulk(url):
     try:
         runningQueue.put(True)
-        requests = [grequests.get(url) for _ in range(100)]
+        requests = [grequests.get(url) for _ in range(200)]
         results = grequests.map(requests)
         for result in results:
             globalDataQueue.put(result)

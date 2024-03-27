@@ -59,12 +59,13 @@ data "cloudinit_config" "user_data" {
 
       node_name : "${var.app_tag}-${each.key}-vm",
       username : "${local.username}",
-      appdir: "${local.appdir}",
+      appdir : "${local.appdir}",
       region : each.value.region,
       zone : each.key,
       project_id : var.project_id,
       relativecodeinrepodir : var.relativecodeinrepodir,
       token : var.token,
+      absolute_local_path : "${local.appdir}",
     })
   }
 }
@@ -99,20 +100,20 @@ resource "google_compute_instance" "gcp_instance" {
 
   metadata = {
     enable-oslogin = "true"
-    user-data = "${data.cloudinit_config.user_data[each.key].rendered}",
-    ssh-keys  = "${local.username}:${file(var.public_key)}",
+    user-data      = "${data.cloudinit_config.user_data[each.key].rendered}",
+    ssh-keys       = "${local.username}:${file(var.public_key)}",
   }
 
   scheduling {
-    preemptible  = false
-    automatic_restart = true
+    preemptible         = false
+    automatic_restart   = true
     on_host_maintenance = "MIGRATE"
   }
 
 
   shielded_instance_config {
-    enable_secure_boot = false
-    enable_vtpm        = true
+    enable_secure_boot          = false
+    enable_vtpm                 = true
     enable_integrity_monitoring = true
   }
 
