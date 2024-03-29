@@ -1,28 +1,36 @@
-Job:
-  APIVersion: V1beta2
-  Type: ops
-  Spec:
-    NodeSelectors:
-      - Key: region
-        Operator: "="
-        Values:
-          - me-central1
-    EngineSpec:
+Name: Edit color of file
+Namespace: JustIcons
+Type: ops
+Count: 1
+Constraints:
+  - Key: zone
+    Operator: "="
+    Values:
+      - me-central1-c
+Tasks:
+  - Name: Edit color of file
+    InputSources:
+      - Source:
+          Type: localDirectory
+          Params:
+            # the directory on each node tells them their rank and total nodes
+            SourcePath: /home/justiconsrunner/justiconsapp
+            ReadWrite: true
+        Target: /justiconsapp
+    Engine:
+      Type: docker
       Params:
+        # the docker container that will download videos and perform inference
+        Image: docker.io/bacalhauproject/justicons-editor:v0.0.10
         EnvironmentVariables:
           - COLOR=blue
           - COLOR_FILE=/justiconsapp/color.txt
           - TEST_DIRECTORY=/justiconsapp
-        Image: docker.io/bacalhauproject/justicons-editor:v0.0.10
-        WorkingDirectory: ""
-      Type: docker
-    Resources:
-      GPU: ""
     Network:
-      Type: Full
-    Inputs:
-      - Name: file:///var/log/logs_to_process
-        SourcePath: /home/justiconsrunner/justiconsapp
-        StorageSource: LocalDirectory
-        ReadWrite: true
-        path: /justiconsapp
+      # this job requires networking to download content from buckets
+      Type: full
+    Resources:
+      # dependent on compute nodes, this is based on e2-standard-8
+      CPU: 1
+      Memory: "1GB"
+      Disk: "1GB"

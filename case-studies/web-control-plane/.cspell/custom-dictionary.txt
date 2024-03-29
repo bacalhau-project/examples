@@ -2,6 +2,7 @@ APPDIR
 APPNAME
 APPUSER
 bacalhau
+bacalhauproject
 dotenv
 glyphicon
 gunicorn
@@ -9,6 +10,8 @@ httpworker
 itsadash
 jsonify
 justicons
+justiconsapp
+justiconsrunner
 localtest
 PYENVNAME
 pyfile
