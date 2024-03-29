@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "itsadashuser"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+gunicorn = "^21.2.0"
+flask = "^3.0.2"
+python-dotenv = "^1.0.1"
+requests = "^2.31.0"
+ruff = "^0.3.3"
+pytest = "^8.1.1"
+aiohttp = "^3.9.3"
+uv = "^0.1.24"
+flask-socketio = "^5.3.6"
+python-socketio = "^5.11.2"
+gevent = "^24.2.1"
+six = "^1.16.0"
+grequests = "^0.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
