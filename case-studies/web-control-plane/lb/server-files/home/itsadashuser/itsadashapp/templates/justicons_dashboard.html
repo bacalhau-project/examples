@@ -1,0 +1,250 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>K8s Client</title>
+    <link href="/static/css/fontawesome.css" rel="stylesheet" />
+    <link href="/static/css/solid.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="/static/workerpool.min.js"></script>
+    <script src="/static/socket.io.min.js"></script>
+</head>
+
+<body class="container">
+    <h1>
+        JustIcons Dashboard
+    </h1>
+
+    <style>
+        #all-nodes {
+            display: grid;
+            grid-template-columns: repeat(6, 200px);
+            row-gap: 28px;
+            column-gap: 10px;
+        }
+
+        .fa-solid {
+            width: 18.75px;
+            text-align: center;
+            font-size: large;
+        }
+
+        .node-obj-box>div {
+            border: 1px solid red;
+            height: 100px;
+            width: 160px;
+            padding: 0px;
+            margin: 0px 4px;
+        }
+
+        .node-obj-box>span {
+            width: 160px;
+        }
+
+        .node-obj {
+            font-family: 'Droid Sans Mono';
+        }
+
+        .label {
+            padding: 8px 10px 10px 18px;
+            font-size: 15px;
+            border-radius: 0.45em;
+            height: 44px;
+            color: white;
+            display: block;
+            margin: 6px 0px;
+        }
+
+        .center {
+            margin: auto;
+            display: block;
+            width: 50%;
+            text-align: center;
+        }
+
+        .region-box-label {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background-color: navy;
+            border-radius: 0.35em;
+            line-height: 8px;
+            height: 30px;
+            padding: 10px;
+            width: 160px;
+            vertical-align: middle;
+        }
+
+        #all-nodes-div {
+            width: 100%;
+            height: 100%;
+            margin: 20px 5px 20px 5px;
+        }
+
+        .region-box {
+            display: grid;
+            grid-template-columns: repeat(1, 200px);
+            margin: 10px;
+            border: black 1px solid;
+            border-radius: 4px;
+            align-content: center;
+            padding: 10px 10px;
+        }
+
+        #all-nodes {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+
+    <div>
+        <button id="start">Start</button>
+        <button id="stop">Stop</button>
+        <input id="timeOutValue" type="number" value="200">
+        <input id="batchSize" type="number" value="3">
+    </div>
+
+    <div>
+    </div>
+
+    <div id="all-nodes-div">
+        <div id="all-nodes">
+        </div>
+    </div>
+
+    <div id="websocket-status">
+        <h3 id="websocket-header"></h3>
+    </div>
+
+    <script>
+        // Query the given endpoint for the server data
+        var hostname = "justicons.org";
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+        const socket = io(); //socketio connection to server
+        $(document).ready(function () {
+        });
+        socket.on("connect", () => {
+            console.log("connected");
+            var header = document.getElementById("websocket-header");
+            header.innerHTML = "<h3>" + "Websocket Connected" + "</h3>";
+            header.style.color = "green";
+        });
+
+        socket.on("disconnect", () => {
+            console.log("disconnected");
+            var header = document.getElementById("websocket-header")
+            header.innerHTML = "<h3>" + "Websocket Disconnected" + "</h3>";
+            header.style.color = "red";
+        });
+
+        var updateSet = new Set();
+
+        // Event sent by Server//
+        socket.on("node", function (msg) {
+            let nodeData = JSON.parse(msg);
+            updateSet.add(nodeData);
+        });
+
+        // An event loop that goes through the updateSet every timeOutValue milliseconds and takes
+        // one object off the set. Runs forever.
+        async function updateLoop() {
+            while (true) {
+                var timeOutValue = document.getElementById("timeOutValue").value;
+                var batchSize = document.getElementById("batchSize").value;
+                for (i = 0; i < batchSize; i += 1) {
+                    if (updateSet.size > 0) {
+                        var nodeData = updateSet.values().next().value;
+                        updateSet.delete(nodeData);
+                        updateInnerLoop(nodeData);
+                    }
+                }
+                await sleep(timeOutValue);
+            }
+        }
+
+        updateLoop();
+
+
+        // A list of server objects that will be updated by the query
+        // The server object looks like this:
+        // {color: '#6638f0', hostname: 'M2-Max.local', icon: 'fa-phone-square-alt', iconID: 'node-number-M2-Max.local-icon', ip: '127.0.0.1'}
+        var servers = {};
+        var pool = workerpool.pool('/static/httpworker.js', { maxWorkers: 10 });
+
+        let dataQueue = []; // Queue to hold fetched data
+
+        function updateInnerLoop(data) {
+            if (data) {
+                servers[data.hostname] = data
+                var server = data;
+                var hashCode = server.hashCode;
+
+                var regionBox = $('#region-' + server.region);
+                if (regionBox.length == 0) {
+                    $('#all-nodes').append(" \
+<div class='region-box-container' id='region-container-" + server.region + "'> \
+<span class='region-box-label center'> " + server.region + "</span>\
+<div class='region-box' id='region-" + server.region + "'> \
+</div> \
+</div>")
+                    regionBox = $('#region-' + server.region);
+                }
+
+                var nodeName = "node-" + hashCode;
+                var nodeShortID = server.nodeID.substring(0, 10);
+                if ($('#' + nodeName).length == 0) {
+                    regionBox.append(" \
+                <div class='node-obj-box'> \
+                <span class='label label-info node-obj' id='"+ nodeName + "' \
+                style='background-color: "+ server.color + "; border-color: " + server.color + "; border-style: solid;' \
+                data-ip='"+ hashCode + "'> \
+                "+ nodeShortID + " <span id='node-" + hashCode + "-icon' \
+                class='fa-solid "+ server.icon + "'></span> \
+                </span> \
+                </div>");
+                }
+                else {
+                    if ($("#" + nodeName + "-icon").attr('class') != "fa-solid " + server.icon) {
+                        $("#" + nodeName).css("background-color", server.color)
+                            .finish()
+                            .css("border-color", server.color)
+                            .css("color", "#FFFFFF")
+                            .fadeTo(0, 0.50)
+                            .fadeTo(200, 1)
+                        $("#" + nodeName + "-icon").removeClass().toggleClass("fa-solid " + server.icon);
+                    }
+                }
+            }
+        }
+
+        document.getElementById('start').addEventListener('click', function () {
+            socket.emit("start", { data: "start" }, function () {
+                ;
+            });
+        });
+
+        document.getElementById('stop').addEventListener('click', function () {
+            socket.emit("stop", function () {
+            });
+        });
+
+        // When browser refresh or close, disconnect the socket
+        window.onbeforeunload = function () {
+            socket.disconnect();
+        };
+    </script>
+    <div id="server-list"></div>
+</body>
+
+</html>
