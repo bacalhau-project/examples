@@ -1,0 +1,36 @@
+Name: Edit color of file
+Namespace: CamProc
+Type: ops
+Count: 1
+Constraints:
+  - Key: zone
+    Operator: "="
+    Values:
+      - me-central1-c
+Tasks:
+  - Name: Edit color of file
+    InputSources:
+      - Source:
+          Type: localDirectory
+          Params:
+            # the directory on each node tells them their rank and total nodes
+            SourcePath: /home/camprocrunner/camprocapp
+            ReadWrite: true
+        Target: /camprocapp
+    Engine:
+      Type: docker
+      Params:
+        # the docker container that will download videos and perform inference
+        Image: docker.io/bacalhauproject/camproc-editor:v0.0.10
+        EnvironmentVariables:
+          - COLOR=blue
+          - COLOR_FILE=/camprocapp/color.txt
+          - TEST_DIRECTORY=/camprocapp
+    Network:
+      # this job requires networking to download content from buckets
+      Type: full
+    Resources:
+      # dependent on compute nodes, this is based on e2-standard-8
+      CPU: 1
+      Memory: "1GB"
+      Disk: "1GB"
