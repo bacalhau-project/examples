@@ -28,7 +28,7 @@ echo "APPUSER: ${APPUSER}"
 echo "APPDIR: ${APPDIR}"
 echo "PATH: ${PATH}"
 
-echo "Running setup-venv.sh ..."
+echo "Runnig setup-venv.sh ..."
 pushd "${APPDIR}"
 chown -R "${APPUSER}":"${APPUSER}" "${SETUPVENVSCRIPT}"
 sudo -E -u "${APPUSER}" bash -c "source ${ENVFILE} && ${SETUPVENVSCRIPT}"
@@ -58,7 +58,8 @@ ExecStart=${APPDIR}/${PYENVNAME}/bin/gunicorn \
           --access-logfile /var/log/gunicorn/access.log \
           --error-logfile /var/log/gunicorn/error.log \
           --timeout 120 \
-          --workers 2 \
+          --workers 1 \
+		  --worker-class uvicorn.workers.UvicornWorker \
           --chdir ${APPDIR} \
           -b 0.0.0.0:14041 \
           -b [::1]:16861 \
