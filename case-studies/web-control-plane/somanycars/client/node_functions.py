@@ -1,114 +1,4 @@
-# app.py
 import random
-import socket
-from pathlib import Path
-from random import randint
-
-import yaml
-from flask import Flask, render_template
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
-
-model_name = "2d24aa8e-c8c4-4d2e-a67f-915f92425a45"
-
-def loadPictures():
-    # Read all filenames from /static/pictures recursively
-    # and return a list of all filenames
-    import os
-    walk = os.walk("./static/pictures")
-    allPictures = []
-    for dirpath, dirs, files in walk:
-        for file in files:
-            allPictures.append(os.path.join(dirpath, file))
-    return allPictures
-
-
-class Pictures:
-    # Load all icons from icons.txt which has one icon per line, surrounded by single quotes
-    allPictures = loadPictures()
-
-    @staticmethod
-    def getRand():
-        length = len(Pictures.allPictures)
-        pictureNumber = randint(0, length - 1)
-        return Pictures.allPictures[pictureNumber]
-
-
-@app.route("/")
-def index():
-    vals = json_endpoint()
-    return render_template(
-        "app.html",
-        hostname=vals["hostname"],
-        ip=vals["ip"],
-        picture_url=vals["picture_url"],
-        model_name=vals["model_name"],
-        hashCode=vals["hashCode"],
-        zone=vals["zone"],
-        region=vals["region"],
-        nodeID=vals["nodeID"],
-    )
-
-
-@app.route("/json-test")
-def json_testing():
-    return json_endpoint(testing=True)
-
-
-@app.route("/json")
-def json_endpoint(testing=False):
-    if testing:
-        testNode = test_node()
-        ip = testNode["ip"]
-        hostname = testNode["hostname"]
-        zone = testNode["zone"]
-        region = testNode["region"]
-    else:
-        hostname = socket.gethostname()
-        ip = socket.gethostbyname(socket.gethostname())
-        node_info = Path("/etc/bacalhau-node-info")
-        zone = "N/A"
-        region = "N/A"
-        if node_info.exists():
-            # Read from /etc/bacalhau-node-info and get ZONE= and REGION=
-            with open(node_info, "r") as file:
-                lines = file.readlines()
-                for line in lines:
-                    if "ZONE=" in line:
-                        zone = line.split("=")[1].replace("\n", "")
-                    if "REGION=" in line:
-                        region = line.split("=")[1].replace("\n", "")
-
-    iconID = f"node-number-{hostname}-icon"
-    hashCodeValue = generateHashCode(hostname)
-
-    node_id = f"n-{hashCodeValue}"
-
-    # If /data/config.yml exists
-    config_file = Path("/data/config.yaml")
-    if config_file.exists():
-        with open(config_file, "r") as file:
-            try:
-                config = yaml.safe_load(file)
-                node = config["node"]
-                node_id = node["name"]
-            except yaml.YAMLError as exc:
-                print(f"Could not read node->name: {exc}")
-    else:
-        print("Could not find /data/config.yaml")
-
-    return generate_node(
-        hostname=hostname,
-        ip=ip,
-        picture_url=Pictures.getRand(),
-        model_name=model_name,
-        hashCode=hashCodeValue,
-        zone=zone,
-        region=region,
-        nodeID=node_id,
-    )
 
 
 def generateHashCode(str):
@@ -143,16 +33,37 @@ def test_node():
     return {"ip": n[0], "hostname": n[1], "region": n[2], "zone": n[3]}
 
 
-def generate_node(hostname, ip, picture_url, model_name, hashCode, zone, region, nodeID):
+def generate_node(
+    hostname,
+    ip,
+    model_weights,
+    hashCode,
+    zone,
+    region,
+    nodeID,
+    video_feed,
+    confidence_threshold,
+    iou_threshold,
+    skip_frames,
+    source_video_path,
+    total_detections,
+    frames_processed_per_clip,
+):
     return {
         "hostname": hostname,
         "ip": ip,
-        "picture_url": picture_url,
-        "model_name": model_name,
+        "model_weights": model_weights,
         "hashCode": hashCode,
         "zone": zone,
         "region": region,
         "nodeID": nodeID,
+        "video_feed": video_feed,
+        "confidence_threshold": confidence_threshold,
+        "iou_threshold": iou_threshold,
+        "skip_frames": skip_frames,
+        "source_video_path": source_video_path,
+        "total_detections": total_detections,
+        "frames_processed_per_clip": frames_processed_per_clip,
     }
 
 
@@ -207,11 +118,3 @@ TEST_NODES_STATICS = (
     ["256.256.256.47", "ingram.com", "na-north1", "na-north1-b"],
     ["256.256.256.48", "jennings.info", "na-north1", "na-north1-b"],
 )
-
-
-if __name__ == "__main__":
-    # Take a port number from the environment if it's there
-    import os
-
-    port = int(os.environ.get("PORT", 5000))
-    app.run(port=port)

@@ -16,6 +16,13 @@ pyyaml = "6.0.1"
 ultralytics = "^8.1.41"
 supervision = "^0.19.0"
 pyav = "^12.0.5"
+uvicorn = "^0.29.0"
+vidgear = {extras = ["asyncio"], version = "^0.3.2"}
+starlette = "^0.37.2"
+fastapi = "^0.110.1"
+python-box = "^7.1.1"
+pydantic-settings = "^2.2.1"
+jsonpickle = "^3.0.3"
 
 
 [build-system]

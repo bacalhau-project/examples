@@ -1,0 +1,4 @@
+- Download all the model weights using download_all_models.py
+- Test running the server with the command: `uvicorn wsgi:app --reload`
+- Open the web app in your browser: `http://localhost:8000`
+- Test switching the config settings to something new.

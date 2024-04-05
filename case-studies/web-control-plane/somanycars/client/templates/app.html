@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Camera Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+</head>
+
+<body class="container">
+    <h1>Camera Processing</h1>
+    <h1></h1>
+
+    Video: <img src="{{ video_feed }}" alt="Video Feed" width="100" id="video-feed-img"
+        style="display: block;-webkit-user-select: none; user-select: none; margin: auto;background-color: hsl(0, 0%, 25%);" />
+    </h1>
+
+    <h5>Hostname: {{ hostname }}</h5>
+    <h5>IP: {{ ip }}</h5>
+    <h5>HashCode: {{ hashCode }}</h5>
+    <h5>Zone: {{ zone }}</h5>
+    <h5>Region: {{ region }}</h5>
+    <h5>NodeID: {{ nodeID }}</h5>
+    <h5>Model: <span id="model-weights">{{ model_weights }}</span></h5>
+    <h5>Detections: <span id="detections">{{ detections }}</span></h5>
+    <h5>Last Updated: <span id="last-updated"></span></h5>
+    <h5>
+        <span class="btn btn-primary" id="refresh-button">Refresh</span>
+        <span class="btn btn-primary" id="stop-button">Stop</span>
+    </h5>
+    <script>
+        $(document).ready(function () {
+            var lastUpdated = new Date();
+            $("#refresh-button").click(function (e) {
+                e.preventDefault();
+                $.ajax({
+                    type: "GET",
+                    url: "/json",
+                    success: function (data) {
+                        var img = document.getElementById('video-feed-img');
+                        img.src = data.video_feed;
+                        $("#detections").text(data.total_detections)
+                    },
+                });
+            });
+            $("#stop-button").click(function (e) {
+                var img = document.getElementById('video-feed-img');
+                img.src = "/static/stop.jpg";
+            });
+            // Every 2 seconds, refresh the json feed
+            setInterval(function () {
+                $.ajax({
+                    type: "GET",
+                    url: "/json",
+                    success: function (data) {
+                        // Expand the total_detections object into a series of key-value pairs. Each value is an object and needs to be expanded out as well.
+                        var detectionText = "";
+                        for (var key in data.total_detections) {
+                            detectionText += key + ": ";
+                            for (var subkey in data.total_detections[key]) {
+                                detectionText += subkey + ": " + data.total_detections[key][subkey] + ", ";
+                            }
+                            detectionText += "<br>";
+                        }
+                        $("#detections").text(detectionText);
+                        $("#last-updated").text(new Date())
+                        $("#model-weights").text(data.model_weights)
+                    },
+                });
+            }, 2000);
+        });
+    </script>
+</body>
+
+</html>
