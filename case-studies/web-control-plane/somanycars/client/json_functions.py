@@ -26,12 +26,14 @@ def get_json(testing=False):
         hostname = testNode["hostname"]
         zone = testNode["zone"]
         region = testNode["region"]
+        external_ip = testNode["external_ip"]
     else:
         hostname = socket.gethostname()
         ip = socket.gethostbyname(socket.gethostname())
         node_info = Path("/etc/bacalhau-node-info")
         zone = "N/A"
         region = "N/A"
+        external_ip = "localhost"
         if node_info.exists():
             # Read from /etc/bacalhau-node-info and get ZONE= and REGION=
             with open(node_info, "r") as file:
@@ -41,9 +43,12 @@ def get_json(testing=False):
                         zone = line.split("=")[1].replace("\n", "")
                     if "REGION=" in line:
                         region = line.split("=")[1].replace("\n", "")
+                    if "EXTERNAL_IP=" in line:
+                        external_ip = line.split("=")[1].replace("\n", "")
 
     hashCodeValue = generateHashCode(hostname)
     node_id = f"n-{hashCodeValue}"
+    video_feed = f"http://{external_ip}:14041/video"
 
     # If /data/config.yml exists
     node_config_file = Path("/data/config.yaml")
@@ -58,6 +63,9 @@ def get_json(testing=False):
     else:
         print("Could not find /data/config.yaml")
 
+    if settings.ml_model_config.get("source_video_path") is None:
+        settings.load_model_config()
+
     node = generate_node(
         hostname=hostname,
         ip=ip,
@@ -66,13 +74,14 @@ def get_json(testing=False):
         zone=zone,
         region=region,
         nodeID=node_id,
-        video_feed="/video",
+        video_feed=video_feed,
         confidence_threshold=settings.ml_model_config["confidence_threshold"],
         iou_threshold=settings.ml_model_config["iou_threshold"],
         skip_frames=settings.ml_model_config["skip_frames"],
         source_video_path=settings.ml_model_config["source_video_path"],
         total_detections=settings.total_detections,
         frames_processed_per_clip=settings.frames_processed_per_clip,
+        external_ip=external_ip,
     )
 
     return node

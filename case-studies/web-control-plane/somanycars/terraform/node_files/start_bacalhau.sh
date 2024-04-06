@@ -15,13 +15,6 @@ if [[ -n "${IP}" ]]; then
     export BACALHAU_PREFERRED_ADDRESS="${IP}"
 fi
 
-# export BACALHAU_NODE_CLIENTAPI_HOST=10.128.0.2
-# export BACALHAU_NODE_CLIENTAPI_PORT=1234
-# export BACALHAU_NODE_NETWORK_TYPE=nats
-# export BACALHAU_NODE_NETWORK_ORCHESTRATORS=nats://bL8wVBTqu1bnERh6q_dBVN7tB0YTZmxBlTMH0Q-tQUw@10.128.0.2:4222
-# export BACALHAU_NODE_IPFS_SWARMADDRESSES=/ip4/10.128.0.2/tcp/41347/p2p/QmVm4R3Fp2ZkiFrYeLYYVRAXkVr9WSU325AWD4HuMLGMkk
-
-
 # if the file /etc/bacalhau-bootstrap exists
 if [[ -f /etc/bacalhau-bootstrap ]]; then
     # shellcheck disable=SC1090
@@ -45,8 +38,6 @@ bacalhau serve \
 --node-type=compute \
 --network="${BACALHAU_NODE_NETWORK_TYPE}" \
 --orchestrators="${BACALHAU_NODE_NETWORK_ORCHESTRATORS}" \
---private-internal-ipfs \
---ipfs-swarm-addrs="${BACALHAU_NODE_IPFS_SWARMADDRESSES}" \
 --allow-listed-local-paths="${ABSOLUTE_LOCAL_PATH}:rw" \
 --job-selection-data-locality anywhere \
 --swarm-port 1235 \

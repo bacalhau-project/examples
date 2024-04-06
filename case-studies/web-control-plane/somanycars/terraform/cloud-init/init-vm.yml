@@ -65,6 +65,9 @@ runcmd:
   - |
     echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /root/.ssh/authorized_keys
   - sudo useradd --create-home -r ${ username } -s /usr/bin/bash || echo 'User already exists.'
+  # Make the ssh directory and copy the key as ${ username }
+  - mkdir -p /home/${ username }/.ssh && chmod 0700 /home/${ username }/.ssh && chown ${ username }:${ username } /home/${ username }/.ssh
+  - touch /home/${ username }/.ssh/authorized_keys && chmod 0600 /home/${ username }/.ssh/authorized_keys && chown ${ username }:${ username } /home/${ username }/.ssh/authorized_keys
   - |
     echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/${ username }/.ssh/authorized_keys
   - echo "%${ username } ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/${ username }
@@ -110,10 +113,16 @@ runcmd:
   - chown -R ${ username }:${ username } ${ appdir }
   - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
   # Download from videos and weights directory
-  - curl -O itsadash.work/static/somanycars.org/videos.tar.gz
-  - tar -xvf videos.tar.gz
-  - curl -O itsadash.work/static/somanycars.org/weights.tar.gz
-  - tar -xvf weights.tar.gz
+  - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o ${ appdir }/videos.tar.gz
+  - tar -xvf ${ appdir }/videos.tar.gz -C ${ appdir }
+  - curl -s itsadash.work/static/somanycars.org/weights.tar.gz -o ${ appdir }/weights.tar.gz
+  - tar -xvf ${ appdir }/weights.tar.gz -C ${ appdir }
+  #
+  # Get the external IP
+  #
+  - export EXTERNAL_IP=$(curl -s ifconfig.me)
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /etc/bacalhau-node-info
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /home/${ username }/.env
   #
   # Make /data/config.yaml readable by the user
   #

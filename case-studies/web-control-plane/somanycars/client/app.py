@@ -169,7 +169,7 @@ async def frames_producer():
         asyncio.create_task(track_video(frame, frames_in_current_clip, reset))
 
         # reducer frames size if you want more performance otherwise comment this line
-        frame = await reducer(frame, percentage=80)  # reduce frame by 30%
+        frame = await reducer(frame, percentage=30)  # reduce frame by 30%
         # handle JPEG encoding
         encodedImage = cv2.imencode(".jpg", frame)[1].tobytes()
         # yield frame in byte format
@@ -215,6 +215,7 @@ async def index(request: Request):
             "skip_frames": vals["skip_frames"],
             "source_video_path": vals["source_video_path"],
             "total_detections": vals["total_detections"],
+            "external_ip": vals["external_ip"],
         },
     )
 

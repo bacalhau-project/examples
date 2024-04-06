@@ -123,5 +123,5 @@ resource "google_compute_instance" "gcp_instance" {
 
   allow_stopping_for_update = true
 
-  tags = ["allow-ssh", "allow-bacalhau", "default-allow-internal"]
+  tags = ["allow-ssh", "allow-bacalhau", "default-allow-internal", "allow-gunicorn-14041-16861"]
 }

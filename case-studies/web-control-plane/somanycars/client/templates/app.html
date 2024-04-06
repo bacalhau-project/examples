@@ -25,6 +25,7 @@
     <h5>Zone: {{ zone }}</h5>
     <h5>Region: {{ region }}</h5>
     <h5>NodeID: {{ nodeID }}</h5>
+    <h5>External IP: <span id="external-ip">{{ external_ip }}</span></h5>
     <h5>Model: <span id="model-weights">{{ model_weights }}</span></h5>
     <h5>Detections: <span id="detections">{{ detections }}</span></h5>
     <h5>Last Updated: <span id="last-updated"></span></h5>
@@ -32,14 +33,16 @@
         <span class="btn btn-primary" id="refresh-button">Refresh</span>
         <span class="btn btn-primary" id="stop-button">Stop</span>
     </h5>
+    <input type="hidden" id="external_ip" value="{{ external_ip }}" />
     <script>
         $(document).ready(function () {
             var lastUpdated = new Date();
+            var external_ip = $("#external_ip").val();
             $("#refresh-button").click(function (e) {
                 e.preventDefault();
                 $.ajax({
                     type: "GET",
-                    url: "/json",
+                    url: "http://" + external_ip + ":14041/refresh",
                     success: function (data) {
                         var img = document.getElementById('video-feed-img');
                         img.src = data.video_feed;
@@ -55,7 +58,7 @@
             setInterval(function () {
                 $.ajax({
                     type: "GET",
-                    url: "/json",
+                    url: "http://" + external_ip + ":14041/json",
                     success: function (data) {
                         // Expand the total_detections object into a series of key-value pairs. Each value is an object and needs to be expanded out as well.
                         var detectionText = "";
@@ -69,6 +72,7 @@
                         $("#detections").text(detectionText);
                         $("#last-updated").text(new Date())
                         $("#model-weights").text(data.model_weights)
+                        $("#external-ip").text(data.external_ip)
                     },
                 });
             }, 2000);

@@ -48,6 +48,7 @@ def generate_node(
     source_video_path,
     total_detections,
     frames_processed_per_clip,
+    external_ip,
 ):
     return {
         "hostname": hostname,
@@ -64,6 +65,7 @@ def generate_node(
         "source_video_path": source_video_path,
         "total_detections": total_detections,
         "frames_processed_per_clip": frames_processed_per_clip,
+        "external_ip": external_ip,
     }
 
 
