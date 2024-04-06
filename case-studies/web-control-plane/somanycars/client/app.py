@@ -184,10 +184,6 @@ async def frames_producer():
 app = WebGear(logging=True, **options)
 templates = Jinja2Templates(directory="templates")
 app.config["generator"] = frames_producer
-app.config["generator_kwargs"] = {
-    "source": "example_video/IMG_9305.MOV",
-    "url": "/video",
-}
 app.middleware = [
     Middleware(
         CORSMiddleware,

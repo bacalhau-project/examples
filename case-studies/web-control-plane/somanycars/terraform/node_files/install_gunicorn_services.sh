@@ -18,6 +18,9 @@ apt install -y python3.11 python3.11-venv python3.11-distutils python3.11-tk
 update-alternatives --install /usr/bin/python python /usr/bin/python3.11 0
 curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.11
 
+# Need FFMPEG for video processing
+apt-get install ffmpeg libsm6 libxext6  -y
+
 # Clean up old files, just to be sure
 export USERHOME="/home/${APPUSER}"
 export PATH="${USERHOME}/.local/bin:${PATH}"

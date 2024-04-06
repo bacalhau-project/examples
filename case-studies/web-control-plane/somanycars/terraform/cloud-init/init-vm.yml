@@ -109,7 +109,11 @@ runcmd:
   - rsync -av --no-relative /tmp/web-control-plane/${ relativecodeinrepodir }/* ${ appdir }
   - chown -R ${ username }:${ username } ${ appdir }
   - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
-  -
+  # Download from videos and weights directory
+  - curl -O itsadash.work/static/somanycars.org/videos.tar.gz
+  - tar -xvf videos.tar.gz
+  - curl -O itsadash.work/static/somanycars.org/weights.tar.gz
+  - tar -xvf weights.tar.gz
   #
   # Make /data/config.yaml readable by the user
   #
@@ -118,7 +122,7 @@ runcmd:
   #
   # Make the app path read/writeable by the user
   #
-  - chown ugo+rwx ${ appdir }
+  - chown -R ${ username }:${ username } ${ appdir }
   # Reload the systemd daemon, enable, and start the service
   - sudo sysctl -w net.core.rmem_max=2500000
   - sudo systemctl daemon-reload

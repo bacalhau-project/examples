@@ -1,5 +1,8 @@
-example_video/*
+videos/*.MOV
 
 *.mp4
 
 *.pt
+
+videos.tar.gz
+weights.tar.gz

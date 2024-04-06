@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 from pydantic_settings import BaseSettings
 
+import random
 
 class Settings(BaseSettings):
     WEB_PORT: int = 8000
@@ -29,6 +30,10 @@ class Settings(BaseSettings):
             self.ml_model_config_path = model_config_path
         model_config_text = Path(self.ml_model_config_path).read_text()
         self.ml_model_config = yaml.safe_load(model_config_text)
+        if self.ml_model_config.get("source_video_path") is None:
+            # If source_video_path is not set, set it to a random video from the /videos folder
+            self.ml_model_config["source_video_path"] = f"videos/{random.choice(os.listdir('videos'))}"
+            
         print(f"Model config loaded from {self.ml_model_config}")
 
     def update_model_config(self, model_config):

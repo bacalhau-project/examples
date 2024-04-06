@@ -82,7 +82,7 @@ resource "google_compute_instance" "gcp_instance" {
   boot_disk {
     initialize_params {
       image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
-      size  = 10
+      size  = 40
     }
   }
 

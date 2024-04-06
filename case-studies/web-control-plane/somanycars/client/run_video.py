@@ -15,8 +15,6 @@ box_annotator = sv.BoundingBoxAnnotator()
 class Config:
     def __init__(self):
         self.source_weights_path = "yolov5s.pt"
-        self.source_video_path = "data/video.mp4"
-        self.target_video_path = "data/output.mp4"
         self.confidence_threshold = 0.3
         self.iou_threshold = 0.7
         self.skip_frames = 1
