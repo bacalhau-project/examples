@@ -82,6 +82,8 @@ def get_json(testing=False):
         total_detections=settings.total_detections,
         frames_processed_per_clip=settings.frames_processed_per_clip,
         external_ip=external_ip,
+        model_last_processed_time=settings.model_last_processed_time.isoformat(),
+        config_last_update=settings.config_last_update.isoformat(),
     )
 
     return node

@@ -49,6 +49,8 @@ def generate_node(
     total_detections,
     frames_processed_per_clip,
     external_ip,
+    model_last_processed_time,
+    config_last_update,
 ):
     return {
         "hostname": hostname,
@@ -66,6 +68,8 @@ def generate_node(
         "total_detections": total_detections,
         "frames_processed_per_clip": frames_processed_per_clip,
         "external_ip": external_ip,
+        "model_last_processed_time": model_last_processed_time,
+        "config_last_update": config_last_update,
     }
 
 

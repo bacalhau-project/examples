@@ -21,6 +21,7 @@ from ultralytics import YOLO
 from vidgear.gears.asyncio import WebGear
 from vidgear.gears.asyncio.helper import reducer
 
+import datetime
 from app_settings import get_settings
 from json_functions import get_json, json_endpoint, json_testing
 
@@ -64,17 +65,8 @@ def signal_handler(signal, frame):
     continue_stream = False  # Stops the event loop, causing the server to shut down
 
 
-async def run_model(reset=False, frame=None, frame_number=0):
+async def run_model(frame=None, frame_number=0):
     settings = get_settings()
-
-    # Wait for the model to load the first time
-    if settings.model is None:
-        reset = True
-
-    if reset:
-        settings.checkpoint_total_detections()
-        settings.tracker = sv.ByteTrack()
-        settings.load_model(YOLO(settings.ml_model_config["source_weights_path"]))
 
     results = settings.model(
         frame,
@@ -105,18 +97,22 @@ async def run_model(reset=False, frame=None, frame_number=0):
             )
 
 
-async def track_video(frame, frame_number, reset=False):
+async def track_video(frames):
     settings = get_settings()
+    settings.tracker = sv.ByteTrack()
+
     config_file_path = settings.get_model_config_path()
 
     if os.path.exists(config_file_path):
         last_update = os.path.getmtime(config_file_path)
-        if last_update != settings.config_last_update:
-            settings.config_last_update = last_update
+        if last_update != settings.config_last_update or settings.ml_model_config is None:
+            # Convert the last update time to a datetime object
+            last_update_datetime = datetime.datetime.fromtimestamp(last_update)
+            settings.config_last_update = last_update_datetime
             with open(config_file_path, "r") as file:
                 settings.ml_model_config = yaml.safe_load(file)
+            settings.load_model(YOLO(settings.ml_model_config["source_weights_path"]))
 
-            reset = True
 
     # Calculate the number of frames processed per clip (based on skip frames)
     settings.frames_processed_per_clip = (
@@ -125,15 +121,18 @@ async def track_video(frame, frame_number, reset=False):
         / settings.ml_model_config["skip_frames"]
     )
 
-    # If the frame_number is not divisible by skip_frames, skip the frame
-    if (
-        settings.ml_model_config["skip_frames"]
-        and settings.ml_model_config["skip_frames"] > 1
-    ):
-        if frame_number % settings.ml_model_config["skip_frames"] != 0:
-            return
+    for frame_number, frame in enumerate(frames):
+        # If the frame_number is not divisible by skip_frames, skip the frame
+        if (
+            settings.ml_model_config["skip_frames"]
+            and settings.ml_model_config["skip_frames"] > 1
+        ):
+            if frame_number % settings.ml_model_config["skip_frames"] != 0:
+                continue
 
-    await run_model(reset, frame, frame_number)
+        await run_model(frame, frame_number)
+        
+    settings.checkpoint_total_detections()
 
 
 async def frames_producer():
@@ -147,26 +146,29 @@ async def frames_producer():
     frames_in_current_clip = random.randint(0, total_frames)
     stream.set(cv2.CAP_PROP_POS_FRAMES, frames_in_current_clip)
 
+    frames_in_current_clip = 0
+    current_clip_frames = []
+
     while continue_stream:
         (grabbed, frame) = stream.read()
         frames_in_current_clip += 1
-
-        reset = False
+        current_clip_frames.append(frame)
 
         if (
             not grabbed
             or frames_in_current_clip
             >= settings.NUMBER_OF_SECONDS_PER_CLIP * settings.FPS
         ):
-            frames_in_current_clip = 0
             # If not grabbed, assume we're at the end, and start over
             if not grabbed:
-                stream.set(cv2.CAP_PROP_POS_FRAMES, frames_in_current_clip)
+                stream.set(cv2.CAP_PROP_POS_FRAMES, 0)
             (grabbed, frame) = stream.read()
-            reset = True
 
-        # Create a task to track the video
-        asyncio.create_task(track_video(frame, frames_in_current_clip, reset))
+            await asyncio.create_task(track_video(current_clip_frames))
+            
+            frames_in_current_clip = 0
+            current_clip_frames = []
+            continue
 
         # reducer frames size if you want more performance otherwise comment this line
         frame = await reducer(frame, percentage=30)  # reduce frame by 30%

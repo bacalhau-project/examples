@@ -9,30 +9,152 @@
     <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet" type="text/css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --champagne: #f1e0c5ff;
+            --khaki: #c9b79cff;
+            --reseda-green: #71816dff;
+            --bistre: #342a21ff;
+            --blush: #da667bff;
+            --dark-reseda: #506450;
+            /* Darker shade for info box */
+            --light-champagne: #f7f0e4;
+            /* Lighter text for better contrast */
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--champagne);
+            color: var(--bistre);
+            min-height: 100vh;
+        }
+
+        #full-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: auto;
+        }
+
+        #video-container {
+            padding: 20px;
+            background-color: var(--khaki);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 480px;
+            /* Fixed width */
+            height: auto;
+            /* Adjust height automatically */
+        }
+
+        #video-feed-img {
+            display: block;
+            width: 100%;
+            /* Make video responsive within the container */
+            height: auto;
+            /* Maintain aspect ratio */
+        }
+
+        #info-table {
+            width: 80%;
+            max-width: 600px;
+            /* Define max width for consistency */
+            margin-top: 20px;
+            background-color: var(--dark-reseda);
+            padding: 15px;
+            border-radius: 10px;
+            color: var(--light-champagne);
+            text-align: left;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .info-title {
+            font-weight: bold;
+        }
+
+        .btn {
+            background-color: var(--blush);
+            border: none;
+            color: var(--champagne);
+            padding: 10px 20px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: var(--bistre);
+            color: var(--champagne);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 
 <body class="container">
-    <h1>Camera Processing</h1>
-    <h1></h1>
+    <h1>Video Feed from {{ hostname }}</h1>
 
-    Video: <img src="{{ video_feed }}" alt="Video Feed" width="100" id="video-feed-img"
-        style="display: block;-webkit-user-select: none; user-select: none; margin: auto;background-color: hsl(0, 0%, 25%);" />
-    </h1>
+    <div id="full-container">
+        <div id="video-container">
+            <img src="{{ video_feed }}" alt="Video Feed" id="video-feed-img" />
+        </div>
 
-    <h5>Hostname: {{ hostname }}</h5>
-    <h5>IP: {{ ip }}</h5>
-    <h5>HashCode: {{ hashCode }}</h5>
-    <h5>Zone: {{ zone }}</h5>
-    <h5>Region: {{ region }}</h5>
-    <h5>NodeID: {{ nodeID }}</h5>
-    <h5>External IP: <span id="external-ip">{{ external_ip }}</span></h5>
-    <h5>Model: <span id="model-weights">{{ model_weights }}</span></h5>
-    <h5>Detections: <span id="detections">{{ detections }}</span></h5>
-    <h5>Last Updated: <span id="last-updated"></span></h5>
-    <h5>
-        <span class="btn btn-primary" id="refresh-button">Refresh</span>
-        <span class="btn btn-primary" id="stop-button">Stop</span>
-    </h5>
+        <div id="info-table">
+            <div class="info-row"><span class="info-title">Hostname:</span><span>{{ hostname }}</span></div>
+            <div class="info-row"><span class="info-title">IP:</span><span>{{ ip }}</span></div>
+            <div class="info-row"><span class="info-title">HashCode:</span><span>{{ hashCode }}</span></div>
+            <div class="info-row"><span class="info-title">Zone:</span><span>{{ zone }}</span></div>
+            <div class="info-row"><span class="info-title">Region:</span><span>{{ region }}</span></div>
+            <div class="info-row"><span class="info-title">NodeID:</span><span>{{ nodeID }}</span></div>
+            <div class="info-row"><span class="info-title">External IP:</span><span id="external-ip">{{ external_ip
+                    }}</span></div>
+            <div class="info-row"><span class="info-title">Model:</span><span id="model-weights">{{ model_weights
+                    }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-title">Detections:</span>
+                <div style="margin-left: 20px;"> <!-- Indentation for detections -->
+                    <div class="detection-row">
+                        <span>Cars:</span>
+                        <span id="cars-count">0</span>
+                    </div>
+                    <div class="detection-row">
+                        <span>Trucks:</span>
+                        <span id="trucks-count">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="info-row"><span class="info-title">Last JSON Query:</span><span id="last-updated">N/A</span>
+            </div>
+            <div class="info-row"><span class="info-title">Last Model Update:</span><span
+                    id="last-model-update">N/A</span>
+            </div>
+            <div class="info-row"><span class="info-title">Last Config Update:</span><span
+                    id="last-config-update">N/A</span></div>
+        </div>
+
+        <div>
+            <span class="btn btn-primary" id="refresh-button">Refresh</span>
+            <span class="btn btn-primary" id="stop-button">Stop</span>
+        </div>
+    </div>
     <input type="hidden" id="external_ip" value="{{ external_ip }}" />
     <script>
         $(document).ready(function () {
@@ -42,11 +164,10 @@
                 e.preventDefault();
                 $.ajax({
                     type: "GET",
-                    url: "http://" + external_ip + ":14041/refresh",
+                    url: "http://" + external_ip + ":14041/json",
                     success: function (data) {
                         var img = document.getElementById('video-feed-img');
                         img.src = data.video_feed;
-                        $("#detections").text(data.total_detections)
                     },
                 });
             });
@@ -60,23 +181,62 @@
                     type: "GET",
                     url: "http://" + external_ip + ":14041/json",
                     success: function (data) {
-                        // Expand the total_detections object into a series of key-value pairs. Each value is an object and needs to be expanded out as well.
-                        var detectionText = "";
-                        for (var key in data.total_detections) {
-                            detectionText += key + ": ";
-                            for (var subkey in data.total_detections[key]) {
-                                detectionText += subkey + ": " + data.total_detections[key][subkey] + ", ";
+                        // If the last model update is different than the one on the page, reset the detection counts
+
+                        if (data.model_last_processed_time) {
+                            var lastModelUpdate = formatDateTime(new Date(data.model_last_processed_time));
+                            if ($("#last-model-update").text() !== lastModelUpdate) {
+                                updateDetectionCounts(data.total_detections, true);
                             }
-                            detectionText += "<br>";
+                        } else {
+                            var lastModelUpdate = "N/A";
                         }
-                        $("#detections").text(detectionText);
-                        $("#last-updated").text(new Date())
+
+                        if (data.config_last_update) {
+                            var lastConfigUpdate = formatDateTime(new Date(data.config_last_update));
+                        } else {
+                            var lastConfigUpdate = "N/A";
+                        }
+
+                        // Format the date and time iso string - "2022-01-01T00:00:00.000Z"
+                        var lastUpdated = formatDateTime(new Date());
                         $("#model-weights").text(data.model_weights)
                         $("#external-ip").text(data.external_ip)
+
+
+                        $("#last-updated").text(lastUpdated);
+                        $("#last-model-update").text(lastModelUpdate)
+                        $("#last-config-update").text(lastConfigUpdate)
                     },
                 });
             }, 2000);
         });
+        function updateDetectionCounts(detections) {
+            var carTrackers = new Set();
+            var truckTrackers = new Set();
+            // Iterate over the object's values
+            Object.values(detections).forEach(function (detection) {
+                if (detection.class_id === 2) {
+                    carTrackers.add(detection.tracker_id);
+                } else if (detection.class_id === 7) {
+                    truckTrackers.add(detection.tracker_id);
+                }
+            });
+            // Update the text fields on the page with the counts or "0" if no detections
+            $("#cars-count").text(carTrackers.size);
+            $("#trucks-count").text(truckTrackers.size);
+        }
+        function formatDateTime(date) {
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            });
+        }
     </script>
 </body>
 

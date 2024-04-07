@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     total_detections: dict = {}
     working_detections: dict = {}
     # Get datetime of last update for config.yaml
-    config_last_update: datetime.datetime = os.path.getmtime(ml_model_config_path)
+    config_last_update: datetime.datetime = datetime.datetime.now()
     frames_processed_per_clip: int = 0
+    model_last_processed_time: datetime.datetime = datetime.datetime.now()
 
     def load_model(self, model):
         self.model = model
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
 
     def checkpoint_total_detections(self):
         self.total_detections = self.working_detections
+        self.model_last_processed_time = datetime.datetime.now()
         self.working_detections = {}
 
     def get_model_config_path(self):
