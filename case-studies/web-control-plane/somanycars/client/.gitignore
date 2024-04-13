@@ -1,4 +1,5 @@
-videos/*.MOV
+app/videos/*.MOV
+app/weights/*.pt
 
 *.mp4
 
