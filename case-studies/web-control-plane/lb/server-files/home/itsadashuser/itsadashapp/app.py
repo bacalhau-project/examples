@@ -333,6 +333,14 @@ def render_justicons_dashboard():
     return render_template("justicons_dashboard.html")
 
 
+def somanycars_dashboard():
+    return render_somanycars_dashboard()
+
+
+def render_somanycars_dashboard():
+    return render_template("somanycars_dashboard.html")
+
+
 def sqlite_stats():
     # For every site in './sites', get the number of IPs
     sites = {}
@@ -364,51 +372,90 @@ flaskApp.add_url_rule("/regen", view_func=regen_sites, methods=["POST"])
 flaskApp.add_url_rule(
     "/justicons_dashboard", view_func=justicons_dashboard, methods=["GET"]
 )
+flaskApp.add_url_rule(
+    "/somanycars_dashboard", view_func=somanycars_dashboard, methods=["GET"]
+)
 flaskApp.add_url_rule("/sqlite_stats", view_func=sqlite_stats, methods=["GET"])
 
 socketio = SocketIO(flaskApp, debug=True, cors_allowed_origins="*", async_mode="gevent")
 
 
-globalDataQueue = gevent.queue.Queue(100)
-runningQueue = gevent.queue.Queue(1)
-runEventLoop = gevent.queue.Queue(1)
+globalJustIconsQueue = gevent.queue.Queue(100)
+runningJustIconsQueue = gevent.queue.Queue(1)
+runJustIconsEventLoop = gevent.queue.Queue(1)
 
 
-# Create a websocket service that queries the domain and returns the json response.
-# The websocket service should be able to push a message to the client every 0.1 seconds.
-# The websocket service will maintain a queue of 100 queries from the domain.
-# When the queue is less than 20% full, it will issue another 100 queries to the domain, so it is always providing
-# new data to the client.
-@socketio.on("start")
-def websocket_service(data):
-    runEventLoop.put(True)
-    print("Starting event loop...")
-    while not runEventLoop.empty():
-        if globalDataQueue.qsize() < 40 and not runningQueue.qsize():
-            socketio.start_background_task(fetchBulk, "http://justicons.org/json")
+@socketio.on("start_justicons_socket")
+def websocket_service_justicons_start(data):
+    runJustIconsEventLoop.put(True)
+    print("Starting justicons event loop...")
+    while not runJustIconsEventLoop.empty():
+        if globalJustIconsQueue.qsize() < 40 and not runningJustIconsQueue.qsize():
+            socketio.start_background_task(
+                fetchBulkJustIcons, "http://justicons.org/json"
+            )
         for _ in range(5):
-            if not globalDataQueue.empty():
-                data = globalDataQueue.get()
+            if not globalJustIconsQueue.empty():
+                data = globalJustIconsQueue.get()
                 socketio.emit("node", data.text)
         socketio.sleep(1)
 
 
-@socketio.on("stop")
-def stop():
-    runEventLoop.get()
-    print("Stopping event loop...")
+@socketio.on("stop_justicons_socket")
+def websocket_service_justicons_stop():
+    runJustIconsEventLoop.get()
+    print("Stopping justicons event loop...")
 
 
-def fetchBulk(url):
+globalSoManyCarsQueue = gevent.queue.Queue(100)
+runningSoManyCarsQueue = gevent.queue.Queue(1)
+runSoManyCarsEventLoop = gevent.queue.Queue(1)
+
+
+@socketio.on("start_somanycars_socket")
+def websocket_service_somanycars_start(data):
+    runSoManyCarsEventLoop.put(True)
+    print("Starting somanycars event loop...")
+    while not runSoManyCarsEventLoop.empty():
+        if globalSoManyCarsQueue.qsize() < 40 and not runningSoManyCarsQueue.qsize():
+            socketio.start_background_task(
+                fetchBulkSoManyCars, "http://somanycars.org/json"
+            )
+        for _ in range(5):
+            if not globalSoManyCarsQueue.empty():
+                data = globalSoManyCarsQueue.get()
+                socketio.emit("node", data.text)
+        socketio.sleep(1)
+
+
+@socketio.on("stop_somanycars_socket")
+def websocket_service_somanycars_stop():
+    runSoManyCarsEventLoop.get()
+    print("Stopping somanycars event loop...")
+
+
+def fetchBulkJustIcons(url):
     try:
-        runningQueue.put(True)
+        runningJustIconsQueue.put(True)
         requests = [grequests.get(url) for _ in range(200)]
         results = grequests.map(requests)
         for result in results:
-            globalDataQueue.put(result)
+            globalJustIconsQueue.put(result)
     finally:
-        if not runningQueue.empty():
-            runningQueue.get()
+        if not runningJustIconsQueue.empty():
+            runningJustIconsQueue.get()
+
+
+def fetchBulkSoManyCars(url):
+    try:
+        runningSoManyCarsQueue.put(True)
+        requests = [grequests.get(url) for _ in range(200)]
+        results = grequests.map(requests)
+        for result in results:
+            globalSoManyCarsQueue.put(result)
+    finally:
+        if not runningSoManyCarsQueue.empty():
+            runningSoManyCarsQueue.get()
 
 
 if __name__ == "__main__":

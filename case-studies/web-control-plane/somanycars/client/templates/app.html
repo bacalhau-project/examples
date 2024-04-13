@@ -183,8 +183,8 @@
                     success: function (data) {
                         // If the last model update is different than the one on the page, reset the detection counts
 
-                        if (data.model_last_processed_time) {
-                            var lastModelUpdate = formatDateTime(new Date(data.model_last_processed_time));
+                        if (data.last_inference_time) {
+                            var lastModelUpdate = formatDateTime(new Date(data.last_inference_time));
                             if ($("#last-model-update").text() !== lastModelUpdate) {
                                 updateDetectionCounts(data.total_detections, true);
                             }

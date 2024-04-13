@@ -1,0 +1,30 @@
+x-app: &default-app
+  build:
+    context: "."
+    target: "app"
+    args:
+      - "UID=${UID:-1000}"
+      - "GID=${GID:-1000}"
+      - "FLASK_DEBUG=${FLASK_DEBUG:-false}"
+      - "NODE_ENV=${NODE_ENV:-production}"
+  env_file:
+    - ".env"
+  restart: "${DOCKER_RESTART_POLICY:-unless-stopped}"
+  stop_grace_period: "3s"
+  tty: true
+  ports:
+    - "${PORT:-14041}:14041"
+    - "${PORT:-16861}:16861"
+  environment:
+    - APPDIR="${APPDIR:-/app}"
+    - PYENVNAME="${PYENVNAME:-.venv}"
+    - SITEURL="${SITEURL:-somanycars.org}"
+    - ZONE="${ZONE:-us-central1-a}"
+    - REGION="${REGION:-us-central1}"
+    - ABSOLUTE_LOCAL_PATH="${ABSOLUTE_LOCAL_PATH:-/app}"
+    - MODEL_CONFIG_FILE="${MODEL_CONFIG_FILE:-/app/config/config.yaml}"
+  volumes:
+    - "${VIDEOSDIR:-./app/videos:/app/videos}"
+    - "${WEIGHTSDIR:-./app/weights:/app/weights}"
+    - "${LOGSDIR:-./app/logs:/var/logs/gunicorn}"
+    - "${CONFIGDIR:-./app/config:/app/config}"

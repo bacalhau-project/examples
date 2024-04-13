@@ -27,7 +27,7 @@ async def app_runner():
     # Import uvicorn's Config and Server classes for more control over the server instance
     from uvicorn import Config, Server
 
-    config = Config(app=app, host="0.0.0.0", port=8000, lifespan="on")
+    config = Config(app=app, host="0.0.0.0", port=14041, lifespan="on")
     server = Server(config=config)
 
     start_profiling()
@@ -37,6 +37,7 @@ async def app_runner():
 
 
 def signal_handler(signal, frame):
+    loop = asyncio.get_event_loop()
     # This function will be called when SIGINT is received
     print("SIGINT received, shutting down gracefully...")
     loop.stop()  # Stops the event loop, causing the server to shut down

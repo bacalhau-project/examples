@@ -31,28 +31,6 @@ write_files:
     path: /etc/bacalhau-node-info
   - encoding: b64
     content: |
-      ${ install_gunicorn_services }
-    owner: root:root
-    path: /node/install-gunicorn-service.sh
-    permissions: "0700"
-  - encoding: b64
-    content: |
-      ${ setup_venv }
-    path: /tmp/rsync/${ username }/setup-venv.sh
-    permissions: "0700"
-  - content: |
-      APPUSER=${ username }
-      APPDIR=${ appdir }
-      PYENVNAME=.venv
-      SITEURL=${ siteurl }
-      TOKEN=${ token }
-      ZONE=${ zone }
-      REGION=${ region }
-      ABSOLUTE_LOCAL_PATH=${ absolute_local_path }
-    permissions: "0444"
-    path: /tmp/rsync/${ username }/.env
-  - encoding: b64
-    content: |
       ${ bacalhau_bootstrap }
     owner: root:root
     path: /etc/bacalhau-bootstrap
@@ -98,20 +76,6 @@ runcmd:
   - |
     curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/$GENHOME/data bash
   - echo "Bacalhau downloaded."
-  #
-  # Sync from /tmp
-  #
-  - rsync --no-relative /tmp/rsync/${ username }/setup-venv.sh /home/${ username }
-  - rsync --no-relative /tmp/rsync/${ username }/.env /home/${ username }
-  - rm -rf /tmp/rsync
-  #
-  # Install the gunicorn service
-  #
-  - git clone https://github.com/bacalhau-project/examples.git /tmp/web-control-plane
-  - (cd /tmp/web-control-plane && git checkout web-control-plane)
-  - rsync -av --no-relative /tmp/web-control-plane/${ relativecodeinrepodir }/* ${ appdir }
-  - chown -R ${ username }:${ username } ${ appdir }
-  - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
   # Download from videos and weights directory
   - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o ${ appdir }/videos.tar.gz
   - tar -xvf ${ appdir }/videos.tar.gz -C ${ appdir }
@@ -128,6 +92,10 @@ runcmd:
   #
   - chmod ugo+rx /data
   - chmod ugo+r /data/config.yaml
+  #
+  # Install Gunicorn Docker Systemd Service
+  - mkdir -p /etc/systemd/system/gunicorn.service.d/
+  - chmod 0700 /etc/systemd/system/gunicorn.service.d/
   #
   # Make the app path read/writeable by the user
   #
