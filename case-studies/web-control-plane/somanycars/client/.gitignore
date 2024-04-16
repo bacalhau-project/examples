@@ -7,3 +7,5 @@ app/weights/*.pt
 
 videos.tar.gz
 weights.tar.gz
+
+!default.env

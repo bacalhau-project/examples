@@ -1,5 +1,6 @@
 argparser
 bacalhau
+bistre
 clarkson
 cortez
 fastapi
@@ -7,6 +8,7 @@ fastdct
 fastupsample
 gethostname
 hflip
+icorn
 imencode
 jsonpickle
 ndarray
@@ -23,6 +25,7 @@ vidcap
 videodata
 vidgear
 webdata
+webgear
 wsgi
 YOLO
 yolov

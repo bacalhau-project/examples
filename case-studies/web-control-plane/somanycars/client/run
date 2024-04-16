@@ -70,6 +70,40 @@ function build {
   docker build --platform=linux/amd64 -t somanycars-client .
 }
 
+function serve:local {
+  source default.env && source .env && .venv/bin/python3 app/wsgi.py --port $PORT --host $HOST --source_weights_path $WEIGHTSDIR --source_all_videos_path $VIDEOSDIR
+}
+
+function serve {
+  # Run the Docker container
+  docker compose up
+}
+
+function serve:daemon {
+  # Run the Docker container in the background
+  docker compose up -d
+}
+
+function build-and-submit {
+  # Get the latest version of the client from VERSION file
+  VERSION=$(cat VERSION)
+  # If DEV is set to true, then we are in development mode - add a unique identifier to the version
+  if [ "$DEV" = "true" ]; then
+    VERSION="${VERSION}-dev-$(date +%s)"
+  fi
+  docker buildx build --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+}
+
+function build-and-submit:cloud {
+  # Get the latest version of the client from VERSION file
+  VERSION=$(cat VERSION)
+  # If DEV is set to true, then we are in development mode - add a unique identifier to the version
+  if [ "$DEV" = "true" ]; then
+    VERSION="${VERSION}-dev-$(date +%s)"
+  fi
+  docker buildx build --builder cloud-bacalhauproject-cloud-builder --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+}
+
 function help {
   printf "%s <task> [args]\n\nTasks:\n" "${0}"
 

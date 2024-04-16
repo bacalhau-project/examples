@@ -141,6 +141,9 @@
                     </div>
                 </div>
             </div>
+            <div class="info-row"><span class="info-title">Model Started Running:</span><span
+                    id="model-running">N/A</span>
+            </div>
             <div class="info-row"><span class="info-title">Last JSON Query:</span><span id="last-updated">N/A</span>
             </div>
             <div class="info-row"><span class="info-title">Last Model Update:</span><span
@@ -172,11 +175,16 @@
                 });
             });
             $("#stop-button").click(function (e) {
+                executeStop();
+            });
+
+            function executeStop() {
                 var img = document.getElementById('video-feed-img');
                 img.src = "/static/stop.jpg";
-            });
+                clearInterval(refreshIntervalId);
+            }
             // Every 2 seconds, refresh the json feed
-            setInterval(function () {
+            var refreshIntervalId = setInterval(function () {
                 $.ajax({
                     type: "GET",
                     url: "http://" + external_ip + ":14041/json",
@@ -198,15 +206,29 @@
                             var lastConfigUpdate = "N/A";
                         }
 
+                        if (data.model_running) {
+                            var modelStarted = formatDateTime(new Date(data.model_running));
+                        } else {
+                            var modelStarted = "N/A";
+                        }
+
                         // Format the date and time iso string - "2022-01-01T00:00:00.000Z"
                         var lastUpdated = formatDateTime(new Date());
                         $("#model-weights").text(data.model_weights)
                         $("#external-ip").text(data.external_ip)
 
-
+                        $("#model-running").text(modelStarted)
                         $("#last-updated").text(lastUpdated);
                         $("#last-model-update").text(lastModelUpdate)
                         $("#last-config-update").text(lastConfigUpdate)
+
+                        if (data.stopping) {
+                            executeStop();
+                        }
+                    },
+                    error: function (errMsg) {
+                        console.log(errMsg);
+                        executeStop();
                     },
                 });
             }, 2000);

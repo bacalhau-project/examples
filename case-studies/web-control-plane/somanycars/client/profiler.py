@@ -27,7 +27,7 @@ async def app_runner():
     # Import uvicorn's Config and Server classes for more control over the server instance
     from uvicorn import Config, Server
 
-    config = Config(app=app, host="0.0.0.0", port=14041, lifespan="on")
+    config = Config(app=app, host="0.0.0.0", port=14041)
     server = Server(config=config)
 
     start_profiling()

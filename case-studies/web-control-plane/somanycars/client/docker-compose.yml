@@ -1,30 +1,29 @@
-x-app: &default-app
-  build:
-    context: "."
-    target: "app"
-    args:
-      - "UID=${UID:-1000}"
-      - "GID=${GID:-1000}"
-      - "FLASK_DEBUG=${FLASK_DEBUG:-false}"
-      - "NODE_ENV=${NODE_ENV:-production}"
-  env_file:
-    - ".env"
-  restart: "${DOCKER_RESTART_POLICY:-unless-stopped}"
-  stop_grace_period: "3s"
-  tty: true
-  ports:
-    - "${PORT:-14041}:14041"
-    - "${PORT:-16861}:16861"
-  environment:
-    - APPDIR="${APPDIR:-/app}"
-    - PYENVNAME="${PYENVNAME:-.venv}"
-    - SITEURL="${SITEURL:-somanycars.org}"
-    - ZONE="${ZONE:-us-central1-a}"
-    - REGION="${REGION:-us-central1}"
-    - ABSOLUTE_LOCAL_PATH="${ABSOLUTE_LOCAL_PATH:-/app}"
-    - MODEL_CONFIG_FILE="${MODEL_CONFIG_FILE:-/app/config/config.yaml}"
-  volumes:
-    - "${VIDEOSDIR:-./app/videos:/app/videos}"
-    - "${WEIGHTSDIR:-./app/weights:/app/weights}"
-    - "${LOGSDIR:-./app/logs:/var/logs/gunicorn}"
-    - "${CONFIGDIR:-./app/config:/app/config}"
+services:
+  somanycars:
+    image: ${DOCKER_IMAGE:-docker.io/bacalhauproject/somanycars-client:0.0.6}
+    restart: "always"
+    stop_grace_period: "3s"
+    tty: true
+    ports:
+      - "${PORT:-14041}:14041"
+    env_file:
+      - path: default.env
+        required: true
+      - path: .env
+        required: false
+    volumes:
+      - ${VIDEOSDIR:-./app/videos}:/app/videos
+      - ${WEIGHTSDIR:-./app/weights}:/app/weights
+      - ${LOGSDIR:-./app/logs}:/var/logs/uvicorn
+      - ${CONFIGDIR:-./app/config}:/app/config
+    deploy:
+      resources:
+        limits:
+          cpus: "${DOCKER_WEB_CPUS:-0}"
+          memory: "${DOCKER_WEB_MEMORY:-0}"
+    healthcheck:
+      test: "${DOCKER_WEB_HEALTHCHECK_TEST:-curl localhost:14041/ok}"
+      interval: "60s"
+      timeout: "3s"
+      start_period: "5s"
+      retries: 3

@@ -51,6 +51,8 @@ def generate_node(
     external_ip,
     last_inference_time,
     config_last_update,
+    model_running,
+    stopping,
 ):
     return {
         "hostname": hostname,
@@ -70,6 +72,8 @@ def generate_node(
         "external_ip": external_ip,
         "last_inference_time": last_inference_time,
         "config_last_update": config_last_update,
+        "model_running": model_running,
+        "stopping": stopping,
     }
 
 

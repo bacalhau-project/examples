@@ -5,11 +5,14 @@ import jsonpickle
 import yaml
 from fastapi import Request, Response
 
+import logging
 import datetime
 
-from app_settings import get_settings
-from node_functions import generate_node, generateHashCode, test_node
+import videoApp
 
+from video_app_settings import get_settings
+from node_functions import generate_node, generateHashCode, test_node
+logger = logging.getLogger(__name__)
 
 async def json_testing(request: Request):
     return json_endpoint(request=request, testing=True)
@@ -30,9 +33,15 @@ def get_json(testing=False):
         region = testNode["region"]
         external_ip = testNode["external_ip"]
     else:
-        hostname = socket.gethostname()
-        ip = socket.gethostbyname(socket.gethostname())
-        node_info = Path("/etc/bacalhau-node-info")
+        try:
+            hostname = socket.gethostname()
+            ip = socket.gethostbyname(hostname)
+        except Exception as e:
+            logger.error(f"Could not get hostname and ip: {e}")
+            hostname = "localhost"
+            ip = "127.0.0.1"
+        
+        node_info = Path("/app/config/bacalhau-node-info")
         zone = "N/A"
         region = "N/A"
         external_ip = "localhost"
@@ -62,7 +71,7 @@ def get_json(testing=False):
             except yaml.YAMLError as exc:
                 print(f"Could not read node->name: {exc}")
     else:
-        print(f"Could not find {node_config_file}")
+        logger.debug(f"Could not find {node_config_file}")
 
     ml_model_config = settings.get("ml_model_config")
     if ml_model_config.get("source_video_path") is None:
@@ -76,6 +85,11 @@ def get_json(testing=False):
     if last_config_update is not None and isinstance(last_config_update, datetime.datetime):
         last_config_update = last_config_update.isoformat()
         
+    model_running = settings.is_model_running()
+    if model_running is not None and isinstance(model_running, datetime.datetime):
+        model_running = model_running.isoformat()
+        logger.debug(f"Model running: {model_running}")
+    
     node = generate_node(
         hostname=hostname,
         ip=ip,
@@ -94,6 +108,8 @@ def get_json(testing=False):
         external_ip=external_ip,
         last_inference_time=last_inference_time,
         config_last_update=last_config_update,
+        model_running=model_running,
+        stopping=not settings.get_continue_stream(),
     )
 
     return node

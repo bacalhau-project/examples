@@ -1,4 +1,4 @@
-FROM python:3.10.14-slim
+FROM python:3.10-slim-bullseye
 
 WORKDIR /app
 
@@ -28,22 +28,25 @@ RUN apt update \
 # Need FFMPEG for video processing
 RUN apt-get install ffmpeg libsm6 libxext6  -y
 
-COPY scripts/ /tmp/scripts/
-RUN chmod +x /tmp/scripts/*.sh
+COPY scripts/setup-venv.sh /tmp/scripts/setup-venv.sh
+RUN chmod +x /tmp/scripts/setup-venv.sh
 
 USER "${APPUSER}"
 
-RUN echo "export PATH=/home/${APPUSER}/.local/bin:$PATH" >> /home/"${APPUSER}"/.bashrc
+RUN echo "export PATH=/home/${APPUSER}/.local/bin:/home/${APPUSER}/.cargo/bin:$PATH" >> /home/"${APPUSER}"/.bashrc
 
-COPY --chown="${APPUSER}":"${APPUSER}" app/static/ app/templates/ app/ requirements.txt ./
-
+COPY requirements.txt /tmp/requirements.txt
 RUN /tmp/scripts/setup-venv.sh
+
+COPY --chown="${APPUSER}":"${APPUSER}" app/*.py ./
+COPY --chown="${APPUSER}":"${APPUSER}" static/ ./static/
+COPY --chown="${APPUSER}":"${APPUSER}" templates/ ./templates/
 
 EXPOSE 14041
 EXPOSE 16861
 
-COPY gunicorn_config.py /app/gunicorn_config.py
-CMD ["gunicorn", "-c", "/app/gunicorn_config.py", "wsgi:app"]
+COPY scripts/start-server.sh /tmp/scripts/start-server.sh
+CMD ["/tmp/scripts/start-server.sh"]
 
 
 #   - echo "Creating gunicorn container service unit..."
@@ -89,33 +92,10 @@ CMD ["gunicorn", "-c", "/app/gunicorn_config.py", "wsgi:app"]
 # }
 # EOF
 
-# echo "Restarting all services ... "
-# sudo systemctl enable gunicorn.service
-
-# systemctl daemon-reload
-# systemctl restart gunicorn
-# echo "Done with Gunicorn."
-
 # - echo "Installing lighthttpd for heartbeat"
 # - apt install -y lighttpd
 # - systemctl restart lighttpd
 # - echo -n "ok" | sudo tee /var/www/html/index.lighttpd.html > /dev/null
-
-# #
-# # Sync from /tmp
-# #
-# - rsync --no-relative /tmp/rsync/${ username }/setup-venv.sh /home/${ username }
-# - rsync --no-relative /tmp/rsync/${ username }/.env /home/${ username }
-# - rm -rf /tmp/rsync
-# #
-# # Install the gunicorn service
-# #
-# - git clone https://github.com/bacalhau-project/examples.git /tmp/web-control-plane
-# - (cd /tmp/web-control-plane && git checkout web-control-plane)
-# - rsync -av --no-relative /tmp/web-control-plane/${ relativecodeinrepodir }/* ${ appdir }
-# - chown -R ${ username }:${ username } ${ appdir }
-# - env $(cat /home/${ username }/.env | xargs) /node/install-gunicorn-service.sh
-
 
 # - encoding: b64
 # content: |

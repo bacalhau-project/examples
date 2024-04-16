@@ -33,18 +33,13 @@ variable "private_key" {
   description = "Private key file used to connect to the instance"
 }
 
-variable "relativecodeinrepodir" {
-  type        = string
-  description = "Relative path to the code in the repo"
-}
-
 variable "siteurl" {
   type        = string
   description = "Site URL for the application"
 }
 
 variable "token" {
-  type      = string
-  sensitive = true
+  type        = string
+  sensitive   = true
   description = "Token to use to update the nginx configuration"
-  }
+}

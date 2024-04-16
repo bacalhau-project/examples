@@ -49,8 +49,6 @@ data "cloudinit_config" "user_data" {
 
       bacalhau_service : filebase64("${path.root}/node_files/bacalhau.service"),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
-      install_gunicorn_services : filebase64("${path.root}/node_files/install_gunicorn_services.sh"),
-      setup_venv : filebase64("${path.root}/node_files/setup_venv.sh"),
 
       bacalhau_bootstrap : filebase64("${path.root}/bacalhau.run"),
 
@@ -63,9 +61,11 @@ data "cloudinit_config" "user_data" {
       region : each.value.region,
       zone : each.key,
       project_id : var.project_id,
-      relativecodeinrepodir : var.relativecodeinrepodir,
       token : var.token,
       absolute_local_path : "${local.appdir}",
+      default_env : filebase64("${path.root}/node_files/default.env"),
+      docker_compose : filebase64("${path.root}/node_files/docker-compose.yml"),
+      ml_model_config : filebase64("${path.root}/node_files/ml-model-config.yaml"),
     })
   }
 }
@@ -82,7 +82,7 @@ resource "google_compute_instance" "gcp_instance" {
   boot_disk {
     initialize_params {
       image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
-      size  = 40
+      size  = 60
     }
   }
 
@@ -118,7 +118,7 @@ resource "google_compute_instance" "gcp_instance" {
   }
 
   labels = {
-    goog-ec-src = "vm_add-gcloud"
+    goog-ec-src = "vm_add-tf"
   }
 
   allow_stopping_for_update = true

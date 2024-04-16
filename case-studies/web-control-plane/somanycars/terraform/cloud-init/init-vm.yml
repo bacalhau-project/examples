@@ -3,7 +3,6 @@ packages:
   - git
   - make
   - curl
-  - gunicorn
 
 write_files:
   - encoding: b64
@@ -35,6 +34,18 @@ write_files:
     owner: root:root
     path: /etc/bacalhau-bootstrap
     permissions: "0400"
+  - encoding: b64
+    content: |
+      ${ default_env }
+    owner: root:root
+    path: /node/default.env
+    permissions: "0400"
+  - encoding: b64
+    content: |
+      ${ ml_model_config }
+    owner: root:root
+    path: /node/config/ml-model-config.yaml
+    permissions: "0777"
 
 package_update: true
 
@@ -74,37 +85,42 @@ runcmd:
   # Install Bacalhau
   #
   - |
-    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/$GENHOME/data bash
+    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/data bash
   - echo "Bacalhau downloaded."
   # Download from videos and weights directory
-  - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o ${ appdir }/videos.tar.gz
-  - tar -xvf ${ appdir }/videos.tar.gz -C ${ appdir }
-  - curl -s itsadash.work/static/somanycars.org/weights.tar.gz -o ${ appdir }/weights.tar.gz
-  - tar -xvf ${ appdir }/weights.tar.gz -C ${ appdir }
+  - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o /node/videos.tar.gz
+  - tar -xvf /node/videos.tar.gz -C /node
+  - curl -s itsadash.work/static/somanycars.org/weights.tar.gz -o /node/weights.tar.gz
+  - tar -xvf /node/weights.tar.gz -C /node
+  - mkdir -p /node/config
+  - chown -R root:root /node/videos /node/weights /node/config
+  - chmod -R 0755 /node/videos /node/weights /node/config
+  #
+  # Copy the node info to the node directory
+  #
+  - cp /data/config.yaml /node/config/node-config.yaml
+  - cp /etc/bacalhau-node-info /node/config/bacalhau-node-info
+  - chmod 0777 /node/config
+  - chmod 0444 -R /node/config/*
+  - mkdir -p /var/log/uvicorn
   #
   # Get the external IP
   #
   - export EXTERNAL_IP=$(curl -s ifconfig.me)
   - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /etc/bacalhau-node-info
-  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /home/${ username }/.env
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /node/override.env
   #
-  # Make /data/config.yaml readable by the user
-  #
-  - chmod ugo+rx /data
-  - chmod ugo+r /data/config.yaml
-  #
-  # Install Gunicorn Docker Systemd Service
-  - mkdir -p /etc/systemd/system/gunicorn.service.d/
-  - chmod 0700 /etc/systemd/system/gunicorn.service.d/
-  #
-  # Make the app path read/writeable by the user
-  #
-  - chown -R ${ username }:${ username } ${ appdir }
   # Reload the systemd daemon, enable, and start the service
+  #
   - sudo sysctl -w net.core.rmem_max=2500000
   - sudo systemctl daemon-reload
   - sudo systemctl enable docker
   - sudo systemctl restart docker
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
-  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
+  # - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring_1.1-1_all.deb
+  # - sudo dpkg -i /tmp/cuda-keyring_1.1-1_all.deb
+  # - sudo apt-get update
+  # - sudo apt-get install -y cuda-drivers
+  # - sudo apt-get install -y nvidia-container-toolkit
+  # - sudo systemctl restart docker

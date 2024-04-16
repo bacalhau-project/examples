@@ -27,5 +27,6 @@ uv venv "${PYENVNAME}" --seed
 # Install Python dependencies from requirements.txt
 # shellcheck disable=SC1090
 source "${APPDIR}/${PYENVNAME}/bin/activate"
-pip install -r requirements.txt
+pip install -r /tmp/requirements.txt
 
+uv clean
