@@ -40,12 +40,37 @@ write_files:
     owner: root:root
     path: /node/default.env
     permissions: "0400"
+  - content: |
+      export VIDEOSDIR=/node/videos
+      export WEIGHTSDIR=/node/weights
+      export CONFIGDIR=/node/config
+    owner: root:root
+    path: /node/.env
+    permissions: "0644"
   - encoding: b64
     content: |
       ${ ml_model_config }
     owner: root:root
     path: /node/config/ml-model-config.yaml
     permissions: "0777"
+  - encoding: b64
+    content: |
+      ${ docker_compose }
+    owner: root:root
+    path: /node/docker-compose.yml
+    permissions: "0600"
+  - encoding: b64
+    content: |
+      ${ start_container }
+    owner: root:root
+    path: /node/start-container.sh
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ version }
+    owner: root:root
+    path: /node/VERSION
+    permissions: "0444"
 
 package_update: true
 
@@ -65,8 +90,8 @@ runcmd:
   #
   - mkdir -p /node
   - chmod 0700 /node
-  - mkdir -p /data
-  - chmod 0700 /data
+  - mkdir -p /opt/bacalhau
+  - chmod 0700 /opt/bacalhau
   #
   # Install docker
   #
@@ -80,12 +105,14 @@ runcmd:
     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
   - sudo apt-get update
-  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose docker-compose-plugin
+  - |
+    echo '{"registry-mirrors": ["https://mirror.gcr.io"]}' > /etc/docker/daemon.json
   #
   # Install Bacalhau
   #
   - |
-    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/data bash
+    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/opt/bacalhau bash
   - echo "Bacalhau downloaded."
   # Download from videos and weights directory
   - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o /node/videos.tar.gz
@@ -98,8 +125,6 @@ runcmd:
   #
   # Copy the node info to the node directory
   #
-  - cp /data/config.yaml /node/config/node-config.yaml
-  - cp /etc/bacalhau-node-info /node/config/bacalhau-node-info
   - chmod 0777 /node/config
   - chmod 0444 -R /node/config/*
   - mkdir -p /var/log/uvicorn
@@ -108,7 +133,8 @@ runcmd:
   #
   - export EXTERNAL_IP=$(curl -s ifconfig.me)
   - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /etc/bacalhau-node-info
-  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /node/override.env
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /node/.env
+  - cp /etc/bacalhau-node-info /node/config/bacalhau-node-info
   #
   # Reload the systemd daemon, enable, and start the service
   #
@@ -118,6 +144,13 @@ runcmd:
   - sudo systemctl restart docker
   - sudo systemctl enable bacalhau.service
   - sudo systemctl restart bacalhau.service
+  #
+  # Start the server
+  #
+  - VERSION=$(cat /node/VERSION) /node/start-container.sh
+  #
+  # Install NVIDIA drivers
+  #
   # - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring_1.1-1_all.deb
   # - sudo dpkg -i /tmp/cuda-keyring_1.1-1_all.deb
   # - sudo apt-get update

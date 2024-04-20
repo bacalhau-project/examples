@@ -64,8 +64,11 @@ data "cloudinit_config" "user_data" {
       token : var.token,
       absolute_local_path : "${local.appdir}",
       default_env : filebase64("${path.root}/node_files/default.env"),
-      docker_compose : filebase64("${path.root}/node_files/docker-compose.yml"),
-      ml_model_config : filebase64("${path.root}/node_files/ml-model-config.yaml"),
+      docker_compose : filebase64("${path.root}/node_files/docker_compose.yml"),
+      ml_model_config : filebase64("${path.root}/node_files/ml_model_config.yaml"),
+      start_container : filebase64("${path.root}/node_files/start_container.sh"),
+
+      version : filebase64("${path.root}/node_files/VERSION"),
     })
   }
 }

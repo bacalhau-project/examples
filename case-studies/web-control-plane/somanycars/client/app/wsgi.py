@@ -13,7 +13,7 @@ import logging
 
 from pathlib import Path
 
-from videoApp import app
+from videoApp import get_app
 from video_app_settings import get_settings
 
 # Global variable to hold the profiler instance
@@ -35,10 +35,11 @@ def stop_profiling_and_print_stats():
 
 def signal_handler(signal, frame):
     settings = get_settings()
+    app = get_app()
     
     # This function will be called when SIGINT is received
     print("SIGINT received, shutting down gracefully...")
-    app.shutdown()  # This will cause the app to stop processing requests
+    asyncio.run(app.shutdown())  # This will cause the app to stop processing requests
     settings.stop_stream()  # This will cause the app to stop processing frames
     settings.delete_db()
 
@@ -46,7 +47,8 @@ def signal_handler(signal, frame):
 
 
 async def app_runner(host: str, port: int, profile: bool):
-    config = Config(app=app, host=host, port=port, log_level="debug", workers=3)
+    app = get_app()
+    config = Config(app=app, host=host, port=port, log_level="info", workers=3, log_config=str(Path(__file__).parent / "log_conf.yaml"))
     server = Server(config=config)
 
     if profile:
@@ -60,6 +62,7 @@ async def app_runner(host: str, port: int, profile: bool):
 
 if __name__ == "__main__":
     settings = get_settings()
+    app = get_app()
 
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--host", default="0.0.0.0")
@@ -104,6 +107,7 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--iou_threshold", default=0.7, help="Iou threshold for the model", type=float
     )
+    
     parsedArgs = vars(argparser.parse_args())
     
     if parsedArgs["port"]:
@@ -113,7 +117,7 @@ if __name__ == "__main__":
         except ValueError:
             parsedArgs["port"] = 14041
         except AttributeError:
-            # Already an integer
+            # Already an integer - "int" doesn't have a "strip" method
             pass
 
     if parsedArgs["ml_model_config_file"] and Path(parsedArgs["ml_model_config_file"]).exists():
@@ -140,4 +144,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(app_runner(parsedArgs["host"], parsedArgs["port"], profile=False))
     finally:
-        app.shutdown()
+        asyncio.run(app.shutdown())

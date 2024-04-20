@@ -1,0 +1,88 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ML Model Configuration",
+    "type": "object",
+    "properties": {
+        "hostname": {
+            "type": "string"
+        },
+        "ip": {
+            "type": "string"
+        },
+        "model_weights": {
+            "type": "string"
+        },
+        "hashCode": {
+            "type": "string"
+        },
+        "zone": {
+            "type": "string"
+        },
+        "region": {
+            "type": "string"
+        },
+        "nodeID": {
+            "type": "string"
+        },
+        "video_feed": {
+            "type": "string"
+        },
+        "confidence_threshold": {
+            "type": "number"
+        },
+        "iou_threshold": {
+            "type": "number"
+        },
+        "skip_frames": {
+            "type": "integer"
+        },
+        "source_video_path": {
+            "type": "string"
+        },
+        "total_detections": {
+            "type": "object"
+        },
+        "frames_processed_per_clip": {
+            "type": "integer"
+        },
+        "external_ip": {
+            "type": "string"
+        },
+        "last_inference_time": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "config_last_update": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "model_running": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "stopping": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "hostname",
+        "ip",
+        "model_weights",
+        "hashCode",
+        "zone",
+        "region",
+        "nodeID",
+        "video_feed",
+        "confidence_threshold",
+        "iou_threshold",
+        "skip_frames",
+        "source_video_path",
+        "total_detections",
+        "frames_processed_per_clip",
+        "external_ip",
+        "last_inference_time",
+        "config_last_update",
+        "model_running",
+        "stopping"
+    ]
+}

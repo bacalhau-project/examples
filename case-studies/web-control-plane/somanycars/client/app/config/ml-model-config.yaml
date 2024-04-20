@@ -1,0 +1,6 @@
+source_weights_url: "https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8x.pt"
+source_weights_path: yolov8n.pt
+confidence_threshold: 0.3
+iou_threshold: 0.7
+skip_frames: 5
+number_of_seconds_per_clip: 10

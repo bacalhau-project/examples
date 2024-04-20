@@ -1,6 +1,6 @@
 from glob import glob
 
-workers = 1
+workers = 4
 log_level = "debug"
 reload = True
 timeout = 120

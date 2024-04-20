@@ -4,18 +4,26 @@ from pathlib import Path
 import jsonpickle
 import yaml
 from fastapi import Request, Response
+from jsonschema import validate, ValidationError
+import json
 
 import logging
 import datetime
 
 import videoApp
+import signal
 
 from video_app_settings import get_settings
 from node_functions import generate_node, generateHashCode, test_node
 logger = logging.getLogger(__name__)
 
-async def json_testing(request: Request):
-    return json_endpoint(request=request, testing=True)
+def validate_json(json_object: dict) -> (bool, str):
+    try:
+        validate(instance=json_object, schema=load_json_schema())
+    except ValidationError as e:
+        logger.error(f"JSON is not valid: {e}")
+        return False, str(e)
+    return True, ""
 
 
 async def json_endpoint(request: Request, testing=False):
@@ -41,21 +49,26 @@ def get_json(testing=False):
             hostname = "localhost"
             ip = "127.0.0.1"
         
-        node_info = Path("/app/config/bacalhau-node-info")
-        zone = "N/A"
-        region = "N/A"
-        external_ip = "localhost"
-        if node_info.exists():
-            # Read from /etc/bacalhau-node-info and get ZONE= and REGION=
-            with open(node_info, "r") as file:
-                lines = file.readlines()
-                for line in lines:
-                    if "ZONE=" in line:
-                        zone = line.split("=")[1].replace("\n", "")
-                    if "REGION=" in line:
-                        region = line.split("=")[1].replace("\n", "")
-                    if "EXTERNAL_IP=" in line:
-                        external_ip = line.split("=")[1].replace("\n", "")
+    node_info = Path("/app/config/bacalhau-node-info")
+    zone = "N/A"
+    region = "N/A"
+    external_ip = "localhost"
+    logger.debug(f"Checking if {node_info} exists")
+    if node_info.exists():
+        # Read from /etc/bacalhau-node-info and get ZONE= and REGION=
+        with open(node_info, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                if "ZONE=" in line:
+                    zone = line.split("=")[1].replace("\n", "")
+                if "REGION=" in line:
+                    region = line.split("=")[1].replace("\n", "")
+                if "EXTERNAL_IP=" in line:
+                    external_ip = line.split("=")[1].replace("\n", "")
+                if "PRIVATE_IP=" in line:
+                    private_ip = line.split("=")[1].replace("\n", "")
+                    if private_ip != ip:
+                        ip = private_ip
 
     hashCodeValue = generateHashCode(hostname)
     node_id = f"n-{hashCodeValue}"
@@ -69,7 +82,7 @@ def get_json(testing=False):
                 node = node_config["node"]
                 node_id = node["name"]
             except yaml.YAMLError as exc:
-                print(f"Could not read node->name: {exc}")
+                logger.warn(f"Could not read node->name: {exc}")
     else:
         logger.debug(f"Could not find {node_config_file}")
 
@@ -88,7 +101,9 @@ def get_json(testing=False):
     model_running = settings.is_model_running()
     if model_running is not None and isinstance(model_running, datetime.datetime):
         model_running = model_running.isoformat()
-        logger.debug(f"Model running: {model_running}")
+    else:
+        # If the model is not running, we should set the value to minimum datetime
+        model_running = datetime.datetime.min.isoformat()
     
     node = generate_node(
         hostname=hostname,
@@ -111,5 +126,17 @@ def get_json(testing=False):
         model_running=model_running,
         stopping=not settings.get_continue_stream(),
     )
+    
+    valid, err = validate_json(node)
+    
+    if not valid:
+        logger.error(f"JSON is not valid: {err}")
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     return node
+
+def load_json_schema():
+    schema_path = Path(__file__).parent / "schema" / "feed_schema.json"
+    schema = schema_path.read_text()
+    return json.loads(schema)
+

@@ -38,7 +38,8 @@ RUN echo "export PATH=/home/${APPUSER}/.local/bin:/home/${APPUSER}/.cargo/bin:$P
 COPY requirements.txt /tmp/requirements.txt
 RUN /tmp/scripts/setup-venv.sh
 
-COPY --chown="${APPUSER}":"${APPUSER}" app/*.py ./
+COPY --chown="${APPUSER}":"${APPUSER}" app/*.py app/*.yaml ./
+COPY --chown="${APPUSER}":"${APPUSER}" app/schema/ ./schema/
 COPY --chown="${APPUSER}":"${APPUSER}" static/ ./static/
 COPY --chown="${APPUSER}":"${APPUSER}" templates/ ./templates/
 
@@ -112,7 +113,7 @@ CMD ["/tmp/scripts/start-server.sh"]
 # permissions: "0444"
 # path: /tmp/rsync/${ username }/.env
 # #
-# # Make /data/config.yaml readable by the user
+# # Make /opt/bacalhau/config.yaml readable by the user
 # #
-# - chmod ugo+rx /data
-# - chmod ugo+r /data/config.yaml
+# - chmod ugo+rx /opt/bacalhau
+# - chmod ugo+r /opt/bacalhau/config.yaml

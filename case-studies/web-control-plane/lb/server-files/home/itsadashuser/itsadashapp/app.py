@@ -1,8 +1,10 @@
 # app.py
 import concurrent.futures  # noqa: E402
 import json as JSON  # noqa: E402
+import logging  # noqa: E402
 import os  # noqa: E402
 import sqlite3  # noqa: E402
+import subprocess
 import time  # noqa: E402
 from functools import wraps  # noqa: E402
 from io import TextIOWrapper  # noqa: E402
@@ -359,7 +361,45 @@ def sqlite_stats():
     return render_template("sqlite_stats.html", sites=sites)
 
 
+def kill_processes_in_close_wait():
+    # Detect if we need sudo to run the lsof command
+    try:
+        subprocess.run(["lsof"], check=True, text=True, capture_output=True)
+        sudo_string = ""
+    except Exception as e:
+        print(f"Error running lsof command: {e}")
+        sudo_string = "sudo "
+
+    try:
+        # Running lsof command to find processes with sockets in CLOSE_WAIT state
+        command = f"{sudo_string}lsof -i | grep CLOSE_WAIT"
+
+        # Run the command and get the output, stop printing it to stdout or console
+        result = subprocess.run(
+            command, shell=True, text=True, capture_output=True, timeout=5
+        )
+
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if line and "CLOSE_WAIT" in line and "python" in line.lower():
+                print(f"Killing process: {line}")
+                parts = line.split()
+                pid = parts[1]  # Process ID
+                subprocess.run(
+                    [f"{sudo_string}", "kill", "-9", pid],
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                )
+
+    except subprocess.CalledProcessError as e:
+        print("Failed to find or kill processes:", e)
+
+
 flaskApp = Flask("itsadash", static_url_path="/static")
+# In the background start a process to find and kill processes in CLOSE_WAIT state
+# gevent.spawn(kill_processes_in_close_wait)
+
 flaskApp.config.from_pyfile("config.py")
 try:
     os.makedirs(flaskApp.instance_path)
@@ -424,7 +464,8 @@ def websocket_service_somanycars_start(data):
         for _ in range(5):
             if not globalSoManyCarsQueue.empty():
                 data = globalSoManyCarsQueue.get()
-                socketio.emit("node", data.text)
+                if data is not None and hasattr(data, "text"):
+                    socketio.emit("node", data.text)
         socketio.sleep(1)
 
 
@@ -447,14 +488,31 @@ def fetchBulkJustIcons(url):
 
 
 def fetchBulkSoManyCars(url):
+    # Get file logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.FileHandler("somanycars.log"))
+
     try:
         runningSoManyCarsQueue.put(True)
         requests = [grequests.get(url) for _ in range(200)]
         results = grequests.map(requests)
+
+        # results = []
+        # for i in range(200):
+        #     start_time = datetime.datetime.now()
+        #     results.append(requests.get(url, stream=False))
+        #     end_time = datetime.datetime.now()
+        #     logger.info(
+        #         f"Request {i} took {end_time - start_time} to complete - {results[i].status_code}"
+        #     )
+
         for result in results:
             globalSoManyCarsQueue.put(result)
+    except Exception as e:
+        logger.error(f"Error in fetchBulkSoManyCars function: {e}")
     finally:
-        if not runningSoManyCarsQueue.empty():
+        while not runningSoManyCarsQueue.empty():
             runningSoManyCarsQueue.get()
 
 

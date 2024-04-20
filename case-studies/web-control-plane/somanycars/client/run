@@ -76,12 +76,25 @@ function serve:local {
 
 function serve {
   # Run the Docker container
-  docker compose up
+  VERSION="$(cat "$(pwd)/VERSION")" \
+  DEFAULT_ENV_FILE="$(pwd)/default.env" \
+  ENV_FILE="$(pwd)/.env" \
+  PWD="$(pwd)" \
+  docker compose -f ../terraform/node_files/docker_compose.yml up
 }
 
 function serve:daemon {
   # Run the Docker container in the background
   docker compose up -d
+}
+
+function copy-version-to-node-files {
+  cp VERSION ../terraform/node_files/VERSION
+}
+
+function export_requirements {
+  # Update and export requirements.txt from poetry.lock
+  poetry export --without-hashes --format=requirements.txt > requirements.txt
 }
 
 function build-and-submit {
@@ -91,7 +104,12 @@ function build-and-submit {
   if [ "$DEV" = "true" ]; then
     VERSION="${VERSION}-dev-$(date +%s)"
   fi
+
+  export_requirements
+
   docker buildx build --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+
+  copy-version-to-node-files
 }
 
 function build-and-submit:cloud {
@@ -101,7 +119,12 @@ function build-and-submit:cloud {
   if [ "$DEV" = "true" ]; then
     VERSION="${VERSION}-dev-$(date +%s)"
   fi
+
+  export_requirements
+
   docker buildx build --builder cloud-bacalhauproject-cloud-builder --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+
+  copy-version-to-node-files
 }
 
 function help {

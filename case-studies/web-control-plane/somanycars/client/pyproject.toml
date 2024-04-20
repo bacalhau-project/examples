@@ -3,6 +3,7 @@ name = "somanycars-org"
 version = "0.1.0"
 description = ""
 authors = ["David Aronchick <aronchick@gmail.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -18,8 +19,8 @@ vidgear = "^0.3.2"
 jsonpickle = "^3.0.4"
 simplejpeg = "^1.7.2"
 aiocache = "^0.12.2"
+jsonschema = "^4.21.1"
 
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

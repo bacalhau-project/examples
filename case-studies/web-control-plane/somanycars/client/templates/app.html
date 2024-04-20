@@ -56,9 +56,9 @@
 
         #video-feed-img {
             display: block;
-            width: 100%;
             /* Make video responsive within the container */
-            height: auto;
+            height: 200px;
+            object-fit: contain;
             /* Maintain aspect ratio */
         }
 
@@ -105,27 +105,145 @@
             width: 100%;
             margin-top: 20px;
         }
+
+        @keyframes ldio-x2uulkbinbj {
+            0% {
+                opacity: 1
+            }
+
+            100% {
+                opacity: 0
+            }
+        }
+
+        .ldio-x2uulkbinbj div {
+            left: 94px;
+            top: 48px;
+            position: absolute;
+            animation: ldio-x2uulkbinbj linear 1s infinite;
+            background: #fe718d;
+            width: 12px;
+            height: 24px;
+            border-radius: 6px / 12px;
+            transform-origin: 6px 52px;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(1) {
+            transform: rotate(0deg);
+            animation-delay: -0.9166666666666666s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(2) {
+            transform: rotate(30deg);
+            animation-delay: -0.8333333333333334s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(3) {
+            transform: rotate(60deg);
+            animation-delay: -0.75s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(4) {
+            transform: rotate(90deg);
+            animation-delay: -0.6666666666666666s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(5) {
+            transform: rotate(120deg);
+            animation-delay: -0.5833333333333334s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(6) {
+            transform: rotate(150deg);
+            animation-delay: -0.5s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(7) {
+            transform: rotate(180deg);
+            animation-delay: -0.4166666666666667s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(8) {
+            transform: rotate(210deg);
+            animation-delay: -0.3333333333333333s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(9) {
+            transform: rotate(240deg);
+            animation-delay: -0.25s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(10) {
+            transform: rotate(270deg);
+            animation-delay: -0.16666666666666666s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(11) {
+            transform: rotate(300deg);
+            animation-delay: -0.08333333333333333s;
+            background: #fe718d;
+        }
+
+        .ldio-x2uulkbinbj div:nth-child(12) {
+            transform: rotate(330deg);
+            animation-delay: 0s;
+            background: #fe718d;
+        }
+
+        .loadingio-spinner-spinner-nq4q5u6dq7r {
+            width: 200px;
+            height: 200px;
+            display: inline-block;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .ldio-x2uulkbinbj {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform: translateZ(0) scale(1);
+            backface-visibility: hidden;
+            transform-origin: 0 0;
+            /* see note above */
+        }
+
+        .ldio-x2uulkbinbj div {
+            box-sizing: content-box;
+        }
     </style>
 </head>
 
 <body class="container">
-    <h1>Video Feed from {{ hostname }}</h1>
+    <h1>Video Feed from {{ context.hostname }}</h1>
 
     <div id="full-container">
         <div id="video-container">
-            <img src="{{ video_feed }}" alt="Video Feed" id="video-feed-img" />
+            <img src="{{ context.video_feed }}" alt="Video Feed" id="video-feed-img" />
         </div>
 
         <div id="info-table">
-            <div class="info-row"><span class="info-title">Hostname:</span><span>{{ hostname }}</span></div>
-            <div class="info-row"><span class="info-title">IP:</span><span>{{ ip }}</span></div>
-            <div class="info-row"><span class="info-title">HashCode:</span><span>{{ hashCode }}</span></div>
-            <div class="info-row"><span class="info-title">Zone:</span><span>{{ zone }}</span></div>
-            <div class="info-row"><span class="info-title">Region:</span><span>{{ region }}</span></div>
-            <div class="info-row"><span class="info-title">NodeID:</span><span>{{ nodeID }}</span></div>
-            <div class="info-row"><span class="info-title">External IP:</span><span id="external-ip">{{ external_ip
+            <div class="info-row"><span class="info-title">Hostname:</span><span>{{ context.hostname }}</span></div>
+            <div class="info-row"><span class="info-title">IP:</span><span>{{ context.ip }}</span></div>
+            <div class="info-row"><span class="info-title">HashCode:</span><span>{{ context.hashCode }}</span></div>
+            <div class="info-row"><span class="info-title">Zone:</span><span>{{ context.zone }}</span></div>
+            <div class="info-row"><span class="info-title">Region:</span><span>{{ context.region }}</span></div>
+            <div class="info-row"><span class="info-title">NodeID:</span><span>{{ context.nodeID }}</span></div>
+            <div class="info-row"><span class="info-title">External IP:</span><span id="external-ip">{{
+                    context.external_ip
                     }}</span></div>
-            <div class="info-row"><span class="info-title">Model:</span><span id="model-weights">{{ model_weights
+            <div class="info-row"><span class="info-title">Model:</span><span id="model-weights">{{
+                    context.model_weights
                     }}</span>
             </div>
             <div class="info-row">
@@ -158,7 +276,10 @@
             <span class="btn btn-primary" id="stop-button">Stop</span>
         </div>
     </div>
-    <input type="hidden" id="external_ip" value="{{ external_ip }}" />
+    <input type="hidden" id="external_ip" value="{{ context.external_ip }}" />
+    <div class="error-container">
+        <div class="error-message" id="error-message">{{ errorText }}</div>
+    </div>
     <script>
         $(document).ready(function () {
             var lastUpdated = new Date();
@@ -179,8 +300,8 @@
             });
 
             function executeStop() {
-                var img = document.getElementById('video-feed-img');
-                img.src = "/static/stop.jpg";
+                $('.video-feed-img').hide();
+                $("#video-container").innerHTML = $("#spinner-container").innerHTML;
                 clearInterval(refreshIntervalId);
             }
             // Every 2 seconds, refresh the json feed
@@ -260,6 +381,27 @@
             });
         }
     </script>
+    <div id="spinner-container" style="display: none;">
+        <div class="loadingio-spinner-spinner-nq4q5u6dq7r">
+            <div class="ldio-x2uulkbinbj">
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+        </div>
+        <style type="text/css">
+            /* [ldio] generated by https://loading.io */
+        </style>
+    </div>
 </body>
 
 </html>
