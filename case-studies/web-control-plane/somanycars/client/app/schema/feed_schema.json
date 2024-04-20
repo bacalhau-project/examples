@@ -62,6 +62,10 @@
         },
         "stopping": {
             "type": "boolean"
+        },
+        "current_server_time": {
+            "type": "string",
+            "format": "date-time"
         }
     },
     "required": [
@@ -83,6 +87,7 @@
         "last_inference_time",
         "config_last_update",
         "model_running",
-        "stopping"
+        "stopping",
+        "current_server_time"
     ]
 }

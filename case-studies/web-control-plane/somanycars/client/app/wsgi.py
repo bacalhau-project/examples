@@ -144,4 +144,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(app_runner(parsedArgs["host"], parsedArgs["port"], profile=False))
     finally:
-        asyncio.run(app.shutdown())
+        app.shutdown()

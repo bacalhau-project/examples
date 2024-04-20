@@ -125,6 +125,7 @@ def get_json(testing=False):
         config_last_update=last_config_update,
         model_running=model_running,
         stopping=not settings.get_continue_stream(),
+        current_server_time=datetime.datetime.now().isoformat()
     )
     
     valid, err = validate_json(node)
