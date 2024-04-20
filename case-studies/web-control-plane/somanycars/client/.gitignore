@@ -2,6 +2,7 @@ app/videos/*.MOV
 app/weights/*.pt
 
 *.mp4
+*.MOV
 
 *.pt
 
