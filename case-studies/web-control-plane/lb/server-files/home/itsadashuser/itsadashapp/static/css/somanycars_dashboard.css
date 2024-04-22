@@ -1,0 +1,135 @@
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --info-color: #17a2b8;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+}
+
+.node-container {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 2px solid var(--secondary-color);
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.video-feed-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  border: 4px solid var(--primary-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.video-feed {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  max-height: 300px;
+}
+
+.model-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  background-color: var(--primary-color);
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.model-name {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.detection-count {
+  display: flex;
+  align-items: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.detection-count .count {
+  margin-left: 5px;
+  margin-right: 15px;
+  padding: 5px 10px;
+  border-radius: 20px;
+}
+
+.detection-count .car-count {
+  background-color: var(--success-color);
+}
+
+.detection-count .truck-count {
+  background-color: var(--warning-color);
+}
+
+.text-data-container {
+  border: 2px solid var(--secondary-color);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background-color: #f8f9fa;
+}
+
+.data-element {
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background-color: #ffffff;
+  font-size: 16px;
+  transition: background-color 0.5s;
+}
+
+.data-element::before {
+  font-weight: bold;
+  margin-right: 5px;
+  color: var(--primary-color);
+}
+
+.data-element.updated {
+  background-color: var(--info-color);
+  color: #ffffff;
+}
+
+.external-ip::before {
+  content: "External IP: ";
+}
+.region::before {
+  content: "Region: ";
+}
+.zone::before {
+  content: "Zone: ";
+}
+.source-video-path::before {
+  content: "Source Video Path: ";
+}
+.model-weights::before {
+  content: "Model Weights: ";
+}
+.confidence-threshold::before {
+  content: "Confidence Threshold: ";
+}
+.skip-frames::before {
+  content: "Skip Frames: ";
+}
+.last-inference-time::before {
+  content: "Last Inference Time: ";
+}
+.config-last-update::before {
+  content: "Config Last Update: ";
+}
+.hostname::before {
+  content: "Hostname: ";
+}
+.node-id::before {
+  content: "Node ID: ";
+}

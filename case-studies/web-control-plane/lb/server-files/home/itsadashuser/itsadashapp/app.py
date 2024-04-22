@@ -1,8 +1,11 @@
 # app.py
 import concurrent.futures  # noqa: E402
+import datetime  # noqa: E402
 import json as JSON  # noqa: E402
+import logging  # noqa: E402
 import os  # noqa: E402
 import sqlite3  # noqa: E402
+import subprocess
 import time  # noqa: E402
 from functools import wraps  # noqa: E402
 from io import TextIOWrapper  # noqa: E402
@@ -333,6 +336,14 @@ def render_justicons_dashboard():
     return render_template("justicons_dashboard.html")
 
 
+def somanycars_dashboard():
+    return render_somanycars_dashboard()
+
+
+def render_somanycars_dashboard():
+    return render_template("somanycars_dashboard.html")
+
+
 def sqlite_stats():
     # For every site in './sites', get the number of IPs
     sites = {}
@@ -351,7 +362,45 @@ def sqlite_stats():
     return render_template("sqlite_stats.html", sites=sites)
 
 
+def kill_processes_in_close_wait():
+    # Detect if we need sudo to run the lsof command
+    try:
+        subprocess.run(["lsof"], check=True, text=True, capture_output=True)
+        sudo_string = ""
+    except Exception as e:
+        print(f"Error running lsof command: {e}")
+        sudo_string = "sudo "
+
+    try:
+        # Running lsof command to find processes with sockets in CLOSE_WAIT state
+        command = f"{sudo_string}lsof -i | grep CLOSE_WAIT"
+
+        # Run the command and get the output, stop printing it to stdout or console
+        result = subprocess.run(
+            command, shell=True, text=True, capture_output=True, timeout=5
+        )
+
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if line and "CLOSE_WAIT" in line and "python" in line.lower():
+                print(f"Killing process: {line}")
+                parts = line.split()
+                pid = parts[1]  # Process ID
+                subprocess.run(
+                    [f"{sudo_string}", "kill", "-9", pid],
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                )
+
+    except subprocess.CalledProcessError as e:
+        print("Failed to find or kill processes:", e)
+
+
 flaskApp = Flask("itsadash", static_url_path="/static")
+# In the background start a process to find and kill processes in CLOSE_WAIT state
+# gevent.spawn(kill_processes_in_close_wait)
+
 flaskApp.config.from_pyfile("config.py")
 try:
     os.makedirs(flaskApp.instance_path)
@@ -364,51 +413,108 @@ flaskApp.add_url_rule("/regen", view_func=regen_sites, methods=["POST"])
 flaskApp.add_url_rule(
     "/justicons_dashboard", view_func=justicons_dashboard, methods=["GET"]
 )
+flaskApp.add_url_rule(
+    "/somanycars_dashboard", view_func=somanycars_dashboard, methods=["GET"]
+)
 flaskApp.add_url_rule("/sqlite_stats", view_func=sqlite_stats, methods=["GET"])
 
 socketio = SocketIO(flaskApp, debug=True, cors_allowed_origins="*", async_mode="gevent")
 
 
-globalDataQueue = gevent.queue.Queue(100)
-runningQueue = gevent.queue.Queue(1)
-runEventLoop = gevent.queue.Queue(1)
+globalJustIconsQueue = gevent.queue.Queue(100)
+runningJustIconsQueue = gevent.queue.Queue(1)
+runJustIconsEventLoop = gevent.queue.Queue(1)
 
 
-# Create a websocket service that queries the domain and returns the json response.
-# The websocket service should be able to push a message to the client every 0.1 seconds.
-# The websocket service will maintain a queue of 100 queries from the domain.
-# When the queue is less than 20% full, it will issue another 100 queries to the domain, so it is always providing
-# new data to the client.
-@socketio.on("start")
-def websocket_service(data):
-    runEventLoop.put(True)
-    print("Starting event loop...")
-    while not runEventLoop.empty():
-        if globalDataQueue.qsize() < 40 and not runningQueue.qsize():
-            socketio.start_background_task(fetchBulk, "http://justicons.org/json")
+@socketio.on("start_justicons_socket")
+def websocket_service_justicons_start(data):
+    runJustIconsEventLoop.put(True)
+    print("Starting justicons event loop...")
+    while not runJustIconsEventLoop.empty():
+        if globalJustIconsQueue.qsize() < 40 and not runningJustIconsQueue.qsize():
+            socketio.start_background_task(
+                fetchBulkJustIcons, "http://justicons.org/json"
+            )
         for _ in range(5):
-            if not globalDataQueue.empty():
-                data = globalDataQueue.get()
+            if not globalJustIconsQueue.empty():
+                data = globalJustIconsQueue.get()
                 socketio.emit("node", data.text)
         socketio.sleep(1)
 
 
-@socketio.on("stop")
-def stop():
-    runEventLoop.get()
-    print("Stopping event loop...")
+@socketio.on("stop_justicons_socket")
+def websocket_service_justicons_stop():
+    runJustIconsEventLoop.get()
+    print("Stopping justicons event loop...")
 
 
-def fetchBulk(url):
+globalSoManyCarsQueue = gevent.queue.Queue(100)
+runningSoManyCarsQueue = gevent.queue.Queue(1)
+runSoManyCarsEventLoop = gevent.queue.Queue(1)
+
+
+@socketio.on("start_somanycars_socket")
+def websocket_service_somanycars_start(data):
+    runSoManyCarsEventLoop.put(True)
+    print("Starting somanycars event loop...")
+    while not runSoManyCarsEventLoop.empty():
+        if globalSoManyCarsQueue.qsize() < 40 and not runningSoManyCarsQueue.qsize():
+            socketio.start_background_task(
+                fetchBulkSoManyCars, "http://somanycars.org/json"
+            )
+        for _ in range(5):
+            if not globalSoManyCarsQueue.empty():
+                data = globalSoManyCarsQueue.get()
+                if data is not None and hasattr(data, "text"):
+                    socketio.emit("node", data.text)
+        socketio.sleep(1)
+
+
+@socketio.on("stop_somanycars_socket")
+def websocket_service_somanycars_stop():
+    runSoManyCarsEventLoop.get()
+    print("Stopping somanycars event loop...")
+
+
+def fetchBulkJustIcons(url):
     try:
-        runningQueue.put(True)
+        runningJustIconsQueue.put(True)
         requests = [grequests.get(url) for _ in range(200)]
         results = grequests.map(requests)
         for result in results:
-            globalDataQueue.put(result)
+            globalJustIconsQueue.put(result)
     finally:
-        if not runningQueue.empty():
-            runningQueue.get()
+        if not runningJustIconsQueue.empty():
+            runningJustIconsQueue.get()
+
+
+def fetchBulkSoManyCars(url):
+    # Get file logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.FileHandler("somanycars.log"))
+
+    try:
+        runningSoManyCarsQueue.put(True)
+        # requests = [grequests.get(url) for _ in range(12)]
+        # results = grequests.map(requests)
+
+        results = []
+        for i in range(12):
+            start_time = datetime.datetime.now()
+            results.append(requests.get(url, stream=False))
+            end_time = datetime.datetime.now()
+            logger.info(
+                f"Request {i} took {end_time - start_time} to complete - {results[i].status_code}"
+            )
+
+        for result in results:
+            globalSoManyCarsQueue.put(result)
+    except Exception as e:
+        logger.error(f"Error in fetchBulkSoManyCars function: {e}")
+    finally:
+        while not runningSoManyCarsQueue.empty():
+            runningSoManyCarsQueue.get()
 
 
 if __name__ == "__main__":

@@ -8,11 +8,13 @@ httpworker
 itsadash
 jsonify
 justicons
+pids
 pyfile
 regen
 serverip
 SITENAME
 socketio
+somanycars
 TOKEN
 TOKENARGUMENT
 webdata
