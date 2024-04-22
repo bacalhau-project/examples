@@ -1,0 +1,14 @@
+app/videos/*.MOV
+app/weights/*.pt
+
+*.mp4
+*.MOV
+
+*settings.db*
+
+*.pt
+
+videos.tar.gz
+weights.tar.gz
+
+!default.env

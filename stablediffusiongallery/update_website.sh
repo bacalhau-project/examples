@@ -16,4 +16,4 @@ ssh ubuntu@pintura.cloud "sudo chown www-data:www-data /var/www/pintura-cloud"
 
 ssh ubuntu@pintura.cloud "sudo /gunicorn/update_db.sh update"
 
-# ssh ubuntu@pintura.cloud "sudo /gunicorn/update_db.sh reset"  
+# ssh ubuntu@pintura.cloud "sudo /gunicorn/update_db.sh reset"

@@ -1,7 +1,7 @@
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
-PYTHON_RUNNER := poetry run
+PYTHON_RUNNER = .venv/bin/poetry run
 
-.PHONY: all  
+.PHONY: all
 all: init convert test
 
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
@@ -22,7 +22,9 @@ DST_IMGS := $(patsubst %,$(DST_DIR)/%,$(SRC_IMGS))
 
 # Need to process these one at a time so that we can extract the right output dir
 # Otherwise the embedded images will be saved with non-relative paths, which are required for docusaurus
-$(DST_DIR)/%.md: $(SRC_DIR)/%.ipynb
+SRC_FILES := $(shell find . -type f -name '*.ipynb' -not -path "./todo/*" -not -path "./templates/*" -not -path "./$(DST_DIR)/*" -not -path "./docs.bacalhau.org/*" -not -path "./.venv/*")
+$(DST_DIR)/%.md: $(SRC_FILES)
+    # Go into the .venv virtual environment
 	mkdir -p $(@D)
 	${PYTHON_RUNNER} jupyter nbconvert --to markdown --output-dir=$(@D) --output=$(@F) \
 		--TagRemovePreprocessor.enabled=True \
@@ -74,7 +76,7 @@ install-pre-commit:
 ################################################################################
 .PHONY: precommit
 precommit: test-requirements
-	${PRECOMMIT} run --all 
+	${PRECOMMIT} run --all
 	git ls-files -o | xargs rm; find . -type d -empty -delete
 
 .PHONY: docs
