@@ -122,6 +122,11 @@ class Settings:
             # Get all videos in the /videos folder - doing this glob excludes hidden
             all_videos = glob.glob(os.path.join(source_all_videos_path, '*'))
 
+            if not all_videos:
+                logger.error(f"No videos found in {source_all_videos_path}")
+                exit(1)
+                return
+
             # If source_video_path is not set, set it to a random video from the /videos folder
             video_file = random.choice(all_videos)
             ml_model_config["source_video_path"] = video_file

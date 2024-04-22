@@ -1,5 +1,6 @@
 # app.py
 import concurrent.futures  # noqa: E402
+import datetime  # noqa: E402
 import json as JSON  # noqa: E402
 import logging  # noqa: E402
 import os  # noqa: E402
@@ -495,17 +496,17 @@ def fetchBulkSoManyCars(url):
 
     try:
         runningSoManyCarsQueue.put(True)
-        requests = [grequests.get(url) for _ in range(200)]
-        results = grequests.map(requests)
+        # requests = [grequests.get(url) for _ in range(12)]
+        # results = grequests.map(requests)
 
-        # results = []
-        # for i in range(200):
-        #     start_time = datetime.datetime.now()
-        #     results.append(requests.get(url, stream=False))
-        #     end_time = datetime.datetime.now()
-        #     logger.info(
-        #         f"Request {i} took {end_time - start_time} to complete - {results[i].status_code}"
-        #     )
+        results = []
+        for i in range(12):
+            start_time = datetime.datetime.now()
+            results.append(requests.get(url, stream=False))
+            end_time = datetime.datetime.now()
+            logger.info(
+                f"Request {i} took {end_time - start_time} to complete - {results[i].status_code}"
+            )
 
         for result in results:
             globalSoManyCarsQueue.put(result)

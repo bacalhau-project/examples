@@ -71,11 +71,17 @@ function build {
 }
 
 function serve:local {
+  required_vars=(PORT HOST WEIGHTSDIR VIDEOSDIR)
+  if [ -z "$PORT" ] || [ -z "$HOST" ] || [ -z "$WEIGHTSDIR" ] || [ -z "$VIDEOSDIR" ]; then
+    echo "Missing required environment variables:" "${required_vars[@]}"
+    exit 1
+  fi
   source default.env && source .env && .venv/bin/python3 app/wsgi.py --port $PORT --host $HOST --source_weights_path $WEIGHTSDIR --source_all_videos_path $VIDEOSDIR
 }
 
 function serve {
   # Run the Docker container
+
   VERSION="$(cat "$(pwd)/VERSION")" \
   DEFAULT_ENV_FILE="$(pwd)/default.env" \
   ENV_FILE="$(pwd)/.env" \

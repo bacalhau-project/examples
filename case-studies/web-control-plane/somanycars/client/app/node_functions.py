@@ -53,6 +53,7 @@ def generate_node(
     config_last_update,
     model_running,
     stopping,
+    current_server_time,
 ):
     return {
         "hostname": hostname,
@@ -74,6 +75,7 @@ def generate_node(
         "config_last_update": config_last_update,
         "model_running": model_running,
         "stopping": stopping,
+        "current_server_time": current_server_time,
     }
 
 

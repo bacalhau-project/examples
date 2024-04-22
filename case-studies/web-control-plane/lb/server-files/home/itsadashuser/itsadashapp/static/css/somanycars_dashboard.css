@@ -127,11 +127,9 @@
 .config-last-update::before {
   content: "Config Last Update: ";
 }
-
 .hostname::before {
   content: "Hostname: ";
 }
-
 .node-id::before {
   content: "Node ID: ";
 }

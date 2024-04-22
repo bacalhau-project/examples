@@ -358,6 +358,7 @@ async def index(request: Request):
         "last_inference_time": vals["last_inference_time"],
         "config_last_update": vals["config_last_update"],
         "stopping": vals["stopping"],
+        "current_server_time": vals["current_server_time"],
     }
     valid, err = validate_json(contextObj)
     if(valid):

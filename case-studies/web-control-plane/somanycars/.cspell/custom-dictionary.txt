@@ -2,6 +2,7 @@ APPNAME
 argparser
 bacalhau
 bacalhauproject
+bistre
 buildx
 checkpointed
 clarkson

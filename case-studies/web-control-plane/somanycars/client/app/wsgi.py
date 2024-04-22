@@ -48,7 +48,7 @@ def signal_handler(signal, frame):
 
 async def app_runner(host: str, port: int, profile: bool):
     app = get_app()
-    config = Config(app=app, host=host, port=port, log_level="info", workers=3, log_config=str(Path(__file__).parent / "log_conf.yaml"))
+    config = Config(app=app, host=host, port=port, log_level="info", workers=1, log_config=str(Path(__file__).parent / "log_conf.yaml"))
     server = Server(config=config)
 
     if profile:
