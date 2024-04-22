@@ -18,7 +18,7 @@ locals {
 
 
 resource "google_service_account" "service_account" {
-  account_id   = "${var.project_id}-sa"
+  account_id   = "${var.project_id}-justicons-sa"
   display_name = "Hydra Example Service Account"
 }
 

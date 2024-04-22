@@ -21,6 +21,7 @@ python-socketio = "^5.11.2"
 gevent = "^24.2.1"
 six = "^1.16.0"
 grequests = "^0.7.0"
+faker = "^24.11.0"
 
 
 [build-system]

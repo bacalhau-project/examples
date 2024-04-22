@@ -1,0 +1,31 @@
+services:
+  somanycars:
+    image: ${DOCKER_IMAGE:-docker.io/bacalhauproject/somanycars-client}:${VERSION:-latest}
+    restart: "always"
+    stop_grace_period: "3s"
+    tty: true
+    ports:
+      - "${PORT:-14041}:14041"
+    env_file:
+      - ${DEFAULT_ENV_FILE:-default.env}
+      - ${ENV_FILE:-.env}
+    volumes:
+      - ${VIDEOSDIR:-$PWD/app/videos}:/app/videos
+      - ${WEIGHTSDIR:-$PWD/app/weights}:/app/weights
+      - ${CONFIGDIR:-$PWD/app/config}:/app/config
+    deploy:
+      resources:
+        limits:
+          cpus: "${DOCKER_WEB_CPUS:-0}"
+          memory: "${DOCKER_WEB_MEMORY:-0}"
+    healthcheck:
+      test: "${DOCKER_WEB_HEALTHCHECK_TEST:-curl localhost:14041/ok}"
+      interval: "60s"
+      timeout: "3s"
+      start_period: "100s"
+      retries: 3
+    logging:
+      driver: "local"
+      options:
+        max-size: "100m"
+        max-file: "3"
