@@ -1,11 +1,12 @@
 import os
 import argparse
 from google.cloud import storage
+from google.auth.credentials import AnonymousCredentials
 
 
 def fetch_files(bucket_name, node_id, total_nodes, destination_dir):
     print(f"Starting download process for Node ID {node_id}/{total_nodes}...")
-    storage_client = storage.Client(project="bacalhau-video-processing")
+    storage_client = storage.Client(credentials=AnonymousCredentials(),project="bacalhau-video-processing")
     bucket = storage_client.bucket(bucket_name)
 
     blobs = list(bucket.list_blobs())

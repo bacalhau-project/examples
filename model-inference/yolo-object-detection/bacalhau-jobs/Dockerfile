@@ -1,18 +1,22 @@
 # This base does NOT support GPUs and its 3GB instead of 18GB
-FROM frrist/yolo:v0.1-cpu
+FROM frrist/yolo:v0.5-cpu
 
 # Install Google Cloud SDK for accessing the storage bucket
 #RUN curl -sSL https://sdk.cloud.google.com | bash
 #ENV PATH $PATH:/root/google-cloud-sdk/bin
 
+# Install FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+
 # reguired to fetch videos via python
-RUN pip install --no-cache-dir google-cloud-storage
+RUN pip install --no-cache-dir google-cloud-storage aperturedb
 
 # dirs the scripts are copied to and videos download to
 RUN mkdir /scripts /input_videos
 
 # downloads videos into input_videos
 COPY fetch_script.py /scripts/fetch_script.py
+COPY MyData.py /scripts/MyData.py
 
 # Embed a default model that we may override via env var
 RUN mkdir /model

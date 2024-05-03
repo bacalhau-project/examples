@@ -6,6 +6,9 @@ function print_header() {
     echo
 }
 
+adb config create demo --no-use-rest --no-interactive --host="expanso.gcp.us-west2.gcp.aperturedata.io" --port=55555 --username="admin" --password="${ADB_PASSWORD}"
+adb utils execute summary
+
 #
 # setup for node parallel processing
 # nodes figure out their rank and number of nodes in the network from these file
@@ -45,7 +48,7 @@ echo "  Download process completed."
 #
 # YOLO video inference over the downloaded videos
 #
-cmd="python3 detect.py --nosave --save-csv --weights ${YOLO_WEIGHTS_PATH} --source ${VIDEO_DOWNLOAD_DIR} --project ${YOLO_PROJECT_DIR} --conf-thres=${YOLO_CONF_THRES}"
+cmd="python3 detect.py --hide-labels --hide-conf --line-thickness=0 --save-csv --weights ${YOLO_WEIGHTS_PATH} --source ${VIDEO_DOWNLOAD_DIR} --project ${YOLO_PROJECT_DIR} --conf-thres=${YOLO_CONF_THRES}"
 print_header "YOLO Video Inference Configuration"
 echo "  Source: ${VIDEO_DOWNLOAD_DIR}"
 echo "  Destination: ${YOLO_PROJECT_DIR}"
@@ -66,6 +69,18 @@ echo
 eval "${cmd}"
 echo
 echo "  YOLO video inference completed."
+
+cmd="adb ingest from-generator /scripts/MyData.py --sample-count -1"
+
+echo "listing directory of results"
+ls /results
+
+echo "  Executing adb video ingest..."
+echo
+eval "${cmd}"
+echo
+echo "  adb video ingest completed."
+
 
 # TODO: Add python script to process contents out /outputs which contains labeled video crops and move them to a vector database.
 # As an example, the structure of outputs is shown below.

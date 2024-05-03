@@ -1,29 +1,31 @@
-name: Perform parallel ML inference over videos in a GCP bucket on all nodes
+name: Single Node Small Model Person
 # ops means run on all nodes
 type: batch
 count: 1
 tasks:
-  - name: Perform yolo inference over data in a bucket
+  - name: Single Node Small Model Person
     Engine:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: frrist/intel-ml-demo:v3.1-cpu
+        Image: frrist/intel-ml-demo:v8.0
         EnvironmentVariables:
           # name of the bucket to download videos from. Should be an open bucket
           - VIDEO_BUCKET_NAME=small-set-sample
           # 0 means classify people, this is the default option in the container, but shown here for demonstration
           # complete list of classes is here: https://github.com/ultralytics/yolov5/blob/master/data/coco.yaml
-          - CLASSES=0
+          - YOLO_CLASSES=
           # path the inference data is written to. Must match the ResultsPaths section.
           - YOLO_PROJECT_DIR=/results
+          # password for the db
+          - ADB_PASSWORD={{.adb_password}}
     ResultPaths:
       - Name: "results"
         Path: "/results"
     Publisher:
       Type: s3
       Params:
-        Bucket: test-bucket-publish
+        Bucket: yolo-interence-results
         Region: us-west1
         Key: yolo-results/{date}/{time}/{jobID}/{executionID}
         Endpoint: https://storage.googleapis.com
@@ -32,6 +34,6 @@ tasks:
       Type: full
     Resources:
       # dependent on compute nodes, this is based on e2-standard-8
-      CPU: 25
-      Memory: "50GB"
+      CPU: 6000m
+      Memory: "26GB"
       Disk: "25GB"
