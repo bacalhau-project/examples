@@ -1,0 +1,12 @@
+[Unit]
+Description=The system poller for use with MongoDB
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /scripts/main.py
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
