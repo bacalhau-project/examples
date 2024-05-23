@@ -43,7 +43,7 @@ For the second approach, we have a secure, consistent interface with which to ex
 
 ## What are we going to build?
 
-![An architecture diagram of our finished infrastructure](/RESOURCES/18.png)
+![An architecture diagram of our finished infrastructure](./RESOURCES/18.png)
 
 - An example infrastructure across 4 regions in a Google Cloud account:
     - Which sets up MongoDB at multiple locations across the world
@@ -73,13 +73,13 @@ For this example, project, we're going to be aggregating our filtered data in a 
 
 To get started, head over to the [MongoDB Atlas home page](https://www.mongodb.com/atlas/database), and click the "Try Free" button. Follow the instructions in the form to create an account which will enable us to spin up a MongoDB Atlas deployment.
 
-![The MongoDB Atlas Homepage](/RESOURCES/0.png)
+![The MongoDB Atlas Homepage](./RESOURCES/0.png)
 
 #### Creating a MongoDB Atlas Deployment
 
 Once you've completed the sign-up process, you will be taken to your new account's "Overview" page. Click the "Create a deployment" button (highlighted in red).
 
-![The MongoDB Atlas dashboard showing the "create a deployment" button](/RESOURCES/2.png)
+![The MongoDB Atlas dashboard showing the "create a deployment" button](./RESOURCES/2.png)
 
 This will take you to a form where you can deploy the database. For the purposes of this demo:
 
@@ -93,13 +93,13 @@ This will take you to a form where you can deploy the database. For the purposes
 
 Once you've filled in the form, click "Create Deployment".
 
-![The MongoDB Atlas Configuration page](/RESOURCES/3.png)
+![The MongoDB Atlas Configuration page](./RESOURCES/3.png)
 
 #### Adding a Database User 
 
 Once the deployment process has finished, you will be presented with a modal that will allow you to create a connection to your new Atlas instance. 
 
-![The MongoDB Atlas dialog adding a user to the database](/RESOURCES/4.png)
+![The MongoDB Atlas dialog adding a user to the database](./RESOURCES/4.png)
 
 We don't need to do all of this right now, but copy the username and password presented in the form as the default user, and save them somewhere secure on your system. We will need this information later. Then, click the "Create Database User" button. 
 
@@ -113,7 +113,7 @@ The last step in this process is enabling access to our Atlas database through t
 
 In the sidebar of the Atlas interface, click the "Network Access" tab (highlighted in purple).
 
-![The MongoDB Atlas dashboard with the network tab highlighted](/RESOURCES/7.png)
+![The MongoDB Atlas dashboard with the network tab highlighted](./RESOURCES/7.png)
 
 You'll be taken to an overview page which will contain the IP address of the computer we just created our database from in a table.
 
@@ -127,11 +127,11 @@ The last thing we need to do before we move on is get a connection string that w
 
 Click on the "Overview" tab of the Atlas sidebar, and in the "Database Deployments" section of the page, click the "Connect" button (highlighted) in pink.
 
-![The MongoDB Atlas dashboard with the connect button highlighted](/RESOURCES/11.png)
+![The MongoDB Atlas dashboard with the connect button highlighted](./RESOURCES/11.png)
 
 We aren't going to connect right now, but we can get the string we need for connections in this dialog. Click the "Compass" option, and under Step 2 (highlighted below in red), copy the entire string and put it somewhere for later. Now would be a good time to replace the `<password>` section of the string with the password we copied when creating our database user.
 
-![The MongoDB Atlas dashboard with the connection string highlighted](/RESOURCES/14.png)
+![The MongoDB Atlas dashboard with the connection string highlighted](./RESOURCES/14.png)
 
 ### Setting up a Google Cloud account
 
@@ -282,17 +282,17 @@ At this point, our jobs are running, data is being generated, stored, transforme
 
 Now it's time to check out what has been sent to our Atlas store! Wait for a few moments for a decent amount of data to build up, then head back to your MongoDB dashboard and click the "Database" item in the dashboard sub-menu (highlighted below in red).
 
-![The MongoDB Atlas dashboard with the Database button highlighted](/RESOURCES/15.png).
+![The MongoDB Atlas dashboard with the Database button highlighted](./RESOURCES/15.png).
 
 Once the Database view has loaded, click the "Browse Collections" button. This will load all the records stored in our Atlas database.
 
-![The MongoDB Atlas dashboard with the 'Browse Collections' button highlighted](/RESOURCES/16.png).
+![The MongoDB Atlas dashboard with the 'Browse Collections' button highlighted](./RESOURCES/16.png).
 
 And, if all has gone well, you should see a database filled with records from each of our locations showing only the information that we have deemed useful in this circumstance (that is, instances that are utilising greater than 50% of our CPU capacity).
 
 That's it! We've built a distributed ETL pipeline, deployed it around the world, and extracted only the important records back for visibility and analysis. Feel free to query your newly filtered data and explore what's going on across your network.
 
-![The MongoDB Atlas dashboard showing the filtered records](/RESOURCES/17.png).
+![The MongoDB Atlas dashboard showing the filtered records](./RESOURCES/17.png).
 
 
 ## Additional Reading
