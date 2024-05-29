@@ -1,0 +1,23 @@
+Name: MongoDB ETL Service
+# represents a long-running job that runs on a desired number of nodes specified by Count matching the specified constraints.
+Type: service
+# the number of nodes to run the job
+Count: 1
+Namespace: etl-services
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - {{.REGION}}
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: seanmtracey/smt-mongo-etl:0.0.43
+        EnvironmentVariables:
+          - LOCAL_CONN=mongodb://0.0.0.0:27017
+          - LOCATION={{.REGION}}
+          - REMOTE_CONN={{.REMOTE_CONN}}
+    Network:
+      Type: full 

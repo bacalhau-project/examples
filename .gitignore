@@ -47,3 +47,4 @@ node_modules/
 plan.out
 scripts.zip
 case-studies/mongodb-atlas/scripts/_poll.py
+case-studies/mongodb-atlas/NOTES.md
