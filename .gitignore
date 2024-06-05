@@ -42,3 +42,4 @@ job-[0-9a-z]*
 !case-studies/**/Dockerfile
 !model-inference/**/Dockerfile
 todo/eurec4a/how_to_eurec4a
+.aider*
