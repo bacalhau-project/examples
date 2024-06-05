@@ -1,6 +1,7 @@
 import subprocess
 import argparse
 import uuid
+import os
 
 def deploy_bicep_template(template_file, parameters):
     command = [
@@ -26,7 +27,17 @@ if __name__ == "__main__":
     parser.add_argument('--destroy', action='store_true', help="Destroy resources")
     args = parser.parse_args()
 
-    unique_id = str(uuid.uuid4())
+    unique_id = None
+    if os.path.exists("UNIQUEID"):
+        with open("UNIQUEID", "r") as f:
+            unique_id = f.read().strip()
+    
+    if args.create and unique_id:
+        print("Warning: UNIQUEID file exists. Resources might already be created with this ID.")
+    
+    if not unique_id:
+        unique_id = str(uuid.uuid4())
+    
     resource_group = f"rg-{unique_id}"
 
     if args.create:
@@ -41,5 +52,12 @@ if __name__ == "__main__":
         deploy_bicep_template("support_nodes.bicep", {"resource_group": resource_group, "unique_id": unique_id, "location": "centralus"})
         deploy_bicep_template("support_nodes.bicep", {"resource_group": resource_group, "unique_id": unique_id, "location": "eastus2"})
 
-    if args.destroy:
+        # Write the unique ID to the UNIQUEID file
+        with open("UNIQUEID", "w") as f:
+            f.write(unique_id)
+
+    if args.destroy and unique_id:
         destroy_bicep_template(resource_group, unique_id)
+        if not unique_id:
+            print("Error: UNIQUEID file not found. Cannot destroy resources without a unique ID.")
+            exit(1)
