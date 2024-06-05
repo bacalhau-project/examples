@@ -144,3 +144,48 @@ You can run test all notebooks with `make test`. If you want to test an individu
 ### Developer Help
 
 If you have any questions or spot anything missing, please reach out to `philwinder` or `enricorotundo` on the #bacalhau channel in [Filecoin Slack](https://filecoin.io/slack).
+# Bacalhau Job Queueing Demo
+
+This repository demonstrates how to use Bacalhau to perform job queueing. The setup will create four nodes on Azure, with public keys, and ensure the nodes can communicate with each other.
+
+## Prerequisites
+
+- Azure account
+- Terraform installed
+- SSH keys generated
+
+## Setup
+
+1. Clone the repository:
+    ```sh
+    git clone <repository-url>
+    cd <repository-directory>
+    ```
+
+2. Initialize Terraform:
+    ```sh
+    terraform init
+    ```
+
+3. Apply the Terraform configuration to create the nodes:
+    ```sh
+    terraform apply
+    ```
+
+4. Ensure the nodes can communicate with each other by exchanging public keys.
+
+## Usage
+
+- Submit jobs to the Bacalhau job queue.
+- Monitor the job execution and results.
+
+## Cleanup
+
+To destroy the created resources, run:
+```sh
+terraform destroy
+```
+
+## License
+
+This project is licensed under the MIT License.
