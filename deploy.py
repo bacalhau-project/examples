@@ -21,10 +21,18 @@ def destroy_bicep_template(resource_group, unique_id):
     ]
     subprocess.run(command, check=True)
 
+def list_resources_with_tag(unique_id):
+    command = [
+        "az", "resource", "list",
+        "--tag", f"uniqueId={unique_id}"
+    ]
+    subprocess.run(command, check=True)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deploy or destroy Azure resources using Bicep templates.")
     parser.add_argument('--create', action='store_true', help="Create resources")
     parser.add_argument('--destroy', action='store_true', help="Destroy resources")
+    parser.add_argument('--list', action='store_true', help="List all resources with the unique tag")
     args = parser.parse_args()
 
     unique_id = None
@@ -55,6 +63,10 @@ if __name__ == "__main__":
         # Write the unique ID to the UNIQUEID file
         with open("UNIQUEID", "w") as f:
             f.write(unique_id)
+
+    if args.list and unique_id:
+        list_resources_with_tag(unique_id)
+        exit(0)
 
     if args.destroy and unique_id:
         destroy_bicep_template(resource_group, unique_id)
