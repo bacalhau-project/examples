@@ -1,0 +1,62 @@
+[
+    {
+        "name": "bac-queue-vm-centralus-eef22c43-6f3d-4779-bb1a-3fdf57f72a3a",
+        "location": "centralus",
+        "ssh_username": "azureuser",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ip_addresses": [
+            {
+                "private": "10.1.0.4"
+            },
+            {
+                "public": "13.86.29.41"
+            }
+        ],
+        "is_orchestrator_node": true
+    },
+    {
+        "name": "bac-queue-vm-eastus-eef22c43-6f3d-4779-bb1a-3fdf57f72a3a",
+        "location": "eastus",
+        "ssh_username": "azureuser",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ip_addresses": [
+            {
+                "private": "10.0.0.4"
+            },
+            {
+                "public": "13.90.135.9"
+            }
+        ],
+        "is_orchestrator_node": false
+    },
+    {
+        "name": "bac-queue-vm-eastus2-eef22c43-6f3d-4779-bb1a-3fdf57f72a3a",
+        "location": "eastus2",
+        "ssh_username": "azureuser",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ip_addresses": [
+            {
+                "private": "10.1.0.4"
+            },
+            {
+                "public": "172.177.40.216"
+            }
+        ],
+        "is_orchestrator_node": false
+    },
+    {
+        "name": "bac-queue-vm-westus-eef22c43-6f3d-4779-bb1a-3fdf57f72a3a",
+        "location": "westus",
+        "ssh_username": "azureuser",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ip_addresses": [
+            {
+                "private": "10.1.0.4"
+            },
+            {
+                "public": "13.91.58.18"
+            }
+        ],
+        "is_orchestrator_node": false
+    }
+]
