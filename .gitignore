@@ -43,3 +43,8 @@ job-[0-9a-z]*
 !model-inference/**/Dockerfile
 todo/eurec4a/how_to_eurec4a
 .aider*
+
+node_modules/
+plan.out
+scripts.zip
+case-studies/mongodb-atlas/scripts/_poll.py
