@@ -1,0 +1,30 @@
+Type: batch
+Version: 1
+Constraints: []
+Count: 1
+Labels: {}
+Priority: 0
+Tasks:
+  - Engine:
+      Params:
+        EnvironmentVariables: []
+        Image: docker.io/bacalhauproject/stress-ng:0.0.2
+        Parameters:
+          - "--cpu"
+          - "2"
+          - "--timeout"
+          - "60"
+        WorkingDirectory: ""
+      Type: docker
+    Name: main
+    Network:
+      Type: None
+    Publisher:
+      Type: noop
+    Resources: {}
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    Timeouts:
+      ExecutionTimeout: 1800
+      QueueTimeout: 3600
