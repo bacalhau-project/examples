@@ -1,7 +1,9 @@
 addrs
 azureuser
 bacalhau
+bacalhauproject
 centralus
+CLIENTAPI
 daaronch
 dotenv
 eastus
@@ -13,6 +15,7 @@ nats
 nics
 nohup
 pkill
+progrium
 SWARMADDRESSES
 UNIQUEID
 vnet

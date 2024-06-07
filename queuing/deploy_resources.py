@@ -7,6 +7,8 @@ from dotenv import load_dotenv, set_key
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
 from subprocess import run, CalledProcessError
+from datetime import datetime
+
 
 PREFIX = "bac-queue-"
 
@@ -123,8 +125,9 @@ if __name__ == "__main__":
         exit(1)
     
     if not unique_id:
-        unique_id = str(uuid.uuid4())
-    
+        # Generate a timestamp-based unique ID with millisecond precision
+        unique_id = datetime.now().strftime("%y%m%d%H%M%S%f")[:10]
+        
     resource_group_name = f"{PREFIX}rg-{unique_id}"
     location = "eastus"
     
@@ -148,8 +151,16 @@ if __name__ == "__main__":
             "sshKey": {"value": ssh_key}
         })
 
-        # Deploy support nodes
-        support_locations = ["westus", "centralus", "eastus2"]
+        # Deploy support nodes to different locations
+        support_locations = ["westus", 
+                            "centralus", 
+                            "eastus2", 
+                            "southcentralus", 
+                            "westeurope", 
+                            "northeurope", 
+                            "uksouth", 
+                            "eastasia", 
+                            "southeastasia"]
         for loc in support_locations:
             deploy_bicep_template(resource_group_name, "support_nodes.bicep", {
                 "uniqueId": {"value": unique_id},

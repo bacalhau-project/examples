@@ -42,6 +42,32 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2020-11-01' = {
           destinationAddressPrefix: '*'
         }
       }
+      {
+        name: 'Allow-Port-1234'
+        properties: {
+          priority: 1010
+          protocol: 'Tcp'
+          access: 'Allow'
+          direction: 'Inbound'
+          sourcePortRange: '*'
+          destinationPortRange: '1234'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'Allow-Port-4222'
+        properties: {
+          priority: 1020
+          protocol: 'Tcp'
+          access: 'Allow'
+          direction: 'Inbound'
+          sourcePortRange: '*'
+          destinationPortRange: '4222'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
     ]
   }
   tags: {
