@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 SSH_KEY_PATH = os.path.expanduser('~/.ssh/id_ed25519')
 BACALHAU_INSTALL_CMD = """
-curl -sL 'https://get.bacalhau.org/install.sh?dl=BACA41A0-a5e9-40db-801c-dfaf9af6e05f' -o /tmp/install.sh && \
+curl -sL 'https://get.bacalhau.org/install.sh?dl=BACA14A0-a5e9-40db-801c-dfaf9af6e05f' -o /tmp/install.sh && \
 chmod +x /tmp/install.sh && \
 sudo /tmp/install.sh
 """
