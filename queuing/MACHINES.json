@@ -1,6 +1,6 @@
 [
     {
-        "name": "bac-queue-vm-centralus-2406070617",
+        "name": "bac-queue-vm-centralus-2406110938",
         "location": "centralus",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -9,13 +9,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "52.176.177.175"
+                "public": "13.67.173.193"
             }
         ],
         "is_orchestrator_node": true
     },
     {
-        "name": "bac-queue-vm-eastasia-2406070617",
+        "name": "bac-queue-vm-eastasia-2406110938",
         "location": "eastasia",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -24,13 +24,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "20.255.249.98"
+                "public": "20.2.161.188"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-eastus-2406070617",
+        "name": "bac-queue-vm-eastus-2406110938",
         "location": "eastus",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -39,13 +39,13 @@
                 "private": "10.0.0.4"
             },
             {
-                "public": "20.232.201.218"
+                "public": "172.190.212.80"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-eastus2-2406070617",
+        "name": "bac-queue-vm-eastus2-2406110938",
         "location": "eastus2",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -54,13 +54,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "40.79.22.130"
+                "public": "20.12.13.120"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-northeurope-2406070617",
+        "name": "bac-queue-vm-northeurope-2406110938",
         "location": "northeurope",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -69,13 +69,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "52.169.92.126"
+                "public": "52.169.248.76"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-southcentralus-2406070617",
+        "name": "bac-queue-vm-southcentralus-2406110938",
         "location": "southcentralus",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -84,13 +84,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "13.84.180.18"
+                "public": "52.248.87.159"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-southeastasia-2406070617",
+        "name": "bac-queue-vm-southeastasia-2406110938",
         "location": "southeastasia",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -99,13 +99,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "40.65.181.245"
+                "public": "40.65.187.97"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-uksouth-2406070617",
+        "name": "bac-queue-vm-uksouth-2406110938",
         "location": "uksouth",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -114,13 +114,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "172.166.195.54"
+                "public": "172.167.155.160"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-westeurope-2406070617",
+        "name": "bac-queue-vm-westeurope-2406110938",
         "location": "westeurope",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -129,13 +129,13 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "52.142.250.29"
+                "public": "51.144.183.178"
             }
         ],
         "is_orchestrator_node": false
     },
     {
-        "name": "bac-queue-vm-westus-2406070617",
+        "name": "bac-queue-vm-westus-2406110938",
         "location": "westus",
         "ssh_username": "azureuser",
         "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
@@ -144,7 +144,7 @@
                 "private": "10.1.0.4"
             },
             {
-                "public": "13.83.7.78"
+                "public": "13.91.80.213"
             }
         ],
         "is_orchestrator_node": false
