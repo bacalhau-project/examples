@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import concurrent.futures
 import itertools
 import json
@@ -7,6 +8,7 @@ import os
 import sys
 import time
 
+import asyncssh
 import paramiko
 
 # Setup basic configuration for logging
@@ -46,45 +48,53 @@ WantedBy=multi-user.target
 """
 
 
-def ssh_connect(hostname, username, key_filename):
+async def ssh_connect(hostname, username, key_filename):
     logging.debug(f"Connecting to {hostname} as {username}")
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname, username=username, key_filename=key_filename)
-    return ssh
+    return await asyncssh.connect(
+        hostname,
+        username=username,
+        client_keys=[key_filename],
+        known_hosts=None,  # Disable host key verification (use with caution)
+    )
 
 
-def install_docker(ssh):
+async def ssh_exec_command(ssh, command):
+    result = await ssh.run(command)
+    return result.stdout, result.stderr
+
+
+async def install_docker(ssh):
     logging.debug("Starting Docker installation")
-    stdin, stdout, stderr = ssh.exec_command(DOCKER_INSTALL_CMD)
-    output = stdout.read().decode()
-    error = stderr.read().decode()
+    _, error = await ssh_exec_command(ssh, DOCKER_INSTALL_CMD)
     if error:
         logging.error(f"Docker installation errors: {error}")
         return False
-    logging.info("Docker installation output:")
-    logging.info(output)
+    logging.info("Docker installation command started successfully.")
     return True
 
 
-def install_bacalhau(ssh):
+async def install_bacalhau(ssh):
     logging.debug("Starting Bacalhau installation")
-    stdin, stdout, stderr = ssh.exec_command(BACALHAU_INSTALL_CMD)
-    output = stdout.read().decode()
-    error = stderr.read().decode()
-    if error:
-        logging.error(f"Installation errors: {error}")
-        return False
-    logging.info("Installation output:")
-    logging.info(output)
-    return True
+    install_cmd = f"nohup {BACALHAU_INSTALL_CMD} > /tmp/bacalhau_install.log 2>&1 &"
+    await ssh_exec_command(ssh, install_cmd)
+    logging.info("Bacalhau installation command started successfully.")
+
+    for _ in range(10):
+        output, error = await ssh_exec_command(ssh, "bacalhau version --output json")
+        if "clientVersion" in output and "serverVersion" in output:
+            logging.info("Bacalhau installed successfully.")
+            return True
+        await asyncio.sleep(1)
+
+    logging.error("Bacalhau installation failed after multiple attempts.")
+    return False
 
 
-def post_install_check(ssh):
+async def post_install_check(ssh):
     logging.debug("Checking Bacalhau installation")
-    stdin, stdout, stderr = ssh.exec_command("bacalhau version --output json")
-    output = stdout.read().decode().strip()
-    error = stderr.read().decode().strip()
+    result = await ssh.run("bacalhau version --output json")
+    output = result.stdout.strip()
+    error = result.stderr.strip()
     logging.debug(f"Command output: {output}")
     logging.debug(f"Command error: {error}")
 
@@ -98,12 +108,11 @@ def post_install_check(ssh):
         return False
 
 
-def setup_orchestrator_node(ssh):
+async def setup_orchestrator_node(ssh):
     logging.debug("Setting up orchestrator node")
-
-    logging.debug("Copying bacalhau.run to /tmp")
-    ssh.exec_command(
-        "sudo cp /root/.bacalhau/bacalhau.run /tmp/bacalhau.run && sudo chmod 644 /tmp/bacalhau.run"
+    await ssh_exec_command(
+        ssh,
+        "sudo cp /root/.bacalhau/bacalhau.run /tmp/bacalhau.run && sudo chmod 644 /tmp/bacalhau.run",
     )
 
     orchestrator_node_type_args = ""
@@ -111,42 +120,49 @@ def setup_orchestrator_node(ssh):
 
     # Write to a temporary file
     temp_path = "/tmp/bacalhau.service"
-    sftp = ssh.open_sftp()
-    with sftp.file(temp_path, "w") as service_file:
-        service_file.write(service_content)
 
-    # Move the file to the correct location using sudo
-    move_cmd = f"sudo mv {temp_path} /etc/systemd/system/bacalhau.service"
-    ssh.exec_command(move_cmd)
-
-    ssh.exec_command("sudo systemctl enable bacalhau")
-    ssh.exec_command("sudo systemctl start bacalhau")
-
-    # The bacalhau.run file may take a few seconds to create - wait until it's present with a loop, but not more than 10 seconds
-    for _ in range(10):
-        stdin, stdout, stderr = ssh.exec_command(
-            "sudo test -f /root/.bacalhau/bacalhau.run && echo exists"
-        )
-        if stdout.read().decode().strip() == "exists":
-            break
-        time.sleep(1)
-    else:
-        logging.error("Bacalhau run file not found after 10 seconds.")
-        return None
-
-    # ssh into the machine, and with sudo, copy the bacalhau.run file to /tmp
-    ssh.exec_command(
-        "sudo cp /root/.bacalhau/bacalhau.run /tmp/bacalhau.run && sudo chmod 644 /tmp/bacalhau.run"
-    )
-
-    # Copy the bacalhau.run file locally, and put it in memory
     try:
-        with sftp.file("/tmp/bacalhau.run", "r") as f:
-            details = f.read().decode()
-    finally:
-        sftp.close()
+        sftp = await ssh.start_sftp_client()
+        async with sftp.open(temp_path, "w") as service_file:
+            await service_file.write(service_content)
 
-    return parse_bacalhau_details(details)
+        # Move the file to the correct location using sudo
+        move_cmd = f"sudo mv {temp_path} /etc/systemd/system/bacalhau.service"
+        await ssh_exec_command(ssh, move_cmd)
+
+        await ssh_exec_command(ssh, "sudo systemctl enable bacalhau")
+        await ssh_exec_command(ssh, "sudo systemctl start bacalhau")
+
+        # The bacalhau.run file may take a few seconds to create - wait until it's present with a loop, but not more than 10 seconds
+        for _ in range(10):
+            result = await ssh.run(
+                "sudo test -f /root/.bacalhau/bacalhau.run && echo exists"
+            )
+            if result.stdout.strip() == "exists":
+                break
+            await asyncio.sleep(1)
+        else:
+            logging.error("Bacalhau run file not found after 10 seconds.")
+            return None
+
+        # ssh into the machine, and with sudo, copy the bacalhau.run file to /tmp
+        await ssh_exec_command(
+            ssh,
+            "sudo cp /root/.bacalhau/bacalhau.run /tmp/bacalhau.run && sudo chmod 644 /tmp/bacalhau.run",
+        )
+
+        # Copy the bacalhau.run file locally, and put it in memory
+        async with sftp.open("/tmp/bacalhau.run", "r") as f:
+            details = await f.read()
+
+    except Exception as e:
+        logging.error(f"Failed to set up orchestrator node: {e}")
+        return None
+    finally:
+        if sftp is not None:
+            await sftp.exit()
+
+    return parse_bacalhau_details(details.decode())
 
 
 def parse_bacalhau_details(details):
@@ -158,32 +174,6 @@ def parse_bacalhau_details(details):
             key, value = line.replace("export ", "").split("=")
             connection_info[key] = value.strip('"')
     return connection_info
-
-
-def setup_compute_node(ssh, orchestrator_target_ip_and_port):
-    print("Inside function...")
-    print(f"ssh: {ssh}")
-    print(f"orchestrator_target_ip_and_port: {orchestrator_target_ip_and_port}")
-
-    logging.debug("Setting up compute node")
-    compute_node_type_args = f"""--node-type=compute \
-    --network=nats \
-    --orchestrators={orchestrator_target_ip_and_port}"""
-    service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
-
-    # Write to a temporary file
-    temp_path = "/tmp/bacalhau.service"
-    sftp = ssh.open_sftp()
-    with sftp.file(temp_path, "w") as service_file:
-        service_file.write(service_content)
-    sftp.close()
-
-    # Move the file to the correct location using sudo
-    move_cmd = f"sudo mv {temp_path} /etc/systemd/system/bacalhau.service"
-    ssh.exec_command(move_cmd)
-
-    ssh.exec_command("sudo systemctl enable bacalhau")
-    ssh.exec_command("sudo systemctl start bacalhau")
 
 
 def identify_orchestrator_node(machines) -> (list, list):
@@ -223,8 +213,7 @@ def identify_orchestrator_node(machines) -> (list, list):
     return orchestrator_node, machines
 
 
-def deploy_bacalhau(orchestrator_node, machines):
-    # Proceed with deployment using the orchestrator node
+async def deploy_bacalhau(orchestrator_node, machines):
     orchestrator_node_public_ip = next(
         (ip["public"] for ip in orchestrator_node["ip_addresses"] if "public" in ip),
         None,
@@ -233,77 +222,113 @@ def deploy_bacalhau(orchestrator_node, machines):
         logging.error("No public IP found for the orchestrator node.")
         return
 
-    ssh = ssh_connect(
+    ssh = await ssh_connect(
         orchestrator_node_public_ip,
         orchestrator_node["ssh_username"],
         orchestrator_node["ssh_key_path"],
     )
-    try:
-        if install_docker(ssh):
-            if install_bacalhau(ssh):
-                if not post_install_check(ssh):
+    async with ssh:
+        if await install_docker(ssh):
+            if await install_bacalhau(ssh):
+                if not await post_install_check(ssh):
                     logging.error("Post-installation validation failed.")
                     sys.exit(1)
-                setup_orchestrator_node(ssh)
+                await setup_orchestrator_node(ssh)
             else:
                 logging.error("Bacalhau installation failed.")
                 sys.exit(1)
         else:
             logging.error("Docker installation failed.")
             sys.exit(1)
-    finally:
-        ssh.close()
 
-    print("Starting parallel threads")
-
-    # Deploy compute nodes in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        executor.map(
-            setup_compute_node_fn,
-            machines,
-            itertools.repeat(orchestrator_node),
-            itertools.repeat(orchestrator_node_public_ip),
-        )
-
-
-def setup_compute_node_fn(machine, orchestrator_node, orchestrator_node_public_ip):
-    if machine == orchestrator_node:
-        return
-    public_ip = next(
-        (ip["public"] for ip in machine["ip_addresses"] if "public" in ip), None
+    logging.info("Starting parallel threads")
+    semaphore = asyncio.Semaphore(5)
+    await asyncio.gather(
+        *[
+            setup_compute_node_fn(
+                semaphore, machine, orchestrator_node, orchestrator_node_public_ip, idx
+            )
+            for idx, machine in enumerate(machines)
+        ]
     )
-    if not public_ip:
-        logging.error(
-            f"No public IP found for compute node {machine['name']}. Skipping..."
-        )
-        return
 
-    ssh = ssh_connect(public_ip, machine["ssh_username"], machine["ssh_key_path"])
-    try:
-        if install_docker(ssh):
-            print(f"Installed Docker on {machine['name']}")
-            if install_bacalhau(ssh):
-                print(f"Installed Bacalhau on {machine['name']}")
-                print(f"SSH object: {ssh}")
-                print(f"Orchestrator node public IP: {orchestrator_node_public_ip}")
-                setup_compute_node(ssh, f"nats://{orchestrator_node_public_ip}:4222")
+
+async def setup_compute_node_fn(
+    semaphore, machine, orchestrator_node, orchestrator_node_public_ip, idx
+):
+    async with semaphore:
+        if machine == orchestrator_node:
+            return
+        public_ip = next(
+            (ip["public"] for ip in machine["ip_addresses"] if "public" in ip), None
+        )
+        if not public_ip:
+            logging.error(
+                f"No public IP found for compute node {machine['name']}. Skipping..."
+            )
+            return
+
+        ssh = await ssh_connect(
+            public_ip, machine["ssh_username"], machine["ssh_key_path"]
+        )
+        async with ssh:
+            if await install_docker(ssh):
+                logging.info(f"Installed Docker on {machine['name']}")
+                if await install_bacalhau(ssh):
+                    logging.info(f"Installed Bacalhau on {machine['name']}")
+                    await configure_compute_node(ssh, orchestrator_node_public_ip, idx)
+                else:
+                    logging.error(
+                        f"Bacalhau installation failed on compute node {machine['name']}. Skipping..."
+                    )
             else:
                 logging.error(
-                    f"Bacalhau installation failed on compute node {machine['name']}. Skipping..."
+                    f"Docker installation failed on compute node {machine['name']}. Skipping..."
                 )
-        else:
-            logging.error(
-                f"Docker installation failed on compute node {machine['name']}. Skipping..."
-            )
+
+
+async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
+    logging.debug("Configuring compute node")
+
+    compute_node_type_args = (
+        f"--node-type=compute --network=full "
+        f"--labels=count={idx} --orchestrator={orchestrator_node_public_ip}"
+    )
+    service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
+
+    # Write to a temporary file
+    temp_path = "/tmp/bacalhau.service"
+
+    try:
+        sftp = await ssh.start_sftp_client()
+        async with sftp.open(temp_path, "w") as service_file:
+            await service_file.write(service_content)
+
+        # Move the file to the correct location using sudo
+        move_cmd = f"sudo mv {temp_path} /etc/systemd/system/bacalhau.service"
+        await ssh_exec_command(ssh, move_cmd)
+
+        # Create /data directory
+        await ssh_exec_command(ssh, "sudo mkdir -p /data && sudo chmod 777 /data")
+
+        await ssh_exec_command(ssh, "sudo systemctl enable bacalhau")
+        await ssh_exec_command(ssh, "sudo systemctl start bacalhau")
+
+        logging.info("Compute node configured successfully.")
+
+    except Exception as e:
+        logging.error(f"Failed to configure compute node: {e}")
+        return None
     finally:
-        ssh.close()
+        if sftp:
+            await sftp.exit()
 
 
 def fetch_and_print_bacalhau_run_details(ssh):
     logging.debug("Fetching bacalhau.run details")
     try:
         # Using sudo to cat the file content
-        stdin, stdout, stderr = ssh.exec_command(
+        _, stdout, stderr = ssh_exec_command(
             "sudo cat /root/.bacalhau/bacalhau.run"
         )
         details = stdout.read().decode()
@@ -315,6 +340,16 @@ def fetch_and_print_bacalhau_run_details(ssh):
         print(details)
     except Exception as e:
         logging.error(f"Failed to fetch bacalhau.run details: {str(e)}")
+
+
+async def fetch_and_print_node_list(ssh):
+    logging.debug("Fetching node list")
+    stdout, stderr = await ssh_exec_command(ssh, "bacalhau node list")
+    if stderr:
+        logging.error(f"Error fetching node list: {stderr}")
+    else:
+        print("Node list:")
+        print(stdout)
 
 
 if __name__ == "__main__":
@@ -340,7 +375,7 @@ if __name__ == "__main__":
 
     if args.deploy:
         orchestrator_node, machines = identify_orchestrator_node(machines)
-        deploy_bacalhau(orchestrator_node, machines)
+        asyncio.run(deploy_bacalhau(orchestrator_node, machines))
 
     if args.fetch_run:
         if not machines:
