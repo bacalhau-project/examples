@@ -1,5 +1,7 @@
 import argparse
 import asyncio
+import concurrent.futures
+import itertools
 import json
 import logging
 import os
@@ -7,6 +9,7 @@ import random
 import sys
 
 import asyncssh
+import paramiko
 
 # Setup basic configuration for logging
 logging.basicConfig(
@@ -159,9 +162,9 @@ async def setup_orchestrator_node(ssh):
         return None
     finally:
         if sftp is not None:
-            sftp.exit()
+            await sftp.exit()
 
-    return parse_bacalhau_details(details)
+    return parse_bacalhau_details(details.decode())
 
 
 def parse_bacalhau_details(details):
@@ -290,8 +293,8 @@ async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
     logging.debug("Configuring compute node")
 
     compute_node_type_args = (
-        f"--node-type=compute "
-        f"--labels=count={idx} --orchestrators={orchestrator_node_public_ip}"
+        f"--node-type=compute --network=full "
+        f"--labels=count={idx} --orchestrator={orchestrator_node_public_ip}"
     )
     service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
 
@@ -310,28 +313,43 @@ async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
         # Create /data directory
         await ssh_exec_command(ssh, "sudo mkdir -p /data && sudo chmod 777 /data")
 
-        fields_to_set = ["node.network.orchestrators", "node.clientapi.host"]
-
-        set_commands = []
-        for field in fields_to_set:
-            set_commands.append(
-                f"sudo bacalhau config set {field} {orchestrator_node_public_ip}"
-            )
-            set_commands.append(
-                f"bacalhau config set {field} {orchestrator_node_public_ip}"
-            )
-        bulk_command = " && ".join(set_commands)
-        await ssh_exec_command(ssh, bulk_command)
-
-        print(bulk_command)
-        await ssh_exec_command(ssh, bulk_command)
-
         await ssh_exec_command(ssh, "sudo systemctl enable bacalhau")
-        await ssh_exec_command(ssh, "sudo systemctl daemon-reload")
-        await ssh_exec_command(ssh, "sudo systemctl restart bacalhau")
+        await ssh_exec_command(ssh, "sudo systemctl start bacalhau")
 
         logging.info("Compute node configured successfully.")
 
+    except Exception as e:
+        logging.error(f"Failed to configure compute node: {e}")
+        return None
+    finally:
+        if sftp:
+            await sftp.exit()
+
+
+async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
+    logging.debug("Configuring compute node")
+
+    compute_node_type_args = (
+        f"--node-type=compute "
+        f"--labels=count={idx} --orchestrators={orchestrator_node_public_ip}"
+    )
+    service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
+
+    # Write to a temporary file
+    temp_path = "/tmp/bacalhau.service"
+
+    try:
+        # Using sudo to cat the file content
+        _, stdout, stderr = ssh_exec_command(
+            "sudo cat /root/.bacalhau/bacalhau.run"
+        )
+        details = stdout.read().decode()
+        error = stderr.read().decode()
+        if error:
+            logging.error(f"Error reading bacalhau.run: {error}")
+            return
+        print("Contents of bacalhau.run:")
+        print(details)
     except Exception as e:
         logging.error(f"Failed to configure compute node: {e}")
         return None
@@ -515,6 +533,16 @@ async def upload_and_run_script_on_machines(machines):
 
     tasks = [upload_and_run(machine) for machine in machines]
     await asyncio.gather(*tasks)
+
+
+async def fetch_and_print_node_list(ssh):
+    logging.debug("Fetching node list")
+    stdout, stderr = await ssh_exec_command(ssh, "bacalhau node list")
+    if stderr:
+        logging.error(f"Error fetching node list: {stderr}")
+    else:
+        print("Node list:")
+        print(stdout)
 
 
 if __name__ == "__main__":

@@ -11,8 +11,6 @@ from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
 from dotenv import load_dotenv, set_key
 
-NUMBER_OF_CONCURRENT_JOBS = 10
-
 PREFIX = "bac-queue-"
 
 support_locations = [
@@ -86,7 +84,7 @@ async def deploy_support_node(
 
 
 async def deploy_support_nodes(resource_group_name, unique_id, admin_username, ssh_key):
-    semaphore = asyncio.Semaphore(NUMBER_OF_CONCURRENT_JOBS)
+    semaphore = asyncio.Semaphore(5)
     tasks = [
         deploy_support_node(
             semaphore, resource_group_name, unique_id, loc, admin_username, ssh_key

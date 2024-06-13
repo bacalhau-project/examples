@@ -76,6 +76,8 @@ pushEvent() {
     # If event_data is not empty, append "||" to it
     if [ -z "$event_data" ]; then
         event_data="${event_data}||"
+    else
+        event_data="${event_data}"
     fi
 
     event_name="client.install_script.${event_name}"
@@ -230,7 +232,7 @@ getLatestRelease() {
     local latest_release=""
 
     if [ "$BACALHAU_HTTP_REQUEST_CLI" == "curl" ]; then
-        latest_release=$(curl -s "$bacalhauReleaseUrl"  | grep \"tag_name\" | grep -E -i "\"$tag_regex\"" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+                latest_release=$(curl -s $bacalhauReleaseUrl  | grep \"tag_name\" | grep -E -i "\"$tag_regex\"" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
     else
         latest_release=$(wget -q --header="Accept: application/json" -O - "$bacalhauReleaseUrl" | grep \"tag_name\" | grep -E -i "^$tag_regex$" | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
     fi
