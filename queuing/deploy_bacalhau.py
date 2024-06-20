@@ -483,7 +483,9 @@ if __name__ == "__main__":
             )
 
             # Print out a formatted string with the node.network.orchestrators that can be used to export
-            print(f"export BACALHAU_CLIENT_API_HOST={node_network_orchestrators[0]}")
+            print(
+                f"bacalhau config set node.clientapi.host {node_network_orchestrators[0]}"
+            )
 
         except Exception as e:
             logging.error(f"Failed to fetch bacalhau.run details: {str(e)}")
