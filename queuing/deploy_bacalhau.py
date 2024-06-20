@@ -13,6 +13,8 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+logging.getLogger("asyncssh").setLevel(logging.WARNING)
+
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/id_ed25519")
 BACALHAU_INSTALL_CMD = """
 curl -sL 'https://get.bacalhau.org/install.sh?dl=BACA14A0-a5e9-40db-801c-dfaf9af6e05f' -o /tmp/install.sh && \
@@ -384,45 +386,50 @@ async def fetch_and_print_bacalhau_run_details(machine):
             return node_network_orchestrators
 
 
-def get_ssh_connect_string(ssh):
+async def get_ssh_connect_string():
     with open("MACHINES.json", "r") as f:
         machines = json.load(f)
 
     while True:
         machine = random.choice(machines)
         public_ip = next(
-            (ip["public"] for ip in machine["ip_addresses"] if "public" in ip), None
+            (
+                ip["public"]
+                for ip in machine["ip_addresses"]
+                if "public" in ip and not machine["is_orchestrator_node"]
+            ),
+            None,
         )
         if not public_ip:
             print(f"No public IP found for machine {machine['name']}. Skipping...")
             continue
 
         try:
-            ssh.connect(
+            ssh = await ssh_connect(
                 public_ip,
                 username=machine["ssh_username"],
                 key_filename=machine["ssh_key_path"],
             )
 
             # Check if a different shell is already logged in
-            stdin, stdout, stderr = ssh.exec_command("who")
-            output = stdout.read().decode().strip()
+            output, stderr = await ssh_exec_command(ssh, "who")
             if output:
                 print(
                     f"A different shell is already logged into {machine['name']}. Skipping..."
                 )
-                ssh.close()
                 continue
 
             ssh_connect_string = f"ssh -i {machine['ssh_key_path']} {machine['ssh_username']}@{public_ip}"
-            print(ssh_connect_string)
-            ssh.close()
             break
 
         except Exception as e:
             print(f"Failed to connect to {machine['name']}: {str(e)}")
-            ssh.close()
             continue
+        finally:
+            if ssh:
+                ssh.close()
+
+    return ssh_connect_string
 
 
 if __name__ == "__main__":
@@ -482,4 +489,14 @@ if __name__ == "__main__":
             logging.error(f"Failed to fetch bacalhau.run details: {str(e)}")
 
     if args.get_ssh:
-        get_ssh_connect_string()
+        awaitables = [get_ssh_connect_string()]
+
+        def when_done(result):
+            print(f"\n{result}")
+
+        async def _as_completed():
+            for coro in asyncio.as_completed(awaitables):
+                result = await coro
+                when_done(result)
+
+        asyncio.run(_as_completed())
