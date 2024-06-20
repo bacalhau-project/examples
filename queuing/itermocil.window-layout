@@ -1,0 +1,8 @@
+windows:
+  - name: queueing
+    root: ~/bacalhau-examples/queueing
+    layout: main-vertical
+    panes:
+      - bash
+      - python3 
+
