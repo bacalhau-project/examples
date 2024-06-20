@@ -1,15 +1,12 @@
 import argparse
 import asyncio
-import concurrent.futures
-import itertools
 import json
 import logging
 import os
+import random
 import sys
-import time
 
 import asyncssh
-import paramiko
 
 # Setup basic configuration for logging
 logging.basicConfig(
@@ -160,9 +157,9 @@ async def setup_orchestrator_node(ssh):
         return None
     finally:
         if sftp is not None:
-            await sftp.exit()
+            sftp.exit()
 
-    return parse_bacalhau_details(details.decode())
+    return parse_bacalhau_details(details)
 
 
 def parse_bacalhau_details(details):
@@ -291,8 +288,8 @@ async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
     logging.debug("Configuring compute node")
 
     compute_node_type_args = (
-        f"--node-type=compute --network=full "
-        f"--labels=count={idx} --orchestrator={orchestrator_node_public_ip}"
+        f"--node-type=compute "
+        f"--labels=count={idx} --orchestrators={orchestrator_node_public_ip}"
     )
     service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
 
@@ -311,8 +308,25 @@ async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
         # Create /data directory
         await ssh_exec_command(ssh, "sudo mkdir -p /data && sudo chmod 777 /data")
 
+        fields_to_set = ["node.network.orchestrators", "node.clientapi.host"]
+
+        set_commands = []
+        for field in fields_to_set:
+            set_commands.append(
+                f"sudo bacalhau config set {field} {orchestrator_node_public_ip}"
+            )
+            set_commands.append(
+                f"bacalhau config set {field} {orchestrator_node_public_ip}"
+            )
+        bulk_command = " && ".join(set_commands)
+        await ssh_exec_command(ssh, bulk_command)
+
+        print(bulk_command)
+        await ssh_exec_command(ssh, bulk_command)
+
         await ssh_exec_command(ssh, "sudo systemctl enable bacalhau")
-        await ssh_exec_command(ssh, "sudo systemctl start bacalhau")
+        await ssh_exec_command(ssh, "sudo systemctl daemon-reload")
+        await ssh_exec_command(ssh, "sudo systemctl restart bacalhau")
 
         logging.info("Compute node configured successfully.")
 
@@ -321,35 +335,94 @@ async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
         return None
     finally:
         if sftp:
-            await sftp.exit()
+            sftp.exit()
 
 
-def fetch_and_print_bacalhau_run_details(ssh):
-    logging.debug("Fetching bacalhau.run details")
-    try:
-        # Using sudo to cat the file content
-        _, stdout, stderr = ssh_exec_command(
-            "sudo cat /root/.bacalhau/bacalhau.run"
-        )
-        details = stdout.read().decode()
-        error = stderr.read().decode()
+async def fetch_and_print_bacalhau_run_details(machine):
+    logging.debug(f"Fetching bacalhau.run details for {machine['name']}")
+
+    ssh = await ssh_connect(
+        machine["ip_addresses"][1]["public"],
+        machine["ssh_username"],
+        machine["ssh_key_path"],
+    )
+
+    async with ssh:
+        # Run the command to get the JSON output
+        command = "sudo bacalhau config list --output json"
+        output, error = await ssh_exec_command(ssh, command)
+
         if error:
-            logging.error(f"Error reading bacalhau.run: {error}")
-            return
-        print("Contents of bacalhau.run:")
-        print(details)
-    except Exception as e:
-        logging.error(f"Failed to fetch bacalhau.run details: {str(e)}")
+            logging.error(f"Error running command: {error}")
+        else:
+            try:
+                # Parse the JSON output
+                data = json.loads(output)
+
+                # Find the value of node.network.orchestrators
+                node_network_orchestrators = None
+                for item in data:
+                    if item["Key"] == "node.network.orchestrators":
+                        node_network_orchestrators = item["Value"]
+                        break
+
+                if node_network_orchestrators:
+                    logging.info(
+                        f"node.network.orchestrators: {node_network_orchestrators}"
+                    )
+                    print(
+                        f"node.network.orchestrators for {machine['name']}: {node_network_orchestrators}"
+                    )
+                else:
+                    logging.warning(
+                        "node.network.orchestrators not found in the JSON output"
+                    )
+
+            except json.JSONDecodeError as e:
+                logging.error(f"Error parsing JSON: {e}")
+
+            return node_network_orchestrators
 
 
-async def fetch_and_print_node_list(ssh):
-    logging.debug("Fetching node list")
-    stdout, stderr = await ssh_exec_command(ssh, "bacalhau node list")
-    if stderr:
-        logging.error(f"Error fetching node list: {stderr}")
-    else:
-        print("Node list:")
-        print(stdout)
+def get_ssh_connect_string(ssh):
+    with open("MACHINES.json", "r") as f:
+        machines = json.load(f)
+
+    while True:
+        machine = random.choice(machines)
+        public_ip = next(
+            (ip["public"] for ip in machine["ip_addresses"] if "public" in ip), None
+        )
+        if not public_ip:
+            print(f"No public IP found for machine {machine['name']}. Skipping...")
+            continue
+
+        try:
+            ssh.connect(
+                public_ip,
+                username=machine["ssh_username"],
+                key_filename=machine["ssh_key_path"],
+            )
+
+            # Check if a different shell is already logged in
+            stdin, stdout, stderr = ssh.exec_command("who")
+            output = stdout.read().decode().strip()
+            if output:
+                print(
+                    f"A different shell is already logged into {machine['name']}. Skipping..."
+                )
+                ssh.close()
+                continue
+
+            ssh_connect_string = f"ssh -i {machine['ssh_key_path']} {machine['ssh_username']}@{public_ip}"
+            print(ssh_connect_string)
+            ssh.close()
+            break
+
+        except Exception as e:
+            print(f"Failed to connect to {machine['name']}: {str(e)}")
+            ssh.close()
+            continue
 
 
 if __name__ == "__main__":
@@ -360,9 +433,14 @@ if __name__ == "__main__":
         action="store_true",
         help="Fetch and print the bacalhau.run file from the first node with a public IP",
     )
+    parser.add_argument(
+        "--get-ssh",
+        action="store_true",
+        help="Get a random SSH connect string for a node with a public IP",
+    )
     args = parser.parse_args()
 
-    if not args.deploy and not args.fetch_run:
+    if not args.deploy and not args.fetch_run and not args.get_ssh:
         parser.print_help()
         exit(1)
 
@@ -383,37 +461,25 @@ if __name__ == "__main__":
             exit(1)
 
         # Find the first node with a public IP
-        first_node_with_public_ip = None
-        for machine in machines:
-            for ip_address in machine["ip_addresses"]:
-                if "public" in ip_address:
-                    first_node_with_public_ip = machine
-                    break
-            if first_node_with_public_ip:
-                break
-
-        if not first_node_with_public_ip:
-            logging.error("No machine with a public IP found.")
-            exit(1)
-
-        public_ip = next(
-            (
-                ip["public"]
-                for ip in first_node_with_public_ip["ip_addresses"]
-                if "public" in ip
-            ),
+        first_compute_node = next(
+            (machine for machine in machines if not machine["is_orchestrator_node"]),
             None,
         )
-        if not public_ip:
-            logging.error("No public IP found for the first node with a public IP.")
+
+        if not first_compute_node:
+            logging.error("No compute node found.")
             exit(1)
 
-        ssh = ssh_connect(
-            public_ip,
-            first_node_with_public_ip["ssh_username"],
-            first_node_with_public_ip["ssh_key_path"],
-        )
         try:
-            fetch_and_print_bacalhau_run_details(ssh)
-        finally:
-            ssh.close()
+            node_network_orchestrators = asyncio.run(
+                fetch_and_print_bacalhau_run_details(first_compute_node)
+            )
+
+            # Print out a formatted string with the node.network.orchestrators that can be used to export
+            print(f"export BACALHAU_CLIENT_API_HOST={node_network_orchestrators[0]}")
+
+        except Exception as e:
+            logging.error(f"Failed to fetch bacalhau.run details: {str(e)}")
+
+    if args.get_ssh:
+        get_ssh_connect_string()
