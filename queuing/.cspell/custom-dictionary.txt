@@ -10,6 +10,7 @@ containerd
 daaronch
 dotenv
 dpkg
+eastasia
 eastus
 hostnames
 ipfs
@@ -21,9 +22,15 @@ nats
 nics
 nohup
 noninteractive
+northeurope
 pkill
 progrium
+serverapi
+southcentralus
+southeastasia
 SWARMADDRESSES
+uksouth
 UNIQUEID
 vnet
+westeurope
 westus
