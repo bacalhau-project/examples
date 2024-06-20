@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-export BACALHAU_NODE_CLIENTAPI_HOST=${BACALHAU_NODE_CLIENTAPI_HOST:-52.176.177.175}
 export NUMBER_OF_JOBS=${NUMBER_OF_JOBS:-1000}
 
 for ((i=1; i<=NUMBER_OF_JOBS; i++)); do

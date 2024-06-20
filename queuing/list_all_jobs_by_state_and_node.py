@@ -18,14 +18,31 @@ def timestamp_to_iso(timestamp):
 
 
 def main():
-    # Get the BACALHAU_NODE_CLIENTAPI_HOST. If not set, exit
-    bacalhau_node_clientapi_host = os.environ.get("BACALHAU_NODE_CLIENTAPI_HOST")
-    if not bacalhau_node_clientapi_host:
-        print("BACALHAU_NODE_CLIENTAPI_HOST is not set. Exiting.")
+    orchestrator_node_raw = subprocess.run(
+        "bacalhau config list --output json",
+        shell=True,
+        text=True,
+        capture_output=True,
+    )
+
+    orchestrator_node_json = json.loads(orchestrator_node_raw.stdout)
+    orchestrator_node_result = next(
+        (
+            entry["Value"]
+            for entry in orchestrator_node_json
+            if entry["Key"] == "node.clientapi.host"
+        ),
+        None,
+    )
+
+    if orchestrator_node_result:
+        print(f"Getting all jobs from Orchestrator: {orchestrator_node_result}")
+    else:
+        print("Failed to get Orchestrator node details")
         sys.exit(1)
 
     commands = [
-        f"BACALHAU_NODE_CLIENTAPI_HOST={bacalhau_node_clientapi_host} && bacalhau job list --order-by created_at --order-reversed --limit 10000 --output json",
+        "bacalhau job list --order-by created_at --order-reversed --limit 10000 --output json",
     ]
 
     results = {}
