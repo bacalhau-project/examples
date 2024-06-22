@@ -432,6 +432,89 @@ async def get_ssh_connect_string():
     return ssh_connect_string
 
 
+async def upload_and_run_script_on_machines(machines):
+    async def upload_and_run(machine):
+        public_ip = next(
+            (ip["public"] for ip in machine["ip_addresses"] if "public" in ip),
+            None,
+        )
+        if not public_ip:
+            logging.warning(
+                f"No public IP found for machine {machine['name']}. Skipping..."
+            )
+            return
+
+        ssh = None
+        try:
+            logging.info(f"Connecting to {machine['name']} ({public_ip})...")
+            ssh = await asyncssh.connect(
+                public_ip,
+                username=machine["ssh_username"],
+                client_keys=[machine["ssh_key_path"]],
+                known_hosts=None,
+            )
+            logging.info(f"Connected to {machine['name']} ({public_ip})")
+
+            logging.info(f"Uploading 'remote' directory to {machine['name']}...")
+            await asyncssh.scp(
+                "./remote",
+                ssh,
+                remote_path=".",
+                recurse=True,
+            )
+            logging.info(f"Uploaded 'remote' directory to {machine['name']}")
+
+            logging.info(f"Uploading 'requirements.txt' to {machine['name']}...")
+            await asyncssh.scp(
+                "./requirements.txt",
+                ssh,
+                remote_path=".",
+            )
+            logging.info(f"Uploaded 'requirements.txt' to {machine['name']}")
+
+            logging.info(
+                f"Setting execute permissions for 'start.sh' on {machine['name']}..."
+            )
+            await ssh.run("chmod +x ./remote/start.sh")
+            logging.info(f"Set execute permissions for 'start.sh' on {machine['name']}")
+
+            logging.info(f"Executing 'start.sh' on {machine['name']}...")
+            try:
+                result = await ssh.run("./remote/start.sh", check=True)
+                logging.info(f"Executed 'start.sh' on {machine['name']}")
+                logging.info(
+                    f"Output from 'start.sh' on {machine['name']}:\n{result.stdout}"
+                )
+
+                # Save the output to a file in the "logs" directory
+                os.makedirs("remote_logs", exist_ok=True)
+                with open(f"remote_logs/{machine['name']}.log", "w") as f:
+                    f.write(result.stdout)
+
+            except asyncssh.process.ProcessError as e:
+                logging.error(
+                    f"Error executing 'start.sh' on {machine['name']}: {str(e)}"
+                )
+                logging.error(
+                    f"stderr from 'start.sh' on {machine['name']}:\n{e.stderr}"
+                )
+
+                # Save the error output to the log file
+                os.makedirs("remote_logs", exist_ok=True)
+                with open(f"remote_logs/{machine['name']}.log", "w") as f:
+                    f.write(str(e) + "\n" + str(e.stderr))
+
+        except Exception as e:
+            logging.error(f"Failed to connect to {machine['name']}: {str(e)}")
+
+        finally:
+            if ssh:
+                ssh.close()
+
+    tasks = [upload_and_run(machine) for machine in machines]
+    await asyncio.gather(*tasks)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deploy Bacalhau on Azure VMs")
     parser.add_argument("--deploy", action="store_true", help="Deploy Bacalhau on VMs")
@@ -445,9 +528,13 @@ if __name__ == "__main__":
         action="store_true",
         help="Get a random SSH connect string for a node with a public IP",
     )
+    parser.add_argument(
+        "--run-script", action="store_true", help="Run the script on the machines"
+    )
     args = parser.parse_args()
 
-    if not args.deploy and not args.fetch_run and not args.get_ssh:
+    # Check if any argument is set
+    if not any(vars(args).values()):
         parser.print_help()
         exit(1)
 
@@ -502,3 +589,6 @@ if __name__ == "__main__":
                 when_done(result)
 
         asyncio.run(_as_completed())
+
+    if args.run_script:
+        asyncio.run(upload_and_run_script_on_machines(machines))
