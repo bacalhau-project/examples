@@ -17,7 +17,7 @@ sudo systemctl start docker
 sudo systemctl enable docker
 
 # Add the current user to the docker group
-sudo usermod -aG docker $USER
+sudo usermod -aG docker "$USER"
 
 # Create a virtual environment
 python3 -m venv .venv

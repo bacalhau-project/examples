@@ -1,0 +1,83 @@
+--- deploy_spot.py 2024-06-29 19:25:33.000000000 -0700
++++ deploy_spot.py 2024-06-29 19:25:33.000000000 -0700
+@@ -111,14 +111,12 @@
+     table.vrules = prettytable.NONE
+
+     # Add rows to the table
+     sorted_statuses = sorted(statuses.values(), key=lambda x: (x.region, x.zone))
+     for status in sorted_statuses:
+         row = []
+         for field in table.field_names:
+-            if field == "Region":
+-                value = status.region
+-            elif field == "Zone":
+-                value = status.zone
+-            elif field == "Status":
++            value = ""
++            if field == "Status":
+                 value = status.combined_status()
++            elif field == "Region":
+                 value = status.region
+             elif field == "Zone":
+                 value = status.zone
+@@ -127,10 +125,6 @@
+             elif field == "Instance ID":
+                 value = status.instance_id or ""
+             elif field == "Public IP":
+-                value = status.public_ip or ""
+-            elif field == "Private IP":
+-                value = status.private_ip or ""
+-
+             max_width = col_widths[field]
+             if len(value) > max_width - 3:
+                 value = value[: max_width - 3] + "..."
+@@ -325,23 +319,18 @@
+         instance_ids = []
+         region_statuses = {}
+         zones = await get_availability_zones(ec2)
+-        for i in range(INSTANCES_PER_REGION):
+-            zone = zones[i % len(zones)]  # Distribute instances across available zones
++        zone = zones[0]  # Use the first available zone
+ 
+-            subnet_id = await create_subnet(ec2, vpc_id, zone, f"10.0.{i}.0/24")
++            subnet_id = await create_subnet(ec2, vpc_id, zone, f"10.0.0.0/24")
+             try:
+                 await associate_route_table(ec2, route_table_id, subnet_id)
+             except Exception as e:
+                 logging.warn(
+                     f"Error associating route table in {region}-{zone}: {str(e)}"
+                 )
+-
+             status = InstanceStatus(region, zone)
+             region_statuses[f"{region}-{zone}"] = status
+             start_time = time.time()
+             launch_specification = {
+-                "ImageId": UBUNTU_AMIS[region],
+-                "InstanceType": "t2.medium",
+                 "KeyName": KEY_PAIR_NAME,
+                 "UserData": encoded_user_data,
+                 "BlockDeviceMappings": [
+@@ -350,6 +339,8 @@
+                         "Ebs": {"DeleteOnTermination": True},
+                     }
+                 ],
++                "ImageId": UBUNTU_AMIS[region],
++                "InstanceType": "t2.medium",
+                 "NetworkInterfaces": [
+                     {
+                         "DeviceIndex": 0,
+@@ -367,7 +358,7 @@
+             logging.debug(f"Requesting spot instance in {region}-{zone}")
+             response = await asyncio.to_thread(
+                 ec2.request_spot_instances,
+-                InstanceCount=INSTANCES_PER_REGION,
++                InstanceCount=1,  # Create a single instance per region
+                 Type="one-time",
+                 InstanceInterruptionBehavior="terminate",
+                 LaunchSpecification=launch_specification,
+@@ -450,6 +441,7 @@
+ 
+     except Exception as e:
+         logging.error(f"An error occurred in {region}: {str(e)}", exc_info=True)
++        region_statuses[f"{region}-{zone}"] = status
+         return [], {}  # Return empty instance list and updated statuses
