@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import base64
+import hashlib
 import io
 import json
 import logging
@@ -8,7 +9,6 @@ import os
 import subprocess
 import tarfile
 import time
-import uuid
 from datetime import datetime, timezone
 
 import boto3
@@ -84,6 +84,17 @@ task_count = 0
 events_to_progress = []
 
 
+# Update all_statuses threadsafe
+def update_all_statuses(status):
+    async def update_all_statuses_async(status):
+        all_statuses_lock = asyncio.Lock()
+
+        async with all_statuses_lock:
+            all_statuses[status.id] = status
+
+    update_all_statuses_async(status)
+
+
 class RateLimiter:
     def __init__(self, rate_limit):
         self.rate_limit = rate_limit
@@ -126,15 +137,21 @@ async def aws_api_call(func, *args, **kwargs):
 
 
 class InstanceStatus:
-    def __init__(self, region, zone):
-        # Generate a unique ID for each instance - maximum 6 characters
-        self.id = f"{region}-{zone}-{uuid.uuid4()}"[:6]
+    def __init__(self, region, zone, index=0, instance_id=None):
+        input_string = f"{region}-{zone}-{index}"
+        hashed_string = hashlib.sha256(input_string.encode()).hexdigest()
+
+        self.id = hashed_string[:6]
         self.region = region
         self.zone = zone
         self.status = "Initializing"
         self.detailed_status = "Initializing"
         self.elapsed_time = 0
-        self.instance_id = None
+        self.instance_id = instance_id
+
+        if self.instance_id is not None:
+            self.id = self.instance_id
+
         self.public_ip = None
         self.private_ip = None
         self.vpc_id = None
@@ -155,14 +172,14 @@ def format_elapsed_time(seconds):
 
 
 def make_progress_table():
+    global all_statuses
     table = Table(show_header=True, header_style="bold magenta", show_lines=False)
-    table.add_column("ID", width=8, style="cyan", no_wrap=True)
-    table.add_column("Region", width=15, style="green", no_wrap=True)
-    table.add_column("Zone", width=15, style="green", no_wrap=True)
+    table.overflow = "ellipsis"
+    table.add_column("ID", width=20, style="cyan", no_wrap=True)
+    table.add_column("Region", width=20, style="cyan", no_wrap=True)
+    table.add_column("Zone", width=20, style="cyan", no_wrap=True)
     table.add_column("Status", width=20, style="yellow", no_wrap=True)
-    table.add_column(
-        "Elapsed Time", width=15, justify="center", style="magenta", no_wrap=True
-    )
+    table.add_column("Elapsed", width=8, justify="right", style="magenta", no_wrap=True)
     table.add_column("Instance ID", width=20, style="blue", no_wrap=True)
     table.add_column("Public IP", width=15, style="blue", no_wrap=True)
     table.add_column("Private IP", width=15, style="blue", no_wrap=True)
@@ -170,28 +187,41 @@ def make_progress_table():
     sorted_statuses = sorted(all_statuses.values(), key=lambda x: (x.region, x.zone))
     for status in sorted_statuses:
         table.add_row(
-            status.id[:5] + "..." if len(status.id) > 8 else status.id,
-            status.region[:12] + "..." if len(status.region) > 15 else status.region,
-            status.zone[:12] + "..." if len(status.zone) > 15 else status.zone,
-            status.combined_status()[:17] + "..."
-            if len(status.combined_status()) > 20
-            else status.combined_status(),
-            format_elapsed_time(status.elapsed_time),
-            (status.instance_id or "")[:17] + "..."
-            if len(status.instance_id or "") > 20
-            else (status.instance_id or ""),
-            (status.public_ip or "")[:12] + "..."
-            if len(status.public_ip or "") > 15
-            else (status.public_ip or ""),
-            (status.private_ip or "")[:12] + "..."
-            if len(status.private_ip or "") > 15
-            else (status.private_ip or ""),
+            status.id,
+            status.region,
+            status.zone,
+            status.combined_status(),
+            f"{status.elapsed_time:.1f}s",
+            status.instance_id,
+            status.public_ip,
+            status.private_ip,
         )
     return table
 
 
-async def update_table():
-    global table_update_running
+def create_layout(progress, table):
+    layout = Layout()
+    progress_panel = Panel(
+        progress,
+        title="Progress",
+        border_style="green",
+        padding=(1, 1),
+    )
+    layout.split(
+        Layout(progress_panel, size=5),
+        Layout(table),
+    )
+    return layout
+
+
+async def update_table(live):
+    global \
+        table_update_running, \
+        task_total, \
+        events_to_progress, \
+        all_statuses, \
+        console, \
+        task_name
     if table_update_running:
         logging.debug("Table update already running. Exiting.")
         return
@@ -202,38 +232,50 @@ async def update_table():
         table_update_running = True
         progress = Progress(
             TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
+            BarColumn(bar_width=None),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("[progress.completed]{task.completed} of {task.total}"),
+            TextColumn("[progress.elapsed]{task.elapsed:>3.0f}s"),
+            expand=True,
         )
         task = progress.add_task(task_name, total=task_total)
 
-        with Live(console=console, refresh_per_second=4) as live:
-            while not table_update_event.is_set():
-                while len(events_to_progress) > 0:
-                    progress.update(task, completed=len(events_to_progress))
-                    events_to_progress.pop(0)
+        while not table_update_event.is_set():
+            while events_to_progress:
+                event = events_to_progress.pop(0)
+                if isinstance(event, str):
+                    # For list operation, event is instance_id
+                    all_statuses[event].status = "Listed"
+                else:
+                    # For create and destroy operations, event is InstanceStatus object
+                    all_statuses[event.id] = event
 
-                table = make_progress_table()
-
-                # Create a layout
-                layout = Layout()
-                layout.split(
-                    Layout(
-                        Panel(
-                            progress,
-                            title="Progress",
-                            border_style="green",
-                            padding=(1, 1),
-                        ),
-                        size=3,
-                    ),
-                    Layout(table),
+            if task_name == "Creating Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status != "Initializing"]
                 )
+            elif task_name == "Terminating Spot Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status == "Terminated"]
+                )
+            elif task_name == "Listing Spot Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status == "Listed"]
+                )
+            else:
+                completed = 0
 
-                # Update the live display
-                live.update(layout)
+            # Update task_total if it has changed
+            if task_total != progress.tasks[0].total:
+                progress.update(task, total=task_total)
 
-                await asyncio.sleep(0.25)
+            progress.update(task, completed=completed)
+
+            table = make_progress_table()
+            layout = create_layout(progress, table)
+            live.update(layout)
+
+            await asyncio.sleep(0.05)  # Reduce sleep time for more frequent updates
 
     except Exception as e:
         logging.error(f"Error in update_table: {str(e)}")
@@ -377,6 +419,8 @@ rm -rf "$SCRIPT_DIR"
 
 
 async def create_spot_instances_in_region(region, orchestrators):
+    global all_statuses, events_to_progress
+
     ec2 = get_ec2_client(region)
 
     try:
@@ -412,8 +456,10 @@ async def create_spot_instances_in_region(region, orchestrators):
                         f"Error associating route table in {region}-{zone}: {str(e)}"
                     )
 
-            thisInstanceStatusObject = InstanceStatus(region, zone)
+            thisInstanceStatusObject = InstanceStatus(region, zone, i)
             all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
+            events_to_progress.append(thisInstanceStatusObject)
+
             start_time = time.time()
             launch_specification = {
                 "ImageId": UBUNTU_AMIS[region],
@@ -438,9 +484,8 @@ async def create_spot_instances_in_region(region, orchestrators):
             }
 
             thisInstanceStatusObject.status = "Requesting"
-            all_statuses[thisInstanceStatusObject.id] = (
-                thisInstanceStatusObject  # Update all_statuses
-            )
+            all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
+            events_to_progress.append(thisInstanceStatusObject)
 
             logging.debug(f"Requesting spot instance in {region}-{zone}")
             response = await asyncio.to_thread(
@@ -551,13 +596,13 @@ async def create_spot_instances_in_region(region, orchestrators):
                 events_to_progress.append(thisInstanceStatusObject)
             else:
                 thisInstanceStatusObject.status = "Failed to request spot instance"
-                all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
+                update_all_statuses(thisInstanceStatusObject)
 
     except Exception as e:
         logging.error(f"An error occurred in {region}: {str(e)}", exc_info=True)
         return [], {}
 
-    return instance_ids, all_statuses
+    return instance_ids
 
 
 async def create_vpc_if_not_exists(ec2):
@@ -668,18 +713,37 @@ async def create_route_table(ec2, vpc_id, igw_id):
     for rt in route_tables["RouteTables"]:
         for association in rt.get("Associations", []):
             if association.get("Main", False):
-                # Found the main route table, return its ID
-                return rt["RouteTableId"]
+                # Found the main route table, add a route to the IGW if it doesn't exist
+                route_table_id = rt["RouteTableId"]
+                routes = rt.get("Routes", [])
+                if not any(route.get("GatewayId") == igw_id for route in routes):
+                    await asyncio.to_thread(
+                        ec2.create_route,
+                        RouteTableId=route_table_id,
+                        DestinationCidrBlock="0.0.0.0/0",
+                        GatewayId=igw_id,
+                    )
+                return route_table_id
 
     # If no route table exists, create a new one
     route_table = await asyncio.to_thread(ec2.create_route_table, VpcId=vpc_id)
     route_table_id = route_table["RouteTable"]["RouteTableId"]
+
+    # Create a route to the Internet Gateway
     await asyncio.to_thread(
         ec2.create_route,
         RouteTableId=route_table_id,
         DestinationCidrBlock="0.0.0.0/0",
         GatewayId=igw_id,
     )
+
+    # Associate the route table with the VPC (make it the main route table)
+    await asyncio.to_thread(
+        ec2.associate_route_table,
+        RouteTableId=route_table_id,
+        VpcId=vpc_id,
+    )
+
     return route_table_id
 
 
@@ -856,8 +920,9 @@ async def list_spot_instances():
                 for reservation in response["Reservations"]:
                     for instance in reservation["Instances"]:
                         instance_id = instance["InstanceId"]
-                        thisInstanceStatusObject = InstanceStatus(region, az)
-                        thisInstanceStatusObject.instance_id = instance_id
+                        thisInstanceStatusObject = InstanceStatus(
+                            region, az, 0, instance_id
+                        )
                         thisInstanceStatusObject.status = instance["State"][
                             "Name"
                         ].capitalize()
@@ -870,12 +935,10 @@ async def list_spot_instances():
                         thisInstanceStatusObject.private_ip = instance.get(
                             "PrivateIpAddress", ""
                         )
-                        all_statuses[f"{region}-{az}-{instance_id}"] = (
-                            thisInstanceStatusObject
-                        )
 
                         events_to_progress.append(instance_id)
-                        task_total += 1  # Increment total for each instance found
+                        all_statuses[instance_id] = thisInstanceStatusObject
+                        task_total += 1  # Increment task_total for each instance found
 
             logging.debug(f"Found {len(all_statuses)} instances in region {region}")
 
@@ -892,9 +955,9 @@ async def list_spot_instances():
 async def destroy_instances():
     instance_region_map = {}
 
-    global task_name
+    global task_name, task_total, events_to_progress
     task_name = "Terminating Spot Instances"
-    global task_total
+    events_to_progress = []
 
     print("Identifying instances to terminate...")
     for region in AWS_REGIONS:
@@ -936,7 +999,8 @@ async def destroy_instances():
         print("No instances found to terminate.")
         return
 
-    print(f"\nFound {len(all_statuses)} instances to terminate.")
+    task_total = len(all_statuses)
+    print(f"\nFound {task_total} instances to terminate.")
 
     async def terminate_instances_in_region(region, region_instances):
         ec2 = get_ec2_client(region)
@@ -945,7 +1009,6 @@ async def destroy_instances():
                 ec2.terminate_instances, InstanceIds=region_instances
             )
             waiter = ec2.get_waiter("instance_terminated")
-            events_to_progress.append(len(region_instances))
             start_time = time.time()
             while True:
                 try:
@@ -958,11 +1021,22 @@ async def destroy_instances():
                 except botocore.exceptions.WaiterError:
                     elapsed_time = time.time() - start_time
                     for instance_id in region_instances:
-                        all_statuses[instance_id].elapsed_time = elapsed_time
-                        all_statuses[
-                            instance_id
-                        ].detailed_status = f"Terminating ({elapsed_time:.0f}s)"
+                        thisInstanceStatusObject = all_statuses[instance_id]
+                        thisInstanceStatusObject.elapsed_time = elapsed_time
+                        thisInstanceStatusObject.detailed_status = (
+                            f"Terminating ({elapsed_time:.0f}s)"
+                        )
+                        events_to_progress.append(thisInstanceStatusObject)
+                        all_statuses[instance_id] = thisInstanceStatusObject
                     await asyncio.sleep(10)
+
+            # Update status for terminated instances
+            for instance_id in region_instances:
+                thisInstanceStatusObject = all_statuses[instance_id]
+                thisInstanceStatusObject.status = "Terminated"
+                thisInstanceStatusObject.detailed_status = "Instance terminated"
+                events_to_progress.append(thisInstanceStatusObject)
+                all_statuses[instance_id] = thisInstanceStatusObject
 
             # Clean up resources for each VPC
             vpcs_to_delete = set(
@@ -975,6 +1049,7 @@ async def destroy_instances():
                     for instance_id, status in all_statuses.items():
                         if status.vpc_id == vpc_id:
                             status.detailed_status = "Cleaning up VPC resources"
+                            events_to_progress.append(status)
 
                     await clean_up_vpc_resources(ec2, vpc_id)
 
@@ -989,20 +1064,22 @@ async def destroy_instances():
             )
 
     # Group instances by region
-    instances_by_region = {}
+    region_instances = {}
     for instance_id, info in instance_region_map.items():
         region = info["region"]
-        if region not in instances_by_region:
-            instances_by_region[region] = []
-        instances_by_region[region].append(instance_id)
-        task_total += 1
+        if region not in region_instances:
+            region_instances[region] = []
+        region_instances[region].append(instance_id)
 
+    # Terminate instances in parallel
     await asyncio.gather(
         *[
-            terminate_instances_in_region(region, region_instances)
-            for region, region_instances in instances_by_region.items()
+            terminate_instances_in_region(region, instances)
+            for region, instances in region_instances.items()
         ]
     )
+
+    print("All instances have been terminated.")
 
 
 async def clean_up_vpc_resources(ec2, vpc_id):
@@ -1110,9 +1187,6 @@ async def main():
     global table_update_running
     table_update_running = False
 
-    # Start update_table in the background
-    table_task = asyncio.create_task(update_table())
-
     parser = argparse.ArgumentParser(
         description="Manage spot instances across multiple AWS regions."
     )
@@ -1130,20 +1204,22 @@ async def main():
 
     orchestrators = args.orchestrators.split(",")
 
-    try:
-        if args.action == "create":
-            await create_spot_instances(orchestrators)
-        elif args.action == "list":
-            await list_spot_instances()
-        elif args.action == "destroy":
-            await destroy_instances()
-        elif args.action == "delete_disconnected_aws_nodes":
-            await delete_disconnected_aws_nodes()
-    except Exception as e:
-        logging.error(f"Error in main: {str(e)}")
-    finally:
-        table_update_event.set()
-        await table_task
+    with Live(console=console, refresh_per_second=20) as live:
+        asyncio.create_task(update_table(live))
+
+        try:
+            if args.action == "create":
+                await create_spot_instances(orchestrators)
+            elif args.action == "list":
+                await list_spot_instances()
+            elif args.action == "destroy":
+                await destroy_instances()
+            elif args.action == "delete_disconnected_aws_nodes":
+                await delete_disconnected_aws_nodes()
+        except Exception as e:
+            logging.error(f"Error in main: {str(e)}")
+        finally:
+            table_update_event.set()
 
 
 if __name__ == "__main__":
