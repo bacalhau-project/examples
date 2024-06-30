@@ -12,7 +12,7 @@ from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
 all_statuses = {}
-task_total = 100
+task_total = 30
 
 console = Console()
 
@@ -85,22 +85,6 @@ def create_layout(progress, table):
     return layout
 
 
-async def simulate_instance_creation(status, queue, progress_task):
-    """Simulates the creation of a single instance."""
-    for _ in range(10):  # 10 steps to simulate different stages
-        await asyncio.sleep(random.uniform(0.1, 0.5))  # Random delay between steps
-        status.detailed_status = random.choice(
-            ["Pending", "Provisioning", "Initializing", "Configuring"]
-        )
-        status.elapsed_time = time.time() - start_time
-        await queue.put(status)  # Put the updated status into the queue
-    status.status = "Running"
-    await queue.put(status)
-    progress_task.update(
-        progress_task.id, advance=1
-    )  # Update progress bar for each instance
-
-
 async def update_table(live):
     global table_update_running, events_to_progress, all_statuses, console
     if table_update_running:
@@ -169,9 +153,7 @@ async def main():
             await asyncio.sleep(4 - time_elapsed)
 
         table_update_event.set()
-        await update_table_task
 
-    # Print the final table outside of the Live context
     final_table = make_progress_table()
     console.print(final_table)
 
