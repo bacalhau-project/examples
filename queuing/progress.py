@@ -85,8 +85,24 @@ def create_layout(progress, table):
     return layout
 
 
-async def update_table():
-    global table_update_running
+async def simulate_instance_creation(status, queue, progress_task):
+    """Simulates the creation of a single instance."""
+    for _ in range(10):  # 10 steps to simulate different stages
+        await asyncio.sleep(random.uniform(0.1, 0.5))  # Random delay between steps
+        status.detailed_status = random.choice(
+            ["Pending", "Provisioning", "Initializing", "Configuring"]
+        )
+        status.elapsed_time = time.time() - start_time
+        await queue.put(status)  # Put the updated status into the queue
+    status.status = "Running"
+    await queue.put(status)
+    progress_task.update(
+        progress_task.id, advance=1
+    )  # Update progress bar for each instance
+
+
+async def update_table(live):
+    global table_update_running, events_to_progress, all_statuses, console
     if table_update_running:
         logging.debug("Table update already running. Exiting.")
         return
@@ -105,20 +121,17 @@ async def update_table():
         )
         task = progress.add_task("Creating Instances", total=task_total)
 
-        with Live(
-            console=console, refresh_per_second=20
-        ) as live:  # Increase refresh rate
-            while not table_update_event.is_set() or events_to_progress:
-                while events_to_progress:
-                    event = events_to_progress.pop(0)
-                    all_statuses[event.id] = event
-                    progress.update(task, completed=len(all_statuses))
+        while not table_update_event.is_set() or events_to_progress:
+            while events_to_progress:
+                event = events_to_progress.pop(0)
+                all_statuses[event.id] = event
+                progress.update(task, completed=len(all_statuses))
 
-                table = make_progress_table()
-                layout = create_layout(progress, table)
-                live.update(layout)
+            table = make_progress_table()
+            layout = create_layout(progress, table)
+            live.update(layout)
 
-                await asyncio.sleep(0.05)  # Reduce sleep time for more frequent updates
+            await asyncio.sleep(0.05)  # Reduce sleep time for more frequent updates
 
     except Exception as e:
         logging.error(f"Error in update_table: {str(e)}")
@@ -129,7 +142,6 @@ async def update_table():
 
 async def main():
     global events_to_progress, all_statuses
-    global console
 
     start_time = time.time()
     end_time = start_time + 4  # Set to 4 seconds
@@ -139,37 +151,28 @@ async def main():
         for _ in range(task_total)
     ]
 
-    task = asyncio.create_task(update_table())
+    with Live(console=console, refresh_per_second=20) as live:
+        update_table_task = asyncio.create_task(update_table(live))
 
-    # Distribute status creation over 4 seconds
-    for i in range(task_total):
-        events_to_progress.append(statuses_to_create[i])
-        if (i + 1) % 10 == 0:  # Add a delay every 10 statuses
-            await asyncio.sleep(0.4)  # Sleep for 0.4 seconds (4 seconds / 10 batches)
+        # Distribute status creation over 4 seconds
+        for i in range(task_total):
+            events_to_progress.append(statuses_to_create[i])
+            if (i + 1) % 10 == 0:
+                await asyncio.sleep(0.4)
 
-    # Ensure all statuses are processed
-    all_statuses.update({status.id: status for status in statuses_to_create})
+        # Ensure all statuses are processed
+        all_statuses.update({status.id: status for status in statuses_to_create})
 
-    table_update_event.set()
-    await task
+        # If we finished early, wait until 4 seconds have passed
+        time_elapsed = time.time() - start_time
+        if time_elapsed < 4:
+            await asyncio.sleep(4 - time_elapsed)
 
-    # Print final results
+        table_update_event.set()
+        await update_table_task
+
+    # Print the final table outside of the Live context
     final_table = make_progress_table()
-    final_progress = Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TextColumn("[progress.completed]{task.completed} of {task.total}"),
-        TextColumn("[progress.elapsed]{task.elapsed:>3.0f}s"),
-        console=console,
-        expand=True,
-    )
-    final_task = final_progress.add_task(
-        "Instances Created", total=task_total, completed=len(all_statuses)
-    )
-    final_progress.update(final_task, completed=len(all_statuses))
-
-    console.print(final_progress)
     console.print(final_table)
 
 
