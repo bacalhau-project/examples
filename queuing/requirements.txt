@@ -11,6 +11,11 @@ azure-identity==1.17.0
 azure-mgmt-core==1.4.0
     # via azure-mgmt-resource
 azure-mgmt-resource==23.1.1
+boto3==1.34.136
+botocore==1.34.136
+    # via
+    #   boto3
+    #   s3transfer
 cachetools==5.3.3
     # via google-auth
 certifi==2024.6.2
@@ -33,6 +38,10 @@ idna==3.7
     # via requests
 isodate==0.6.1
     # via azure-mgmt-resource
+jmespath==1.0.1
+    # via
+    #   boto3
+    #   botocore
 kubernetes==30.1.0
 msal==1.28.1
     # via
@@ -52,6 +61,7 @@ pandas==2.2.2
 pip==24.0
 portalocker==2.8.2
     # via msal-extensions
+prettytable==3.10.0
 pyasn1==0.6.0
     # via
     #   pyasn1-modules
@@ -64,6 +74,7 @@ pyjwt==2.8.0
     # via msal
 python-dateutil==2.9.0.post0
     # via
+    #   botocore
     #   kubernetes
     #   pandas
 python-dotenv==1.0.1
@@ -81,6 +92,8 @@ requests-oauthlib==2.0.0
     # via kubernetes
 rsa==4.9
     # via google-auth
+s3transfer==0.10.2
+    # via boto3
 setuptools==70.1.0
 six==1.16.0
     # via
@@ -88,6 +101,7 @@ six==1.16.0
     #   isodate
     #   kubernetes
     #   python-dateutil
+tqdm==4.66.4
 typing-extensions==4.12.2
     # via
     #   asyncssh
@@ -97,9 +111,12 @@ tzdata==2024.1
     # via pandas
 urllib3==2.2.2
     # via
+    #   botocore
     #   kubernetes
     #   requests
 uv==0.2.13
+wcwidth==0.2.13
+    # via prettytable
 websocket-client==1.8.0
     # via kubernetes
 wheel==0.43.0
