@@ -1,0 +1,23 @@
+{
+    "InstanceType": "t2.medium",
+    "ImageId": "ami-09040d770ffe2224f",
+    "SubnetId": "subnet-015d7ad167c75d661",
+    "VpcId": "vpc-0724aba83761c8b56",
+    "KeyName": "david-aws-keypair",
+    "SecurityGroups": [
+        "sg-07772665214866f6b"
+    ],
+    "IamInstanceProfile": null,
+    "UserData": null,
+    "BlockDeviceMappings": [
+        {
+            "DeviceName": "/dev/sda1",
+            "Ebs": {
+                "AttachTime": "2024-06-28T22:29:57+00:00",
+                "DeleteOnTermination": true,
+                "Status": "attached",
+                "VolumeId": "vol-02c9eca795954765a"
+            }
+        }
+    ]
+}

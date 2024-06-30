@@ -401,7 +401,10 @@ async def get_ssh_connect_string():
             None,
         )
         if not public_ip:
-            print(f"No public IP found for machine {machine['name']}. Skipping...")
+            print(
+                f"No public IP found for machine {machine['name']}. Skipping...",
+                file=sys.stderr,
+            )
             continue
 
         try:
@@ -415,12 +418,13 @@ async def get_ssh_connect_string():
             output, stderr = await ssh_exec_command(ssh, "who")
             if output:
                 print(
-                    f"A different shell is already logged into {machine['name']}. Skipping..."
+                    f"A different shell is already logged into {machine['name']}. Skipping...",
+                    file=sys.stderr,
                 )
                 continue
 
             ssh_connect_string = f"ssh -i {machine['ssh_key_path']} {machine['ssh_username']}@{public_ip}"
-            break
+            return ssh_connect_string
 
         except Exception as e:
             print(f"Failed to connect to {machine['name']}: {str(e)}")
@@ -428,8 +432,6 @@ async def get_ssh_connect_string():
         finally:
             if ssh:
                 ssh.close()
-
-    return ssh_connect_string
 
 
 async def upload_and_run_script_on_machines(machines):

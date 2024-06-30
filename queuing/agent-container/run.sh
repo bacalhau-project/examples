@@ -7,4 +7,4 @@ fi
 
 bacalhau serve --node-type=compute \
                --labels hostname="$(hostname)" \
-               --orchestrators=${BACALHAU_NODE_NETWORK_ORCHESTRATORS}
+               --orchestrators="${BACALHAU_NODE_NETWORK_ORCHESTRATORS}"
