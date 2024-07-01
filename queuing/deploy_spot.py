@@ -1186,6 +1186,24 @@ async def delete_disconnected_aws_nodes():
         print(f"An unexpected error occurred: {e}")
 
 
+def all_statuses_to_dict():
+    return {
+        status.id: {
+            "id": status.id,
+            "region": status.region,
+            "zone": status.zone,
+            "status": status.status,
+            "detailed_status": status.detailed_status,
+            "elapsed_time": status.elapsed_time,
+            "instance_id": status.instance_id,
+            "public_ip": status.public_ip,
+            "private_ip": status.private_ip,
+            "vpc_id": status.vpc_id,
+        }
+        for status in all_statuses.values()
+    }
+
+
 async def main():
     global table_update_running
     table_update_running = False
@@ -1208,26 +1226,36 @@ async def main():
         help="Token for the cluster",
         default="",
     )
+    parser.add_argument(
+        "--format", choices=["default", "json"], default="default", help="Output format"
+    )
     args = parser.parse_args()
 
     orchestrators = args.orchestrators.split(",")
 
-    with Live(console=console, refresh_per_second=20) as live:
-        asyncio.create_task(update_table(live))
+    async def perform_action():
+        if args.action == "create":
+            await create_spot_instances(orchestrators, args.token)
+        elif args.action == "list":
+            await list_spot_instances()
+        elif args.action == "destroy":
+            await destroy_instances()
+        elif args.action == "delete_disconnected_aws_nodes":
+            await delete_disconnected_aws_nodes()
 
-        try:
-            if args.action == "create":
-                await create_spot_instances(orchestrators, args.token)
-            elif args.action == "list":
-                await list_spot_instances()
-            elif args.action == "destroy":
-                await destroy_instances()
-            elif args.action == "delete_disconnected_aws_nodes":
-                await delete_disconnected_aws_nodes()
-        except Exception as e:
-            logging.error(f"Error in main: {str(e)}")
-        finally:
-            table_update_event.set()
+    if args.format == "json":
+        await perform_action()
+        print(json.dumps(all_statuses_to_dict(), indent=2))
+    else:
+        with Live(console=console, refresh_per_second=20) as live:
+            update_task = asyncio.create_task(update_table(live))
+            try:
+                await perform_action()
+            except Exception as e:
+                logging.error(f"Error in main: {str(e)}")
+            finally:
+                table_update_event.set()
+                await update_task
 
 
 if __name__ == "__main__":
