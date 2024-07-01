@@ -13,4 +13,4 @@ new_id = id[:-12] + uuid.uuid4().hex[:12]
 print(new_id)
     ")
 
-sudo curl https://get.bacalhau.org/install.sh?dl="${BACALHAU_INSTALL_ID}" | sudo bash
+sudo curl -sSL https://get.bacalhau.org/install.sh?dl="${BACALHAU_INSTALL_ID}" | sudo bash
