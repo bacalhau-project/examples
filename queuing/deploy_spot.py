@@ -374,7 +374,7 @@ def tar_and_encode_scripts():
     return base64.b64encode(memory_file.getvalue()).decode()
 
 
-def get_user_data_script(orchestrators, encoded_tar):
+def get_user_data_script(orchestrators, encoded_tar, token=""):
     # If the orchestrators are empty, we are creating a new network
     if not orchestrators:
         # Orchestrators being empty means we need to stop creation and warn
@@ -385,6 +385,7 @@ def get_user_data_script(orchestrators, encoded_tar):
 
 # Export ORCHESTRATORS
 export ORCHESTRATORS="{','.join(orchestrators)}"
+export TOKEN="{token}"
 
 # Create and populate /etc/node-config
 create_node_config() {{
@@ -395,6 +396,7 @@ EC2_VCPU_COUNT=$(nproc)
 EC2_MEMORY_GB=$(free -g | awk '/^Mem:/{{print $2}}')
 EC2_DISK_GB=$(df -BG --output=size / | tail -n 1 | tr -d ' G')
 ORCHESTRATORS=$ORCHESTRATORS
+TOKEN=$TOKEN
 EOF
     chmod 644 /etc/node-config
 }}
@@ -418,7 +420,7 @@ rm -rf "$SCRIPT_DIR"
 """
 
 
-async def create_spot_instances_in_region(region, orchestrators):
+async def create_spot_instances_in_region(region, orchestrators, token=""):
     global all_statuses, events_to_progress
 
     ec2 = get_ec2_client(region)
@@ -426,7 +428,7 @@ async def create_spot_instances_in_region(region, orchestrators):
     try:
         await ensure_key_pair_exists(ec2)
         encoded_tar = tar_and_encode_scripts()
-        user_data = get_user_data_script(orchestrators, encoded_tar)
+        user_data = get_user_data_script(orchestrators, encoded_tar, token)
         if not user_data:
             logging.error("User data is empty. Stopping creation.")
             return [], {}
@@ -806,7 +808,7 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
         return security_group_id
 
 
-async def create_spot_instances(orchestrators):
+async def create_spot_instances(orchestrators, token=""):
     if not orchestrators:
         print("Error: No orchestrators specified.")
         return []
@@ -837,6 +839,7 @@ async def create_spot_instances(orchestrators):
         instance_ids = await create_spot_instances_in_region(
             region,
             orchestrators,
+            token,
         )
         global_node_count += len(instance_ids)
         return instance_ids
@@ -1200,6 +1203,11 @@ async def main():
         help="Comma-separated list of orchestrator addresses",
         default="",
     )
+    parser.add_argument(
+        "--token",
+        help="Token for the cluster",
+        default="",
+    )
     args = parser.parse_args()
 
     orchestrators = args.orchestrators.split(",")
@@ -1209,7 +1217,7 @@ async def main():
 
         try:
             if args.action == "create":
-                await create_spot_instances(orchestrators)
+                await create_spot_instances(orchestrators, args.token)
             elif args.action == "list":
                 await list_spot_instances()
             elif args.action == "destroy":

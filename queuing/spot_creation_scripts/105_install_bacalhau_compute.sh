@@ -41,6 +41,10 @@ start_bacalhau() {
     # Construct LABELS from EC2 information
     LABELS="EC2_INSTANCE_FAMILY=${EC2_INSTANCE_FAMILY:-unknown},EC2_VCPU_COUNT=${EC2_VCPU_COUNT:-unknown},EC2_MEMORY_GB=${EC2_MEMORY_GB:-unknown},EC2_DISK_GB=${EC2_DISK_GB:-unknown},ORCHESTRATORS=${ORCHESTRATORS},HOSTNAME=${HOSTNAME},IP=${IP}"
     
+    if [ -n "${TOKEN:-}" ]; then
+        ORCHESTRATORS="${TOKEN}@${ORCHESTRATORS}"
+    fi
+
     # Start Bacalhau
     /usr/local/bin/bacalhau serve \
         --node-type compute \
