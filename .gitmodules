@@ -1,0 +1,3 @@
+[submodule "model-inference/yolo-object-detection/yolov5"]
+	path = model-inference/yolo-object-detection/yolov5
+	url = https://github.com/bacalhau-project/yolov5.git
