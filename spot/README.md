@@ -50,7 +50,7 @@ In your CLI run the following command:
 
 `main.py create --orchestrators "nats://<YOUR REQUESTER NODES IP ADDRESS>:4222" --no-of-instances 10`
 
->>> IMAGE OF PYTHON SCRIPT RUNNING
+![An image of the python script creating AWS Spot Instance](./IMAGES/1.png)
 
 A table will appear showing you the progress of the Python script as it provisions your instances. This will provision 10 Spot Instances of the "t2.medium" type. 
 
@@ -66,7 +66,7 @@ Once all of our instances have been provisioned, we can use the Bacalhau CLI to 
 
 You should see a list of nodes connected to your requester node, and they should have an approval status of `APPROVED` and a STATUS of `CONNECTED`.
 
->>> IMAGE OF NODES
+![An image of the the newly created compute nodes registered with the requester node](./IMAGES/2.png)
 
 ### Running a Job
 
@@ -80,9 +80,18 @@ To run the job on all nodes, enter the following command into your CLI:
 
 This should take a few seconds to complete, and once it's done, you should see something like the following:
 
->>> IMAGE OF JOB SUBMISSIONS
+![An image of the results of our executed jobs](./IMAGES/3.png)
 
 To get the results of all of the Jobs that have been run, we can run the following command:
 
 `bacalhau --api-host=<YOUR REQUESTER NODE IP ADDRESS> job describe <JOB ID RETURNED BY BACALHAU CLI>`
 
+### Cleaning up
+
+If you've finished with your Spot Instances, you can delete the instances and associated resources by running:
+
+`python3 main.py destroy`
+
+## Conclusion
+
+In summary, combining Bacalhau and AWS Spot Instances offers a powerful opiotn to run your distributed computing at scale without the usual huge bills attached to it.
