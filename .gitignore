@@ -48,3 +48,8 @@ node_modules/
 plan.out
 scripts.zip
 case-studies/mongodb-atlas/scripts/_poll.py
+
+VENV/
+
+*.pub
+NOTES.md
