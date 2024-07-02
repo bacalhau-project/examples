@@ -22,25 +22,15 @@ _If you already have a Bacalhau Requester Node setup somewhere, you can skip thi
 
 In order for our Bacalhau network to function, we first need to spin up a Requester node that our Compute nodes can connect to, and that we can interact with to fire off jobs to our network.
 
-The `examples/spot` directory is where the scripts for provisioning our Spot Instances can be found, but first `cd` into `examples/spot/orchestrator` where we will find a Terraform script which will spin up a node on GCP for our Spot Instances to communicate with.
+The `examples/spot` directory is where the scripts for provisioning our Spot Instances can be found. But, the script we're going to use first is the `create_requester.py` script. This script will create an On-Demand t2.medium EC2 instance and configure it to run as a Bacalhau Requester node.
 
-Copy the `.example.env.json` file to `.env.json` and open it for editing. It's in this file that we can set some variables that will enable Terraform to spin up a GCP Compute Instance for us.
+To run the script enter:
 
-Set the variables as follows:
+`python3 create_requester.py`
 
-`"project_id"` - The GCP project ID that we want our Requester node to be created in.
-`app_name` - A human-readable name for the resources that Terraform will create in our GCP account.
-`app_tag` - A human-readable tag that will be added to our resources for easier discovery later on.
+This should take a few seconds to run, and will create a Security Group, ingress rules, and the EC2 instance in the `us-west-2` region. After it's completed, it will output the public IPv4 address of your new Requester Node.
 
-Once those variables are set, head back to your CLI and execute the following command:
-
-`terraform plan -out plan.out -var-file .env.json && terraform apply "plan.out"`
-
-Terraform will start to spin up a Requester Node shortly afterwards. It should only take a few minutes.
-
-### Getting your Requester Node Public IP
-
-Once your Terraform script has finished, there should be a new `bacalhau.run` file in your directory. It contains the public IP address for your new Requester Node. We'll need this in a moment, so take notice of it.
+Take note of this IP address, we'll need it shortly.
 
 ## Provisioning AWS Spot Instances
 
