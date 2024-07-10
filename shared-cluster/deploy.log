@@ -1,0 +1,130 @@
+2024-07-10 19:11:29,770 - root - INFO - Starting cluster creation process
+2024-07-10 19:11:29,770 - root - INFO - Creating Resource Group
+2024-07-10 19:11:30,163 - root - INFO - Resource Group created successfully
+2024-07-10 19:11:30,163 - root - INFO - Creating Virtual Network
+2024-07-10 19:11:30,163 - root - INFO - Creating Subnet
+2024-07-10 19:11:30,163 - root - INFO - Creating virtual network bac-sci-vnet
+2024-07-10 19:11:30,164 - root - INFO - Creating Network Security Group
+2024-07-10 19:11:30,165 - root - INFO - Creating Network Security Group bac-sci-nsg-240710191190
+2024-07-10 19:11:30,607 - root - INFO - Virtual Network not found, retrying... (Attempt 1/10)
+2024-07-10 19:11:32,827 - root - INFO - Network Security Group created successfully
+2024-07-10 19:11:32,827 - root - INFO - Creating NSG Rules
+2024-07-10 19:11:41,404 - root - INFO - Subnet bac-sci-subnet created successfully
+2024-07-10 19:11:41,786 - root - INFO - Virtual Network created successfully
+2024-07-10 19:11:47,825 - root - INFO - NSG Rules created successfully
+2024-07-10 19:11:47,825 - root - INFO - All pre-VM tasks completed successfully
+2024-07-10 19:11:47,825 - root - INFO - Creating Storage Account
+2024-07-10 19:11:47,826 - root - INFO - Checking if storage account bacstg240710191190 exists...
+2024-07-10 19:11:48,278 - root - INFO - Storage account bacstg240710191190 not found. Creating it...
+2024-07-10 19:12:11,277 - root - INFO - Storage account bacstg240710191190 created successfully.
+2024-07-10 19:12:12,562 - root - INFO - Storage Account created/found successfully in resource group bac-sci-240710191190
+2024-07-10 19:12:12,562 - root - INFO - Creating 3 VMs
+2024-07-10 19:12:12,562 - root - INFO - All tasks: 7
+2024-07-10 19:12:12,563 - root - INFO - Creating File Share
+2024-07-10 19:12:12,913 - root - INFO - SMB file share sharedfiles created successfully.
+2024-07-10 19:12:13,096 - root - ERROR - Error creating file share: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+2024-07-10 19:12:13,104 - root - ERROR - Error creating File Share: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+2024-07-10 19:12:13,110 - root - INFO - Traceback (most recent call last):
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
+    await asyncio.to_thread(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
+    storage_client.file_services.set_service_properties(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
+    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+
+2024-07-10 19:12:13,110 - root - ERROR - Error during VM creation: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+2024-07-10 19:12:13,115 - root - INFO - Traceback (most recent call last):
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 1181, in create_cluster
+    vm_results = await asyncio.gather(*vm_tasks)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
+    await asyncio.to_thread(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
+    storage_client.file_services.set_service_properties(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
+    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+
+2024-07-10 19:12:13,115 - root - ERROR - Error during cluster creation: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+2024-07-10 19:12:13,119 - root - INFO - Traceback (most recent call last):
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 1181, in create_cluster
+    vm_results = await asyncio.gather(*vm_tasks)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
+    await asyncio.to_thread(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
+    storage_client.file_services.set_service_properties(
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
+    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+Code: InvalidXmlDocument
+Message: XML specified is not syntactically valid.
+RequestId:c1bbb395-501a-004e-19f4-d20259000000
+Time:2024-07-10T18:12:13.0620958Z
+
