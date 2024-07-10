@@ -10,7 +10,13 @@ import pandas as pd
 
 def run_command(command):
     result = subprocess.run(command, shell=True, text=True, capture_output=True)
-    return result.stdout.strip()
+
+    # Find the position of the last closing bracket
+    last_bracket_index = result.stdout.rfind("]")
+
+    # Truncate the input to include only the JSON array
+    truncated_input = result.stdout[: last_bracket_index + 1]
+    return truncated_input.strip()
 
 
 def timestamp_to_iso(timestamp):
@@ -42,7 +48,7 @@ def main():
         sys.exit(1)
 
     commands = [
-        "bacalhau job list --order-by created_at --order-reversed --limit 10000 --output json",
+        "bacalhau job list --order-by created_at --order-reversed --limit 1000 --output json",
     ]
 
     results = {}
@@ -57,7 +63,7 @@ def main():
     df["StateType"] = df["State"].apply(lambda x: x.get("StateType"))
     df = df.query("StateType != 'Failed'")
 
-    state_order = ["Pending", "Running", "Completed"]
+    state_order = ["Queued", "Running", "Completed"]
     # Use .loc to avoid SettingWithCopyWarning
     df.loc[:, "StateType"] = pd.Categorical(
         df["StateType"], categories=state_order, ordered=True

@@ -6,6 +6,7 @@ import sys
 import requests
 from azure.core.exceptions import ServiceRequestError
 from azure.identity import DefaultAzureCredential
+from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from dotenv import load_dotenv
 
@@ -28,7 +29,7 @@ def check_dns_resolution():
         sys.exit(1)
 
 
-def authenticate(subscription_id):
+def get_resource_client(subscription_id) -> ResourceManagementClient:
     try:
         credential = DefaultAzureCredential()
         client = ResourceManagementClient(credential, subscription_id)
@@ -38,10 +39,20 @@ def authenticate(subscription_id):
         sys.exit(1)
 
 
-def list_resources_with_tag(client, unique_id):
+def get_compute_client(subscription_id) -> ComputeManagementClient:
+    try:
+        credential = DefaultAzureCredential()
+        client = ComputeManagementClient(credential, subscription_id)
+        return client
+    except Exception as e:
+        print(f"Error during authentication: {e}")
+        sys.exit(1)
+
+
+def list_resources_with_tag(resource_client, compute_client, unique_id):
     print(f"Listing resources with tag 'uniqueId={unique_id}'")
     try:
-        resources = client.resources.list(
+        resources = resource_client.resources.list(
             filter=f"tagName eq 'uniqueId' and tagValue eq '{unique_id}'"
         )
     except ServiceRequestError as e:
@@ -65,9 +76,28 @@ def list_resources_with_tag(client, unique_id):
 
         if resource_type == "Microsoft.Compute/virtualMachines":
             try:
-                detailed_resource = client.resources.get_by_id(
+                detailed_resource = resource_client.resources.get_by_id(
                     resource.id, "2021-04-01"
                 )
+                # Get the VM instance view
+                resource_group_name = resource.id.split("/")[
+                    4
+                ]  # Extract resource group name from resource ID
+                vm = compute_client.virtual_machines.get(
+                    resource_group_name, resource_name, expand="instanceView"
+                )
+                vm_status = next(
+                    (
+                        status.display_status
+                        for status in vm.instance_view.statuses
+                        if status.code.startswith("PowerState/")
+                    ),
+                    None,
+                )
+
+                if vm_status != "VM running":
+                    continue  # Skip this VM if it's not running
+
             except ServiceRequestError as e:
                 print(f"Failed to get details for resource {resource_name}: {e}")
                 continue
@@ -79,7 +109,7 @@ def list_resources_with_tag(client, unique_id):
                         nic_id = nic["id"]
                         if nic_id:
                             try:
-                                nic_details = client.resources.get_by_id(
+                                nic_details = resource_client.resources.get_by_id(
                                     nic_id, "2021-04-01"
                                 )
                             except ServiceRequestError as e:
@@ -103,8 +133,10 @@ def list_resources_with_tag(client, unique_id):
                                     )
                                 if public_ip_id:
                                     try:
-                                        public_ip_details = client.resources.get_by_id(
-                                            public_ip_id, "2021-04-01"
+                                        public_ip_details = (
+                                            resource_client.resources.get_by_id(
+                                                public_ip_id, "2021-04-01"
+                                            )
                                         )
                                     except ServiceRequestError as e:
                                         print(
@@ -188,8 +220,10 @@ if __name__ == "__main__":
         print("Error: UNIQUEID file not found.")
         exit(1)
 
-    client = authenticate(subscription_id)
-    machines = list_resources_with_tag(client, unique_id)
+    resource_client = get_resource_client(subscription_id)
+    compute_client = get_compute_client(subscription_id)
+
+    machines = list_resources_with_tag(resource_client, compute_client, unique_id)
 
     designate_orchestrator(machines)
     print_machine_details(machines)
