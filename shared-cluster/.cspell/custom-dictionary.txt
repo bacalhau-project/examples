@@ -49,6 +49,7 @@ serverino
 sharedfiles
 smbcredentials
 swedencentral
+swmr
 UNIQUEID
 vnet
 VNET

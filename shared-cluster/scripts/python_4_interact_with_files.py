@@ -1,15 +1,16 @@
 import os
-import sys
 
 import h5py
 import numpy as np
 
-print(f"Python version: {sys.version}")
-print(f"NumPy version: {np.__version__}")
 print(f"h5py version: {h5py.__version__}")
-print(f"h5py info:\n{h5py.get_config()}")
+print("h5py info:")
+config = h5py.get_config()
+print(f"  HDF5 version: {h5py.version.hdf5_version}")
+print(f"  MPI enabled: {config.mpi}")
+print(f"  ROS3 enabled: {config.ros3}")
+print(f"  Direct VFD enabled: {config.direct_vfd}")
 print(f"File path: {os.environ.get('FILE_PATH')}")
-print(f"HDF5_PLUGIN_PATH: {os.environ.get('HDF5_PLUGIN_PATH')}")
 
 
 def check_file(file_path):
@@ -88,41 +89,33 @@ def analyze_dataset(dataset, path, summary):
         "Compression Opts": dataset.compression_opts if dataset.compression else None,
     }
 
-    try:
-        filters = dataset.id.get_create_plist().get_filters()
-        dataset_info["Filters"] = [f[0] for f in filters] if filters else None
-    except Exception as e:
-        dataset_info["Filters Error"] = str(e)
-
     if dataset.size > 0:
         try:
             if np.issubdtype(dataset.dtype, np.number):
-                chunk_size = 1000
-                samples = []
-                for i in range(0, min(10000, dataset.size), chunk_size):
-                    try:
-                        sample = dataset[i : i + chunk_size]
-                        samples.append(sample)
-                    except Exception as e:
-                        dataset_info[f"Error reading chunk {i}"] = str(e)
-                if samples:
-                    combined_sample = np.concatenate(samples)
-                    dataset_info.update(
-                        {
-                            "Sample Min": combined_sample.min(),
-                            "Sample Max": combined_sample.max(),
-                            "Sample Mean": combined_sample.mean(),
-                        }
-                    )
+                chunk_size = min(1000, dataset.size)
+                sample = dataset[0:chunk_size]  # Use slicing instead of [:]
+                dataset_info.update(
+                    {
+                        "Sample Min": sample.min().item(),
+                        "Sample Max": sample.max().item(),
+                        "Sample Mean": sample.mean().item(),
+                    }
+                )
             elif dataset.dtype.char in ["S", "U"]:
                 sample_size = min(1000, dataset.size)
-                sample = dataset[0:sample_size]
+                sample = dataset[0:sample_size]  # Use slicing instead of [:]
                 unique_values = np.unique(sample)
                 dataset_info["Unique Values in Sample"] = len(unique_values)
                 if len(unique_values) <= 10:
-                    dataset_info["Sample Values"] = unique_values.tolist()
+                    dataset_info["Sample Values"] = [
+                        v.decode("utf-8", errors="ignore")
+                        if isinstance(v, bytes)
+                        else v
+                        for v in unique_values.tolist()
+                    ]
         except Exception as e:
-            dataset_info["Error"] = f"Unable to read data: {str(e)}"
+            pass
+            # dataset_info["Error"] = f"Unable to read data: {str(e)}"
 
     summary[path] = dataset_info
 
