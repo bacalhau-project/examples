@@ -4,6 +4,7 @@ azureshare
 azureuser
 bacalhau
 Bacalhau
+bacalhauproject
 bacalhaustorage
 bacstg
 cifs

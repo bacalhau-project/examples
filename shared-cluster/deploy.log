@@ -1,130 +1,325 @@
-2024-07-10 19:11:29,770 - root - INFO - Starting cluster creation process
-2024-07-10 19:11:29,770 - root - INFO - Creating Resource Group
-2024-07-10 19:11:30,163 - root - INFO - Resource Group created successfully
-2024-07-10 19:11:30,163 - root - INFO - Creating Virtual Network
-2024-07-10 19:11:30,163 - root - INFO - Creating Subnet
-2024-07-10 19:11:30,163 - root - INFO - Creating virtual network bac-sci-vnet
-2024-07-10 19:11:30,164 - root - INFO - Creating Network Security Group
-2024-07-10 19:11:30,165 - root - INFO - Creating Network Security Group bac-sci-nsg-240710191190
-2024-07-10 19:11:30,607 - root - INFO - Virtual Network not found, retrying... (Attempt 1/10)
-2024-07-10 19:11:32,827 - root - INFO - Network Security Group created successfully
-2024-07-10 19:11:32,827 - root - INFO - Creating NSG Rules
-2024-07-10 19:11:41,404 - root - INFO - Subnet bac-sci-subnet created successfully
-2024-07-10 19:11:41,786 - root - INFO - Virtual Network created successfully
-2024-07-10 19:11:47,825 - root - INFO - NSG Rules created successfully
-2024-07-10 19:11:47,825 - root - INFO - All pre-VM tasks completed successfully
-2024-07-10 19:11:47,825 - root - INFO - Creating Storage Account
-2024-07-10 19:11:47,826 - root - INFO - Checking if storage account bacstg240710191190 exists...
-2024-07-10 19:11:48,278 - root - INFO - Storage account bacstg240710191190 not found. Creating it...
-2024-07-10 19:12:11,277 - root - INFO - Storage account bacstg240710191190 created successfully.
-2024-07-10 19:12:12,562 - root - INFO - Storage Account created/found successfully in resource group bac-sci-240710191190
-2024-07-10 19:12:12,562 - root - INFO - Creating 3 VMs
-2024-07-10 19:12:12,562 - root - INFO - All tasks: 7
-2024-07-10 19:12:12,563 - root - INFO - Creating File Share
-2024-07-10 19:12:12,913 - root - INFO - SMB file share sharedfiles created successfully.
-2024-07-10 19:12:13,096 - root - ERROR - Error creating file share: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-2024-07-10 19:12:13,104 - root - ERROR - Error creating File Share: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-2024-07-10 19:12:13,110 - root - INFO - Traceback (most recent call last):
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
-    await asyncio.to_thread(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
-    return await loop.run_in_executor(None, func_call)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
-    result = self.fn(*self.args, **self.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
-    storage_client.file_services.set_service_properties(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
-    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-
-2024-07-10 19:12:13,110 - root - ERROR - Error during VM creation: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-2024-07-10 19:12:13,115 - root - INFO - Traceback (most recent call last):
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 1181, in create_cluster
-    vm_results = await asyncio.gather(*vm_tasks)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
-    await asyncio.to_thread(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
-    return await loop.run_in_executor(None, func_call)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
-    result = self.fn(*self.args, **self.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
-    storage_client.file_services.set_service_properties(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
-    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-
-2024-07-10 19:12:13,115 - root - ERROR - Error during cluster creation: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-2024-07-10 19:12:13,119 - root - INFO - Traceback (most recent call last):
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 1181, in create_cluster
-    vm_results = await asyncio.gather(*vm_tasks)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 871, in create_file_share_local
-    await asyncio.to_thread(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/asyncio/threads.py", line 25, in to_thread
-    return await loop.run_in_executor(None, func_call)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.flox/run/aarch64-darwin.shared-cluster/lib/python3.11/concurrent/futures/thread.py", line 58, in run
-    result = self.fn(*self.args, **self.kwargs)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/create_machines.py", line 418, in create_file_share
-    storage_client.file_services.set_service_properties(
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/core/tracing/decorator.py", line 94, in wrapper_use_tracer
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/daaronch/code/bacalhau-examples/shared-cluster/.venv/lib/python3.11/site-packages/azure/mgmt/storage/v2023_05_01/operations/_file_services_operations.py", line 367, in set_service_properties
-    raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-azure.core.exceptions.HttpResponseError: (InvalidXmlDocument) XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-Code: InvalidXmlDocument
-Message: XML specified is not syntactically valid.
-RequestId:c1bbb395-501a-004e-19f4-d20259000000
-Time:2024-07-10T18:12:13.0620958Z
-
+2024-07-10 20:08:07,073 - root - INFO - Starting cluster creation process
+2024-07-10 20:08:07,074 - root - INFO - Creating Resource Group
+2024-07-10 20:08:07,454 - root - INFO - Resource Group created successfully
+2024-07-10 20:08:07,454 - root - INFO - Creating Virtual Network
+2024-07-10 20:08:07,454 - root - INFO - Creating Subnet
+2024-07-10 20:08:07,454 - root - INFO - Creating virtual network bac-sci-vnet
+2024-07-10 20:08:07,455 - root - INFO - Creating Network Security Group
+2024-07-10 20:08:07,455 - root - INFO - Creating Network Security Group bac-sci-nsg-240710200860
+2024-07-10 20:08:07,964 - root - INFO - Virtual Network not found, retrying... (Attempt 1/10)
+2024-07-10 20:08:09,115 - root - INFO - Network Security Group created successfully
+2024-07-10 20:08:09,115 - root - INFO - Creating NSG Rules
+2024-07-10 20:08:19,155 - root - INFO - Virtual Network created successfully
+2024-07-10 20:08:23,946 - root - INFO - NSG Rules created successfully
+2024-07-10 20:08:28,669 - root - INFO - Subnet bac-sci-subnet created successfully
+2024-07-10 20:08:28,669 - root - INFO - All pre-VM tasks completed successfully
+2024-07-10 20:08:28,669 - root - INFO - Creating Storage Account
+2024-07-10 20:08:28,669 - root - INFO - Checking if storage account bacstg240710200860 exists...
+2024-07-10 20:08:29,058 - root - INFO - Storage account bacstg240710200860 not found. Creating it...
+2024-07-10 20:08:50,492 - root - INFO - Storage account bacstg240710200860 created successfully.
+2024-07-10 20:08:51,655 - root - INFO - Storage Account created/found successfully in resource group bac-sci-240710200860
+2024-07-10 20:08:51,656 - root - INFO - Creating 3 VMs
+2024-07-10 20:08:51,656 - root - INFO - All tasks: 7
+2024-07-10 20:08:51,656 - root - INFO - Creating File Share
+2024-07-10 20:08:51,660 - root - INFO - Creating file share 'sharedfiles' in storage account 'bacstg240710200860'...
+2024-07-10 20:08:51,991 - root - INFO - SMB file share sharedfiles created successfully.
+2024-07-10 20:08:51,992 - root - INFO - File Share created successfully
+2024-07-10 20:08:56,026 - root - INFO - NIC vm-requester-001-nic provisioning completed successfully
+2024-07-10 20:08:56,199 - root - INFO - NIC vm-compute-003-nic provisioning completed successfully
+2024-07-10 20:08:56,416 - root - INFO - NIC vm-compute-002-nic provisioning completed successfully
+2024-07-10 20:09:11,028 - root - INFO - VM vm-compute-002 provisioning completed successfully
+2024-07-10 20:09:11,149 - root - INFO - VM vm-compute-003 provisioning completed successfully
+2024-07-10 20:09:14,943 - root - INFO - VM vm-requester-001 provisioning completed successfully
+2024-07-10 20:09:16,377 - asyncssh - INFO - Opening SSH connection to 4.223.90.69, port 22
+2024-07-10 20:09:16,538 - asyncssh - INFO - [conn=0] Connected to SSH server at 4.223.90.69, port 22
+2024-07-10 20:09:16,538 - asyncssh - INFO - [conn=0]   Local address: 10.74.103.52, port 52556
+2024-07-10 20:09:16,699 - asyncssh - INFO - [conn=0]   Peer address: 4.223.90.69, port 22
+2024-07-10 20:09:16,702 - asyncssh - INFO - Opening SSH connection to 4.223.93.93, port 22
+2024-07-10 20:09:16,742 - root - INFO - Waiting for SSH on vm-compute-003 to become available (Attempt 1/60). Retrying in 5.47 seconds. Error: [Errno 61] Connect call failed ('4.223.93.93', 22)
+2024-07-10 20:09:16,833 - asyncssh - INFO - [conn=0] Beginning auth for user azureuser
+2024-07-10 20:09:17,300 - asyncssh - INFO - [conn=0] Auth for user azureuser succeeded
+2024-07-10 20:09:17,300 - asyncssh - INFO - [conn=0, chan=0] Requesting new SSH session
+2024-07-10 20:09:20,286 - asyncssh - INFO - Opening SSH connection to 4.223.91.31, port 22
+2024-07-10 20:09:20,306 - asyncssh - INFO - [conn=0, chan=0]   Command: echo "SSH connection successful"
+2024-07-10 20:09:20,325 - asyncssh - INFO - [conn=1] Connected to SSH server at 4.223.91.31, port 22
+2024-07-10 20:09:20,325 - asyncssh - INFO - [conn=1]   Local address: 10.74.103.52, port 52562
+2024-07-10 20:09:20,325 - asyncssh - INFO - [conn=1]   Peer address: 4.223.91.31, port 22
+2024-07-10 20:09:20,350 - asyncssh - INFO - [conn=0, chan=0] Received exit status 0
+2024-07-10 20:09:20,350 - asyncssh - INFO - [conn=0, chan=0] Received channel close
+2024-07-10 20:09:20,350 - asyncssh - INFO - [conn=0, chan=0] Channel closed
+2024-07-10 20:09:20,350 - asyncssh - INFO - [conn=0] Closing connection
+2024-07-10 20:09:20,351 - asyncssh - INFO - [conn=0] Sending disconnect: Disconnected by application (11)
+2024-07-10 20:09:20,351 - asyncssh - INFO - [conn=0] Connection closed
+2024-07-10 20:09:20,351 - root - INFO - SSH connection to vm-compute-002 established successfully
+2024-07-10 20:09:20,351 - root - INFO - Preparing VM info for vm-compute-002
+2024-07-10 20:09:20,351 - root - INFO - VM vm-compute-002 - Private IP: 10.0.0.6, Public IP: 4.223.90.69
+2024-07-10 20:09:20,351 - root - INFO - VM info for vm-compute-002: {
+  "name": "vm-compute-002",
+  "location": "swedencentral",
+  "ssh_username": "azureuser",
+  "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+  "ip_addresses": [
+    {
+      "private": "10.0.0.6"
+    },
+    {
+      "public": "4.223.90.69"
+    }
+  ],
+  "is_orchestrator_node": false
+}
+2024-07-10 20:09:20,513 - asyncssh - INFO - [conn=1] Beginning auth for user azureuser
+2024-07-10 20:09:20,769 - asyncssh - INFO - [conn=1] Auth for user azureuser succeeded
+2024-07-10 20:09:20,770 - asyncssh - INFO - [conn=1, chan=0] Requesting new SSH session
+2024-07-10 20:09:22,547 - asyncssh - INFO - Opening SSH connection to 4.223.93.93, port 22
+2024-07-10 20:09:22,586 - asyncssh - INFO - [conn=2] Connected to SSH server at 4.223.93.93, port 22
+2024-07-10 20:09:22,586 - asyncssh - INFO - [conn=2]   Local address: 10.74.103.52, port 52563
+2024-07-10 20:09:22,586 - asyncssh - INFO - [conn=2]   Peer address: 4.223.93.93, port 22
+2024-07-10 20:09:22,824 - asyncssh - INFO - [conn=2] Beginning auth for user azureuser
+2024-07-10 20:09:23,252 - asyncssh - INFO - [conn=2] Auth for user azureuser succeeded
+2024-07-10 20:09:23,252 - asyncssh - INFO - [conn=2, chan=0] Requesting new SSH session
+2024-07-10 20:09:23,637 - asyncssh - INFO - [conn=1, chan=0]   Command: echo "SSH connection successful"
+2024-07-10 20:09:23,682 - asyncssh - INFO - [conn=1, chan=0] Received exit status 0
+2024-07-10 20:09:23,683 - asyncssh - INFO - [conn=1, chan=0] Received channel close
+2024-07-10 20:09:23,683 - asyncssh - INFO - [conn=1, chan=0] Channel closed
+2024-07-10 20:09:23,683 - asyncssh - INFO - [conn=1] Closing connection
+2024-07-10 20:09:23,683 - asyncssh - INFO - [conn=1] Sending disconnect: Disconnected by application (11)
+2024-07-10 20:09:23,684 - asyncssh - INFO - [conn=1] Connection closed
+2024-07-10 20:09:23,684 - root - INFO - SSH connection to vm-requester-001 established successfully
+2024-07-10 20:09:23,684 - root - INFO - Preparing VM info for vm-requester-001
+2024-07-10 20:09:23,684 - root - INFO - VM vm-requester-001 - Private IP: 10.0.0.4, Public IP: 4.223.91.31
+2024-07-10 20:09:23,685 - root - INFO - VM info for vm-requester-001: {
+  "name": "vm-requester-001",
+  "location": "swedencentral",
+  "ssh_username": "azureuser",
+  "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+  "ip_addresses": [
+    {
+      "private": "10.0.0.4"
+    },
+    {
+      "public": "4.223.91.31"
+    }
+  ],
+  "is_orchestrator_node": true
+}
+2024-07-10 20:09:28,968 - asyncssh - INFO - [conn=2, chan=0]   Command: echo "SSH connection successful"
+2024-07-10 20:09:29,012 - asyncssh - INFO - [conn=2, chan=0] Received exit status 0
+2024-07-10 20:09:29,013 - asyncssh - INFO - [conn=2, chan=0] Received channel close
+2024-07-10 20:09:29,013 - asyncssh - INFO - [conn=2, chan=0] Channel closed
+2024-07-10 20:09:29,013 - asyncssh - INFO - [conn=2] Closing connection
+2024-07-10 20:09:29,013 - asyncssh - INFO - [conn=2] Sending disconnect: Disconnected by application (11)
+2024-07-10 20:09:29,014 - asyncssh - INFO - [conn=2] Connection closed
+2024-07-10 20:09:29,014 - root - INFO - SSH connection to vm-compute-003 established successfully
+2024-07-10 20:09:29,014 - root - INFO - Preparing VM info for vm-compute-003
+2024-07-10 20:09:29,014 - root - INFO - VM vm-compute-003 - Private IP: 10.0.0.5, Public IP: 4.223.93.93
+2024-07-10 20:09:29,014 - root - INFO - VM info for vm-compute-003: {
+  "name": "vm-compute-003",
+  "location": "swedencentral",
+  "ssh_username": "azureuser",
+  "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+  "ip_addresses": [
+    {
+      "private": "10.0.0.5"
+    },
+    {
+      "public": "4.223.93.93"
+    }
+  ],
+  "is_orchestrator_node": false
+}
+2024-07-10 20:09:29,015 - root - INFO - VM creation tasks completed
+2024-07-10 20:09:29,015 - root - INFO - 3 VM(s) created successfully
+2024-07-10 20:09:29,048 - root - INFO - Finished all VM creation tasks.
+2024-07-10 20:09:29,048 - root - INFO - Beginning provisioning tasks on 3 VMs...
+2024-07-10 20:09:29,048 - root - INFO - Starting VM setup process...
+2024-07-10 20:09:29,215 - root - INFO - Copying setup script to VM 4.223.91.31...
+2024-07-10 20:09:29,222 - root - INFO - Copying setup script to VM 4.223.90.69...
+2024-07-10 20:09:29,229 - root - INFO - Copying setup script to VM 4.223.93.93...
+2024-07-10 20:09:30,196 - root - INFO - Setup script copied to VM 4.223.93.93
+2024-07-10 20:09:30,196 - root - INFO - Executing setup script on VM 4.223.93.93...
+2024-07-10 20:09:30,197 - root - INFO - Setup script copied to VM 4.223.91.31
+2024-07-10 20:09:30,197 - root - INFO - Executing setup script on VM 4.223.91.31...
+2024-07-10 20:09:30,207 - root - INFO - Setup script copied to VM 4.223.90.69
+2024-07-10 20:09:30,207 - root - INFO - Executing setup script on VM 4.223.90.69...
+2024-07-10 20:09:44,763 - root - INFO - VM 4.223.90.69: Attempt 1 of 5
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Hit:1 http://azure.archive.ubuntu.com/ubuntu jammy InRelease
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:2 http://azure.archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:3 http://azure.archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:4 http://azure.archive.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:5 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [14.1 MB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:6 http://azure.archive.ubuntu.com/ubuntu jammy/universe Translation-en [5652 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:7 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 c-n-f Metadata [286 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:8 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [217 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:9 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse Translation-en [112 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:10 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 c-n-f Metadata [8372 B]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:11 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [1792 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:12 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [326 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:13 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [2090 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:14 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted Translation-en [356 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:15 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1101 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:16 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe Translation-en [256 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:17 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 c-n-f Metadata [22.1 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:18 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [43.3 kB]
+2024-07-10 20:09:44,764 - root - INFO - VM 4.223.90.69: Get:19 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse Translation-en [10.8 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:20 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 c-n-f Metadata [472 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:21 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [67.1 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:22 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main Translation-en [11.0 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:23 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 c-n-f Metadata [388 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:24 http://azure.archive.ubuntu.com/ubuntu jammy-backports/restricted amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:25 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [27.6 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:26 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe Translation-en [16.5 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:27 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 c-n-f Metadata [672 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:28 http://azure.archive.ubuntu.com/ubuntu jammy-backports/multiverse amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:29 http://azure.archive.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1583 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:30 http://azure.archive.ubuntu.com/ubuntu jammy-security/main Translation-en [269 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:31 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [2029 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:32 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted Translation-en [346 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:33 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [884 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:34 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe Translation-en [172 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:35 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 c-n-f Metadata [16.8 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:36 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [37.2 kB]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:37 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse Translation-en [7588 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Get:38 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 c-n-f Metadata [260 B]
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Fetched 32.2 MB in 4s (7456 kB/s)
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Reading package lists...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Building dependency tree...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Reading state information...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: 9 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Reading package lists...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Building dependency tree...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Reading state information...
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: cifs-utils is already the newest version (2:6.14-1ubuntu0.1).
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: 0 upgraded, 0 newly installed, 0 to remove and 9 not upgraded.
+2024-07-10 20:09:44,765 - root - INFO - VM 4.223.90.69: Creating mount point...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Creating credentials directory...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Creating credentials file...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Mounting SMB share...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Setting permissions...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Adding mount to fstab...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: //bacstg240710200860.file.core.windows.net/sharedfiles /mnt/azureshare cifs credentials=/etc/smbcredentials/bacstg240710200860.cred,dir_mode=0777,file_mode=0777,serverino,nosharesock,actimeo=30,_netdev 0 0
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Testing write access...
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Test write access
+2024-07-10 20:09:44,766 - root - INFO - VM 4.223.90.69: Setup complete!
+2024-07-10 20:09:44,766 - root - INFO - VM setup completed for 4.223.90.69
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Attempt 1 of 5
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Hit:1 http://azure.archive.ubuntu.com/ubuntu jammy InRelease
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Get:2 http://azure.archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Get:3 http://azure.archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Get:4 http://azure.archive.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Get:5 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [14.1 MB]
+2024-07-10 20:09:45,923 - root - INFO - VM 4.223.93.93: Get:6 http://azure.archive.ubuntu.com/ubuntu jammy/universe Translation-en [5652 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:7 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 c-n-f Metadata [286 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:8 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [217 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:9 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse Translation-en [112 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:10 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 c-n-f Metadata [8372 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:11 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [1792 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:12 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [326 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:13 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [2090 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:14 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted Translation-en [356 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:15 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1101 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:16 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe Translation-en [256 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:17 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 c-n-f Metadata [22.1 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:18 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [43.3 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:19 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse Translation-en [10.8 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:20 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 c-n-f Metadata [472 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:21 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [67.1 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:22 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main Translation-en [11.0 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:23 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 c-n-f Metadata [388 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:24 http://azure.archive.ubuntu.com/ubuntu jammy-backports/restricted amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:25 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [27.6 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:26 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe Translation-en [16.5 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:27 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 c-n-f Metadata [672 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:28 http://azure.archive.ubuntu.com/ubuntu jammy-backports/multiverse amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:29 http://azure.archive.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1583 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:30 http://azure.archive.ubuntu.com/ubuntu jammy-security/main Translation-en [269 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:31 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [2029 kB]
+2024-07-10 20:09:45,924 - root - INFO - VM 4.223.93.93: Get:32 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted Translation-en [346 kB]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:33 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [884 kB]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:34 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe Translation-en [172 kB]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:35 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 c-n-f Metadata [16.8 kB]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:36 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [37.2 kB]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:37 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse Translation-en [7588 B]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Get:38 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 c-n-f Metadata [260 B]
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Fetched 32.2 MB in 5s (7136 kB/s)
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Reading package lists...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Building dependency tree...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Reading state information...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: 9 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Reading package lists...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Building dependency tree...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Reading state information...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: cifs-utils is already the newest version (2:6.14-1ubuntu0.1).
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: 0 upgraded, 0 newly installed, 0 to remove and 9 not upgraded.
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Creating mount point...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Creating credentials directory...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Creating credentials file...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Mounting SMB share...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Setting permissions...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Adding mount to fstab...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: //bacstg240710200860.file.core.windows.net/sharedfiles /mnt/azureshare cifs credentials=/etc/smbcredentials/bacstg240710200860.cred,dir_mode=0777,file_mode=0777,serverino,nosharesock,actimeo=30,_netdev 0 0
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Testing write access...
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Test write access
+2024-07-10 20:09:45,925 - root - INFO - VM 4.223.93.93: Setup complete!
+2024-07-10 20:09:45,926 - root - INFO - VM setup completed for 4.223.93.93
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Attempt 1 of 5
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Hit:1 http://azure.archive.ubuntu.com/ubuntu jammy InRelease
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:2 http://azure.archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:3 http://azure.archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:4 http://azure.archive.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:5 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [14.1 MB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:6 http://azure.archive.ubuntu.com/ubuntu jammy/universe Translation-en [5652 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:7 http://azure.archive.ubuntu.com/ubuntu jammy/universe amd64 c-n-f Metadata [286 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:8 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [217 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:9 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse Translation-en [112 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:10 http://azure.archive.ubuntu.com/ubuntu jammy/multiverse amd64 c-n-f Metadata [8372 B]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:11 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [1792 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:12 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [326 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:13 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [2090 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:14 http://azure.archive.ubuntu.com/ubuntu jammy-updates/restricted Translation-en [356 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:15 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1101 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:16 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe Translation-en [256 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:17 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 c-n-f Metadata [22.1 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:18 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [43.3 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:19 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse Translation-en [10.8 kB]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:20 http://azure.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 c-n-f Metadata [472 B]
+2024-07-10 20:09:46,007 - root - INFO - VM 4.223.91.31: Get:21 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [67.1 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:22 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main Translation-en [11.0 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:23 http://azure.archive.ubuntu.com/ubuntu jammy-backports/main amd64 c-n-f Metadata [388 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:24 http://azure.archive.ubuntu.com/ubuntu jammy-backports/restricted amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:25 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [27.6 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:26 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe Translation-en [16.5 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:27 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 c-n-f Metadata [672 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:28 http://azure.archive.ubuntu.com/ubuntu jammy-backports/multiverse amd64 c-n-f Metadata [116 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:29 http://azure.archive.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1583 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:30 http://azure.archive.ubuntu.com/ubuntu jammy-security/main Translation-en [269 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:31 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [2029 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:32 http://azure.archive.ubuntu.com/ubuntu jammy-security/restricted Translation-en [346 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:33 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [884 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:34 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe Translation-en [172 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:35 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 c-n-f Metadata [16.8 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:36 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [37.2 kB]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:37 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse Translation-en [7588 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Get:38 http://azure.archive.ubuntu.com/ubuntu jammy-security/multiverse amd64 c-n-f Metadata [260 B]
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Fetched 32.2 MB in 5s (6351 kB/s)
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Reading package lists...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Building dependency tree...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Reading state information...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: 9 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Reading package lists...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Building dependency tree...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Reading state information...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: cifs-utils is already the newest version (2:6.14-1ubuntu0.1).
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: 0 upgraded, 0 newly installed, 0 to remove and 9 not upgraded.
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Creating mount point...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Creating credentials directory...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Creating credentials file...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Mounting SMB share...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Setting permissions...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: Adding mount to fstab...
+2024-07-10 20:09:46,008 - root - INFO - VM 4.223.91.31: //bacstg240710200860.file.core.windows.net/sharedfiles /mnt/azureshare cifs credentials=/etc/smbcredentials/bacstg240710200860.cred,dir_mode=0777,file_mode=0777,serverino,nosharesock,actimeo=30,_netdev 0 0
+2024-07-10 20:09:46,009 - root - INFO - VM 4.223.91.31: Testing write access...
+2024-07-10 20:09:46,009 - root - INFO - VM 4.223.91.31: Test write access
+2024-07-10 20:09:46,009 - root - INFO - VM 4.223.91.31: Setup complete!
+2024-07-10 20:09:46,009 - root - INFO - VM setup completed for 4.223.91.31
+2024-07-10 20:09:46,009 - root - INFO - All VM setups completed successfully
