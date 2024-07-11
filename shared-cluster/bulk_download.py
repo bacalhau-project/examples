@@ -138,7 +138,7 @@ async def download_file(
                                 )
                     progress.update(task_id, status="[bold green]Complete")
                     success = True
-                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                except (aiohttp.ClientError, asyncio.TimeoutError):
                     attempt += 1
                     progress.update(
                         task_id, status=f"[bold red]Retry {attempt}/{RETRY_ATTEMPTS}"

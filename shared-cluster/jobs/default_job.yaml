@@ -1,0 +1,14 @@
+Name: Run Over Share
+Namespace: science
+Type: batch
+Count: 1
+Tasks:
+  - Name: Run over share
+    Engine:
+      Type: docker
+      Params:
+        # the docker container that will download videos and perform inference
+        Image: hello-world
+        EnvironmentVariables:
+          - COLOR=blue
+          - COMMAND="print('hello world')"
