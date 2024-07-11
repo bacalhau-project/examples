@@ -1,16 +1,63 @@
+import argparse
 import os
+import sys
+from datetime import datetime
 
 import h5py
+import humanize
 import numpy as np
+from rich import print
+from rich.console import Console
+from rich.table import Table
 
-print(f"h5py version: {h5py.__version__}")
-print("h5py info:")
-config = h5py.get_config()
-print(f"  HDF5 version: {h5py.version.hdf5_version}")
-print(f"  MPI enabled: {config.mpi}")
-print(f"  ROS3 enabled: {config.ros3}")
-print(f"  Direct VFD enabled: {config.direct_vfd}")
-print(f"File path: {os.environ.get('FILE_PATH')}")
+
+def print_structure(structure, indent=""):
+    if structure["type"] == "Group":
+        print(f"{indent}Group:")
+        print(f"{indent}  Attributes: {structure['attributes']}")
+        for name, child in structure["children"].items():
+            print(f"{indent}  {name}:")
+            print_structure(child, indent + "    ")
+    elif structure["type"] == "Dataset":
+        print(f"{indent}Dataset:")
+        print(f"{indent}  Shape: {structure['shape']}")
+        print(f"{indent}  Dtype: {structure['dtype']}")
+        print(f"{indent}  Attributes: {structure['attributes']}")
+    else:
+        print("Unknown type")
+
+
+def list_azureshare_directory(directory):
+    """
+    Print a pretty tree of the azureshare directory with file details.
+    """
+
+    def print_tree(dir_path, prefix=""):
+        entries = sorted(os.scandir(dir_path), key=lambda e: e.name)
+        for i, entry in enumerate(entries):
+            is_last = i == len(entries) - 1
+            if entry.is_file():
+                size = humanize.naturalsize(entry.stat().st_size, gnu=True)
+                date = datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
+                table.add_row(
+                    f"{prefix}{'└── ' if is_last else '├── '}{entry.name}", size, date
+                )
+            if entry.is_dir():
+                table.add_row(
+                    f"{prefix}{'└── ' if is_last else '├── '}{entry.name}/", "", ""
+                )
+                print_tree(entry.path, prefix + ("    " if is_last else "│   "))
+
+    table = Table(show_header=False)
+    table.add_column("Name", style="bold")
+    table.add_column("Size", style="bold")
+    table.add_column("Date", style="bold")
+
+    print_tree(directory)
+
+    # Print the table
+    console = Console()
+    console.print(table)
 
 
 def check_file(file_path):
@@ -157,10 +204,49 @@ def print_structure(structure, indent=""):
 # Set HDF5_PLUGIN_PATH to an empty string
 os.environ["HDF5_PLUGIN_PATH"] = ""
 
-# Usage
-file_path = os.environ.get("FILE_PATH")
-if not file_path:
-    print("Please set the FILE_PATH environment variable.")
-else:
-    result = analyze_h5_file(file_path)
-    print_summary(result)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Analyze HDF5 files or list azureshare directory."
+    )
+    parser.add_argument("-a", "--analyze_file", help="Path to the HDF5 file to analyze")
+    parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List contents of azureshare directory",
+    )
+    parser.add_argument(
+        "-d",
+        "--directory",
+        default="/azureshare",
+        help="Directory to analyze, defaults to /azureshare",
+    )
+    args = parser.parse_args()
+
+    print(f"h5py version: {h5py.__version__}")
+    print("h5py info:")
+    config = h5py.get_config()
+    print(f"  HDF5 version: {h5py.version.hdf5_version}")
+    print(f"  MPI enabled: {config.mpi}")
+    print(f"  ROS3 enabled: {config.ros3}")
+    print(f"  Direct VFD enabled: {config.direct_vfd}")
+    print(f"File path: {os.environ.get('FILE_PATH')}")
+
+    if args.list:
+        azureshare_dir = args.directory
+        list_azureshare_directory(azureshare_dir)
+    elif args.analyze_file:
+        if not os.path.exists(args.analyze_file):
+            print(f"File not found: {args.analyze_file}")
+            sys.exit(1)
+
+        with h5py.File(args.analyze_file, "r") as f:
+            results = analyze_h5_file(f)
+            print_summary(results)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
