@@ -39,6 +39,7 @@ levelname
 mgmt
 minmax
 minorversion
+naturalsize
 ndarray
 netdev
 nohup
