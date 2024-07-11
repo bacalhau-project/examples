@@ -403,33 +403,27 @@ async def get_or_create_storage_account(
 
 def create_file_share(resource_group_name, storage_account_name, share_name):
     try:
+        log_message(
+            f"Creating file share '{share_name}' in storage account '{storage_account_name}'..."
+        )
         file_service = storage_client.file_shares
         file_service.create(
             resource_group_name,
             storage_account_name,
             share_name,
-            {
-                "share_quota": 102400,
-            },
+            {"share_quota": 1024},
         )
         log_message(f"SMB file share {share_name} created successfully.")
-
-        # Set share-level permissions
-        storage_client.file_services.set_service_properties(
-            resource_group_name,
-            storage_account_name,
-            {
-                "protocol_settings": {
-                    "smb": {
-                        "versions": "SMB3.0,SMB3.1.1",
-                    }
-                }
-            },
-        )
     except ResourceExistsError:
         log_message(f"File share {share_name} already exists.")
     except Exception as e:
         log_message(f"Error creating file share: {str(e)}", "ERROR")
+        log_message(f"Resource Group: {resource_group_name}", "DEBUG")
+        log_message(f"Storage Account: {storage_account_name}", "DEBUG")
+        log_message(f"Share Name: {share_name}", "DEBUG")
+        if hasattr(e, "response") and e.response is not None:
+            log_message(f"Response status code: {e.response.status_code}", "DEBUG")
+            log_message(f"Response headers: {e.response.headers}", "DEBUG")
         raise
 
 
@@ -580,15 +574,27 @@ def create_vm(
 async def setup_vm(vm_ip, storage_account_name, share_name, storage_account_key):
     setup_script = f"""#!/bin/bash
 set -e
-echo "Updating package lists..."
-sudo apt update
+max_retries=5
+retry_delay=10
 
-echo "Installing CIFS utilities..."
-sudo apt install -y cifs-utils
+for attempt in $(seq 1 $max_retries); do
+    echo "Attempt $attempt of $max_retries"
+    if sudo apt update && sudo apt install -y cifs-utils; then
+        break
+    else
+        if [ $attempt -eq $max_retries ]; then
+            echo "Failed to update and install packages after $max_retries attempts"
+            exit 1
+        fi
+        echo "Update failed. Retrying in $retry_delay seconds..."
+        sleep $retry_delay
+    fi
+done
 
 echo "Creating mount point..."
 sudo mkdir -p /mnt/azureshare
-
+echo "Creating credentials directory..."
+sudo mkdir -p /etc/smbcredentials
 echo "Creating credentials file..."
 sudo bash -c 'echo "username={storage_account_name}" > /etc/smbcredentials/{storage_account_name}.cred'
 sudo bash -c 'echo "password={storage_account_key}" >> /etc/smbcredentials/{storage_account_name}.cred'
@@ -631,21 +637,34 @@ echo "Setup complete!"
         log_message(f"Setup script copied to VM {vm_ip}")
 
         log_message(f"Executing setup script on VM {vm_ip}...")
-        result = await asyncio.to_thread(
-            subprocess.run,
-            [
-                "ssh",
-                "-o",
-                "StrictHostKeyChecking=no",
-                f"{ADMIN_USERNAME}@{vm_ip}",
-                "sudo bash ~/setup_script.sh",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        for line in result.stdout.splitlines():
-            log_message(f"VM {vm_ip}: {line}")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                result = await asyncio.to_thread(
+                    subprocess.run,
+                    [
+                        "ssh",
+                        "-o",
+                        "StrictHostKeyChecking=no",
+                        f"{ADMIN_USERNAME}@{vm_ip}",
+                        "sudo bash ~/setup_script.sh",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                for line in result.stdout.splitlines():
+                    log_message(f"VM {vm_ip}: {line}")
+                break
+            except subprocess.CalledProcessError as e:
+                log_message(
+                    f"Error during VM setup for {vm_ip} (Attempt {attempt + 1}/{max_retries}): {e}",
+                    "WARNING",
+                )
+                log_message(f"Error output: {e.stderr}", "WARNING")
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(30)  # Wait 30 seconds before retrying
 
     except subprocess.CalledProcessError as e:
         log_message(f"Error during VM setup for {vm_ip}: {e}", "ERROR")
@@ -881,6 +900,14 @@ async def create_cluster(num_vms=2):
                         )
                         if attempt == max_retries - 1:
                             raise Exception("Storage account creation timed out")
+                        await asyncio.sleep(retry_delay)
+                    except Exception as e:
+                        log_message(f"Error creating file share: {str(e)}", "ERROR")
+                        if attempt == max_retries - 1:
+                            raise
+                        log_message(
+                            f"Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})"
+                        )
                         await asyncio.sleep(retry_delay)
 
                 update_progress(
@@ -1452,7 +1479,7 @@ async def create_vm_with_dependencies(
             "name": vm_name,
             "location": location,
             "ssh_username": ADMIN_USERNAME,
-            "ssh_key_path": os.path.expanduser("~/.ssh/id_ed25519"),
+            "ssh_key_path": os.path.expanduser(SSH_KEY_PATH),
             "ip_addresses": [
                 {"private": private_ip} if private_ip else {},
                 {"public": public_ip} if public_ip else {},

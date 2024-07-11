@@ -3,13 +3,13 @@
         "name": "vm-requester-001",
         "location": "swedencentral",
         "ssh_username": "azureuser",
-        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_rsa",
         "ip_addresses": [
             {
-                "private": "10.0.0.6"
+                "private": "10.0.0.4"
             },
             {
-                "public": "4.223.79.149"
+                "public": "4.223.91.31"
             }
         ],
         "is_orchestrator_node": true
@@ -18,13 +18,13 @@
         "name": "vm-compute-002",
         "location": "swedencentral",
         "ssh_username": "azureuser",
-        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_rsa",
         "ip_addresses": [
             {
-                "private": "10.0.0.4"
+                "private": "10.0.0.6"
             },
             {
-                "public": "4.223.79.133"
+                "public": "4.223.90.69"
             }
         ],
         "is_orchestrator_node": false
@@ -33,13 +33,13 @@
         "name": "vm-compute-003",
         "location": "swedencentral",
         "ssh_username": "azureuser",
-        "ssh_key_path": "/Users/daaronch/.ssh/id_ed25519",
+        "ssh_key_path": "/Users/daaronch/.ssh/id_rsa",
         "ip_addresses": [
             {
                 "private": "10.0.0.5"
             },
             {
-                "public": "4.223.79.136"
+                "public": "4.223.93.93"
             }
         ],
         "is_orchestrator_node": false
