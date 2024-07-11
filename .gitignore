@@ -53,3 +53,5 @@ VENV/
 
 *.pub
 NOTES.md
+
+**/*.h5
