@@ -7,6 +7,7 @@ import random
 import sys
 
 import asyncssh
+import yaml
 
 # Setup basic configuration for logging
 logging.basicConfig(
@@ -107,6 +108,15 @@ async def post_install_check(ssh):
         return False
 
 
+def read_server_config():
+    try:
+        with open("server_config.yaml", "r") as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        logging.warning("server_config.yaml not found. Using default configuration.")
+        return {}
+
+
 async def setup_orchestrator_node(ssh):
     logging.debug("Setting up orchestrator node")
     await ssh_exec_command(
@@ -114,7 +124,9 @@ async def setup_orchestrator_node(ssh):
         "sudo cp /root/.bacalhau/bacalhau.run /tmp/bacalhau.run && sudo chmod 644 /tmp/bacalhau.run",
     )
 
-    orchestrator_node_type_args = ""
+    config = read_server_config()
+    orchestrator_flags = config.get("orchestrator_flags", [])
+    orchestrator_node_type_args = " ".join(orchestrator_flags)
     service_content = SYSTEMD_SERVICE.format(node_type_args=orchestrator_node_type_args)
 
     # Write to a temporary file
@@ -289,9 +301,12 @@ async def setup_compute_node_fn(
 async def configure_compute_node(ssh, orchestrator_node_public_ip, idx):
     logging.debug("Configuring compute node")
 
+    config = read_server_config()
+    compute_flags = config.get("compute_flags", [])
     compute_node_type_args = (
         f"--node-type=compute "
-        f"--labels=count={idx} --orchestrators={orchestrator_node_public_ip}"
+        f"--labels=count={idx} --orchestrators={orchestrator_node_public_ip} "
+        f"{' '.join(compute_flags)}"
     )
     service_content = SYSTEMD_SERVICE.format(node_type_args=compute_node_type_args)
 

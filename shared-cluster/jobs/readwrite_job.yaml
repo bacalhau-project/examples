@@ -9,6 +9,7 @@ Tasks:
           Type: localDirectory
           Params:
             SourcePath: /mnt/azureshare
+            ReadWrite: true
         Target: /azureshare
     Engine:
       Type: docker
@@ -17,7 +18,10 @@ Tasks:
         Image: docker.io/bacalhauproject/python-runner:0.0.14
         EnvironmentVariables:
           - COLOR=blue
-          - COMMAND=print('hello world')
+          - COMMAND="print('hello world')"
+    Network:
+      # this job requires networking to download content from buckets
+      Type: full
     Resources:
       # dependent on compute nodes, this is based on e2-standard-8
       CPU: "1"
