@@ -25,6 +25,7 @@ dpkg
 dtype
 eastus
 edgecolor
+exfil
 fftfreq
 figsize
 fileshare
@@ -46,6 +47,7 @@ nohup
 noninteractive
 NOPASSWD
 nosharesock
+scandir
 serverino
 sharedfiles
 smbcredentials
