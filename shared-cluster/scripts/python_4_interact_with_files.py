@@ -1,3 +1,4 @@
+# Initial Analysis of files
 import argparse
 import os
 import sys
@@ -9,6 +10,55 @@ import numpy as np
 from rich import print
 from rich.console import Console
 from rich.table import Table
+
+
+def list_azureshare_directory(directory):
+    """
+    Print a pretty tree of the azureshare directory with file details.
+    """
+    max_name_length = 0
+    all_entries = []
+
+    def collect_entries(dir_path, prefix=""):
+        nonlocal max_name_length
+        entries = sorted(os.scandir(dir_path), key=lambda e: e.name)
+        for i, entry in enumerate(entries):
+            is_last = i == len(entries) - 1
+            full_name = f"{prefix}{'└── ' if is_last else '├── '}{entry.name}"
+            if entry.is_file():
+                size = humanize.naturalsize(entry.stat().st_size, gnu=True)
+                date = datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
+                all_entries.append((full_name, size, date))
+                max_name_length = max(max_name_length, len(full_name))
+            if entry.is_dir():
+                full_name += "/"
+                all_entries.append((full_name, "", ""))
+                max_name_length = max(max_name_length, len(full_name))
+                collect_entries(entry.path, prefix + ("    " if is_last else "│   "))
+
+    collect_entries(directory)
+
+    # Calculate the required console width
+    max_size_length = max(len(entry[1]) for entry in all_entries)
+    max_date_length = max(len(entry[2]) for entry in all_entries)
+    required_width = (
+        max_name_length + max_size_length + max_date_length + 4
+    )  # 4 for padding
+
+    # Create a console with the required width
+    console = Console(width=required_width)
+
+    # Create a table that fits within the console
+    table = Table(show_header=False, box=None, padding=(0, 1), expand=True)
+    table.add_column("Name", style="bold", no_wrap=True)
+    table.add_column("Size", style="bold", justify="right")
+    table.add_column("Date", style="bold")
+
+    for entry in all_entries:
+        table.add_row(*entry)
+
+    # Print the table
+    console.print(table)
 
 
 def print_structure(structure, indent=""):
@@ -25,39 +75,6 @@ def print_structure(structure, indent=""):
         print(f"{indent}  Attributes: {structure['attributes']}")
     else:
         print("Unknown type")
-
-
-def list_azureshare_directory(directory):
-    """
-    Print a pretty tree of the azureshare directory with file details.
-    """
-
-    def print_tree(dir_path, prefix=""):
-        entries = sorted(os.scandir(dir_path), key=lambda e: e.name)
-        for i, entry in enumerate(entries):
-            is_last = i == len(entries) - 1
-            if entry.is_file():
-                size = humanize.naturalsize(entry.stat().st_size, gnu=True)
-                date = datetime.fromtimestamp(entry.stat().st_mtime).isoformat()
-                table.add_row(
-                    f"{prefix}{'└── ' if is_last else '├── '}{entry.name}", size, date
-                )
-            if entry.is_dir():
-                table.add_row(
-                    f"{prefix}{'└── ' if is_last else '├── '}{entry.name}/", "", ""
-                )
-                print_tree(entry.path, prefix + ("    " if is_last else "│   "))
-
-    table = Table(show_header=False)
-    table.add_column("Name", style="bold")
-    table.add_column("Size", style="bold")
-    table.add_column("Date", style="bold")
-
-    print_tree(directory)
-
-    # Print the table
-    console = Console()
-    console.print(table)
 
 
 def check_file(file_path):
@@ -160,7 +177,7 @@ def analyze_dataset(dataset, path, summary):
                         else v
                         for v in unique_values.tolist()
                     ]
-        except Exception as e:
+        except Exception:
             pass
             # dataset_info["Error"] = f"Unable to read data: {str(e)}"
 
@@ -187,29 +204,25 @@ def print_summary(summary):
         print(data_analysis)
 
 
-def print_structure(structure, indent=""):
-    if structure["type"] == "Group":
-        print(f"{indent}Group:")
-        print(f"{indent}  Attributes: {structure['attributes']}")
-        for name, child in structure["children"].items():
-            print(f"{indent}  {name}:")
-            print_structure(child, indent + "    ")
-    elif structure["type"] == "Dataset":
-        print(f"{indent}Dataset:")
-        print(f"{indent}  Shape: {structure['shape']}")
-        print(f"{indent}  Dtype: {structure['dtype']}")
-        print(f"{indent}  Attributes: {structure['attributes']}")
-
-
 # Set HDF5_PLUGIN_PATH to an empty string
 os.environ["HDF5_PLUGIN_PATH"] = ""
 
 
 def main():
+    # Parse environment variables and make them the default
+    action = os.environ.get("ACTION", "list")
+    directory = os.environ.get("DIRECTORY", "/azureshare")
+    file_path = os.environ.get("FILE_PATH", None)
+
     parser = argparse.ArgumentParser(
         description="Analyze HDF5 files or list azureshare directory."
     )
-    parser.add_argument("-a", "--analyze_file", help="Path to the HDF5 file to analyze")
+    parser.add_argument(
+        "-a",
+        "--analyze_file",
+        help="Path to the HDF5 file to analyze",
+        default=file_path,
+    )
     parser.add_argument(
         "-l",
         "--list",
@@ -219,10 +232,15 @@ def main():
     parser.add_argument(
         "-d",
         "--directory",
-        default="/azureshare",
+        default=directory,
         help="Directory to analyze, defaults to /azureshare",
     )
     args = parser.parse_args()
+
+    if args.list:
+        action = "list"
+    elif args.analyze_file:
+        action = "analyze_file"
 
     print(f"h5py version: {h5py.__version__}")
     print("h5py info:")
@@ -233,10 +251,10 @@ def main():
     print(f"  Direct VFD enabled: {config.direct_vfd}")
     print(f"File path: {os.environ.get('FILE_PATH')}")
 
-    if args.list:
+    if action == "list":
         azureshare_dir = args.directory
         list_azureshare_directory(azureshare_dir)
-    elif args.analyze_file:
+    elif action == "analyze_file":
         if not os.path.exists(args.analyze_file):
             print(f"File not found: {args.analyze_file}")
             sys.exit(1)
@@ -245,6 +263,7 @@ def main():
             results = analyze_h5_file(f)
             print_summary(results)
     else:
+        print(f"Unknown action: {action}")
         parser.print_help()
 
 

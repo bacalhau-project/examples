@@ -50,6 +50,7 @@ frozenlist==1.4.1
     #   aiosignal
 h5py==3.11.0
 humanfriendly==10.0
+humanize==4.10.0
 idna==3.7
     # via
     #   requests

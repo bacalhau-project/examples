@@ -1,10 +1,23 @@
-FROM alpine:latest
+FROM python:3.12-slim-bullseye
 
-# Install python3 and pip
-RUN apk add --no-cache python3 py3-pip pkgconf
-RUN apk add --update --no-cache --virtual .tmp gcc libc-dev linux-headers
-RUN apk add --no-cache python3-dev
-RUN apk add --no-cache hdf5-dev
+ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
+ENV HDF5_DIR=/usr
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libc-dev \
+    linux-headers-generic \
+    libhdf5-dev \
+    libhdf5-serial-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    libmariadb-dev \
+    libffi-dev \
+    gfortran
 
 WORKDIR /app
 
@@ -15,6 +28,7 @@ RUN pip3 install --upgrade pip
 
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
+RUN pip3 install --no-binary=h5py h5py
 
 COPY run_command.py /app/
 
