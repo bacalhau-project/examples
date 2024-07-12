@@ -6,6 +6,9 @@ import sys
 # Run command set in COMMAND env variable
 command = os.environ.get("COMMAND", "")
 debug = os.environ.get("DEBUG", "")
+# Cast to bool
+debug = debug.lower() in ["true", "1"]
+
 b64 = os.environ.get("B64_ENCODED", False)
 
 # Print env
