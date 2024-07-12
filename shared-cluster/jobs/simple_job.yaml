@@ -14,7 +14,7 @@ Tasks:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: docker.io/bacalhauproject/python-runner:0.0.14
+        Image: docker.io/bacalhauproject/python-runner:0.0.17
         EnvironmentVariables:
           - COLOR=blue
           - COMMAND=print('hello world')

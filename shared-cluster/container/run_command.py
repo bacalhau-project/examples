@@ -34,12 +34,24 @@ if debug:
 
 if b64:
     try:
+        if debug:
+            print("Decoding command:")
+            print(command)
+            print("=" * 80)
         decoded_command = base64.b64decode(command).decode("utf-8")
         if debug:
             print("Decoded command:")
             print(decoded_command)
             print("=" * 80)
-        exec(decoded_command)
+        try:
+            if debug:
+                print("Executing command:")
+                print("=" * 80)
+            exec(decoded_command)
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
     except Exception as e:
         print(f"Error decoding base64: {e}", file=sys.stderr)
 else:
