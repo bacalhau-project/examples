@@ -32,6 +32,8 @@ fileshare
 foff
 freqs
 fulltext
+gpuspec
+guppi
 imshow
 ipfs
 issubdtype
