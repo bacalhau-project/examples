@@ -1,6 +1,8 @@
 import os
 import sys
 
+os.environ["HDF5_PLUGIN_PATH"] = ""
+
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
