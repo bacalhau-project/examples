@@ -14,7 +14,7 @@ Tasks:
       Type: docker
       Params:
         # the docker container that will download videos and perform inference
-        Image: docker.io/bacalhauproject/python-runner:0.0.19
+        Image: docker.io/bacalhauproject/python-runner:0.0.20
         EnvironmentVariables:
           - COMMAND={{.fulltext}}
           - B64_ENCODED=True
