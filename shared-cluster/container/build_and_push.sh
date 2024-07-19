@@ -10,7 +10,7 @@ fi
 
 # Configuration
 DOCKER_REPO="bacalhauproject/python-runner"
-ARCH="amd64"
+ARCH="x86_64"
 
 # Generate version
 VERSION=$(date +"%Y.%m.%d.%H%M")
