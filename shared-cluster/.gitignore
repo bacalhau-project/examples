@@ -1,3 +1,5 @@
 .flox
 !Dockerfile
 claude-engineer
+
+hdf5-*.tar.gz
