@@ -1,7 +1,7 @@
 #0 building with "desktop-linux" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 2.49kB done
+#1 transferring dockerfile: 2.31kB done
 #1 DONE 0.0s
 
 #2 [internal] load metadata for docker.io/library/ubuntu:20.04
@@ -11,781 +11,549 @@
 #3 transferring context: 2B done
 #3 DONE 0.0s
 
-#4 [ 1/13] FROM docker.io/library/ubuntu:20.04
+#4 [ 1/14] FROM docker.io/library/ubuntu:20.04
 #4 DONE 0.0s
 
-#5 [ 3/13] RUN wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.14/hdf5-1.14.3/src/hdf5-1.14.3.tar.gz &&     tar -xzf hdf5-1.14.3.tar.gz
+#5 [ 2/14] RUN apt-get update && apt-get install -y     software-properties-common     wget     build-essential     zlib1g-dev     libopenmpi-dev     hdf5-tools     libhdf5-dev     cmake     git     curl     && add-apt-repository -y ppa:deadsnakes/ppa     && apt-get update && apt-get install -y     python3.11     python3.11-dev     python3.11-venv     && rm -rf /var/lib/apt/lists/*
 #5 CACHED
 
-#6 [ 2/13] RUN apt-get update && apt-get install -y     wget     build-essential     zlib1g-dev     python3     python3-dev     python3-pip     libopenmpi-dev     cmake     git     && rm -rf /var/lib/apt/lists/*
+#6 [ 4/14] RUN python3 -m ensurepip
 #6 CACHED
 
-#7 [ 4/13] WORKDIR /hdf5-1.14.3
+#7 [ 6/14] WORKDIR /app
 #7 CACHED
 
-#8 [internal] load build context
-#8 transferring context: 648B done
-#8 DONE 0.0s
+#8 [ 5/14] RUN python3 -m pip install uv
+#8 CACHED
 
-#9 [ 5/13] RUN ./configure --prefix=/usr/local/hdf5 --enable-shared --enable-build-mode=production CFLAGS="-march=x86-64" &&     make -j$(nproc) &&     make install &&     ldconfig
-#9 1.214 checking for a BSD-compatible install... /usr/bin/install -c
-#9 1.314 checking whether build environment is sane... yes
-#9 1.416 checking for a race-free mkdir -p... /usr/bin/mkdir -p
-#9 1.433 checking for gawk... no
-#9 1.433 checking for mawk... mawk
-#9 1.433 checking whether make sets $(MAKE)... yes
-#9 1.554 checking whether make supports nested variables... yes
-#9 1.628 checking whether make supports nested variables... (cached) yes
-#9 1.629 checking whether to enable maintainer-specific portions of Makefiles... no
-#9 1.689 checking build system type... x86_64-pc-linux-gnu
-#9 2.144 checking host system type... x86_64-pc-linux-gnu
-#9 2.250 checking shell variables initial values... done
-#9 2.266 checking if basename works... yes
-#9 2.278 checking if xargs works... yes
-#9 2.307 checking for cached host... none
-#9 2.307 checking enable warnings as errors... no
-#9 2.308 checking for config x86_64-pc-linux-gnu... no
-#9 2.308 checking for config x86_64-pc-linux-gnu... no
-#9 2.308 checking for config pc-linux-gnu... no
-#9 2.308 checking for config pc-linux-gnu... no
-#9 2.308 checking for config x86_64-linux-gnu... no
-#9 2.308 checking for config x86_64-linux-gnu... no
-#9 2.308 checking for config x86_64-pc... no
-#9 2.308 checking for config linux-gnu... found
-#9 2.416 compiler 'gcc' is GNU gcc-9.4.0
-#9 3.089 compiler 'gfortran' is GNU gfortran-9.4.0
-#9 3.470 compiler 'g++' is GNU g++-9.4.0
-#9 4.042 checking for config ./config/site-specific/host-buildkitsandbox... no
-#9 4.056 checking for clang sanitizer checks... checking build mode... production
-#9 4.057 checking for gcc... gcc
-#9 4.363 checking whether the C compiler works... yes
-#9 4.690 checking for C compiler default output file name... a.out
-#9 4.716 checking for suffix of executables... 
-#9 5.029 checking whether we are cross compiling... no
-#9 5.362 checking for suffix of object files... o
-#9 5.600 checking whether the compiler supports GNU C... yes
-#9 5.830 checking whether gcc accepts -g... yes
-#9 6.069 checking for gcc option to enable C11 features... none needed
-#9 6.414 checking whether gcc understands -c and -o together... yes
-#9 6.837 checking whether make supports the include directive... yes (GNU style)
-#9 6.930 checking dependency style of gcc... gcc3
-#9 7.347 checking if unsupported combinations of configure options are allowed... no
-#9 7.347 checking for stdio.h... yes
-#9 7.520 checking for stdlib.h... yes
-#9 7.708 checking for string.h... yes
-#9 7.899 checking for inttypes.h... yes
-#9 8.089 checking for stdint.h... yes
-#9 8.286 checking for strings.h... yes
-#9 8.488 checking for sys/stat.h... yes
-#9 8.699 checking for sys/types.h... yes
-#9 8.893 checking for unistd.h... yes
-#9 9.092 checking for off_t... yes
-#9 9.608 checking for ssize_t... yes
-#9 10.11 checking whether byte ordering is bigendian... no
-#9 10.81 checking size of char... 1
-#9 11.20 checking size of short... 2
-#9 11.60 checking size of int... 4
-#9 12.02 checking size of unsigned... 4
-#9 12.44 checking size of long... 8
-#9 12.84 checking size of long long... 8
-#9 13.23 checking size of float... 4
-#9 13.63 checking size of double... 8
-#9 14.03 checking size of long double... 16
-#9 14.43 checking if Fortran interface enabled... no
-#9 14.66 checking whether the compiler supports GNU C++... yes
-#9 14.90 checking whether g++ accepts -g... yes
-#9 15.15 checking for g++ option to enable C++11 features... none needed
-#9 15.58 checking dependency style of g++... gcc3
-#9 15.99 checking how to run the C++ preprocessor... g++ -E
-#9 16.51 checking if c++ interface enabled... no
-#9 16.51 checking if the high-level library is enabled... yes
-#9 16.51 checking whether to use new references with dimension scales... no
-#9 16.51 checking for ar... ar
-#9 16.51 checking whether make sets $(MAKE)... (cached) yes
-#9 16.53 checking for tr... /usr/bin/tr
-#9 16.53 checking if srcdir= and time commands work together... no
-#9 16.56 checking if Java JNI interface enabled... no
-#9 16.56 checking if building tests is disabled... yes
-#9 16.56 checking if HDF5 testing intensity level is set... 3
-#9 16.56 checking if building tools is enabled... yes
-#9 16.56 checking if the high-level GIF tools are enabled... no
-#9 16.56 checking if building doxygen is enabled... no
-#9 16.56 checking if doxygen warnings as errors is enabled... FAIL_ON_WARNINGS
-#9 16.57 checking how to print strings... printf
-#9 16.77 checking for a sed that does not truncate output... /usr/bin/sed
-#9 16.81 checking for grep that handles long lines and -e... /usr/bin/grep
-#9 16.83 checking for egrep... /usr/bin/grep -E
-#9 16.85 checking for fgrep... /usr/bin/grep -F
-#9 16.87 checking for ld used by gcc... /usr/bin/ld
-#9 16.91 checking if the linker (/usr/bin/ld) is GNU ld... yes
-#9 16.93 checking for BSD- or MS-compatible name lister (nm)... /usr/bin/nm -B
-#9 16.94 checking the name lister (/usr/bin/nm -B) interface... BSD nm
-#9 17.16 checking whether ln -s works... yes
-#9 17.16 checking the maximum length of command line arguments... 1572864
-#9 17.22 checking how to convert x86_64-pc-linux-gnu file names to x86_64-pc-linux-gnu format... func_convert_file_noop
-#9 17.22 checking how to convert x86_64-pc-linux-gnu file names to toolchain format... func_convert_file_noop
-#9 17.22 checking for /usr/bin/ld option to reload object files... -r
-#9 17.22 checking for objdump... objdump
-#9 17.22 checking how to recognize dependent libraries... pass_all
-#9 17.22 checking for dlltool... no
-#9 17.22 checking how to associate runtime and link libraries... printf %s\n
-#9 17.22 checking for archiver @FILE support... @
-#9 17.51 checking for strip... strip
-#9 17.51 checking for ranlib... ranlib
-#9 17.51 checking command to parse /usr/bin/nm -B output from gcc object... ok
-#9 18.19 checking for sysroot... no
-#9 18.19 checking for a working dd... /usr/bin/dd
-#9 18.25 checking how to truncate binary pipes... /usr/bin/dd bs=4096 count=1
-#9 18.46 checking for mt... no
-#9 18.46 checking if : is a manifest tool... no
-#9 18.50 checking for dlfcn.h... yes
-#9 18.73 checking for objdir... .libs
-#9 19.24 checking if gcc supports -fno-rtti -fno-exceptions... no
-#9 19.48 checking for gcc option to produce PIC... -fPIC -DPIC
-#9 19.48 checking if gcc PIC flag -fPIC -DPIC works... yes
-#9 19.69 checking if gcc static flag -static works... yes
-#9 20.06 checking if gcc supports -c -o file.o... yes
-#9 20.38 checking if gcc supports -c -o file.o... (cached) yes
-#9 20.38 checking whether the gcc linker (/usr/bin/ld -m elf_x86_64) supports shared libraries... yes
-#9 20.47 checking whether -lc should be explicitly linked in... no
-#9 20.73 checking dynamic linker characteristics... GNU/Linux ld.so
-#9 21.22 checking how to hardcode library paths into programs... immediate
-#9 21.22 checking for shl_load... no
-#9 21.62 checking for shl_load in -ldld... no
-#9 21.98 checking for dlopen... no
-#9 22.38 checking for dlopen in -ldl... yes
-#9 22.73 checking whether a program can dlopen itself... yes
-#9 23.08 checking whether a statically linked program can dlopen itself... no
-#9 23.54 checking whether stripping libraries is possible... yes
-#9 23.56 checking if libtool supports shared libraries... yes
-#9 23.56 checking whether to build shared libraries... yes
-#9 23.56 checking whether to build static libraries... yes
-#9 23.58 checking if we should install only statically linked executables... no
-#9 23.58 checking if -Wl,-rpath should be used to link shared libs in nondefault directories... yes
-#9 23.58 checking for ceil in -lm... yes
-#9 23.96 checking for dlopen in -ldl... (cached) yes
-#9 23.96 checking for dirent.h... yes
-#9 24.16 checking for features.h... yes
-#9 24.37 checking for pwd.h... yes
-#9 24.57 checking for unistd.h... (cached) yes
-#9 24.57 checking for sys/file.h... yes
-#9 24.79 checking for sys/ioctl.h... yes
-#9 24.98 checking for sys/resource.h... yes
-#9 25.18 checking for sys/stat.h... (cached) yes
-#9 25.18 checking for sys/time.h... yes
-#9 25.38 checking for sys/types.h... (cached) yes
-#9 25.39 checking for arpa/inet.h... yes
-#9 25.59 checking for netdb.h... yes
-#9 25.80 checking for netinet/in.h... yes
-#9 26.00 checking for sys/socket.h... yes
-#9 26.20 checking if libtool needs -no-undefined flag to build shared libraries... no
-#9 26.21 checking for _FILE_OFFSET_BITS value needed for large files... no
-#9 26.58 checking size of int8_t... 1
-#9 27.00 checking size of uint8_t... 1
-#9 27.44 checking size of int_least8_t... 1
-#9 27.84 checking size of uint_least8_t... 1
-#9 28.24 checking size of int_fast8_t... 1
-#9 28.67 checking size of uint_fast8_t... 1
-#9 29.08 checking size of int16_t... 2
-#9 29.48 checking size of uint16_t... 2
-#9 29.92 checking size of int_least16_t... 2
-#9 30.36 checking size of uint_least16_t... 2
-#9 30.79 checking size of int_fast16_t... 8
-#9 31.20 checking size of uint_fast16_t... 8
-#9 31.60 checking size of int32_t... 4
-#9 32.00 checking size of uint32_t... 4
-#9 32.40 checking size of int_least32_t... 4
-#9 32.84 checking size of uint_least32_t... 4
-#9 33.24 checking size of int_fast32_t... 8
-#9 33.65 checking size of uint_fast32_t... 8
-#9 34.05 checking size of int64_t... 8
-#9 34.47 checking size of uint64_t... 8
-#9 34.90 checking size of int_least64_t... 8
-#9 35.30 checking size of uint_least64_t... 8
-#9 35.71 checking size of int_fast64_t... 8
-#9 36.12 checking size of uint_fast64_t... 8
-#9 36.56 checking size of bool... 1
-#9 36.97 checking size of off_t... 8
-#9 37.37 checking size of ptrdiff_t... 8
-#9 37.77 checking size of size_t... 8
-#9 38.17 checking size of ssize_t... 8
-#9 38.59 checking size of time_t... 8
-#9 39.10 checking if dev_t is scalar... yes
-#9 39.40 checking for zlib.h... yes
-#9 39.60 checking for compress2 in -lz... yes
-#9 39.92 checking for compress2... yes
-#9 40.26 checking for szlib.h... no
-#9 40.61 checking for thread safe support... no
-#9 40.62 checking for gcc options needed to detect all undeclared functions... none needed
-#9 41.07 checking whether CLOCK_MONOTONIC is declared... yes
-#9 41.33 checking for tm_gmtoff in struct tm... yes
-#9 41.62 checking for global timezone variable... yes
-#9 41.97 checking for st_blocks in struct stat... yes
-#9 42.28 checking for _getvideoconfig... no
-#9 42.68 checking for gettextinfo... no
-#9 43.14 checking for GetConsoleScreenBufferInfo... no
-#9 43.55 checking for _scrsize... no
-#9 43.96 checking for ioctl... yes
-#9 44.30 checking for struct videoconfig... no
-#9 44.51 checking for struct text_info... no
-#9 44.74 checking for TIOCGWINSZ... yes
-#9 45.04 checking for TIOCGETD... yes
-#9 45.33 checking for library containing clock_gettime... none required
-#9 45.67 checking for alarm... yes
-#9 46.00 checking for asprintf... yes
-#9 46.34 checking for clock_gettime... yes
-#9 46.67 checking for fcntl... yes
-#9 47.01 checking for flock... yes
-#9 47.34 checking for fork... yes
-#9 47.67 checking for gethostname... yes
-#9 48.00 checking for getrusage... yes
-#9 48.34 checking for gettimeofday... yes
-#9 48.68 checking for rand_r... yes
-#9 49.01 checking for random... yes
-#9 49.35 checking for strcasestr... yes
-#9 49.70 checking for strdup... yes
-#9 50.04 checking for symlink... yes
-#9 50.38 checking for tmpfile... yes
-#9 50.72 checking for vasprintf... yes
-#9 51.06 checking for waitpid... yes
-#9 51.39 checking for __attribute__ extension... yes
-#9 51.62 checking enable build diagnostics... no
-#9 51.62 checking enable debugging symbols... no
-#9 51.62 checking enable asserts... no
-#9 51.62 checking enable developer warnings... no
-#9 51.62 checking profiling... no
-#9 51.62 checking optimization level... high
-#9 51.62 checking enable file locking... best-effort
-#9 51.62 checking for internal debug output... none
-#9 51.62 checking whether function stack tracking is enabled... no
-#9 51.62 checking for API tracing... no
-#9 51.62 checking whether a memory checking tool will be used... no
-#9 51.73 checking for parallel support files... skipped
-#9 51.74 checking parallel tools... no
-#9 51.74 checking if the map API (H5M) is enabled... no
-#9 51.74 checking if the subfiling I/O virtual file driver (VFD) is enabled... no
-#9 51.76 checking whether O_DIRECT is declared... yes
-#9 52.02 checking for posix_memalign... yes
-#9 52.36 checking if the direct I/O virtual file driver (VFD) is enabled... no
-#9 52.36 checking if the Mirror virtual file driver (VFD) is enabled... no
-#9 52.36 checking if the Read-Only S3 virtual file driver (VFD) is enabled... no
-#9 52.36 checking for libhdfs... suppressed
-#9 52.48 checking for custom examples path definition... ${prefix}/share/hdf5_examples
-#9 52.48 checking for custom plugin default path definition... /usr/local/hdf5/lib/plugin
-#9 52.48 checking whether exception handling functions is checked during data conversions... yes
-#9 52.48 checking whether data accuracy is guaranteed during data conversions... yes
-#9 52.48 checking if the machine has window style path name... no
-#9 52.49 checking if using special algorithm to convert long double to (unsigned) long values... no
-#9 52.92 checking if using special algorithm to convert (unsigned) long to long double values... no
-#9 53.34 checking if correctly converting long double to (unsigned) long long values... yes
-#9 53.75 checking if correctly converting (unsigned) long long to long double values... yes
-#9 54.15 checking if the system is IBM ppc64le and cannot correctly convert some long double values... no
-#9 55.00 checking additional programs should be built... no
-#9 55.00 checking if deprecated public symbols are available... yes
-#9 55.00 checking which version of public symbols to use by default... v114
-#9 55.00 checking whether to perform strict file format checks... no
-#9 55.00 checking for pread... yes
-#9 55.34 checking for pwrite... yes
-#9 55.67 checking whether to use pread/pwrite instead of read/write in certain VFDs... yes
-#9 55.67 checking whether to have library information embedded in the executables... yes
-#9 55.71 configure: creating ./config.lt
-#9 62.50 config.lt: creating libtool
-#9 63.00 checking that generated files are newer than configure... done
-#9 63.00 configure: creating ./config.status
-#9 69.98 config.status: creating Makefile
-#9 70.14 config.status: creating doxygen/Doxyfile
-#9 70.33 config.status: creating src/Makefile
-#9 70.51 config.status: creating src/libhdf5.settings
-#9 70.69 config.status: creating src/H5build_settings.c
-#9 70.92 config.status: creating test/Makefile
-#9 71.10 config.status: creating test/H5srcdir_str.h
-#9 71.28 config.status: creating test/test_abort_fail.sh
-#9 71.47 config.status: creating test/test_check_version.sh
-#9 71.65 config.status: creating test/test_error.sh
-#9 71.84 config.status: creating test/test_external_env.sh
-#9 72.03 config.status: creating test/test_flush_refresh.sh
-#9 72.21 config.status: creating test/test_libinfo.sh
-#9 72.40 config.status: creating test/test_links_env.sh
-#9 72.59 config.status: creating test/test_mirror.sh
-#9 72.78 config.status: creating test/test_plugin.sh
-#9 72.97 config.status: creating test/test_swmr.sh
-#9 73.15 config.status: creating test/test_use_cases.sh
-#9 73.34 config.status: creating test/test_vds_env.sh
-#9 73.53 config.status: creating test/test_vds_swmr.sh
-#9 73.71 config.status: creating testpar/Makefile
-#9 73.88 config.status: creating testpar/testpflush.sh
-#9 74.07 config.status: creating utils/Makefile
-#9 74.24 config.status: creating utils/mirror_vfd/Makefile
-#9 74.41 config.status: creating utils/test/Makefile
-#9 74.59 config.status: creating utils/tools/Makefile
-#9 74.77 config.status: creating utils/tools/h5dwalk/Makefile
-#9 74.95 config.status: creating utils/tools/test/Makefile
-#9 75.12 config.status: creating utils/tools/test/h5dwalk/Makefile
-#9 75.31 config.status: creating utils/tools/test/h5dwalk/copy_demo_files.sh
-#9 75.52 config.status: creating utils/tools/test/h5dwalk/testh5dwalk.sh
-#9 75.72 config.status: creating tools/Makefile
-#9 75.89 config.status: creating tools/lib/Makefile
-#9 76.07 config.status: creating tools/libtest/Makefile
-#9 76.24 config.status: creating tools/src/Makefile
-#9 76.42 config.status: creating tools/src/h5dump/Makefile
-#9 76.59 config.status: creating tools/src/h5import/Makefile
-#9 76.76 config.status: creating tools/src/h5diff/Makefile
-#9 76.93 config.status: creating tools/src/h5jam/Makefile
-#9 77.12 config.status: creating tools/src/h5repack/Makefile
-#9 77.30 config.status: creating tools/src/h5ls/Makefile
-#9 77.47 config.status: creating tools/src/h5copy/Makefile
-#9 77.64 config.status: creating tools/src/misc/Makefile
-#9 77.81 config.status: creating tools/src/h5stat/Makefile
-#9 77.99 config.status: creating tools/test/Makefile
-#9 78.16 config.status: creating tools/test/h5dump/Makefile
-#9 78.37 config.status: creating tools/test/h5dump/h5dump_plugin.sh
-#9 78.56 config.status: creating tools/test/h5dump/testh5dump.sh
-#9 78.75 config.status: creating tools/test/h5dump/testh5dumppbits.sh
-#9 78.94 config.status: creating tools/test/h5dump/testh5dumpvds.sh
-#9 79.12 config.status: creating tools/test/h5dump/testh5dumpxml.sh
-#9 79.31 config.status: creating tools/test/h5ls/Makefile
-#9 79.48 config.status: creating tools/test/h5ls/h5ls_plugin.sh
-#9 79.66 config.status: creating tools/test/h5ls/testh5ls.sh
-#9 79.85 config.status: creating tools/test/h5ls/testh5lsvds.sh
-#9 80.03 config.status: creating tools/test/h5import/Makefile
-#9 80.20 config.status: creating tools/test/h5import/h5importtestutil.sh
-#9 80.39 config.status: creating tools/test/h5diff/Makefile
-#9 80.57 config.status: creating tools/test/h5diff/h5diff_plugin.sh
-#9 80.78 config.status: creating tools/test/h5diff/testh5diff.sh
-#9 81.03 config.status: creating tools/test/h5diff/testph5diff.sh
-#9 81.22 config.status: creating tools/src/h5format_convert/Makefile
-#9 81.39 config.status: creating tools/test/h5format_convert/Makefile
-#9 81.57 config.status: creating tools/test/h5format_convert/testh5fc.sh
-#9 81.75 config.status: creating tools/test/h5jam/Makefile
-#9 81.93 config.status: creating tools/test/h5jam/testh5jam.sh
-#9 82.11 config.status: creating tools/test/h5repack/Makefile
-#9 82.29 config.status: creating tools/test/h5repack/h5repack.sh
-#9 82.49 config.status: creating tools/test/h5repack/h5repack_plugin.sh
-#9 82.69 config.status: creating tools/test/h5copy/Makefile
-#9 82.86 config.status: creating tools/test/h5copy/testh5copy.sh
-#9 83.05 config.status: creating tools/test/misc/Makefile
-#9 83.22 config.status: creating tools/test/misc/testh5clear.sh
-#9 83.40 config.status: creating tools/test/misc/testh5mkgrp.sh
-#9 83.58 config.status: creating tools/test/misc/testh5repart.sh
-#9 83.77 config.status: creating tools/test/misc/vds/Makefile
-#9 83.94 config.status: creating tools/test/h5stat/Makefile
-#9 84.10 config.status: creating tools/test/h5stat/testh5stat.sh
-#9 84.29 config.status: creating tools/src/h5perf/Makefile
-#9 84.47 config.status: creating tools/test/perform/Makefile
-#9 84.67 config.status: creating examples/Makefile
-#9 84.85 config.status: creating examples/run-c-ex.sh
-#9 85.03 config.status: creating examples/testh5cc.sh
-#9 85.21 config.status: creating bin/h5cc
-#9 85.40 config.status: creating bin/Makefile
-#9 85.57 config.status: creating c++/Makefile
-#9 85.74 config.status: creating c++/src/Makefile
-#9 85.91 config.status: creating c++/src/h5c++
-#9 86.10 config.status: creating c++/test/Makefile
-#9 86.27 config.status: creating c++/test/H5srcdir_str.h
-#9 86.46 config.status: creating c++/examples/Makefile
-#9 86.65 config.status: creating c++/examples/run-c++-ex.sh
-#9 86.84 config.status: creating c++/examples/testh5c++.sh
-#9 87.02 config.status: creating fortran/Makefile
-#9 87.19 config.status: creating fortran/src/h5fc
-#9 87.38 config.status: creating fortran/src/Makefile
-#9 87.55 config.status: creating fortran/src/H5fort_type_defines.h
-#9 87.74 config.status: creating fortran/test/Makefile
-#9 87.91 config.status: creating fortran/testpar/Makefile
-#9 88.10 config.status: creating fortran/examples/Makefile
-#9 88.27 config.status: creating fortran/examples/run-fortran-ex.sh
-#9 88.46 config.status: creating fortran/examples/testh5fc.sh
-#9 88.67 config.status: creating java/Makefile
-#9 88.84 config.status: creating java/src/Makefile
-#9 89.02 config.status: creating java/src/jni/Makefile
-#9 89.19 config.status: creating java/test/Makefile
-#9 89.37 config.status: creating java/test/junit.sh
-#9 89.58 config.status: creating java/examples/Makefile
-#9 89.84 config.status: creating java/examples/intro/Makefile
-#9 90.02 config.status: creating java/examples/intro/JavaIntroExample.sh
-#9 90.20 config.status: creating java/examples/datasets/Makefile
-#9 90.37 config.status: creating java/examples/datasets/JavaDatasetExample.sh
-#9 90.57 config.status: creating java/examples/datatypes/Makefile
-#9 90.75 config.status: creating java/examples/datatypes/JavaDatatypeExample.sh
-#9 90.93 config.status: creating java/examples/groups/Makefile
-#9 91.10 config.status: creating java/examples/groups/JavaGroupExample.sh
-#9 91.39 config.status: creating hl/Makefile
-#9 91.56 config.status: creating hl/src/Makefile
-#9 91.73 config.status: creating hl/test/Makefile
-#9 91.92 config.status: creating hl/test/H5srcdir_str.h
-#9 92.10 config.status: creating hl/tools/Makefile
-#9 92.28 config.status: creating hl/tools/gif2h5/Makefile
-#9 92.45 config.status: creating hl/tools/gif2h5/h52giftest.sh
-#9 92.64 config.status: creating hl/tools/h5watch/Makefile
-#9 92.81 config.status: creating hl/tools/h5watch/testh5watch.sh
-#9 93.00 config.status: creating hl/examples/Makefile
-#9 93.18 config.status: creating hl/examples/run-hlc-ex.sh
-#9 93.37 config.status: creating hl/c++/Makefile
-#9 93.54 config.status: creating hl/c++/src/Makefile
-#9 93.71 config.status: creating hl/c++/test/Makefile
-#9 93.89 config.status: creating hl/c++/examples/Makefile
-#9 94.06 config.status: creating hl/c++/examples/run-hlc++-ex.sh
-#9 94.25 config.status: creating hl/fortran/Makefile
-#9 94.43 config.status: creating hl/fortran/src/Makefile
-#9 94.61 config.status: creating hl/fortran/test/Makefile
-#9 94.78 config.status: creating hl/fortran/examples/Makefile
-#9 94.95 config.status: creating hl/fortran/examples/run-hlfortran-ex.sh
-#9 95.13 config.status: creating utils/subfiling_vfd/h5fuse.sh
-#9 95.33 config.status: creating src/H5config.h
-#9 95.47 config.status: executing pubconf commands
-#9 95.47 creating src/H5pubconf.h
-#9 95.51 Post process src/libhdf5.settings
-#9 95.56 Post process src/H5build_settings.c
-#9 95.62 config.status: executing depfiles commands
-#9 158.0 config.status: executing libtool commands
-#9 158.2 config.status: executing .classes commands
-#9 158.3         SUMMARY OF THE HDF5 CONFIGURATION
-#9 158.3         =================================
-#9 158.3 
-#9 158.3 General Information:
-#9 158.3 -------------------
-#9 158.3                    HDF5 Version: 1.14.3
-#9 158.3                   Configured on: Fri Jul 19 17:12:03 UTC 2024
-#9 158.3                   Configured by: root@buildkitsandbox
-#9 158.3                     Host system: x86_64-pc-linux-gnu
-#9 158.3               Uname information: Linux buildkitsandbox 6.6.31-linuxkit #1 SMP Thu May 23 08:36:57 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
-#9 158.3                        Byte sex: little-endian
-#9 158.3              Installation point: /usr/local/hdf5
-#9 158.3 
-#9 158.3 Compiling Options:
-#9 158.3 ------------------
-#9 158.3                      Build Mode: production
-#9 158.3               Debugging Symbols: no
-#9 158.3                         Asserts: no
-#9 158.3                       Profiling: no
-#9 158.3              Optimization Level: high
-#9 158.3 
-#9 158.3 Linking Options:
-#9 158.3 ----------------
-#9 158.3                       Libraries: static, shared
-#9 158.3   Statically Linked Executables: 
-#9 158.3                         LDFLAGS: 
-#9 158.3                      H5_LDFLAGS: 
-#9 158.3                      AM_LDFLAGS: 
-#9 158.3                 Extra libraries: -lz -ldl -lm 
-#9 158.3                        Archiver: ar
-#9 158.3                        AR_FLAGS: cr
-#9 158.3                          Ranlib: ranlib
-#9 158.3 
-#9 158.3 Languages:
-#9 158.3 ----------
-#9 158.3                               C: yes
-#9 158.3                      C Compiler: /usr/bin/gcc
-#9 158.3                        CPPFLAGS: 
-#9 158.3                     H5_CPPFLAGS: -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L   -DNDEBUG -UH5_DEBUG_API -I/hdf5-1.14.3/src/H5FDsubfiling
-#9 158.3                     AM_CPPFLAGS: 
-#9 158.3                         C Flags: -march=x86-64
-#9 158.3                      H5 C Flags:  -std=c99  -Wall -Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winvalid-pch -Wmissing-include-dirs -Wshadow -Wundef -Wwrite-strings -pedantic -Wno-c++-compat -Wlarger-than=2560 -Wlogical-op -Wframe-larger-than=16384 -Wpacked-bitfield-compat -Wsync-nand -Wno-unsuffixed-float-constants -Wdouble-promotion -Wtrampolines -Wstack-usage=8192 -Wmaybe-uninitialized -Wdate-time -Warray-bounds=2 -Wc99-c11-compat -Wduplicated-cond -Whsa -Wnormalized -Wnull-dereference -Wunused-const-variable -Walloca -Walloc-zero -Wduplicated-branches -Wformat-overflow=2 -Wformat-truncation=1 -Wattribute-alias -Wcast-align=strict -Wshift-overflow=2 -Wattribute-alias=2 -Wmissing-profile -Wc11-c2x-compat -fstdarg-opt  -s  -Wbad-function-cast -Wcast-align -Wformat -Wimplicit-function-declaration -Wint-to-pointer-cast -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wold-style-definition -Wpacked -Wpointer-sign -Wpointer-to-int-cast -Wredundant-decls -Wstrict-prototypes -Wswitch -Wunused-but-set-variable -Wunused-variable -Wunused-function -Wunused-parameter -Wincompatible-pointer-types -Wint-conversion -Wshadow -Wrestrict -Wcast-function-type -Wmaybe-uninitialized -Wno-aggregate-return -Wno-inline -Wno-missing-format-attribute -Wno-missing-noreturn -Wno-overlength-strings -Wno-jump-misses-init -Wstrict-overflow=2 -Wno-suggest-attribute=const -Wno-suggest-attribute=noreturn -Wno-suggest-attribute=pure -Wno-suggest-attribute=format -Wno-suggest-attribute=cold -Wno-suggest-attribute=malloc -O3
-#9 158.3                      AM C Flags: 
-#9 158.3                Shared C Library: yes
-#9 158.3                Static C Library: yes
-#9 158.3 
-#9 158.3 
-#9 158.3                         Fortran: no
-#9 158.3 
-#9 158.3                             C++: no
-#9 158.3 
-#9 158.3                            Java: no
-#9 158.3 
-#9 158.3 
-#9 158.3 Features:
-#9 158.3 ---------
-#9 158.3                      Parallel HDF5: no
-#9 158.3   Parallel Filtered Dataset Writes: no
-#9 158.3                 Large Parallel I/O: no
-#9 158.3                 High-level library: yes
-#9 158.3 Dimension scales w/ new references: no
-#9 158.3                   Build HDF5 Tests: yes
-#9 158.3                   Build HDF5 Tools: yes
-#9 158.3                    Build GIF Tools: no
-#9 158.3                       Threadsafety: no
-#9 158.3                Default API mapping: v114
-#9 158.3     With deprecated public symbols: yes
-#9 158.3             I/O filters (external): deflate(zlib)
-#9 158.3                      Map (H5M) API: no
-#9 158.3                         Direct VFD: no
-#9 158.3                         Mirror VFD: no
-#9 158.3                      Subfiling VFD: no
-#9 158.3                 (Read-Only) S3 VFD: no
-#9 158.3               (Read-Only) HDFS VFD: no
-#9 158.3     Packages w/ extra debug output: none
-#9 158.3                        API tracing: no
-#9 158.3               Using memory checker: no
-#9 158.3             Function stack tracing: no
-#9 158.3                   Use file locking: best-effort
-#9 158.3          Strict file format checks: no
-#9 158.3       Optimization instrumentation: no
-#9 158.5 Making all in src
-#9 158.5 make[1]: Entering directory '/hdf5-1.14.3/src'
-#9 158.6 make  all-am
-#9 158.7 make[2]: Entering directory '/hdf5-1.14.3/src'
-#9 158.7   CC       H5.lo
-#9 158.7   CC       H5build_settings.lo
-#9 158.7   CC       H5system.lo
-#9 158.7   CC       H5checksum.lo
-#9 158.7   CC       H5timer.lo
-#9 158.7   CC       H5dbg.lo
-#9 158.7   CC       H5trace.lo
-#9 158.7   CC       H5Adeprec.lo
-#9 158.7   CC       H5Abtree2.lo
-#9 158.7   CC       H5A.lo
-#9 158.7   CC       H5Adense.lo
-#9 158.7   CC       H5Aint.lo
-#9 160.1   CC       H5Atest.lo
-#9 161.0   CC       H5AC.lo
-#9 161.4   CC       H5ACdbg.lo
-#9 161.4   CC       H5ACproxy_entry.lo
-#9 161.4   CC       H5B.lo
-#9 161.4   CC       H5Bcache.lo
-#9 161.7   CC       H5Bdbg.lo
-#9 161.9   CC       H5B2.lo
-#9 162.4   CC       H5B2cache.lo
-#9 162.8   CC       H5B2dbg.lo
-#9 162.9   CC       H5B2hdr.lo
-#9 163.0   CC       H5B2int.lo
-#9 163.5   CC       H5B2internal.lo
-#9 163.6   CC       H5B2leaf.lo
-#9 164.0   CC       H5B2stat.lo
-#9 164.2   CC       H5B2test.lo
-#9 164.4   CC       H5C.lo
-#9 164.5   CC       H5Cdbg.lo
-#9 165.2   CC       H5Centry.lo
-#9 165.4   CC       H5Cepoch.lo
-#9 165.4   CC       H5Cimage.lo
-#9 165.6   CC       H5Cint.lo
-#9 165.8   CC       H5Clog.lo
-#9 166.3   CC       H5Clog_json.lo
-#9 166.6   CC       H5Clog_trace.lo
-#9 167.0   CC       H5Cprefetched.lo
-#9 167.1   CC       H5Cquery.lo
-#9 167.2   CC       H5Ctag.lo
-#9 167.5   CC       H5Ctest.lo
-#9 167.8   CC       H5CS.lo
-#9 168.0   CC       H5CX.lo
-#9 168.9   CC       H5D.lo
-#9 169.4   CC       H5Dbtree.lo
-#9 169.4   CC       H5Dbtree2.lo
-#9 169.5   CC       H5Dchunk.lo
-#9 169.5   CC       H5Dcompact.lo
-#9 169.7   CC       H5Dcontig.lo
-#9 169.8   CC       H5Ddbg.lo
-#9 169.9   CC       H5Ddeprec.lo
-#9 170.0   CC       H5Dearray.lo
-#9 170.1   CC       H5Defl.lo
-#9 170.6   CC       H5Dfarray.lo
-#9 171.3   CC       H5Dfill.lo
-#9 171.8   CC       H5Dint.lo
-#9 172.3   CC       H5Dio.lo
-#9 172.3   CC       H5Dlayout.lo
-#9 172.4   CC       H5Dnone.lo
-#9 172.5   CC       H5Doh.lo
-#9 172.7   CC       H5Dscatgath.lo
-#9 172.9   CC       H5Dselect.lo
-#9 173.0   CC       H5Dsingle.lo
-#9 173.5   CC       H5Dtest.lo
-#9 173.7   CC       H5Dvirtual.lo
-#9 174.6   CC       H5E.lo
-#9 176.2   CC       H5Edeprec.lo
-#9 176.2   CC       H5Eint.lo
-#9 176.2   CC       H5EA.lo
-#9 176.7   CC       H5EAcache.lo
-#9 176.7   CC       H5EAdbg.lo
-#9 176.7   CC       H5EAdblkpage.lo
-#9 176.9   CC       H5EAdblock.lo
-#9 177.2   CC       H5EAhdr.lo
-#9 177.7   CC       H5EAiblock.lo
-#9 177.9   CC       H5EAint.lo
-#9 178.3   CC       H5EAsblock.lo
-#9 178.7   CC       H5EAstat.lo
-#9 178.8   CC       H5EAtest.lo
-#9 178.9   CC       H5ES.lo
-#9 179.1   CC       H5ESevent.lo
-#9 179.1   CC       H5ESint.lo
-#9 179.1   CC       H5ESlist.lo
-#9 179.3   CC       H5F.lo
-#9 179.6   CC       H5Faccum.lo
-#9 179.7   CC       H5Fcwfs.lo
-#9 179.7   CC       H5Fdbg.lo
-#9 180.1   CC       H5Fdeprec.lo
-#9 180.5   CC       H5Fefc.lo
-#9 180.8   CC       H5Ffake.lo
-#9 181.3   CC       H5Fint.lo
-#9 181.4   CC       H5Fio.lo
-#9 181.6   CC       H5Fmount.lo
-#9 181.8   CC       H5Fquery.lo
-#9 182.2   CC       H5Fsfile.lo
-#9 182.5   CC       H5Fspace.lo
-#9 182.7   CC       H5Fsuper.lo
-#9 183.0   CC       H5Fsuper_cache.lo
-#9 183.1   CC       H5Ftest.lo
-#9 183.6   CC       H5FA.lo
-#9 183.7   CC       H5FAcache.lo
-#9 183.8 In file included from /usr/include/string.h:495,
-#9 183.8                  from H5private.h:35,
-#9 183.8                  from H5Fint.c:22:
-#9 183.8 In function 'strncpy',
-#9 183.8     inlined from 'H5F__new' at H5Fint.c:1286:17:
-#9 183.8 /usr/include/x86_64-linux-gnu/bits/string_fortified.h:106:10: warning: '__builtin_strncpy' output truncated before terminating nul copying as many bytes from a string as its length [-Wstringop-truncation]
-#9 183.8   106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos (__dest));
-#9 183.8       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#9 183.8 H5Fint.c: In function 'H5F__new':
-#9 183.8 H5Fint.c:1282:30: note: length computed here
-#9 183.8  1282 |                 size_t len = strlen(mdc_log_location);
-#9 183.8       |                              ^~~~~~~~~~~~~~~~~~~~~~~~
-#9 183.8   CC       H5FAdbg.lo
-#9 184.2   CC       H5FAdblock.lo
-#9 184.5   CC       H5FAdblkpage.lo
-#9 184.7   CC       H5FAhdr.lo
-#9 184.7   CC       H5FAint.lo
-#9 185.1   CC       H5FAstat.lo
-#9 185.6   CC       H5FAtest.lo
-#9 186.0   CC       H5FD.lo
-#9 186.6   CC       H5FDcore.lo
-#9 186.6   CC       H5FDfamily.lo
-#9 186.7   CC       H5FDint.lo
-#9 186.7   CC       H5FDlog.lo
-#9 186.8   CC       H5FDmulti.lo
-#9 187.0   CC       H5FDonion.lo
-#9 187.1   CC       H5FDonion_header.lo
-#9 187.2   CC       H5FDonion_history.lo
-#9 187.2   CC       H5FDonion_index.lo
-#9 187.4   CC       H5FDperform.lo
-#9 188.4   CC       H5FDsec2.lo
-#9 189.3   CC       H5FDspace.lo
-#9 189.5   CC       H5FDsplitter.lo
-#9 189.6   CC       H5FDstdio.lo
-#9 189.7   CC       H5FDtest.lo
-#9 189.7   CC       H5FL.lo
-#9 189.7   CC       H5FO.lo
-#9 189.8   CC       H5FS.lo
-#9 190.0   CC       H5FScache.lo
-#9 190.3   CC       H5FSdbg.lo
-#9 190.4   CC       H5FSint.lo
-#9 190.9   CC       H5FSsection.lo
-#9 191.1   CC       H5FSstat.lo
-#9 191.6   CC       H5FStest.lo
-#9 191.7   CC       H5G.lo
-#9 191.9   CC       H5Gbtree2.lo
-#9 192.0   CC       H5Gcache.lo
-#9 192.3   CC       H5Gcompact.lo
-#9 192.5   CC       H5Gdense.lo
-#9 192.6   CC       H5Gdeprec.lo
-#9 192.7   CC       H5Gent.lo
-#9 192.7   CC       H5Gint.lo
-#9 193.0   CC       H5Glink.lo
-#9 193.1   CC       H5Gloc.lo
-#9 193.6   CC       H5Gname.lo
-#9 194.3   CC       H5Gnode.lo
-#9 194.4   CC       H5Gobj.lo
-#9 194.4   CC       H5Goh.lo
-#9 194.4   CC       H5Groot.lo
-#9 194.7   CC       H5Gstab.lo
-#9 195.2   CC       H5Gtraverse.lo
-#9 195.2   CC       H5Gtest.lo
-#9 195.3   CC       H5HF.lo
-#9 195.3   CC       H5HFbtree2.lo
-#9 195.3   CC       H5HFcache.lo
-#9 195.4   CC       H5HFdbg.lo
-#9 196.2   CC       H5HFdblock.lo
-#9 196.6   CC       H5HFdtable.lo
-#9 196.8   CC       H5HFhdr.lo
-#9 197.1   CC       H5HFhuge.lo
-#9 197.3   CC       H5HFiblock.lo
-#9 197.4   CC       H5HFiter.lo
-#9 197.6   CC       H5HFman.lo
-#9 197.8   CC       H5HFsection.lo
-#9 197.9   CC       H5HFspace.lo
-#9 198.0   CC       H5HFstat.lo
-#9 198.3   CC       H5HFtest.lo
-#9 198.8   CC       H5HFtiny.lo
-#9 198.8   CC       H5HG.lo
-#9 198.8   CC       H5HGcache.lo
-#9 199.6   CC       H5HGdbg.lo
-#9 199.7   CC       H5HGquery.lo
-#9 199.9   CC       H5HL.lo
-#9 200.0   CC       H5HLcache.lo
-#9 200.1   CC       H5HLdbg.lo
-#9 200.1   CC       H5HLint.lo
-#9 200.3   CC       H5HLprfx.lo
-#9 200.5   CC       H5HLdblk.lo
-#9 201.1   CC       H5I.lo
-#9 201.5   CC       H5Idbg.lo
-#9 201.6   CC       H5Iint.lo
-#9 201.7   CC       H5Itest.lo
-#9 201.7   CC       H5L.lo
-#9 202.2   CC       H5Ldeprec.lo
-#9 202.7   CC       H5Lexternal.lo
-#9 202.8   CC       H5Lint.lo
-#9 202.8   CC       H5M.lo
-#9 203.0   CC       H5MF.lo
-#9 203.1   CC       H5MFaggr.lo
-#9 203.3   CC       H5MFdbg.lo
-#9 204.1   CC       H5MFsection.lo
-#9 204.1   CC       H5MM.lo
-#9 204.6   CC       H5O.lo
-#9 205.1   CC       H5Odeprec.lo
-#9 205.4   CC       H5Oainfo.lo
-#9 205.5   CC       H5Oalloc.lo
-#9 205.6   CC       H5Oattr.lo
-#9 205.7   CC       H5Oattribute.lo
-#9 205.7   CC       H5Obogus.lo
-#9 206.0   CC       H5Obtreek.lo
-#9 206.1   CC       H5Ocache.lo
-#9 206.2   CC       H5Ocache_image.lo
-#9 206.8   CC       H5Ochunk.lo
-#9 207.3   CC       H5Ocont.lo
-#9 207.4   CC       H5Ocopy.lo
-#9 207.8   CC       H5Ocopy_ref.lo
-#9 208.2   CC       H5Odbg.lo
-#9 208.5   CC       H5Odrvinfo.lo
-#9 208.6   CC       H5Odtype.lo
-#9 208.8   CC       H5Oefl.lo
-#9 209.1   CC       H5Ofill.lo
-#9 209.4   CC       H5Oflush.lo
-#9 209.7   CC       H5Ofsinfo.lo
-#9 210.0   CC       H5Oint.lo
-#9 210.0   CC       H5Oginfo.lo
-#9 210.2   CC       H5Olayout.lo
-#9 211.1   CC       H5Olinfo.lo
-#9 211.3   CC       H5Olink.lo
-#9 211.4   CC       H5Omessage.lo
-#9 211.6   CC       H5Omtime.lo
-#9 212.3   CC       H5Oname.lo
-#9 212.4   CC       H5Onull.lo
-#9 212.4 ../libtool: line 1763: 15955 Illegal instruction     gcc -DHAVE_CONFIG_H -I. -I../fortran/src -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -DNDEBUG -UH5_DEBUG_API -I/hdf5-1.14.3/src/H5FDsubfiling -std=c99 -Wall -Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winvalid-pch -Wmissing-include-dirs -Wshadow -Wundef -Wwrite-strings -pedantic -Wno-c++-compat -Wlarger-than=2560 -Wlogical-op -Wframe-larger-than=16384 -Wpacked-bitfield-compat -Wsync-nand -Wno-unsuffixed-float-constants -Wdouble-promotion -Wtrampolines -Wstack-usage=8192 -Wmaybe-uninitialized -Wdate-time -Warray-bounds=2 -Wc99-c11-compat -Wduplicated-cond -Whsa -Wnormalized -Wnull-dereference -Wunused-const-variable -Walloca -Walloc-zero -Wduplicated-branches -Wformat-overflow=2 -Wformat-truncation=1 -Wattribute-alias -Wcast-align=strict -Wshift-overflow=2 -Wattribute-alias=2 -Wmissing-profile -Wc11-c2x-compat -fstdarg-opt -s -Wbad-function-cast -Wcast-align -Wformat -Wimplicit-function-declaration -Wint-to-pointer-cast -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wold-style-definition -Wpacked -Wpointer-sign -Wpointer-to-int-cast -Wredundant-decls -Wstrict-prototypes -Wswitch -Wunused-but-set-variable -Wunused-variable -Wunused-function -Wunused-parameter -Wincompatible-pointer-types -Wint-conversion -Wshadow -Wrestrict -Wcast-function-type -Wmaybe-uninitialized -Wno-aggregate-return -Wno-inline -Wno-missing-format-attribute -Wno-missing-noreturn -Wno-overlength-strings -Wno-jump-misses-init -Wstrict-overflow=2 -Wno-suggest-attribute=const -Wno-suggest-attribute=noreturn -Wno-suggest-attribute=pure -Wno-suggest-attribute=format -Wno-suggest-attribute=cold -Wno-suggest-attribute=malloc -O3 -march=x86-64 -MT H5Oint.lo -MD -MP -MF .deps/H5Oint.Tpo -c H5Oint.c -o H5Oint.o > /dev/null 2>&1
-#9 212.4 make[2]: *** [Makefile:1861: H5Oint.lo] Error 1
-#9 212.4 make[2]: *** Waiting for unfinished jobs....
-#9 214.3 make[2]: Leaving directory '/hdf5-1.14.3/src'
-#9 214.3 make[1]: *** [Makefile:1349: all] Error 2
-#9 214.3 make[1]: Leaving directory '/hdf5-1.14.3/src'
-#9 214.3 make: *** [Makefile:730: all-recursive] Error 1
-#9 ERROR: process "/bin/sh -c ./configure --prefix=$HDF5_DIR --enable-shared --enable-build-mode=production CFLAGS=\"-march=x86-64\" &&     make -j$(nproc) &&     make install &&     ldconfig" did not complete successfully: exit code: 2
-------
- > [ 5/13] RUN ./configure --prefix=/usr/local/hdf5 --enable-shared --enable-build-mode=production CFLAGS="-march=x86-64" &&     make -j$(nproc) &&     make install &&     ldconfig:
-211.6   CC       H5Omtime.lo
-212.3   CC       H5Oname.lo
-212.4   CC       H5Onull.lo
-212.4 ../libtool: line 1763: 15955 Illegal instruction     gcc -DHAVE_CONFIG_H -I. -I../fortran/src -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -DNDEBUG -UH5_DEBUG_API -I/hdf5-1.14.3/src/H5FDsubfiling -std=c99 -Wall -Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winvalid-pch -Wmissing-include-dirs -Wshadow -Wundef -Wwrite-strings -pedantic -Wno-c++-compat -Wlarger-than=2560 -Wlogical-op -Wframe-larger-than=16384 -Wpacked-bitfield-compat -Wsync-nand -Wno-unsuffixed-float-constants -Wdouble-promotion -Wtrampolines -Wstack-usage=8192 -Wmaybe-uninitialized -Wdate-time -Warray-bounds=2 -Wc99-c11-compat -Wduplicated-cond -Whsa -Wnormalized -Wnull-dereference -Wunused-const-variable -Walloca -Walloc-zero -Wduplicated-branches -Wformat-overflow=2 -Wformat-truncation=1 -Wattribute-alias -Wcast-align=strict -Wshift-overflow=2 -Wattribute-alias=2 -Wmissing-profile -Wc11-c2x-compat -fstdarg-opt -s -Wbad-function-cast -Wcast-align -Wformat -Wimplicit-function-declaration -Wint-to-pointer-cast -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wold-style-definition -Wpacked -Wpointer-sign -Wpointer-to-int-cast -Wredundant-decls -Wstrict-prototypes -Wswitch -Wunused-but-set-variable -Wunused-variable -Wunused-function -Wunused-parameter -Wincompatible-pointer-types -Wint-conversion -Wshadow -Wrestrict -Wcast-function-type -Wmaybe-uninitialized -Wno-aggregate-return -Wno-inline -Wno-missing-format-attribute -Wno-missing-noreturn -Wno-overlength-strings -Wno-jump-misses-init -Wstrict-overflow=2 -Wno-suggest-attribute=const -Wno-suggest-attribute=noreturn -Wno-suggest-attribute=pure -Wno-suggest-attribute=format -Wno-suggest-attribute=cold -Wno-suggest-attribute=malloc -O3 -march=x86-64 -MT H5Oint.lo -MD -MP -MF .deps/H5Oint.Tpo -c H5Oint.c -o H5Oint.o > /dev/null 2>&1
-212.4 make[2]: *** [Makefile:1861: H5Oint.lo] Error 1
-212.4 make[2]: *** Waiting for unfinished jobs....
-214.3 make[2]: Leaving directory '/hdf5-1.14.3/src'
-214.3 make[1]: *** [Makefile:1349: all] Error 2
-214.3 make[1]: Leaving directory '/hdf5-1.14.3/src'
-214.3 make: *** [Makefile:730: all-recursive] Error 1
-------
-Dockerfile:29
---------------------
-  28 |     WORKDIR /hdf5-${HDF5_VERSION}
-  29 | >>> RUN ./configure --prefix=$HDF5_DIR --enable-shared --enable-build-mode=production CFLAGS="-march=x86-64" && \
-  30 | >>>     make -j$(nproc) && \
-  31 | >>>     make install && \
-  32 | >>>     ldconfig
-  33 |     
---------------------
-ERROR: failed to solve: process "/bin/sh -c ./configure --prefix=$HDF5_DIR --enable-shared --enable-build-mode=production CFLAGS=\"-march=x86-64\" &&     make -j$(nproc) &&     make install &&     ldconfig" did not complete successfully: exit code: 2
+#9 [ 3/14] RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+#9 CACHED
 
-View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/2b6zdiirfggcyb56am2yd54w8
+#10 [ 7/14] RUN python3 -m uv venv venv --seed
+#10 CACHED
+
+#11 [internal] load build context
+#11 transferring context: 648B done
+#11 DONE 0.0s
+
+#12 [ 8/14] RUN ./venv/bin/python3 -m pip install uv
+#12 1.371 Collecting uv
+#12 1.422   Downloading uv-0.2.27-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
+#12 1.450 Downloading uv-0.2.27-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.8 MB)
+#12 2.597    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.8/13.8 MB 11.4 MB/s eta 0:00:00
+#12 2.660 Installing collected packages: uv
+#12 2.903 Successfully installed uv-0.2.27
+#12 DONE 3.1s
+
+#13 [ 9/14] RUN ./venv/bin/python3 -m pip install --no-cache-dir "h5py"
+#13 0.839 Collecting h5py
+#13 0.886   Downloading h5py-3.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.5 kB)
+#13 1.081 Collecting numpy>=1.17.3 (from h5py)
+#13 1.092   Downloading numpy-2.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+#13 1.105      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.9/60.9 kB 10.9 MB/s eta 0:00:00
+#13 1.133 Downloading h5py-3.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.4 MB)
+#13 1.600    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.4/5.4 MB 11.7 MB/s eta 0:00:00
+#13 1.618 Downloading numpy-2.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (19.3 MB)
+#13 3.072    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 19.3/19.3 MB 14.9 MB/s eta 0:00:00
+#13 3.195 Installing collected packages: numpy, h5py
+#13 5.156 Successfully installed h5py-3.11.0 numpy-2.0.0
+#13 DONE 5.4s
+
+#14 [10/14] RUN git clone https://github.com/LLNL/zfp.git &&     cd zfp &&     mkdir build && cd build &&     cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local/zfp -DBUILD_SHARED_LIBS=ON &&     make -j$(nproc) &&     make install &&     cd ../.. &&     rm -rf zfp
+#14 0.149 Cloning into 'zfp'...
+#14 2.376 -- The C compiler identification is GNU 9.4.0
+#14 2.725 -- The CXX compiler identification is GNU 9.4.0
+#14 2.735 -- Check for working C compiler: /usr/bin/cc
+#14 3.284 -- Check for working C compiler: /usr/bin/cc -- works
+#14 3.286 -- Detecting C compiler ABI info
+#14 3.773 -- Detecting C compiler ABI info - done
+#14 3.793 -- Detecting C compile features
+#14 3.794 -- Detecting C compile features - done
+#14 3.797 -- Check for working CXX compiler: /usr/bin/c++
+#14 4.275 -- Check for working CXX compiler: /usr/bin/c++ -- works
+#14 4.276 -- Detecting CXX compiler ABI info
+#14 4.839 -- Detecting CXX compiler ABI info - done
+#14 4.857 -- Detecting CXX compile features
+#14 4.858 -- Detecting CXX compile features - done
+#14 4.861 -- Compiling with C standard: 99
+#14 4.861 -- Compiling with C++ standard: 98
+#14 6.409 -- Found OpenMP_C: -fopenmp (found version "4.5") 
+#14 6.409 -- Found OpenMP: TRUE (found version "4.5") found components: C 
+#14 6.411 -- Performing Test HAVE_MATH
+#14 6.902 -- Performing Test HAVE_MATH - Failed
+#14 6.903 -- Performing Test HAVE_LIBM_MATH
+#14 7.421 -- Performing Test HAVE_LIBM_MATH - Success
+#14 7.458 -- Configuring done
+#14 7.504 -- Generating done
+#14 7.507 -- Build files have been written to: /app/zfp/build
+#14 7.774 Scanning dependencies of target zfp
+#14 7.854 [  2%] Building C object src/CMakeFiles/zfp.dir/bitstream.c.o
+#14 7.855 [  4%] Building C object src/CMakeFiles/zfp.dir/zfp.c.o
+#14 7.859 [  7%] Building C object src/CMakeFiles/zfp.dir/encode1f.c.o
+#14 7.860 [  9%] Building C object src/CMakeFiles/zfp.dir/encode1i.c.o
+#14 7.862 [ 12%] Building C object src/CMakeFiles/zfp.dir/encode1d.c.o
+#14 7.864 [ 14%] Building C object src/CMakeFiles/zfp.dir/encode1l.c.o
+#14 7.867 [ 19%] Building C object src/CMakeFiles/zfp.dir/encode2f.c.o
+#14 7.867 [ 19%] Building C object src/CMakeFiles/zfp.dir/decode1d.c.o
+#14 7.868 [ 24%] Building C object src/CMakeFiles/zfp.dir/decode1f.c.o
+#14 7.870 [ 24%] Building C object src/CMakeFiles/zfp.dir/decode1i.c.o
+#14 7.877 [ 26%] Building C object src/CMakeFiles/zfp.dir/decode1l.c.o
+#14 7.886 [ 29%] Building C object src/CMakeFiles/zfp.dir/encode2d.c.o
+#14 8.816 [ 31%] Building C object src/CMakeFiles/zfp.dir/encode2l.c.o
+#14 8.824 [ 34%] Building C object src/CMakeFiles/zfp.dir/encode2i.c.o
+#14 8.862 [ 36%] Building C object src/CMakeFiles/zfp.dir/decode2f.c.o
+#14 8.889 [ 39%] Building C object src/CMakeFiles/zfp.dir/decode2d.c.o
+#14 8.915 [ 41%] Building C object src/CMakeFiles/zfp.dir/decode2i.c.o
+#14 8.931 [ 43%] Building C object src/CMakeFiles/zfp.dir/decode2l.c.o
+#14 8.942 [ 46%] Building C object src/CMakeFiles/zfp.dir/encode3f.c.o
+#14 8.953 [ 48%] Building C object src/CMakeFiles/zfp.dir/encode3d.c.o
+#14 9.017 [ 51%] Building C object src/CMakeFiles/zfp.dir/encode3i.c.o
+#14 9.070 [ 53%] Building C object src/CMakeFiles/zfp.dir/encode3l.c.o
+#14 9.230 [ 56%] Building C object src/CMakeFiles/zfp.dir/decode3f.c.o
+#14 9.807 [ 58%] Building C object src/CMakeFiles/zfp.dir/decode3d.c.o
+#14 9.827 [ 60%] Building C object src/CMakeFiles/zfp.dir/decode3i.c.o
+#14 9.882 [ 63%] Building C object src/CMakeFiles/zfp.dir/decode3l.c.o
+#14 9.897 [ 65%] Building C object src/CMakeFiles/zfp.dir/encode4f.c.o
+#14 9.901 [ 68%] Building C object src/CMakeFiles/zfp.dir/encode4d.c.o
+#14 9.931 [ 70%] Building C object src/CMakeFiles/zfp.dir/encode4i.c.o
+#14 10.08 [ 73%] Building C object src/CMakeFiles/zfp.dir/encode4l.c.o
+#14 10.17 [ 75%] Building C object src/CMakeFiles/zfp.dir/decode4f.c.o
+#14 10.19 [ 78%] Building C object src/CMakeFiles/zfp.dir/decode4d.c.o
+#14 10.26 [ 80%] Building C object src/CMakeFiles/zfp.dir/decode4i.c.o
+#14 10.38 [ 82%] Building C object src/CMakeFiles/zfp.dir/decode4l.c.o
+#14 11.46 [ 85%] Linking C shared library ../lib/libzfp.so
+#14 11.74 [ 85%] Built target zfp
+#14 11.83 Scanning dependencies of target zfpcmd
+#14 11.84 Scanning dependencies of target testviews
+#14 11.84 Scanning dependencies of target testzfp
+#14 11.91 [ 87%] Building C object utils/CMakeFiles/zfpcmd.dir/zfp.c.o
+#14 11.91 [ 90%] Building CXX object tests/CMakeFiles/testviews.dir/testviews.cpp.o
+#14 11.91 [ 92%] Building CXX object tests/CMakeFiles/testzfp.dir/testzfp.cpp.o
+#14 12.61 [ 95%] Linking C executable ../bin/zfp
+#14 12.82 [ 95%] Built target zfpcmd
+#14 13.96 [ 97%] Linking CXX executable ../bin/testviews
+#14 14.19 [ 97%] Built target testviews
+#14 16.41 [100%] Linking CXX executable ../bin/testzfp
+#14 16.66 [100%] Built target testzfp
+#14 16.99 [ 85%] Built target zfp
+#14 17.15 [ 90%] Built target zfpcmd
+#14 17.33 [ 95%] Built target testviews
+#14 17.49 [100%] Built target testzfp
+#14 17.59 Install the project...
+#14 17.64 -- Install configuration: "Release"
+#14 17.64 -- Installing: /usr/local/zfp/include
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/constarray3.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/bitstream.inl
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/factory.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array4.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array3.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/constarray4.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array2.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/version.h
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/inline.h
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/macros.h
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/system.h
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/types.h
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator2.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference1.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache2.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer3.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator4.hpp
+#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/traits.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/header.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/exception.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache3.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view4.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/memory.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec/zfpheader.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec/genheader.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/array1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/constarray2.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/array.h
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/bitstream.h
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec/gencodec.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec/zfpcodec.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/constarray1.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp/index.hpp
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp.h
+#14 17.65 -- Installing: /usr/local/zfp/include/zfp.hpp
+#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-config.cmake
+#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-config-version.cmake
+#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-targets.cmake
+#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-targets-release.cmake
+#14 17.65 -- Installing: /usr/local/zfp/lib/libzfp.so.1.0.1
+#14 17.65 -- Installing: /usr/local/zfp/lib/libzfp.so.1
+#14 17.66 -- Set runtime path of "/usr/local/zfp/lib/libzfp.so.1.0.1" to "/usr/local/zfp/lib"
+#14 17.66 -- Installing: /usr/local/zfp/lib/libzfp.so
+#14 17.66 -- Installing: /usr/local/zfp/bin/zfp
+#14 17.66 -- Set runtime path of "/usr/local/zfp/bin/zfp" to "/usr/local/zfp/lib"
+#14 DONE 17.9s
+
+#15 [11/14] RUN git clone https://github.com/LLNL/H5Z-ZFP.git &&     cd H5Z-ZFP &&     make CC=gcc     ZFP_HOME=/usr/local/zfp     HDF5_HOME=/usr/include/hdf5/serial     DYLIB_SUFFIX=so     PREFIX=/usr/local     H5Z_ZFP_USE_PLUGIN_INIT=yes     CFLAGS="-fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial"     LDFLAGS="-L/usr/local/zfp/lib -L/usr/lib/x86_64-linux-gnu/hdf5/serial"     all &&     make install &&     cd ../.. &&     rm -rf H5Z-ZFP
+#15 0.159 Cloning into 'H5Z-ZFP'...
+#15 1.827 grep: /usr/include/hdf5/serial/include/*.h: No such file or directory
+#15 1.882 cd src; make HDF5_HOME=/usr/include/hdf5/serial ZFP_HOME=/usr/local/zfp  PREFIX=/usr/local all
+#15 1.922 make[1]: Entering directory '/app/H5Z-ZFP/src'
+#15 2.816 grep: /usr/include/hdf5/serial/include/*.h: No such file or directory
+#15 2.823 gcc -c H5Zzfp.c -o H5Zzfp_lib.o -DH5Z_ZFP_AS_LIB -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
+#15 3.185 ar cr libh5zzfp.a H5Zzfp_lib.o
+#15 3.229 gcc -c H5Zzfp_props.c -o H5Zzfp_props.o -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
+#15 3.592 ar cr libh5zzfp.a H5Zzfp_props.o
+#15 3.636 gcc -c H5Zzfp.c -o H5Zzfp_plugin.o -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
+#15 3.992 rm -rf plugin
+#15 4.022 mkdir plugin
+#15 4.052 gcc H5Zzfp_plugin.o -shared -o plugin/libh5zzfp.so \
+#15 4.052     -Wl,-rpath,/usr/include/hdf5/serial/lib64 -Wl,-rpath,/usr/local/zfp/lib \
+#15 4.052     -L/usr/local/zfp/lib -L/usr/include/hdf5/serial/lib64 -lhdf5 -lzfp -L/usr/local/zfp/lib -L/usr/lib/x86_64-linux-gnu/hdf5/serial
+#15 4.179 make[1]: Leaving directory '/app/H5Z-ZFP/src'
+#15 4.351 config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
+#15 5.171 config.make:173: "zfp.h not found"
+#15 5.263 grep: /include/*.h: No such file or directory
+#15 5.350 cd src; make HDF5_HOME= ZFP_HOME=  PREFIX=/app/H5Z-ZFP/install all
+#15 5.396 make[1]: Entering directory '/app/H5Z-ZFP/src'
+#15 5.541 ../config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
+#15 6.273 ../config.make:173: "zfp.h not found"
+#15 6.352 grep: /include/*.h: No such file or directory
+#15 6.360 ar cr libh5zzfp.a H5Zzfp_lib.o
+#15 6.404 ar cr libh5zzfp.a H5Zzfp_props.o
+#15 6.448 make[1]: Leaving directory '/app/H5Z-ZFP/src'
+#15 6.451 cd src; make HDF5_HOME= ZFP_HOME=  PREFIX=/app/H5Z-ZFP/install install
+#15 6.492 make[1]: Entering directory '/app/H5Z-ZFP/src'
+#15 6.621 ../config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
+#15 7.373 ../config.make:173: "zfp.h not found"
+#15 7.461 grep: /include/*.h: No such file or directory
+#15 7.469 ar cr libh5zzfp.a H5Zzfp_lib.o
+#15 7.519 ar cr libh5zzfp.a H5Zzfp_props.o
+#15 7.565 install -d /app/H5Z-ZFP/install/{plugin,include,lib}
+#15 7.598 install plugin/libh5zzfp.so /app/H5Z-ZFP/install/plugin
+#15 7.631 install libh5zzfp.a /app/H5Z-ZFP/install/lib
+#15 7.664 install -m 644 H5Zzfp.h H5Zzfp_lib.h H5Zzfp_plugin.h H5Zzfp_version.h H5Zzfp_props.h /app/H5Z-ZFP/install/include
+#15 7.698 make[1]: Leaving directory '/app/H5Z-ZFP/src'
+#15 DONE 7.7s
+
+#16 [12/14] COPY requirements.txt .
+#16 DONE 0.0s
+
+#17 [13/14] RUN ./venv/bin/python3 -m pip install --no-cache-dir -r requirements.txt
+#17 0.789 Collecting adal==1.2.7 (from -r requirements.txt (line 3))
+#17 0.831   Downloading adal-1.2.7-py2.py3-none-any.whl.metadata (6.9 kB)
+#17 0.854 Collecting aiofiles==24.1.0 (from -r requirements.txt (line 4))
+#17 0.866   Downloading aiofiles-24.1.0-py3-none-any.whl.metadata (10 kB)
+#17 1.135 Collecting aiohttp==3.9.5 (from -r requirements.txt (line 5))
+#17 1.149   Downloading aiohttp-3.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.5 kB)
+#17 1.172 Collecting aiosignal==1.3.1 (from -r requirements.txt (line 6))
+#17 1.183   Downloading aiosignal-1.3.1-py3-none-any.whl.metadata (4.0 kB)
+#17 1.217 Collecting argcomplete==3.1.6 (from -r requirements.txt (line 8))
+#17 1.228   Downloading argcomplete-3.1.6-py3-none-any.whl.metadata (16 kB)
+#17 1.250 Collecting asttokens==2.4.1 (from -r requirements.txt (line 10))
+#17 1.261   Downloading asttokens-2.4.1-py2.py3-none-any.whl.metadata (5.2 kB)
+#17 1.289 Collecting asyncssh==2.15.0 (from -r requirements.txt (line 12))
+#17 1.300   Downloading asyncssh-2.15.0-py3-none-any.whl.metadata (9.9 kB)
+#17 1.323 Collecting attrs==23.2.0 (from -r requirements.txt (line 13))
+#17 1.333   Downloading attrs-23.2.0-py3-none-any.whl.metadata (9.5 kB)
+#17 1.362 Collecting azure-core==1.30.2 (from -r requirements.txt (line 15))
+#17 1.372   Downloading azure_core-1.30.2-py3-none-any.whl.metadata (37 kB)
+#17 1.418 Collecting bcrypt==4.1.3 (from -r requirements.txt (line 17))
+#17 1.428   Downloading bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (9.5 kB)
+#17 1.451 Collecting beautifulsoup4==4.12.3 (from -r requirements.txt (line 18))
+#17 1.461   Downloading beautifulsoup4-4.12.3-py3-none-any.whl.metadata (3.8 kB)
+#17 1.478 Collecting bs4==0.0.2 (from -r requirements.txt (line 20))
+#17 1.488   Downloading bs4-0.0.2-py2.py3-none-any.whl.metadata (411 bytes)
+#17 1.516 Collecting certifi==2024.7.4 (from -r requirements.txt (line 21))
+#17 1.526   Downloading certifi-2024.7.4-py3-none-any.whl.metadata (2.2 kB)
+#17 1.633 Collecting cffi==1.16.0 (from -r requirements.txt (line 25))
+#17 1.645   Downloading cffi-1.16.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.5 kB)
+#17 1.723 Collecting charset-normalizer==3.3.2 (from -r requirements.txt (line 29))
+#17 1.738   Downloading charset_normalizer-3.3.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (33 kB)
+#17 1.822 Collecting contourpy==1.2.1 (from -r requirements.txt (line 31))
+#17 1.832   Downloading contourpy-1.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.8 kB)
+#17 2.020 Collecting cryptography==42.0.8 (from -r requirements.txt (line 33))
+#17 2.031   Downloading cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+#17 2.050 Collecting cycler==0.12.1 (from -r requirements.txt (line 39))
+#17 2.060   Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+#17 2.081 Collecting decorator==5.1.1 (from -r requirements.txt (line 41))
+#17 2.097   Downloading decorator-5.1.1-py3-none-any.whl.metadata (4.0 kB)
+#17 2.116 Collecting executing==2.0.1 (from -r requirements.txt (line 43))
+#17 2.126   Downloading executing-2.0.1-py2.py3-none-any.whl.metadata (9.0 kB)
+#17 2.233 Collecting fonttools==4.53.1 (from -r requirements.txt (line 45))
+#17 2.243   Downloading fonttools-4.53.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (162 kB)
+#17 2.258      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 162.6/162.6 kB 21.1 MB/s eta 0:00:00
+#17 2.320 Collecting frozenlist==1.4.1 (from -r requirements.txt (line 47))
+#17 2.330   Downloading frozenlist-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (12 kB)
+#17 2.333 Requirement already satisfied: h5py==3.11.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 51)) (3.11.0)
+#17 2.363 Collecting humanfriendly==10.0 (from -r requirements.txt (line 52))
+#17 2.373   Downloading humanfriendly-10.0-py2.py3-none-any.whl.metadata (9.2 kB)
+#17 2.399 Collecting humanize==4.10.0 (from -r requirements.txt (line 53))
+#17 2.409   Downloading humanize-4.10.0-py3-none-any.whl.metadata (7.9 kB)
+#17 2.430 Collecting idna==3.7 (from -r requirements.txt (line 54))
+#17 2.444   Downloading idna-3.7-py3-none-any.whl.metadata (9.9 kB)
+#17 2.496 Collecting ipython==8.26.0 (from -r requirements.txt (line 58))
+#17 2.506   Downloading ipython-8.26.0-py3-none-any.whl.metadata (5.0 kB)
+#17 2.526 Collecting isodate==0.6.1 (from -r requirements.txt (line 59))
+#17 2.536   Downloading isodate-0.6.1-py2.py3-none-any.whl.metadata (9.6 kB)
+#17 2.560 Collecting jedi==0.19.1 (from -r requirements.txt (line 61))
+#17 2.575   Downloading jedi-0.19.1-py2.py3-none-any.whl.metadata (22 kB)
+#17 2.600 Collecting jmespath==1.0.1 (from -r requirements.txt (line 63))
+#17 2.610   Downloading jmespath-1.0.1-py3-none-any.whl.metadata (7.6 kB)
+#17 2.657 Collecting kiwisolver==1.4.5 (from -r requirements.txt (line 65))
+#17 2.667   Downloading kiwisolver-1.4.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.4 kB)
+#17 2.690 Collecting knack==0.11.0 (from -r requirements.txt (line 67))
+#17 2.703   Downloading knack-0.11.0-py3-none-any.whl.metadata (5.2 kB)
+#17 2.729 Collecting markdown-it-py==3.0.0 (from -r requirements.txt (line 68))
+#17 2.739   Downloading markdown_it_py-3.0.0-py3-none-any.whl.metadata (6.9 kB)
+#17 2.891 Collecting matplotlib==3.9.1 (from -r requirements.txt (line 70))
+#17 2.902   Downloading matplotlib-3.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+#17 2.922 Collecting matplotlib-inline==0.1.7 (from -r requirements.txt (line 71))
+#17 2.932   Downloading matplotlib_inline-0.1.7-py3-none-any.whl.metadata (3.9 kB)
+#17 2.948 Collecting mdurl==0.1.2 (from -r requirements.txt (line 73))
+#17 2.958   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+#17 2.984 Collecting msal==1.27.0 (from -r requirements.txt (line 75))
+#17 2.996   Downloading msal-1.27.0-py2.py3-none-any.whl.metadata (11 kB)
+#17 3.023 Collecting msrest==0.7.1 (from -r requirements.txt (line 76))
+#17 3.034   Downloading msrest-0.7.1-py3-none-any.whl.metadata (21 kB)
+#17 3.197 Collecting multidict==6.0.5 (from -r requirements.txt (line 77))
+#17 3.208   Downloading multidict-6.0.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
+#17 3.216 Requirement already satisfied: numpy==2.0.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 81)) (2.0.0)
+#17 3.236 Collecting oauthlib==3.2.2 (from -r requirements.txt (line 87))
+#17 3.246   Downloading oauthlib-3.2.2-py3-none-any.whl.metadata (7.5 kB)
+#17 3.279 Collecting packaging==24.1 (from -r requirements.txt (line 89))
+#17 3.290   Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)
+#17 3.314 Collecting parso==0.8.4 (from -r requirements.txt (line 93))
+#17 3.324   Downloading parso-0.8.4-py2.py3-none-any.whl.metadata (7.7 kB)
+#17 3.343 Collecting pexpect==4.9.0 (from -r requirements.txt (line 95))
+#17 3.367   Downloading pexpect-4.9.0-py2.py3-none-any.whl.metadata (2.5 kB)
+#17 3.558 Collecting pillow==10.4.0 (from -r requirements.txt (line 97))
+#17 3.568   Downloading pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (9.2 kB)
+#17 3.572 Requirement already satisfied: pip==24.1.2 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 99)) (24.1.2)
+#17 3.591 Collecting portalocker==2.10.0 (from -r requirements.txt (line 100))
+#17 3.604   Downloading portalocker-2.10.0-py3-none-any.whl.metadata (8.5 kB)
+#17 3.681 Collecting prompt-toolkit==3.0.47 (from -r requirements.txt (line 101))
+#17 3.692   Downloading prompt_toolkit-3.0.47-py3-none-any.whl.metadata (6.4 kB)
+#17 3.712 Collecting ptyprocess==0.7.0 (from -r requirements.txt (line 103))
+#17 3.722   Downloading ptyprocess-0.7.0-py2.py3-none-any.whl.metadata (1.3 kB)
+#17 3.741 Collecting pure-eval==0.2.2 (from -r requirements.txt (line 105))
+#17 3.752   Downloading pure_eval-0.2.2-py3-none-any.whl.metadata (6.2 kB)
+#17 3.770 Collecting pycparser==2.22 (from -r requirements.txt (line 107))
+#17 3.780   Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)
+#17 3.811 Collecting pygments==2.18.0 (from -r requirements.txt (line 109))
+#17 3.827   Downloading pygments-2.18.0-py3-none-any.whl.metadata (2.5 kB)
+#17 3.852 Collecting pyjwt==2.8.0 (from -r requirements.txt (line 114))
+#17 3.863   Downloading PyJWT-2.8.0-py3-none-any.whl.metadata (4.2 kB)
+#17 3.890 Collecting pynacl==1.5.0 (from -r requirements.txt (line 118))
+#17 3.900   Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl.metadata (8.6 kB)
+#17 3.939 Collecting pyparsing==3.1.2 (from -r requirements.txt (line 119))
+#17 3.949   Downloading pyparsing-3.1.2-py3-none-any.whl.metadata (5.1 kB)
+#17 3.967 Collecting pysocks==1.7.1 (from -r requirements.txt (line 121))
+#17 3.978   Downloading PySocks-1.7.1-py3-none-any.whl.metadata (13 kB)
+#17 4.002 Collecting python-dateutil==2.9.0.post0 (from -r requirements.txt (line 122))
+#17 4.012   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+#17 4.035 Collecting python-dotenv==1.0.1 (from -r requirements.txt (line 126))
+#17 4.045   Downloading python_dotenv-1.0.1-py3-none-any.whl.metadata (23 kB)
+#17 4.086 Collecting pyyaml==6.0.1 (from -r requirements.txt (line 127))
+#17 4.101   Downloading PyYAML-6.0.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.1 kB)
+#17 4.139 Collecting requests==2.32.3 (from -r requirements.txt (line 129))
+#17 4.149   Downloading requests-2.32.3-py3-none-any.whl.metadata (4.6 kB)
+#17 4.171 Collecting requests-oauthlib==2.0.0 (from -r requirements.txt (line 136))
+#17 4.180   Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+#17 4.244 Collecting rich==13.7.1 (from -r requirements.txt (line 138))
+#17 4.254   Downloading rich-13.7.1-py3-none-any.whl.metadata (18 kB)
+#17 4.363 Collecting scipy==1.14.0 (from -r requirements.txt (line 139))
+#17 4.374   Downloading scipy-1.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
+#17 4.377      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 218.4 MB/s eta 0:00:00
+#17 4.546 Collecting setuptools==70.2.0 (from -r requirements.txt (line 140))
+#17 4.561   Downloading setuptools-70.2.0-py3-none-any.whl.metadata (5.8 kB)
+#17 4.590 Collecting six==1.16.0 (from -r requirements.txt (line 141))
+#17 4.600   Downloading six-1.16.0-py2.py3-none-any.whl.metadata (1.8 kB)
+#17 4.624 Collecting soupsieve==2.5 (from -r requirements.txt (line 147))
+#17 4.635   Downloading soupsieve-2.5-py3-none-any.whl.metadata (4.7 kB)
+#17 4.656 Collecting stack-data==0.6.3 (from -r requirements.txt (line 149))
+#17 4.669   Downloading stack_data-0.6.3-py3-none-any.whl.metadata (18 kB)
+#17 4.689 Collecting tabulate==0.9.0 (from -r requirements.txt (line 151))
+#17 4.703   Downloading tabulate-0.9.0-py3-none-any.whl.metadata (34 kB)
+#17 4.733 Collecting traitlets==5.14.3 (from -r requirements.txt (line 153))
+#17 4.749   Downloading traitlets-5.14.3-py3-none-any.whl.metadata (10 kB)
+#17 4.773 Collecting typing-extensions==4.12.2 (from -r requirements.txt (line 157))
+#17 4.787   Downloading typing_extensions-4.12.2-py3-none-any.whl.metadata (3.0 kB)
+#17 4.832 Collecting urllib3==2.2.2 (from -r requirements.txt (line 162))
+#17 4.843   Downloading urllib3-2.2.2-py3-none-any.whl.metadata (6.4 kB)
+#17 4.970 Collecting uv==0.2.22 (from -r requirements.txt (line 164))
+#17 4.981   Downloading uv-0.2.22-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
+#17 5.002 Collecting wcwidth==0.2.13 (from -r requirements.txt (line 165))
+#17 5.013   Downloading wcwidth-0.2.13-py2.py3-none-any.whl.metadata (14 kB)
+#17 5.016 Requirement already satisfied: wheel==0.43.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 167)) (0.43.0)
+#17 5.127 Collecting yarl==1.9.4 (from -r requirements.txt (line 168))
+#17 5.137   Downloading yarl-1.9.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (31 kB)
+#17 5.430 Downloading adal-1.2.7-py2.py3-none-any.whl (55 kB)
+#17 5.491    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 55.5/55.5 kB 774.8 kB/s eta 0:00:00
+#17 5.502 Downloading aiofiles-24.1.0-py3-none-any.whl (15 kB)
+#17 5.515 Downloading aiohttp-3.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.3 MB)
+#17 5.601    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 15.3 MB/s eta 0:00:00
+#17 5.613 Downloading aiosignal-1.3.1-py3-none-any.whl (7.6 kB)
+#17 5.626 Downloading argcomplete-3.1.6-py3-none-any.whl (41 kB)
+#17 5.629    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.7/41.7 kB 26.0 MB/s eta 0:00:00
+#17 5.644 Downloading asttokens-2.4.1-py2.py3-none-any.whl (27 kB)
+#17 5.660 Downloading asyncssh-2.15.0-py3-none-any.whl (360 kB)
+#17 5.678    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 360.4/360.4 kB 22.3 MB/s eta 0:00:00
+#17 5.691 Downloading attrs-23.2.0-py3-none-any.whl (60 kB)
+#17 5.694    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 43.6 MB/s eta 0:00:00
+#17 5.708 Downloading azure_core-1.30.2-py3-none-any.whl (194 kB)
+#17 5.718    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 194.3/194.3 kB 24.5 MB/s eta 0:00:00
+#17 5.732 Downloading bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl (283 kB)
+#17 5.798    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 283.7/283.7 kB 4.3 MB/s eta 0:00:00
+#17 5.811 Downloading beautifulsoup4-4.12.3-py3-none-any.whl (147 kB)
+#17 5.822    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 147.9/147.9 kB 16.7 MB/s eta 0:00:00
+#17 5.835 Downloading bs4-0.0.2-py2.py3-none-any.whl (1.2 kB)
+#17 5.848 Downloading certifi-2024.7.4-py3-none-any.whl (162 kB)
+#17 5.864    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 163.0/163.0 kB 11.5 MB/s eta 0:00:00
+#17 5.876 Downloading cffi-1.16.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (464 kB)
+#17 5.914    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 464.8/464.8 kB 13.4 MB/s eta 0:00:00
+#17 5.925 Downloading charset_normalizer-3.3.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (140 kB)
+#17 5.939    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 140.3/140.3 kB 11.7 MB/s eta 0:00:00
+#17 5.953 Downloading contourpy-1.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (306 kB)
+#17 5.979    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 306.0/306.0 kB 12.8 MB/s eta 0:00:00
+#17 5.994 Downloading cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl (3.9 MB)
+#17 6.322    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.9/3.9 MB 11.8 MB/s eta 0:00:00
+#17 6.335 Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+#17 6.348 Downloading decorator-5.1.1-py3-none-any.whl (9.1 kB)
+#17 6.362 Downloading executing-2.0.1-py2.py3-none-any.whl (24 kB)
+#17 6.380 Downloading fonttools-4.53.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.9 MB)
+#17 6.743    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.9/4.9 MB 13.7 MB/s eta 0:00:00
+#17 6.755 Downloading frozenlist-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (272 kB)
+#17 6.775    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 272.3/272.3 kB 14.8 MB/s eta 0:00:00
+#17 6.789 Downloading humanfriendly-10.0-py2.py3-none-any.whl (86 kB)
+#17 6.794    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 86.8/86.8 kB 24.5 MB/s eta 0:00:00
+#17 6.805 Downloading humanize-4.10.0-py3-none-any.whl (126 kB)
+#17 6.813    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 127.0/127.0 kB 20.6 MB/s eta 0:00:00
+#17 6.823 Downloading idna-3.7-py3-none-any.whl (66 kB)
+#17 6.826    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.8/66.8 kB 32.7 MB/s eta 0:00:00
+#17 6.844 Downloading ipython-8.26.0-py3-none-any.whl (817 kB)
+#17 6.891    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 817.9/817.9 kB 18.0 MB/s eta 0:00:00
+#17 6.904 Downloading isodate-0.6.1-py2.py3-none-any.whl (41 kB)
+#17 6.906    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.7/41.7 kB 98.8 MB/s eta 0:00:00
+#17 6.918 Downloading jedi-0.19.1-py2.py3-none-any.whl (1.6 MB)
+#17 7.012    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 16.9 MB/s eta 0:00:00
+#17 7.025 Downloading jmespath-1.0.1-py3-none-any.whl (20 kB)
+#17 7.042 Downloading kiwisolver-1.4.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.4 MB)
+#17 7.159    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 12.6 MB/s eta 0:00:00
+#17 7.177 Downloading knack-0.11.0-py3-none-any.whl (60 kB)
+#17 7.179    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 206.7 MB/s eta 0:00:00
+#17 7.192 Downloading markdown_it_py-3.0.0-py3-none-any.whl (87 kB)
+#17 7.199    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.5/87.5 kB 17.0 MB/s eta 0:00:00
+#17 7.213 Downloading matplotlib-3.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
+#17 7.925    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 11.7 MB/s eta 0:00:00
+#17 7.947 Downloading matplotlib_inline-0.1.7-py3-none-any.whl (9.9 kB)
+#17 7.962 Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+#17 7.978 Downloading msal-1.27.0-py2.py3-none-any.whl (101 kB)
+#17 7.983    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.5/101.5 kB 40.9 MB/s eta 0:00:00
+#17 7.999 Downloading msrest-0.7.1-py3-none-any.whl (85 kB)
+#17 8.002    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 85.4/85.4 kB 140.9 MB/s eta 0:00:00
+#17 8.025 Downloading multidict-6.0.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (128 kB)
+#17 8.036    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 128.7/128.7 kB 13.6 MB/s eta 0:00:00
+#17 8.050 Downloading oauthlib-3.2.2-py3-none-any.whl (151 kB)
+#17 8.061    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 151.7/151.7 kB 15.5 MB/s eta 0:00:00
+#17 8.072 Downloading packaging-24.1-py3-none-any.whl (53 kB)
+#17 8.076    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.0/54.0 kB 19.4 MB/s eta 0:00:00
+#17 8.091 Downloading parso-0.8.4-py2.py3-none-any.whl (103 kB)
+#17 8.099    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 103.7/103.7 kB 21.1 MB/s eta 0:00:00
+#17 8.118 Downloading pexpect-4.9.0-py2.py3-none-any.whl (63 kB)
+#17 8.124    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.8/63.8 kB 17.2 MB/s eta 0:00:00
+#17 8.140 Downloading pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl (4.5 MB)
+#17 8.559    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 10.9 MB/s eta 0:00:00
+#17 8.575 Downloading portalocker-2.10.0-py3-none-any.whl (18 kB)
+#17 8.592 Downloading prompt_toolkit-3.0.47-py3-none-any.whl (386 kB)
+#17 8.620    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 386.4/386.4 kB 14.6 MB/s eta 0:00:00
+#17 8.632 Downloading ptyprocess-0.7.0-py2.py3-none-any.whl (13 kB)
+#17 8.644 Downloading pure_eval-0.2.2-py3-none-any.whl (11 kB)
+#17 8.659 Downloading pycparser-2.22-py3-none-any.whl (117 kB)
+#17 8.666    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 117.6/117.6 kB 27.3 MB/s eta 0:00:00
+#17 8.680 Downloading pygments-2.18.0-py3-none-any.whl (1.2 MB)
+#17 8.801    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 10.1 MB/s eta 0:00:00
+#17 8.817 Downloading PyJWT-2.8.0-py3-none-any.whl (22 kB)
+#17 8.833 Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl (856 kB)
+#17 8.905    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 856.7/856.7 kB 12.3 MB/s eta 0:00:00
+#17 8.930 Downloading pyparsing-3.1.2-py3-none-any.whl (103 kB)
+#17 8.941    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 103.2/103.2 kB 102.5 MB/s eta 0:00:00
+#17 8.954 Downloading PySocks-1.7.1-py3-none-any.whl (16 kB)
+#17 8.967 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#17 8.988    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 229.9/229.9 kB 11.5 MB/s eta 0:00:00
+#17 9.002 Downloading python_dotenv-1.0.1-py3-none-any.whl (19 kB)
+#17 9.017 Downloading PyYAML-6.0.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (757 kB)
+#17 9.075    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 757.7/757.7 kB 13.4 MB/s eta 0:00:00
+#17 9.087 Downloading requests-2.32.3-py3-none-any.whl (64 kB)
+#17 9.091    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 64.9/64.9 kB 20.7 MB/s eta 0:00:00
+#17 9.105 Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
+#17 9.117 Downloading rich-13.7.1-py3-none-any.whl (240 kB)
+#17 9.133    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 240.7/240.7 kB 16.5 MB/s eta 0:00:00
+#17 9.145 Downloading scipy-1.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (41.1 MB)
+#17 12.58    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.1/41.1 MB 11.7 MB/s eta 0:00:00
+#17 12.60 Downloading setuptools-70.2.0-py3-none-any.whl (930 kB)
+#17 12.68    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 930.8/930.8 kB 12.7 MB/s eta 0:00:00
+#17 12.69 Downloading six-1.16.0-py2.py3-none-any.whl (11 kB)
+#17 12.71 Downloading soupsieve-2.5-py3-none-any.whl (36 kB)
+#17 12.72 Downloading stack_data-0.6.3-py3-none-any.whl (24 kB)
+#17 12.73 Downloading tabulate-0.9.0-py3-none-any.whl (35 kB)
+#17 12.74 Downloading traitlets-5.14.3-py3-none-any.whl (85 kB)
+#17 12.75    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 85.4/85.4 kB 25.0 MB/s eta 0:00:00
+#17 12.76 Downloading typing_extensions-4.12.2-py3-none-any.whl (37 kB)
+#17 12.78 Downloading urllib3-2.2.2-py3-none-any.whl (121 kB)
+#17 12.79    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 121.4/121.4 kB 19.0 MB/s eta 0:00:00
+#17 12.80 Downloading uv-0.2.22-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (14.5 MB)
+#17 14.30    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 10.3 MB/s eta 0:00:00
+#17 14.32 Downloading wcwidth-0.2.13-py2.py3-none-any.whl (34 kB)
+#17 14.33 Downloading yarl-1.9.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (328 kB)
+#17 14.35    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 328.1/328.1 kB 18.4 MB/s eta 0:00:00
+#17 14.89 Installing collected packages: wcwidth, pure-eval, ptyprocess, uv, urllib3, typing-extensions, traitlets, tabulate, soupsieve, six, setuptools, scipy, pyyaml, python-dotenv, pysocks, pyparsing, pyjwt, pygments, pycparser, prompt-toolkit, portalocker, pillow, pexpect, parso, packaging, oauthlib, multidict, mdurl, kiwisolver, jmespath, idna, humanize, humanfriendly, frozenlist, fonttools, executing, decorator, cycler, contourpy, charset-normalizer, certifi, bcrypt, attrs, argcomplete, aiofiles, yarl, requests, python-dateutil, matplotlib-inline, markdown-it-py, knack, jedi, isodate, cffi, beautifulsoup4, asttokens, aiosignal, stack-data, rich, requests-oauthlib, pynacl, matplotlib, cryptography, bs4, azure-core, aiohttp, msrest, ipython, asyncssh, adal, msal
+#17 14.96   Attempting uninstall: uv
+#17 14.96     Found existing installation: uv 0.2.27
+#17 14.96     Uninstalling uv-0.2.27:
+#17 15.04       Successfully uninstalled uv-0.2.27
+#17 15.45   Attempting uninstall: setuptools
+#17 15.46     Found existing installation: setuptools 71.0.4
+#17 15.48     Uninstalling setuptools-71.0.4:
+#17 15.68       Successfully uninstalled setuptools-71.0.4
+#17 25.29 Successfully installed adal-1.2.7 aiofiles-24.1.0 aiohttp-3.9.5 aiosignal-1.3.1 argcomplete-3.1.6 asttokens-2.4.1 asyncssh-2.15.0 attrs-23.2.0 azure-core-1.30.2 bcrypt-4.1.3 beautifulsoup4-4.12.3 bs4-0.0.2 certifi-2024.7.4 cffi-1.16.0 charset-normalizer-3.3.2 contourpy-1.2.1 cryptography-42.0.8 cycler-0.12.1 decorator-5.1.1 executing-2.0.1 fonttools-4.53.1 frozenlist-1.4.1 humanfriendly-10.0 humanize-4.10.0 idna-3.7 ipython-8.26.0 isodate-0.6.1 jedi-0.19.1 jmespath-1.0.1 kiwisolver-1.4.5 knack-0.11.0 markdown-it-py-3.0.0 matplotlib-3.9.1 matplotlib-inline-0.1.7 mdurl-0.1.2 msal-1.27.0 msrest-0.7.1 multidict-6.0.5 oauthlib-3.2.2 packaging-24.1 parso-0.8.4 pexpect-4.9.0 pillow-10.4.0 portalocker-2.10.0 prompt-toolkit-3.0.47 ptyprocess-0.7.0 pure-eval-0.2.2 pycparser-2.22 pygments-2.18.0 pyjwt-2.8.0 pynacl-1.5.0 pyparsing-3.1.2 pysocks-1.7.1 python-dateutil-2.9.0.post0 python-dotenv-1.0.1 pyyaml-6.0.1 requests-2.32.3 requests-oauthlib-2.0.0 rich-13.7.1 scipy-1.14.0 setuptools-70.2.0 six-1.16.0 soupsieve-2.5 stack-data-0.6.3 tabulate-0.9.0 traitlets-5.14.3 typing-extensions-4.12.2 urllib3-2.2.2 uv-0.2.22 wcwidth-0.2.13 yarl-1.9.4
+#17 DONE 26.2s
+
+#18 [14/14] COPY run_command.py .
+#18 DONE 0.0s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 1.0s done
+#19 writing image sha256:779bdef72301d723572dce255d8a2be2c211308f4976a6e673b2fceaf9768f4f
+#19 writing image sha256:779bdef72301d723572dce255d8a2be2c211308f4976a6e673b2fceaf9768f4f done
+#19 naming to docker.io/bacalhauproject/python-runner:2024.07.19.1541 done
+#19 naming to docker.io/bacalhauproject/python-runner:latest done
+#19 DONE 1.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/6nflf02dnupwn0r3k0vkrbkqd

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import h5py
+import hdf5plugin
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
@@ -255,13 +256,6 @@ if __name__ == "__main__":
     if file_path is None:
         print("FILE_PATH environment variable is not set.")
         sys.exit(1)
-
-    HDF5_PLUGIN_PATH = os.environ.get("HDF5_PLUGIN_PATH")
-    if HDF5_PLUGIN_PATH is None:
-        print("HDF5_PLUGIN_PATH environment variable is not set.")
-        sys.exit(1)
-    else:
-        print(f"HDF5_PLUGIN_PATH: {HDF5_PLUGIN_PATH}")
 
     p = Path(file_path)
 
