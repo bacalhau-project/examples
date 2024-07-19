@@ -1,60 +1,88 @@
-FROM python:3.12-slim-bullseye
+# Start with Ubuntu 20.04 as the base image
+FROM ubuntu:20.04
 
-ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
+# Avoid prompts from apt
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install necessary dependencies
+# Set up environment variables
+ENV HDF5_VERSION=1.14.3
+ENV HDF5_DIR=/usr/local/hdf5
+ENV PATH=$PATH:$HDF5_DIR/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HDF5_DIR/lib
+
+# Install necessary dependencies and GCC-9
 RUN apt-get update && apt-get install -y \
-    gcc \
-    libc-dev \
-    libhdf5-dev \
-    libopenblas-dev \
-    liblapack-dev \
+    wget \
     build-essential \
-    libssl-dev \
     zlib1g-dev \
-    libjpeg-dev \
-    libmariadb-dev \
-    libffi-dev \
-    gfortran \
-    cmake \
+    gcc-9 \
+    g++-9 \
     git \
-    hdf5-tools \
-    libhdf5-dev \
-    libhdf5-serial-dev \
-    m4 \
-    bison \
-    flex \
-    libtool \
-    autoconf \
-    automake \
-    pkg-config \
-    gettext \
-    libncurses5-dev \
-    libncursesw5-dev \
-    libbz2-dev \
-    liblzma-dev \
-    libcurl4-openssl-dev \
-    libexpat1-dev \
-    libiconv-hook-dev \
-    libiconv-hook1
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Spack
-RUN git clone https://github.com/llnl/spack.git /opt/spack && \
-    cd /opt/spack && \
-    git checkout releases/v0.20
+# Set GCC-9 as the default compiler
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9
 
-# Set up Spack environment
-ENV SPACK_ROOT=/opt/spack
-ENV PATH="${SPACK_ROOT}/bin:${PATH}"
-SHELL ["/bin/bash", "-c"]
+# Download and install HDF5
+RUN wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-${HDF5_VERSION%.*}/hdf5-$HDF5_VERSION/src/hdf5-$HDF5_VERSION.tar.gz
 
-# Install H5Z-ZFP using Spack
-RUN . /opt/spack/share/spack/setup-env.sh && \
-    spack install h5z-zfp || { echo "Spack install failed"; exit 1; }
+RUN tar xzf hdf5-${HDF5_VERSION}.tar.gz && \
+    cd hdf5-${HDF5_VERSION} && \
+    ./configure \
+    --prefix=$HDF5_DIR \
+    CFLAGS="-march=x86-64 -mtune=generic -O2 -pipe" \
+    --enable-build-mode=production \
+    --enable-shared \
+    --enable-hl \
+    --disable-sharedlib-rpath && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf hdf5-${HDF5_VERSION} hdf5-${HDF5_VERSION}.tar.gz && \
+    ldconfig
 
-# Set HDF5_PLUGIN_PATH
-RUN echo '. /opt/spack/share/spack/setup-env.sh' >> /etc/bash.bashrc && \
-    echo 'export HDF5_PLUGIN_PATH=$(spack location -i h5z-zfp)/lib' >> /etc/bash.bashrc
+# Verify the installation
+RUN $HDF5_DIR/bin/h5cc -showconfig
+
+# Clone and build ZFP
+RUN git clone https://github.com/LLNL/zfp.git && \
+    cd zfp && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=$ZFP_DIR -DBUILD_SHARED_LIBS=ON && \
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && \
+    rm -rf zfp && \
+    ldconfig
+
+# Clone and build H5Z-ZFP
+RUN git clone https://github.com/LLNL/H5Z-ZFP.git && \
+    cd H5Z-ZFP && \
+    make CC=gcc \
+    ZFP_HOME=$ZFP_DIR \
+    HDF5_HOME=$HDF5_DIR \
+    DYLIB_SUFFIX=so \
+    PREFIX=$HDF5_DIR \
+    H5Z_ZFP_USE_PLUGIN_INIT=yes \
+    CFLAGS="-fPIC -I$ZFP_DIR/include -I$HDF5_DIR/include" \
+    LDFLAGS="-L$ZFP_DIR/lib -L$HDF5_DIR/lib" \
+    all && \
+    make install && \
+    cd .. && \
+    rm -rf H5Z-ZFP && \
+    ldconfig
+
+# Install h5py
+RUN HDF5_DIR=$HDF5_DIR pip3 install --no-binary=h5py h5py
+
+# Verify installations
+RUN $HDF5_DIR/bin/h5cc -showconfig && \
+    ldconfig -p | grep hdf5 && \
+    ls -l $HDF5_DIR/lib/plugin && \
+    ldd $HDF5_DIR/lib/plugin/libh5zzfp.so && \
+    ldd $HDF5_DIR/lib/plugin/libzfp.so && \
+    python3 -c "import h5py; print(h5py.__version__, h5py.version.hdf5_version)"
 
 WORKDIR /app
 
@@ -62,7 +90,7 @@ WORKDIR /app
 RUN python3 -m venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 RUN . /app/venv/bin/activate && \
-    pip3 install --upgrade pip
+    pip3 install --upgrade pip wheel setuptools
 
 # Install Python requirements
 COPY requirements.txt .
@@ -72,6 +100,17 @@ RUN . /app/venv/bin/activate && \
 # Copy the run command script
 COPY run_command.py /app/
 
-# Set up entrypoint to ensure Spack environment is loaded
+# Copy the tarball containing the built plugins
+COPY build_plugins/output/hdf5_plugins.tar.gz /tmp/
+
+# Extract the plugins and set up the HDF5_PLUGIN_PATH
+RUN mkdir -p /usr/local/hdf5/lib/plugin && \
+    tar -xzvf /tmp/hdf5_plugins.tar.gz -C /usr/local/hdf5/lib/plugin && \
+    rm /tmp/hdf5_plugins.tar.gz
+
+# Set the HDF5_PLUGIN_PATH environment variable
+ENV HDF5_PLUGIN_PATH=/usr/local/hdf5/lib/plugin
+
+# Set up entrypoint
 ENTRYPOINT ["/bin/bash", "-c"]
-CMD [". /opt/spack/share/spack/setup-env.sh && . /app/venv/bin/activate && python3 /app/run_command.py"]
+CMD [". /app/venv/bin/activate && python3 /app/run_command.py"]

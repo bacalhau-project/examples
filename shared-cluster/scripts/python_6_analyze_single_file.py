@@ -1,7 +1,6 @@
 import os
 import sys
-
-os.environ["HDF5_PLUGIN_PATH"] = ""
+from pathlib import Path
 
 import h5py
 import matplotlib.pyplot as plt
@@ -257,6 +256,15 @@ if __name__ == "__main__":
         print("FILE_PATH environment variable is not set.")
         sys.exit(1)
 
-    with h5py.File(file_path, "r") as f:
+    HDF5_PLUGIN_PATH = os.environ.get("HDF5_PLUGIN_PATH")
+    if HDF5_PLUGIN_PATH is None:
+        print("HDF5_PLUGIN_PATH environment variable is not set.")
+        sys.exit(1)
+    else:
+        print(f"HDF5_PLUGIN_PATH: {HDF5_PLUGIN_PATH}")
+
+    p = Path(file_path)
+
+    with h5py.File(p.absolute(), "r") as f:
         results = analyze_scientific_data(f)
         print_summary(results)
