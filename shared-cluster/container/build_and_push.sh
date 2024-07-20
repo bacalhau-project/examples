@@ -2,12 +2,6 @@
 
 set -e  # Exit immediately if a command exits with a non-zero status.
 
-# If hdf5 is not in this directory, then tell the person to download it.
-# The file will look like this: hdf5-1.14.4-3-ubuntu-2204_gcc.deb.tar.gz
-if ! ls build_plugins/hdf5-*.deb.tar.gz 1> /dev/null 2>&1; then
-    error "HDF5 is not in build_plugins/ directory. Please download it and place it in build_plugins/ directory. You can download a binary package from here: https://support.hdfgroup.org/ftp/HDF5/releases/"
-fi
-
 # Configuration
 DOCKER_REPO="bacalhauproject/python-runner"
 ARCH="x86_64"
