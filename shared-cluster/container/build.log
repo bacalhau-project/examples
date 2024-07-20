@@ -1,7 +1,7 @@
 #0 building with "desktop-linux" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 2.31kB done
+#1 transferring dockerfile: 868B done
 #1 DONE 0.0s
 
 #2 [internal] load metadata for docker.io/library/ubuntu:20.04
@@ -11,549 +11,61 @@
 #3 transferring context: 2B done
 #3 DONE 0.0s
 
-#4 [ 1/14] FROM docker.io/library/ubuntu:20.04
+#4 [1/8] FROM docker.io/library/ubuntu:20.04
 #4 DONE 0.0s
 
-#5 [ 2/14] RUN apt-get update && apt-get install -y     software-properties-common     wget     build-essential     zlib1g-dev     libopenmpi-dev     hdf5-tools     libhdf5-dev     cmake     git     curl     && add-apt-repository -y ppa:deadsnakes/ppa     && apt-get update && apt-get install -y     python3.11     python3.11-dev     python3.11-venv     && rm -rf /var/lib/apt/lists/*
+#5 [2/8] RUN apt-get update && apt-get install -y     wget     curl     && rm -rf /var/lib/apt/lists/*
 #5 CACHED
 
-#6 [ 4/14] RUN python3 -m ensurepip
+#6 [4/8] RUN curl -LsSf https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
 #6 CACHED
 
-#7 [ 6/14] WORKDIR /app
+#7 [3/8] WORKDIR /app
 #7 CACHED
 
-#8 [ 5/14] RUN python3 -m pip install uv
+#8 [5/8] RUN bash miniconda.sh -b -p /opt/conda
 #8 CACHED
 
-#9 [ 3/14] RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+#9 [6/8] RUN conda install --yes -c conda-forge mamba
 #9 CACHED
 
-#10 [ 7/14] RUN python3 -m uv venv venv --seed
-#10 CACHED
+#10 [internal] load build context
+#10 transferring context: 34B done
+#10 DONE 0.0s
 
-#11 [internal] load build context
-#11 transferring context: 648B done
+#11 [7/8] COPY h5pyenv.yaml .
 #11 DONE 0.0s
 
-#12 [ 8/14] RUN ./venv/bin/python3 -m pip install uv
-#12 1.371 Collecting uv
-#12 1.422   Downloading uv-0.2.27-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
-#12 1.450 Downloading uv-0.2.27-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.8 MB)
-#12 2.597    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.8/13.8 MB 11.4 MB/s eta 0:00:00
-#12 2.660 Installing collected packages: uv
-#12 2.903 Successfully installed uv-0.2.27
-#12 DONE 3.1s
+#12 [8/8] RUN mamba env create -f h5pyenv.yaml
+#12 0.998 Channels:
+#12 0.998  - conda-forge
+#12 0.998  - defaults
+#12 0.998 Platform: linux-64
+#12 0.998 Collecting package metadata (repodata.json): ...working... done
+#12 13.30 Solving environment: ...working... done
+#12 49.89 
+#12 49.89 Downloading and Extracting Packages: ...working... done
+#12 49.89 Preparing transaction: ...working... done
+#12 50.79 Verifying transaction: ...working... done
+#12 54.06 Executing transaction: ...working... done
+#12 61.25 #
+#12 61.25 # To activate this environment, use
+#12 61.25 #
+#12 61.25 #     $ conda activate h5pyenv
+#12 61.25 #
+#12 61.25 # To deactivate an active environment, use
+#12 61.25 #
+#12 61.25 #     $ conda deactivate
+#12 61.25 
+#12 DONE 62.1s
 
-#13 [ 9/14] RUN ./venv/bin/python3 -m pip install --no-cache-dir "h5py"
-#13 0.839 Collecting h5py
-#13 0.886   Downloading h5py-3.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.5 kB)
-#13 1.081 Collecting numpy>=1.17.3 (from h5py)
-#13 1.092   Downloading numpy-2.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
-#13 1.105      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.9/60.9 kB 10.9 MB/s eta 0:00:00
-#13 1.133 Downloading h5py-3.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.4 MB)
-#13 1.600    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.4/5.4 MB 11.7 MB/s eta 0:00:00
-#13 1.618 Downloading numpy-2.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (19.3 MB)
-#13 3.072    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 19.3/19.3 MB 14.9 MB/s eta 0:00:00
-#13 3.195 Installing collected packages: numpy, h5py
-#13 5.156 Successfully installed h5py-3.11.0 numpy-2.0.0
-#13 DONE 5.4s
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 6.2s done
+#13 writing image sha256:710a709edc155672dbe8885644ae22ef5aa6ce3cc15ca94b5bd32a7ab887f658
+#13 writing image sha256:710a709edc155672dbe8885644ae22ef5aa6ce3cc15ca94b5bd32a7ab887f658 done
+#13 naming to docker.io/bacalhauproject/python-runner:2024.07.19.1654 done
+#13 naming to docker.io/bacalhauproject/python-runner:latest done
+#13 DONE 6.2s
 
-#14 [10/14] RUN git clone https://github.com/LLNL/zfp.git &&     cd zfp &&     mkdir build && cd build &&     cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local/zfp -DBUILD_SHARED_LIBS=ON &&     make -j$(nproc) &&     make install &&     cd ../.. &&     rm -rf zfp
-#14 0.149 Cloning into 'zfp'...
-#14 2.376 -- The C compiler identification is GNU 9.4.0
-#14 2.725 -- The CXX compiler identification is GNU 9.4.0
-#14 2.735 -- Check for working C compiler: /usr/bin/cc
-#14 3.284 -- Check for working C compiler: /usr/bin/cc -- works
-#14 3.286 -- Detecting C compiler ABI info
-#14 3.773 -- Detecting C compiler ABI info - done
-#14 3.793 -- Detecting C compile features
-#14 3.794 -- Detecting C compile features - done
-#14 3.797 -- Check for working CXX compiler: /usr/bin/c++
-#14 4.275 -- Check for working CXX compiler: /usr/bin/c++ -- works
-#14 4.276 -- Detecting CXX compiler ABI info
-#14 4.839 -- Detecting CXX compiler ABI info - done
-#14 4.857 -- Detecting CXX compile features
-#14 4.858 -- Detecting CXX compile features - done
-#14 4.861 -- Compiling with C standard: 99
-#14 4.861 -- Compiling with C++ standard: 98
-#14 6.409 -- Found OpenMP_C: -fopenmp (found version "4.5") 
-#14 6.409 -- Found OpenMP: TRUE (found version "4.5") found components: C 
-#14 6.411 -- Performing Test HAVE_MATH
-#14 6.902 -- Performing Test HAVE_MATH - Failed
-#14 6.903 -- Performing Test HAVE_LIBM_MATH
-#14 7.421 -- Performing Test HAVE_LIBM_MATH - Success
-#14 7.458 -- Configuring done
-#14 7.504 -- Generating done
-#14 7.507 -- Build files have been written to: /app/zfp/build
-#14 7.774 Scanning dependencies of target zfp
-#14 7.854 [  2%] Building C object src/CMakeFiles/zfp.dir/bitstream.c.o
-#14 7.855 [  4%] Building C object src/CMakeFiles/zfp.dir/zfp.c.o
-#14 7.859 [  7%] Building C object src/CMakeFiles/zfp.dir/encode1f.c.o
-#14 7.860 [  9%] Building C object src/CMakeFiles/zfp.dir/encode1i.c.o
-#14 7.862 [ 12%] Building C object src/CMakeFiles/zfp.dir/encode1d.c.o
-#14 7.864 [ 14%] Building C object src/CMakeFiles/zfp.dir/encode1l.c.o
-#14 7.867 [ 19%] Building C object src/CMakeFiles/zfp.dir/encode2f.c.o
-#14 7.867 [ 19%] Building C object src/CMakeFiles/zfp.dir/decode1d.c.o
-#14 7.868 [ 24%] Building C object src/CMakeFiles/zfp.dir/decode1f.c.o
-#14 7.870 [ 24%] Building C object src/CMakeFiles/zfp.dir/decode1i.c.o
-#14 7.877 [ 26%] Building C object src/CMakeFiles/zfp.dir/decode1l.c.o
-#14 7.886 [ 29%] Building C object src/CMakeFiles/zfp.dir/encode2d.c.o
-#14 8.816 [ 31%] Building C object src/CMakeFiles/zfp.dir/encode2l.c.o
-#14 8.824 [ 34%] Building C object src/CMakeFiles/zfp.dir/encode2i.c.o
-#14 8.862 [ 36%] Building C object src/CMakeFiles/zfp.dir/decode2f.c.o
-#14 8.889 [ 39%] Building C object src/CMakeFiles/zfp.dir/decode2d.c.o
-#14 8.915 [ 41%] Building C object src/CMakeFiles/zfp.dir/decode2i.c.o
-#14 8.931 [ 43%] Building C object src/CMakeFiles/zfp.dir/decode2l.c.o
-#14 8.942 [ 46%] Building C object src/CMakeFiles/zfp.dir/encode3f.c.o
-#14 8.953 [ 48%] Building C object src/CMakeFiles/zfp.dir/encode3d.c.o
-#14 9.017 [ 51%] Building C object src/CMakeFiles/zfp.dir/encode3i.c.o
-#14 9.070 [ 53%] Building C object src/CMakeFiles/zfp.dir/encode3l.c.o
-#14 9.230 [ 56%] Building C object src/CMakeFiles/zfp.dir/decode3f.c.o
-#14 9.807 [ 58%] Building C object src/CMakeFiles/zfp.dir/decode3d.c.o
-#14 9.827 [ 60%] Building C object src/CMakeFiles/zfp.dir/decode3i.c.o
-#14 9.882 [ 63%] Building C object src/CMakeFiles/zfp.dir/decode3l.c.o
-#14 9.897 [ 65%] Building C object src/CMakeFiles/zfp.dir/encode4f.c.o
-#14 9.901 [ 68%] Building C object src/CMakeFiles/zfp.dir/encode4d.c.o
-#14 9.931 [ 70%] Building C object src/CMakeFiles/zfp.dir/encode4i.c.o
-#14 10.08 [ 73%] Building C object src/CMakeFiles/zfp.dir/encode4l.c.o
-#14 10.17 [ 75%] Building C object src/CMakeFiles/zfp.dir/decode4f.c.o
-#14 10.19 [ 78%] Building C object src/CMakeFiles/zfp.dir/decode4d.c.o
-#14 10.26 [ 80%] Building C object src/CMakeFiles/zfp.dir/decode4i.c.o
-#14 10.38 [ 82%] Building C object src/CMakeFiles/zfp.dir/decode4l.c.o
-#14 11.46 [ 85%] Linking C shared library ../lib/libzfp.so
-#14 11.74 [ 85%] Built target zfp
-#14 11.83 Scanning dependencies of target zfpcmd
-#14 11.84 Scanning dependencies of target testviews
-#14 11.84 Scanning dependencies of target testzfp
-#14 11.91 [ 87%] Building C object utils/CMakeFiles/zfpcmd.dir/zfp.c.o
-#14 11.91 [ 90%] Building CXX object tests/CMakeFiles/testviews.dir/testviews.cpp.o
-#14 11.91 [ 92%] Building CXX object tests/CMakeFiles/testzfp.dir/testzfp.cpp.o
-#14 12.61 [ 95%] Linking C executable ../bin/zfp
-#14 12.82 [ 95%] Built target zfpcmd
-#14 13.96 [ 97%] Linking CXX executable ../bin/testviews
-#14 14.19 [ 97%] Built target testviews
-#14 16.41 [100%] Linking CXX executable ../bin/testzfp
-#14 16.66 [100%] Built target testzfp
-#14 16.99 [ 85%] Built target zfp
-#14 17.15 [ 90%] Built target zfpcmd
-#14 17.33 [ 95%] Built target testviews
-#14 17.49 [100%] Built target testzfp
-#14 17.59 Install the project...
-#14 17.64 -- Install configuration: "Release"
-#14 17.64 -- Installing: /usr/local/zfp/include
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/constarray3.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/bitstream.inl
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/factory.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array4.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array3.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/constarray4.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/array2.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/version.h
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/inline.h
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/macros.h
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/system.h
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/zfp/types.h
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator2.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference1.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache2.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer3.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator4.hpp
-#14 17.64 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/traits.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/header.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/exception.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/reference3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/handle3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/store4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/iterator3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/pointer4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/cache3.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/view4.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/array/memory.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec/zfpheader.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/internal/codec/genheader.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/array1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/constarray2.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/array.h
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/bitstream.h
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec/gencodec.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/codec/zfpcodec.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/constarray1.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp/index.hpp
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp.h
-#14 17.65 -- Installing: /usr/local/zfp/include/zfp.hpp
-#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-config.cmake
-#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-config-version.cmake
-#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-targets.cmake
-#14 17.65 -- Installing: /usr/local/zfp/lib/cmake/zfp/zfp-targets-release.cmake
-#14 17.65 -- Installing: /usr/local/zfp/lib/libzfp.so.1.0.1
-#14 17.65 -- Installing: /usr/local/zfp/lib/libzfp.so.1
-#14 17.66 -- Set runtime path of "/usr/local/zfp/lib/libzfp.so.1.0.1" to "/usr/local/zfp/lib"
-#14 17.66 -- Installing: /usr/local/zfp/lib/libzfp.so
-#14 17.66 -- Installing: /usr/local/zfp/bin/zfp
-#14 17.66 -- Set runtime path of "/usr/local/zfp/bin/zfp" to "/usr/local/zfp/lib"
-#14 DONE 17.9s
-
-#15 [11/14] RUN git clone https://github.com/LLNL/H5Z-ZFP.git &&     cd H5Z-ZFP &&     make CC=gcc     ZFP_HOME=/usr/local/zfp     HDF5_HOME=/usr/include/hdf5/serial     DYLIB_SUFFIX=so     PREFIX=/usr/local     H5Z_ZFP_USE_PLUGIN_INIT=yes     CFLAGS="-fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial"     LDFLAGS="-L/usr/local/zfp/lib -L/usr/lib/x86_64-linux-gnu/hdf5/serial"     all &&     make install &&     cd ../.. &&     rm -rf H5Z-ZFP
-#15 0.159 Cloning into 'H5Z-ZFP'...
-#15 1.827 grep: /usr/include/hdf5/serial/include/*.h: No such file or directory
-#15 1.882 cd src; make HDF5_HOME=/usr/include/hdf5/serial ZFP_HOME=/usr/local/zfp  PREFIX=/usr/local all
-#15 1.922 make[1]: Entering directory '/app/H5Z-ZFP/src'
-#15 2.816 grep: /usr/include/hdf5/serial/include/*.h: No such file or directory
-#15 2.823 gcc -c H5Zzfp.c -o H5Zzfp_lib.o -DH5Z_ZFP_AS_LIB -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
-#15 3.185 ar cr libh5zzfp.a H5Zzfp_lib.o
-#15 3.229 gcc -c H5Zzfp_props.c -o H5Zzfp_props.o -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
-#15 3.592 ar cr libh5zzfp.a H5Zzfp_props.o
-#15 3.636 gcc -c H5Zzfp.c -o H5Zzfp_plugin.o -fPIC -I/usr/local/zfp/include -I/usr/include/hdf5/serial -I. -I/usr/local/zfp/include -I/usr/include/hdf5/serial/include
-#15 3.992 rm -rf plugin
-#15 4.022 mkdir plugin
-#15 4.052 gcc H5Zzfp_plugin.o -shared -o plugin/libh5zzfp.so \
-#15 4.052     -Wl,-rpath,/usr/include/hdf5/serial/lib64 -Wl,-rpath,/usr/local/zfp/lib \
-#15 4.052     -L/usr/local/zfp/lib -L/usr/include/hdf5/serial/lib64 -lhdf5 -lzfp -L/usr/local/zfp/lib -L/usr/lib/x86_64-linux-gnu/hdf5/serial
-#15 4.179 make[1]: Leaving directory '/app/H5Z-ZFP/src'
-#15 4.351 config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
-#15 5.171 config.make:173: "zfp.h not found"
-#15 5.263 grep: /include/*.h: No such file or directory
-#15 5.350 cd src; make HDF5_HOME= ZFP_HOME=  PREFIX=/app/H5Z-ZFP/install all
-#15 5.396 make[1]: Entering directory '/app/H5Z-ZFP/src'
-#15 5.541 ../config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
-#15 6.273 ../config.make:173: "zfp.h not found"
-#15 6.352 grep: /include/*.h: No such file or directory
-#15 6.360 ar cr libh5zzfp.a H5Zzfp_lib.o
-#15 6.404 ar cr libh5zzfp.a H5Zzfp_props.o
-#15 6.448 make[1]: Leaving directory '/app/H5Z-ZFP/src'
-#15 6.451 cd src; make HDF5_HOME= ZFP_HOME=  PREFIX=/app/H5Z-ZFP/install install
-#15 6.492 make[1]: Entering directory '/app/H5Z-ZFP/src'
-#15 6.621 ../config.make:52: WARNING: ZFP lib version not detected by make -- some tests may be skipped
-#15 7.373 ../config.make:173: "zfp.h not found"
-#15 7.461 grep: /include/*.h: No such file or directory
-#15 7.469 ar cr libh5zzfp.a H5Zzfp_lib.o
-#15 7.519 ar cr libh5zzfp.a H5Zzfp_props.o
-#15 7.565 install -d /app/H5Z-ZFP/install/{plugin,include,lib}
-#15 7.598 install plugin/libh5zzfp.so /app/H5Z-ZFP/install/plugin
-#15 7.631 install libh5zzfp.a /app/H5Z-ZFP/install/lib
-#15 7.664 install -m 644 H5Zzfp.h H5Zzfp_lib.h H5Zzfp_plugin.h H5Zzfp_version.h H5Zzfp_props.h /app/H5Z-ZFP/install/include
-#15 7.698 make[1]: Leaving directory '/app/H5Z-ZFP/src'
-#15 DONE 7.7s
-
-#16 [12/14] COPY requirements.txt .
-#16 DONE 0.0s
-
-#17 [13/14] RUN ./venv/bin/python3 -m pip install --no-cache-dir -r requirements.txt
-#17 0.789 Collecting adal==1.2.7 (from -r requirements.txt (line 3))
-#17 0.831   Downloading adal-1.2.7-py2.py3-none-any.whl.metadata (6.9 kB)
-#17 0.854 Collecting aiofiles==24.1.0 (from -r requirements.txt (line 4))
-#17 0.866   Downloading aiofiles-24.1.0-py3-none-any.whl.metadata (10 kB)
-#17 1.135 Collecting aiohttp==3.9.5 (from -r requirements.txt (line 5))
-#17 1.149   Downloading aiohttp-3.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.5 kB)
-#17 1.172 Collecting aiosignal==1.3.1 (from -r requirements.txt (line 6))
-#17 1.183   Downloading aiosignal-1.3.1-py3-none-any.whl.metadata (4.0 kB)
-#17 1.217 Collecting argcomplete==3.1.6 (from -r requirements.txt (line 8))
-#17 1.228   Downloading argcomplete-3.1.6-py3-none-any.whl.metadata (16 kB)
-#17 1.250 Collecting asttokens==2.4.1 (from -r requirements.txt (line 10))
-#17 1.261   Downloading asttokens-2.4.1-py2.py3-none-any.whl.metadata (5.2 kB)
-#17 1.289 Collecting asyncssh==2.15.0 (from -r requirements.txt (line 12))
-#17 1.300   Downloading asyncssh-2.15.0-py3-none-any.whl.metadata (9.9 kB)
-#17 1.323 Collecting attrs==23.2.0 (from -r requirements.txt (line 13))
-#17 1.333   Downloading attrs-23.2.0-py3-none-any.whl.metadata (9.5 kB)
-#17 1.362 Collecting azure-core==1.30.2 (from -r requirements.txt (line 15))
-#17 1.372   Downloading azure_core-1.30.2-py3-none-any.whl.metadata (37 kB)
-#17 1.418 Collecting bcrypt==4.1.3 (from -r requirements.txt (line 17))
-#17 1.428   Downloading bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (9.5 kB)
-#17 1.451 Collecting beautifulsoup4==4.12.3 (from -r requirements.txt (line 18))
-#17 1.461   Downloading beautifulsoup4-4.12.3-py3-none-any.whl.metadata (3.8 kB)
-#17 1.478 Collecting bs4==0.0.2 (from -r requirements.txt (line 20))
-#17 1.488   Downloading bs4-0.0.2-py2.py3-none-any.whl.metadata (411 bytes)
-#17 1.516 Collecting certifi==2024.7.4 (from -r requirements.txt (line 21))
-#17 1.526   Downloading certifi-2024.7.4-py3-none-any.whl.metadata (2.2 kB)
-#17 1.633 Collecting cffi==1.16.0 (from -r requirements.txt (line 25))
-#17 1.645   Downloading cffi-1.16.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.5 kB)
-#17 1.723 Collecting charset-normalizer==3.3.2 (from -r requirements.txt (line 29))
-#17 1.738   Downloading charset_normalizer-3.3.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (33 kB)
-#17 1.822 Collecting contourpy==1.2.1 (from -r requirements.txt (line 31))
-#17 1.832   Downloading contourpy-1.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.8 kB)
-#17 2.020 Collecting cryptography==42.0.8 (from -r requirements.txt (line 33))
-#17 2.031   Downloading cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (5.3 kB)
-#17 2.050 Collecting cycler==0.12.1 (from -r requirements.txt (line 39))
-#17 2.060   Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
-#17 2.081 Collecting decorator==5.1.1 (from -r requirements.txt (line 41))
-#17 2.097   Downloading decorator-5.1.1-py3-none-any.whl.metadata (4.0 kB)
-#17 2.116 Collecting executing==2.0.1 (from -r requirements.txt (line 43))
-#17 2.126   Downloading executing-2.0.1-py2.py3-none-any.whl.metadata (9.0 kB)
-#17 2.233 Collecting fonttools==4.53.1 (from -r requirements.txt (line 45))
-#17 2.243   Downloading fonttools-4.53.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (162 kB)
-#17 2.258      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 162.6/162.6 kB 21.1 MB/s eta 0:00:00
-#17 2.320 Collecting frozenlist==1.4.1 (from -r requirements.txt (line 47))
-#17 2.330   Downloading frozenlist-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (12 kB)
-#17 2.333 Requirement already satisfied: h5py==3.11.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 51)) (3.11.0)
-#17 2.363 Collecting humanfriendly==10.0 (from -r requirements.txt (line 52))
-#17 2.373   Downloading humanfriendly-10.0-py2.py3-none-any.whl.metadata (9.2 kB)
-#17 2.399 Collecting humanize==4.10.0 (from -r requirements.txt (line 53))
-#17 2.409   Downloading humanize-4.10.0-py3-none-any.whl.metadata (7.9 kB)
-#17 2.430 Collecting idna==3.7 (from -r requirements.txt (line 54))
-#17 2.444   Downloading idna-3.7-py3-none-any.whl.metadata (9.9 kB)
-#17 2.496 Collecting ipython==8.26.0 (from -r requirements.txt (line 58))
-#17 2.506   Downloading ipython-8.26.0-py3-none-any.whl.metadata (5.0 kB)
-#17 2.526 Collecting isodate==0.6.1 (from -r requirements.txt (line 59))
-#17 2.536   Downloading isodate-0.6.1-py2.py3-none-any.whl.metadata (9.6 kB)
-#17 2.560 Collecting jedi==0.19.1 (from -r requirements.txt (line 61))
-#17 2.575   Downloading jedi-0.19.1-py2.py3-none-any.whl.metadata (22 kB)
-#17 2.600 Collecting jmespath==1.0.1 (from -r requirements.txt (line 63))
-#17 2.610   Downloading jmespath-1.0.1-py3-none-any.whl.metadata (7.6 kB)
-#17 2.657 Collecting kiwisolver==1.4.5 (from -r requirements.txt (line 65))
-#17 2.667   Downloading kiwisolver-1.4.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.4 kB)
-#17 2.690 Collecting knack==0.11.0 (from -r requirements.txt (line 67))
-#17 2.703   Downloading knack-0.11.0-py3-none-any.whl.metadata (5.2 kB)
-#17 2.729 Collecting markdown-it-py==3.0.0 (from -r requirements.txt (line 68))
-#17 2.739   Downloading markdown_it_py-3.0.0-py3-none-any.whl.metadata (6.9 kB)
-#17 2.891 Collecting matplotlib==3.9.1 (from -r requirements.txt (line 70))
-#17 2.902   Downloading matplotlib-3.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
-#17 2.922 Collecting matplotlib-inline==0.1.7 (from -r requirements.txt (line 71))
-#17 2.932   Downloading matplotlib_inline-0.1.7-py3-none-any.whl.metadata (3.9 kB)
-#17 2.948 Collecting mdurl==0.1.2 (from -r requirements.txt (line 73))
-#17 2.958   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
-#17 2.984 Collecting msal==1.27.0 (from -r requirements.txt (line 75))
-#17 2.996   Downloading msal-1.27.0-py2.py3-none-any.whl.metadata (11 kB)
-#17 3.023 Collecting msrest==0.7.1 (from -r requirements.txt (line 76))
-#17 3.034   Downloading msrest-0.7.1-py3-none-any.whl.metadata (21 kB)
-#17 3.197 Collecting multidict==6.0.5 (from -r requirements.txt (line 77))
-#17 3.208   Downloading multidict-6.0.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
-#17 3.216 Requirement already satisfied: numpy==2.0.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 81)) (2.0.0)
-#17 3.236 Collecting oauthlib==3.2.2 (from -r requirements.txt (line 87))
-#17 3.246   Downloading oauthlib-3.2.2-py3-none-any.whl.metadata (7.5 kB)
-#17 3.279 Collecting packaging==24.1 (from -r requirements.txt (line 89))
-#17 3.290   Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)
-#17 3.314 Collecting parso==0.8.4 (from -r requirements.txt (line 93))
-#17 3.324   Downloading parso-0.8.4-py2.py3-none-any.whl.metadata (7.7 kB)
-#17 3.343 Collecting pexpect==4.9.0 (from -r requirements.txt (line 95))
-#17 3.367   Downloading pexpect-4.9.0-py2.py3-none-any.whl.metadata (2.5 kB)
-#17 3.558 Collecting pillow==10.4.0 (from -r requirements.txt (line 97))
-#17 3.568   Downloading pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (9.2 kB)
-#17 3.572 Requirement already satisfied: pip==24.1.2 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 99)) (24.1.2)
-#17 3.591 Collecting portalocker==2.10.0 (from -r requirements.txt (line 100))
-#17 3.604   Downloading portalocker-2.10.0-py3-none-any.whl.metadata (8.5 kB)
-#17 3.681 Collecting prompt-toolkit==3.0.47 (from -r requirements.txt (line 101))
-#17 3.692   Downloading prompt_toolkit-3.0.47-py3-none-any.whl.metadata (6.4 kB)
-#17 3.712 Collecting ptyprocess==0.7.0 (from -r requirements.txt (line 103))
-#17 3.722   Downloading ptyprocess-0.7.0-py2.py3-none-any.whl.metadata (1.3 kB)
-#17 3.741 Collecting pure-eval==0.2.2 (from -r requirements.txt (line 105))
-#17 3.752   Downloading pure_eval-0.2.2-py3-none-any.whl.metadata (6.2 kB)
-#17 3.770 Collecting pycparser==2.22 (from -r requirements.txt (line 107))
-#17 3.780   Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)
-#17 3.811 Collecting pygments==2.18.0 (from -r requirements.txt (line 109))
-#17 3.827   Downloading pygments-2.18.0-py3-none-any.whl.metadata (2.5 kB)
-#17 3.852 Collecting pyjwt==2.8.0 (from -r requirements.txt (line 114))
-#17 3.863   Downloading PyJWT-2.8.0-py3-none-any.whl.metadata (4.2 kB)
-#17 3.890 Collecting pynacl==1.5.0 (from -r requirements.txt (line 118))
-#17 3.900   Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl.metadata (8.6 kB)
-#17 3.939 Collecting pyparsing==3.1.2 (from -r requirements.txt (line 119))
-#17 3.949   Downloading pyparsing-3.1.2-py3-none-any.whl.metadata (5.1 kB)
-#17 3.967 Collecting pysocks==1.7.1 (from -r requirements.txt (line 121))
-#17 3.978   Downloading PySocks-1.7.1-py3-none-any.whl.metadata (13 kB)
-#17 4.002 Collecting python-dateutil==2.9.0.post0 (from -r requirements.txt (line 122))
-#17 4.012   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
-#17 4.035 Collecting python-dotenv==1.0.1 (from -r requirements.txt (line 126))
-#17 4.045   Downloading python_dotenv-1.0.1-py3-none-any.whl.metadata (23 kB)
-#17 4.086 Collecting pyyaml==6.0.1 (from -r requirements.txt (line 127))
-#17 4.101   Downloading PyYAML-6.0.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.1 kB)
-#17 4.139 Collecting requests==2.32.3 (from -r requirements.txt (line 129))
-#17 4.149   Downloading requests-2.32.3-py3-none-any.whl.metadata (4.6 kB)
-#17 4.171 Collecting requests-oauthlib==2.0.0 (from -r requirements.txt (line 136))
-#17 4.180   Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
-#17 4.244 Collecting rich==13.7.1 (from -r requirements.txt (line 138))
-#17 4.254   Downloading rich-13.7.1-py3-none-any.whl.metadata (18 kB)
-#17 4.363 Collecting scipy==1.14.0 (from -r requirements.txt (line 139))
-#17 4.374   Downloading scipy-1.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (60 kB)
-#17 4.377      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 218.4 MB/s eta 0:00:00
-#17 4.546 Collecting setuptools==70.2.0 (from -r requirements.txt (line 140))
-#17 4.561   Downloading setuptools-70.2.0-py3-none-any.whl.metadata (5.8 kB)
-#17 4.590 Collecting six==1.16.0 (from -r requirements.txt (line 141))
-#17 4.600   Downloading six-1.16.0-py2.py3-none-any.whl.metadata (1.8 kB)
-#17 4.624 Collecting soupsieve==2.5 (from -r requirements.txt (line 147))
-#17 4.635   Downloading soupsieve-2.5-py3-none-any.whl.metadata (4.7 kB)
-#17 4.656 Collecting stack-data==0.6.3 (from -r requirements.txt (line 149))
-#17 4.669   Downloading stack_data-0.6.3-py3-none-any.whl.metadata (18 kB)
-#17 4.689 Collecting tabulate==0.9.0 (from -r requirements.txt (line 151))
-#17 4.703   Downloading tabulate-0.9.0-py3-none-any.whl.metadata (34 kB)
-#17 4.733 Collecting traitlets==5.14.3 (from -r requirements.txt (line 153))
-#17 4.749   Downloading traitlets-5.14.3-py3-none-any.whl.metadata (10 kB)
-#17 4.773 Collecting typing-extensions==4.12.2 (from -r requirements.txt (line 157))
-#17 4.787   Downloading typing_extensions-4.12.2-py3-none-any.whl.metadata (3.0 kB)
-#17 4.832 Collecting urllib3==2.2.2 (from -r requirements.txt (line 162))
-#17 4.843   Downloading urllib3-2.2.2-py3-none-any.whl.metadata (6.4 kB)
-#17 4.970 Collecting uv==0.2.22 (from -r requirements.txt (line 164))
-#17 4.981   Downloading uv-0.2.22-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
-#17 5.002 Collecting wcwidth==0.2.13 (from -r requirements.txt (line 165))
-#17 5.013   Downloading wcwidth-0.2.13-py2.py3-none-any.whl.metadata (14 kB)
-#17 5.016 Requirement already satisfied: wheel==0.43.0 in ./venv/lib/python3.11/site-packages (from -r requirements.txt (line 167)) (0.43.0)
-#17 5.127 Collecting yarl==1.9.4 (from -r requirements.txt (line 168))
-#17 5.137   Downloading yarl-1.9.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (31 kB)
-#17 5.430 Downloading adal-1.2.7-py2.py3-none-any.whl (55 kB)
-#17 5.491    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 55.5/55.5 kB 774.8 kB/s eta 0:00:00
-#17 5.502 Downloading aiofiles-24.1.0-py3-none-any.whl (15 kB)
-#17 5.515 Downloading aiohttp-3.9.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.3 MB)
-#17 5.601    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 15.3 MB/s eta 0:00:00
-#17 5.613 Downloading aiosignal-1.3.1-py3-none-any.whl (7.6 kB)
-#17 5.626 Downloading argcomplete-3.1.6-py3-none-any.whl (41 kB)
-#17 5.629    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.7/41.7 kB 26.0 MB/s eta 0:00:00
-#17 5.644 Downloading asttokens-2.4.1-py2.py3-none-any.whl (27 kB)
-#17 5.660 Downloading asyncssh-2.15.0-py3-none-any.whl (360 kB)
-#17 5.678    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 360.4/360.4 kB 22.3 MB/s eta 0:00:00
-#17 5.691 Downloading attrs-23.2.0-py3-none-any.whl (60 kB)
-#17 5.694    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 43.6 MB/s eta 0:00:00
-#17 5.708 Downloading azure_core-1.30.2-py3-none-any.whl (194 kB)
-#17 5.718    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 194.3/194.3 kB 24.5 MB/s eta 0:00:00
-#17 5.732 Downloading bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl (283 kB)
-#17 5.798    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 283.7/283.7 kB 4.3 MB/s eta 0:00:00
-#17 5.811 Downloading beautifulsoup4-4.12.3-py3-none-any.whl (147 kB)
-#17 5.822    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 147.9/147.9 kB 16.7 MB/s eta 0:00:00
-#17 5.835 Downloading bs4-0.0.2-py2.py3-none-any.whl (1.2 kB)
-#17 5.848 Downloading certifi-2024.7.4-py3-none-any.whl (162 kB)
-#17 5.864    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 163.0/163.0 kB 11.5 MB/s eta 0:00:00
-#17 5.876 Downloading cffi-1.16.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (464 kB)
-#17 5.914    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 464.8/464.8 kB 13.4 MB/s eta 0:00:00
-#17 5.925 Downloading charset_normalizer-3.3.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (140 kB)
-#17 5.939    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 140.3/140.3 kB 11.7 MB/s eta 0:00:00
-#17 5.953 Downloading contourpy-1.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (306 kB)
-#17 5.979    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 306.0/306.0 kB 12.8 MB/s eta 0:00:00
-#17 5.994 Downloading cryptography-42.0.8-cp39-abi3-manylinux_2_28_x86_64.whl (3.9 MB)
-#17 6.322    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.9/3.9 MB 11.8 MB/s eta 0:00:00
-#17 6.335 Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
-#17 6.348 Downloading decorator-5.1.1-py3-none-any.whl (9.1 kB)
-#17 6.362 Downloading executing-2.0.1-py2.py3-none-any.whl (24 kB)
-#17 6.380 Downloading fonttools-4.53.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.9 MB)
-#17 6.743    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.9/4.9 MB 13.7 MB/s eta 0:00:00
-#17 6.755 Downloading frozenlist-1.4.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (272 kB)
-#17 6.775    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 272.3/272.3 kB 14.8 MB/s eta 0:00:00
-#17 6.789 Downloading humanfriendly-10.0-py2.py3-none-any.whl (86 kB)
-#17 6.794    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 86.8/86.8 kB 24.5 MB/s eta 0:00:00
-#17 6.805 Downloading humanize-4.10.0-py3-none-any.whl (126 kB)
-#17 6.813    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 127.0/127.0 kB 20.6 MB/s eta 0:00:00
-#17 6.823 Downloading idna-3.7-py3-none-any.whl (66 kB)
-#17 6.826    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.8/66.8 kB 32.7 MB/s eta 0:00:00
-#17 6.844 Downloading ipython-8.26.0-py3-none-any.whl (817 kB)
-#17 6.891    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 817.9/817.9 kB 18.0 MB/s eta 0:00:00
-#17 6.904 Downloading isodate-0.6.1-py2.py3-none-any.whl (41 kB)
-#17 6.906    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.7/41.7 kB 98.8 MB/s eta 0:00:00
-#17 6.918 Downloading jedi-0.19.1-py2.py3-none-any.whl (1.6 MB)
-#17 7.012    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 16.9 MB/s eta 0:00:00
-#17 7.025 Downloading jmespath-1.0.1-py3-none-any.whl (20 kB)
-#17 7.042 Downloading kiwisolver-1.4.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.4 MB)
-#17 7.159    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 12.6 MB/s eta 0:00:00
-#17 7.177 Downloading knack-0.11.0-py3-none-any.whl (60 kB)
-#17 7.179    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.8/60.8 kB 206.7 MB/s eta 0:00:00
-#17 7.192 Downloading markdown_it_py-3.0.0-py3-none-any.whl (87 kB)
-#17 7.199    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87.5/87.5 kB 17.0 MB/s eta 0:00:00
-#17 7.213 Downloading matplotlib-3.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.3 MB)
-#17 7.925    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.3/8.3 MB 11.7 MB/s eta 0:00:00
-#17 7.947 Downloading matplotlib_inline-0.1.7-py3-none-any.whl (9.9 kB)
-#17 7.962 Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
-#17 7.978 Downloading msal-1.27.0-py2.py3-none-any.whl (101 kB)
-#17 7.983    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 101.5/101.5 kB 40.9 MB/s eta 0:00:00
-#17 7.999 Downloading msrest-0.7.1-py3-none-any.whl (85 kB)
-#17 8.002    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 85.4/85.4 kB 140.9 MB/s eta 0:00:00
-#17 8.025 Downloading multidict-6.0.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (128 kB)
-#17 8.036    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 128.7/128.7 kB 13.6 MB/s eta 0:00:00
-#17 8.050 Downloading oauthlib-3.2.2-py3-none-any.whl (151 kB)
-#17 8.061    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 151.7/151.7 kB 15.5 MB/s eta 0:00:00
-#17 8.072 Downloading packaging-24.1-py3-none-any.whl (53 kB)
-#17 8.076    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.0/54.0 kB 19.4 MB/s eta 0:00:00
-#17 8.091 Downloading parso-0.8.4-py2.py3-none-any.whl (103 kB)
-#17 8.099    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 103.7/103.7 kB 21.1 MB/s eta 0:00:00
-#17 8.118 Downloading pexpect-4.9.0-py2.py3-none-any.whl (63 kB)
-#17 8.124    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 63.8/63.8 kB 17.2 MB/s eta 0:00:00
-#17 8.140 Downloading pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl (4.5 MB)
-#17 8.559    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 10.9 MB/s eta 0:00:00
-#17 8.575 Downloading portalocker-2.10.0-py3-none-any.whl (18 kB)
-#17 8.592 Downloading prompt_toolkit-3.0.47-py3-none-any.whl (386 kB)
-#17 8.620    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 386.4/386.4 kB 14.6 MB/s eta 0:00:00
-#17 8.632 Downloading ptyprocess-0.7.0-py2.py3-none-any.whl (13 kB)
-#17 8.644 Downloading pure_eval-0.2.2-py3-none-any.whl (11 kB)
-#17 8.659 Downloading pycparser-2.22-py3-none-any.whl (117 kB)
-#17 8.666    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 117.6/117.6 kB 27.3 MB/s eta 0:00:00
-#17 8.680 Downloading pygments-2.18.0-py3-none-any.whl (1.2 MB)
-#17 8.801    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 10.1 MB/s eta 0:00:00
-#17 8.817 Downloading PyJWT-2.8.0-py3-none-any.whl (22 kB)
-#17 8.833 Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl (856 kB)
-#17 8.905    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 856.7/856.7 kB 12.3 MB/s eta 0:00:00
-#17 8.930 Downloading pyparsing-3.1.2-py3-none-any.whl (103 kB)
-#17 8.941    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 103.2/103.2 kB 102.5 MB/s eta 0:00:00
-#17 8.954 Downloading PySocks-1.7.1-py3-none-any.whl (16 kB)
-#17 8.967 Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
-#17 8.988    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 229.9/229.9 kB 11.5 MB/s eta 0:00:00
-#17 9.002 Downloading python_dotenv-1.0.1-py3-none-any.whl (19 kB)
-#17 9.017 Downloading PyYAML-6.0.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (757 kB)
-#17 9.075    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 757.7/757.7 kB 13.4 MB/s eta 0:00:00
-#17 9.087 Downloading requests-2.32.3-py3-none-any.whl (64 kB)
-#17 9.091    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 64.9/64.9 kB 20.7 MB/s eta 0:00:00
-#17 9.105 Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
-#17 9.117 Downloading rich-13.7.1-py3-none-any.whl (240 kB)
-#17 9.133    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 240.7/240.7 kB 16.5 MB/s eta 0:00:00
-#17 9.145 Downloading scipy-1.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (41.1 MB)
-#17 12.58    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 41.1/41.1 MB 11.7 MB/s eta 0:00:00
-#17 12.60 Downloading setuptools-70.2.0-py3-none-any.whl (930 kB)
-#17 12.68    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 930.8/930.8 kB 12.7 MB/s eta 0:00:00
-#17 12.69 Downloading six-1.16.0-py2.py3-none-any.whl (11 kB)
-#17 12.71 Downloading soupsieve-2.5-py3-none-any.whl (36 kB)
-#17 12.72 Downloading stack_data-0.6.3-py3-none-any.whl (24 kB)
-#17 12.73 Downloading tabulate-0.9.0-py3-none-any.whl (35 kB)
-#17 12.74 Downloading traitlets-5.14.3-py3-none-any.whl (85 kB)
-#17 12.75    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 85.4/85.4 kB 25.0 MB/s eta 0:00:00
-#17 12.76 Downloading typing_extensions-4.12.2-py3-none-any.whl (37 kB)
-#17 12.78 Downloading urllib3-2.2.2-py3-none-any.whl (121 kB)
-#17 12.79    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 121.4/121.4 kB 19.0 MB/s eta 0:00:00
-#17 12.80 Downloading uv-0.2.22-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (14.5 MB)
-#17 14.30    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 10.3 MB/s eta 0:00:00
-#17 14.32 Downloading wcwidth-0.2.13-py2.py3-none-any.whl (34 kB)
-#17 14.33 Downloading yarl-1.9.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (328 kB)
-#17 14.35    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 328.1/328.1 kB 18.4 MB/s eta 0:00:00
-#17 14.89 Installing collected packages: wcwidth, pure-eval, ptyprocess, uv, urllib3, typing-extensions, traitlets, tabulate, soupsieve, six, setuptools, scipy, pyyaml, python-dotenv, pysocks, pyparsing, pyjwt, pygments, pycparser, prompt-toolkit, portalocker, pillow, pexpect, parso, packaging, oauthlib, multidict, mdurl, kiwisolver, jmespath, idna, humanize, humanfriendly, frozenlist, fonttools, executing, decorator, cycler, contourpy, charset-normalizer, certifi, bcrypt, attrs, argcomplete, aiofiles, yarl, requests, python-dateutil, matplotlib-inline, markdown-it-py, knack, jedi, isodate, cffi, beautifulsoup4, asttokens, aiosignal, stack-data, rich, requests-oauthlib, pynacl, matplotlib, cryptography, bs4, azure-core, aiohttp, msrest, ipython, asyncssh, adal, msal
-#17 14.96   Attempting uninstall: uv
-#17 14.96     Found existing installation: uv 0.2.27
-#17 14.96     Uninstalling uv-0.2.27:
-#17 15.04       Successfully uninstalled uv-0.2.27
-#17 15.45   Attempting uninstall: setuptools
-#17 15.46     Found existing installation: setuptools 71.0.4
-#17 15.48     Uninstalling setuptools-71.0.4:
-#17 15.68       Successfully uninstalled setuptools-71.0.4
-#17 25.29 Successfully installed adal-1.2.7 aiofiles-24.1.0 aiohttp-3.9.5 aiosignal-1.3.1 argcomplete-3.1.6 asttokens-2.4.1 asyncssh-2.15.0 attrs-23.2.0 azure-core-1.30.2 bcrypt-4.1.3 beautifulsoup4-4.12.3 bs4-0.0.2 certifi-2024.7.4 cffi-1.16.0 charset-normalizer-3.3.2 contourpy-1.2.1 cryptography-42.0.8 cycler-0.12.1 decorator-5.1.1 executing-2.0.1 fonttools-4.53.1 frozenlist-1.4.1 humanfriendly-10.0 humanize-4.10.0 idna-3.7 ipython-8.26.0 isodate-0.6.1 jedi-0.19.1 jmespath-1.0.1 kiwisolver-1.4.5 knack-0.11.0 markdown-it-py-3.0.0 matplotlib-3.9.1 matplotlib-inline-0.1.7 mdurl-0.1.2 msal-1.27.0 msrest-0.7.1 multidict-6.0.5 oauthlib-3.2.2 packaging-24.1 parso-0.8.4 pexpect-4.9.0 pillow-10.4.0 portalocker-2.10.0 prompt-toolkit-3.0.47 ptyprocess-0.7.0 pure-eval-0.2.2 pycparser-2.22 pygments-2.18.0 pyjwt-2.8.0 pynacl-1.5.0 pyparsing-3.1.2 pysocks-1.7.1 python-dateutil-2.9.0.post0 python-dotenv-1.0.1 pyyaml-6.0.1 requests-2.32.3 requests-oauthlib-2.0.0 rich-13.7.1 scipy-1.14.0 setuptools-70.2.0 six-1.16.0 soupsieve-2.5 stack-data-0.6.3 tabulate-0.9.0 traitlets-5.14.3 typing-extensions-4.12.2 urllib3-2.2.2 uv-0.2.22 wcwidth-0.2.13 yarl-1.9.4
-#17 DONE 26.2s
-
-#18 [14/14] COPY run_command.py .
-#18 DONE 0.0s
-
-#19 exporting to image
-#19 exporting layers
-#19 exporting layers 1.0s done
-#19 writing image sha256:779bdef72301d723572dce255d8a2be2c211308f4976a6e673b2fceaf9768f4f
-#19 writing image sha256:779bdef72301d723572dce255d8a2be2c211308f4976a6e673b2fceaf9768f4f done
-#19 naming to docker.io/bacalhauproject/python-runner:2024.07.19.1541 done
-#19 naming to docker.io/bacalhauproject/python-runner:latest done
-#19 DONE 1.0s
-
-View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/6nflf02dnupwn0r3k0vkrbkqd
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/zkfdhw8rr9hakapkbze58qxtn
