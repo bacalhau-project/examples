@@ -1,0 +1,71 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 868B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/ubuntu:20.04
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/8] FROM docker.io/library/ubuntu:20.04
+#4 DONE 0.0s
+
+#5 [2/8] RUN apt-get update && apt-get install -y     wget     curl     && rm -rf /var/lib/apt/lists/*
+#5 CACHED
+
+#6 [4/8] RUN curl -LsSf https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
+#6 CACHED
+
+#7 [3/8] WORKDIR /app
+#7 CACHED
+
+#8 [5/8] RUN bash miniconda.sh -b -p /opt/conda
+#8 CACHED
+
+#9 [6/8] RUN conda install --yes -c conda-forge mamba
+#9 CACHED
+
+#10 [internal] load build context
+#10 transferring context: 34B done
+#10 DONE 0.0s
+
+#11 [7/8] COPY h5pyenv.yaml .
+#11 DONE 0.0s
+
+#12 [8/8] RUN mamba env create -f h5pyenv.yaml
+#12 0.998 Channels:
+#12 0.998  - conda-forge
+#12 0.998  - defaults
+#12 0.998 Platform: linux-64
+#12 0.998 Collecting package metadata (repodata.json): ...working... done
+#12 13.30 Solving environment: ...working... done
+#12 49.89 
+#12 49.89 Downloading and Extracting Packages: ...working... done
+#12 49.89 Preparing transaction: ...working... done
+#12 50.79 Verifying transaction: ...working... done
+#12 54.06 Executing transaction: ...working... done
+#12 61.25 #
+#12 61.25 # To activate this environment, use
+#12 61.25 #
+#12 61.25 #     $ conda activate h5pyenv
+#12 61.25 #
+#12 61.25 # To deactivate an active environment, use
+#12 61.25 #
+#12 61.25 #     $ conda deactivate
+#12 61.25 
+#12 DONE 62.1s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 6.2s done
+#13 writing image sha256:710a709edc155672dbe8885644ae22ef5aa6ce3cc15ca94b5bd32a7ab887f658
+#13 writing image sha256:710a709edc155672dbe8885644ae22ef5aa6ce3cc15ca94b5bd32a7ab887f658 done
+#13 naming to docker.io/bacalhauproject/python-runner:2024.07.19.1654 done
+#13 naming to docker.io/bacalhauproject/python-runner:latest done
+#13 DONE 6.2s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/zkfdhw8rr9hakapkbze58qxtn
