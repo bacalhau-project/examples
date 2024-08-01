@@ -111,8 +111,7 @@ def create_compute_nodes(requesterip):
         compute_script=f'''#!/bin/bash
         sudo apt-get update
         sudo apt-get install python3-pip -y
-        sudo pip install faker-cli -I --break-system-packages
-        sudo fake -t cloudfront -n 100 -f csv > /home/ubuntu/data.csv
+        curl -s https://raw.githubusercontent.com/Soot3/examples/main/PII-anonymization/sampledata.csv > /home/ubuntu/data.csv
         sudo apt-get install -y docker.io
         sudo systemctl start docker
         sudo systemctl enable docker
