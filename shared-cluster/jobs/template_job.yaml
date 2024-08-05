@@ -10,18 +10,18 @@ Tasks:
           Params:
             SourcePath: /mnt/azureshare
         Target: /azureshare
+    Publisher:
+      Type: local
     Engine:
       Type: docker
       Params:
-        # the docker container that will download videos and perform inference
-        Image: docker.io/bacalhauproject/python-runner:0.0.20
+        Image: docker.io/bacalhauproject/python-runner:2024.07.19.1745
         EnvironmentVariables:
           - COMMAND={{.fulltext}}
           - B64_ENCODED=True
           - FILE_PATH=/azureshare/spliced_blc0001020304050607_guppi_57532_10225_HIP56445_0029.gpuspec.0000.h5
           - DEBUG1=True
     Resources:
-      # dependent on compute nodes, this is based on e2-standard-8
       CPU: "4"
       Memory: "16GB"
       Disk: "16GB"
