@@ -2,6 +2,10 @@
 
 This project demonstrates how to explore the functionality of Bacalhau for shared files with security features. It includes a set of Python scripts and Bacalhau job configurations to help you understand and test various aspects of file sharing and security in a Bacalhau environment.
 
+## Common Security Issues Today
+
+One of the biggest challenges with particularly large data sources today is that the ability to interact with the data, even in a lightweight way, can result in significant security or bandwidth concerns. Ideally, there would be a way to provide a way for folks to interact from all over the world, without requiring significant increased exposure. That's what this solution provides.
+
 ## Directory Structure
 
 - `scripts/`: Contains Python scripts for different Bacalhau operations
