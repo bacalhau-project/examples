@@ -30,5 +30,8 @@ RUN mamba env create -f h5pyenv.yaml
 # Activate the environment in the entrypoint
 ENTRYPOINT ["/bin/bash", "-c"]
 
+# Copy the run_command.py file
+COPY run_command.py .
+
 # Set the default command to activate the environment
-CMD ["source activate h5pyenv && exec /bin/bash"]
+CMD ["source activate h5pyenv && python run_command.py"]

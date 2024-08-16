@@ -1,7 +1,7 @@
 #0 building with "desktop-linux" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 868B done
+#1 transferring dockerfile: 929B done
 #1 DONE 0.0s
 
 #2 [internal] load metadata for docker.io/library/ubuntu:20.04
@@ -11,39 +11,65 @@
 #3 transferring context: 2B done
 #3 DONE 0.0s
 
-#4 [1/8] FROM docker.io/library/ubuntu:20.04
+#4 [1/9] FROM docker.io/library/ubuntu:20.04
 #4 DONE 0.0s
 
 #5 [internal] load build context
-#5 transferring context: 34B done
+#5 transferring context: 7.63kB done
 #5 DONE 0.0s
 
-#6 [3/8] WORKDIR /app
+#6 [5/9] RUN bash miniconda.sh -b -p /opt/conda
 #6 CACHED
 
-#7 [5/8] RUN bash miniconda.sh -b -p /opt/conda
+#7 [2/9] RUN apt-get update && apt-get install -y     wget     curl     && rm -rf /var/lib/apt/lists/*
 #7 CACHED
 
-#8 [7/8] COPY h5pyenv.yaml .
+#8 [3/9] WORKDIR /app
 #8 CACHED
 
-#9 [2/8] RUN apt-get update && apt-get install -y     wget     curl     && rm -rf /var/lib/apt/lists/*
+#9 [4/9] RUN curl -LsSf https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
 #9 CACHED
 
-#10 [6/8] RUN conda install --yes -c conda-forge mamba
+#10 [6/9] RUN conda install --yes -c conda-forge mamba
 #10 CACHED
 
-#11 [4/8] RUN curl -LsSf https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
-#11 CACHED
+#11 [7/9] COPY h5pyenv.yaml .
+#11 DONE 0.0s
 
-#12 [8/8] RUN mamba env create -f h5pyenv.yaml
-#12 CACHED
+#12 [8/9] RUN mamba env create -f h5pyenv.yaml
+#12 0.447 Retrieving notices: ...working... done
+#12 1.014 Channels:
+#12 1.014  - conda-forge
+#12 1.014  - defaults
+#12 1.014 Platform: linux-64
+#12 1.014 Collecting package metadata (repodata.json): ...working... done
+#12 14.05 Solving environment: ...working... done
+#12 45.09 
+#12 45.09 Downloading and Extracting Packages: ...working... done
+#12 45.09 Preparing transaction: ...working... done
+#12 45.88 Verifying transaction: ...working... done
+#12 48.79 Executing transaction: ...working... done
+#12 54.54 #
+#12 54.54 # To activate this environment, use
+#12 54.54 #
+#12 54.54 #     $ conda activate h5pyenv
+#12 54.54 #
+#12 54.54 # To deactivate an active environment, use
+#12 54.54 #
+#12 54.54 #     $ conda deactivate
+#12 54.54 
+#12 DONE 55.4s
 
-#13 exporting to image
-#13 exporting layers done
-#13 writing image sha256:710a709edc155672dbe8885644ae22ef5aa6ce3cc15ca94b5bd32a7ab887f658 done
-#13 naming to docker.io/bacalhauproject/python-runner:2024.07.19.1745 done
-#13 naming to docker.io/bacalhauproject/python-runner:latest done
+#13 [9/9] COPY run_command.py .
 #13 DONE 0.0s
 
-View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/t1attzqbli6njd2gzw4bkkzyb
+#14 exporting to image
+#14 exporting layers
+#14 exporting layers 5.6s done
+#14 writing image sha256:3014043d02fee3d40c6f2bf734a82da604cb356ace9042155bb2ba9ed9009b44
+#14 writing image sha256:3014043d02fee3d40c6f2bf734a82da604cb356ace9042155bb2ba9ed9009b44 done
+#14 naming to docker.io/bacalhauproject/python-runner:2024.08.16.1116 done
+#14 naming to docker.io/bacalhauproject/python-runner:latest done
+#14 DONE 5.6s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/xu81bntbueucc7atu537chrvx
