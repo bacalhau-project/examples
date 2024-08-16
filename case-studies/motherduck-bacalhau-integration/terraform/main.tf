@@ -73,7 +73,7 @@ resource "google_compute_instance" "gcp_instance" {
 
   boot_disk {
     initialize_params {
-      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2304-amd64"
+      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
       size  = 50
     }
   }

@@ -15,7 +15,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: docker.io/bacalhauproject/python-runner:2024.07.19.1745
+        Image: docker.io/bacalhauproject/python-runner:2024.08.16.1116
         EnvironmentVariables:
           - COMMAND={{.fulltext}}
           - B64_ENCODED=True
