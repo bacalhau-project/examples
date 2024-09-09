@@ -48,7 +48,7 @@ def main():
         sys.exit(1)
 
     commands = [
-        "bacalhau job list --order-by created_at --order-reversed --limit 1000 --output json",
+        "bacalhau job list --order-by created_at --order-reversed --limit 10000 --output json",
     ]
 
     results = {}
@@ -63,7 +63,7 @@ def main():
     df["StateType"] = df["State"].apply(lambda x: x.get("StateType"))
     df = df.query("StateType != 'Failed'")
 
-    state_order = ["Queued", "Running", "Completed"]
+    state_order = ["Pending", "Queued", "Running", "Completed"]
     # Use .loc to avoid SettingWithCopyWarning
     df.loc[:, "StateType"] = pd.Categorical(
         df["StateType"], categories=state_order, ordered=True

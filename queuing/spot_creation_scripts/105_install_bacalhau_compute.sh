@@ -31,6 +31,10 @@ check_orchestrators() {
     fi
 }
 
+set_bacalhau_config_settings() {
+    bacalhau config set  node.compute.controlplanesettings.resourceupdatefrequency 1s
+}
+
 start_bacalhau() {
     log "Starting Bacalhau compute node..."
 
@@ -70,6 +74,7 @@ main() {
     case "${cmd}" in
         start)
             check_orchestrators
+            set_bacalhau_config_settings
             start_bacalhau
             ;;
         stop)
@@ -79,6 +84,7 @@ main() {
             stop_bacalhau
             sleep 2
             check_orchestrators
+            set_bacalhau_config_settings
             start_bacalhau
             ;;
         *)
