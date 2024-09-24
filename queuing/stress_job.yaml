@@ -1,12 +1,12 @@
 Constraints: []
 Labels: {}
-Count: 1
+Count: 37
 Namespace: default
 Priority: 0
 Tasks:
   - Engine:
       Params:
-        Image: docker.io/bacalhauproject/stress-ng:0.0.2
+        Image: docker.io/bacalhauproject/stress-ng:1.0.0
         Parameters:
           - "--cpu"
           - "2"

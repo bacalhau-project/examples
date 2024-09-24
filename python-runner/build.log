@@ -1,0 +1,48 @@
+#0 building with "mybuilder" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 287B done
+#1 DONE 0.0s
+
+#2 [auth] library/python:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [linux/arm64 internal] load metadata for docker.io/library/python:3.12-slim
+#3 ...
+
+#4 [linux/amd64 internal] load metadata for docker.io/library/python:3.12-slim
+#4 DONE 0.7s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#3 [linux/arm64 internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.7s
+
+#6 [internal] load build context
+#6 transferring context: 1.32kB done
+#6 DONE 0.0s
+
+#7 [linux/amd64 1/3] FROM docker.io/library/python:3.12-slim@sha256:15bad989b293be1dd5eb26a87ecacadaee1559f98e29f02bf6d00c8d86129f39
+#7 resolve docker.io/library/python:3.12-slim@sha256:15bad989b293be1dd5eb26a87ecacadaee1559f98e29f02bf6d00c8d86129f39 done
+#7 DONE 0.0s
+
+#8 [linux/amd64 2/3] WORKDIR /app
+#8 CACHED
+
+#9 [linux/arm64 1/3] FROM docker.io/library/python:3.12-slim@sha256:15bad989b293be1dd5eb26a87ecacadaee1559f98e29f02bf6d00c8d86129f39
+#9 resolve docker.io/library/python:3.12-slim@sha256:15bad989b293be1dd5eb26a87ecacadaee1559f98e29f02bf6d00c8d86129f39 0.0s done
+#9 DONE 0.0s
+
+#10 [linux/arm64 2/3] WORKDIR /app
+#10 CACHED
+
+#11 [linux/amd64 3/3] COPY run_command.py .
+#11 DONE 0.0s
+
+#12 [linux/arm64 3/3] COPY run_command.py .
+#12 DONE 0.0s
+WARNING: No output specified with docker-container driver. Build result will only remain in the build cache. To push result image into registry use --push or to load image into docker use --load
+
+View build details: docker-desktop://dashboard/build/mybuilder/mybuilder0/nyi3kmqi6ig7pb2edh7bv4wum
