@@ -1,0 +1,52 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 929B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/ubuntu:20.04
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/9] FROM docker.io/library/ubuntu:20.04
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 68B done
+#5 DONE 0.0s
+
+#6 [3/9] WORKDIR /app
+#6 CACHED
+
+#7 [2/9] RUN apt-get update && apt-get install -y     wget     curl     && rm -rf /var/lib/apt/lists/*
+#7 CACHED
+
+#8 [5/9] RUN bash miniconda.sh -b -p /opt/conda
+#8 CACHED
+
+#9 [7/9] COPY h5pyenv.yaml .
+#9 CACHED
+
+#10 [6/9] RUN conda install --yes -c conda-forge mamba
+#10 CACHED
+
+#11 [8/9] RUN mamba env create -f h5pyenv.yaml
+#11 CACHED
+
+#12 [4/9] RUN curl -LsSf https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
+#12 CACHED
+
+#13 [9/9] COPY run_command.py .
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 writing image sha256:3014043d02fee3d40c6f2bf734a82da604cb356ace9042155bb2ba9ed9009b44 0.0s done
+#14 naming to docker.io/bacalhauproject/h5py-image:2024.09.23.1757 done
+#14 naming to docker.io/bacalhauproject/h5py-image:latest done
+#14 DONE 0.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/d3uu3wx0kqiayiotghu2b0srk
