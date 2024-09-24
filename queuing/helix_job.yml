@@ -1,0 +1,29 @@
+Constraints: []
+Labels: {}
+Count: 15
+Namespace: default
+Priority: 0
+Tasks:
+  - Engine:
+      Params:
+        Image: registry.helix.ml/helix/cli:1.0.3
+        WorkingDirectory: ""
+        Entrypoint:
+          - bash
+          - -c
+          - "cat /proc/cpuinfo > x.txt; helix fs upload x.txt hostnames/$(cat /etc/hostname).txt"
+        EnvironmentVariables:
+          - HELIX_URL=https://app.tryhelix.ai
+          - HELIX_API_KEY=hl-NVVaAZVwEROezrzMcENcGdRdSntXSE_574V9FYQZChQ=
+      Type: docker
+    Name: main
+    Network:
+      # this job requires networking to download content from buckets
+      Type: full
+    Publisher:
+      Type: ""
+    Resources: {}
+    Timeouts:
+      ExecutionTimeout: 600
+      QueueTimeout: 600
+Type: batch
