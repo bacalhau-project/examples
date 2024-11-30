@@ -110,7 +110,6 @@ class AvroConverter(BaseConverter):
         np.dtype('int64'): 'long',
         np.dtype('uint64'): 'long',
         np.dtype('O'): ['null', 'string', 'float'],
-        np.dtype('unicode_'): 'string',
         np.dtype('float32'): 'float',
         np.dtype('float64'): 'double',
         np.dtype('datetime64'): {
