@@ -1,0 +1,11 @@
+bacalhau
+bacalhauproject
+buildx
+DOCKERFILEDIR
+dockerfiles
+edera
+flox
+GOPATH
+multiarch
+stretchr
+YYMMDDHHMM
