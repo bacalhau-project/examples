@@ -7,6 +7,7 @@ trap 'echo "Error on line $LINENO"' ERR
 # Configuration
 PLATFORMS="linux/amd64,linux/arm64"
 IMAGE_NAME="bacalhauproject/bacalhau-minimal"
+
 # Generate tag based on current datetime (YYMMDDHHMM format) or git commit hash
 if [ -z "${TAG:-}" ]; then
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -108,6 +109,10 @@ build_images() {
             --load \
             . || error "Build failed for $platform"
         
+        # Also tag as latest for the platform
+        docker tag "$IMAGE_NAME:$TAG-$(echo "$platform" | tr '/' '-')" \
+            "$IMAGE_NAME:latest-$(echo "$platform" | tr '/' '-')"
+        
         success "Successfully built image for $platform"
     done
     
@@ -150,6 +155,30 @@ create_manifest() {
     
     # Push the manifest
     docker manifest push "$IMAGE_NAME:$TAG" || error "Failed to push manifest"
+    
+    # Also create latest manifest
+    log "Creating latest manifest"
+    docker manifest rm "$IMAGE_NAME:latest" 2>/dev/null || true
+    
+    manifest_create_cmd="docker manifest create $IMAGE_NAME:latest"
+    for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
+        manifest_create_cmd+=" $IMAGE_NAME:latest-$(echo "$platform" | tr '/' '-')"
+    done
+    eval "$manifest_create_cmd" || error "Failed to create latest manifest"
+    
+    # Annotate latest manifest
+    for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
+        os=$(echo "$platform" | cut -d'/' -f1)
+        arch=$(echo "$platform" | cut -d'/' -f2)
+        platform_tag="latest-$os-$arch"
+        
+        docker manifest annotate "$IMAGE_NAME:latest" \
+            "$IMAGE_NAME:$platform_tag" --os "$os" --arch "$arch" || \
+            error "Failed to annotate latest manifest for $platform"
+    done
+    
+    # Push the latest manifest
+    docker manifest push "$IMAGE_NAME:latest" || error "Failed to push latest manifest"
 }
 
 # Main execution
