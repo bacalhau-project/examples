@@ -1,6 +1,7 @@
 bacalhau
 bacalhauproject
 buildx
+dind
 DOCKERFILEDIR
 dockerfiles
 edera
