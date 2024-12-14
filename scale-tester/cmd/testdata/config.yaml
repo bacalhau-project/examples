@@ -1,0 +1,6 @@
+node:
+  count: 5
+
+docker:
+  image: "custom-image"
+  network: "custom-network"
