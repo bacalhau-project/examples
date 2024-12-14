@@ -17,7 +17,7 @@ error() {
 }
 
 # Check if required commands exist
-command -v tinygo >/dev/null 2>&1 || error "tinygo is required but not installed"
+command -v go >/dev/null 2>&1 || error "go is required but not installed"
 command -v docker >/dev/null 2>&1 || error "docker is required but not installed"
 
 # Create bin directory if it doesn't exist
@@ -32,8 +32,13 @@ ORGANIZATION="bacalhau-project"
 IMAGE_NAME="event-pusher"
 TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:${TIMESTAMP}"
 
-log "Building binary with TinyGo..."
-GOARCH=amd64 GOOS=linux tinygo build -o bin/app main.go || error "Failed to build with TinyGo"
+log "Building binary with Go..."
+CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/app . || error "Failed to build with Go"
+
+if command -v upx >/dev/null 2>&1; then
+  log "Compressing binary with UPX..."
+  upx --best --lzma bin/app || error "Failed to compress binary"
+fi
 
 log "Building Docker image..."
 docker build --platform linux/amd64 -t "${TAG}" . || error "Failed to build Docker image"
