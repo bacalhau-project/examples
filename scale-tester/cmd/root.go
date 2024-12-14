@@ -1,15 +1,15 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,11 +26,8 @@ multiple Bacalhau nodes in a development or testing environment.`,
 	}
 )
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+func Execute() error {
+	return rootCmd.Execute()
 }
 
 func init() {
@@ -41,12 +38,13 @@ func init() {
 
 	// Local flags
 	rootCmd.Flags().Int("node-count", 3, "number of nodes to run")
-	rootCmd.Flags().String("docker-image", "bacalhau-minimal", "docker image to use for nodes")
-	rootCmd.Flags().String("network", "bacalhau-network", "docker network name")
+	rootCmd.Flags().String("image", "bacalhauproject/bacalhau-minimal", "docker image to use for nodes")
+	rootCmd.Flags().String("bacalhau-config", "", "bacalhau config file to mount in containers")
 
 	// Bind flags to viper
 	viper.BindPFlag("node.count", rootCmd.Flags().Lookup("node-count"))
 	viper.BindPFlag("docker.image", rootCmd.Flags().Lookup("image"))
+	viper.BindPFlag("bacalhau.config", rootCmd.Flags().Lookup("bacalhau-config"))
 
 	// Add validation
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
@@ -79,12 +77,27 @@ func initConfig() {
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
-	nodeCount := viper.GetInt("node.count")
-	dockerImage := viper.GetString("docker.image")
-	networkName := viper.GetString("docker.network")
+	nodeCount, err := cmd.Flags().GetInt("node-count")
+	if err != nil {
+		return fmt.Errorf("failed to get node count: %w", err)
+	}
 
-	fmt.Printf("Starting %d nodes using image %s on network %s\n",
-		nodeCount, dockerImage, networkName)
+	dockerImage, err := cmd.Flags().GetString("image")
+	if err != nil {
+		return fmt.Errorf("failed to get docker image: %w", err)
+	}
+
+	bacalhauConfig, err := cmd.Flags().GetString("bacalhau-config")
+	if err != nil || bacalhauConfig == "" {
+		return fmt.Errorf("bacalhau config file must be specified")
+	}
+
+	if _, err := os.Stat(bacalhauConfig); os.IsNotExist(err) {
+		return fmt.Errorf("bacalhau config file does not exist: %s", bacalhauConfig)
+	}
+
+	fmt.Printf("Starting %d nodes using image %s on host network with bacalhau config %s\n",
+		nodeCount, dockerImage, bacalhauConfig)
 
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -92,44 +105,40 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
-	// Create network if it doesn't exist
-	networks, err := cli.NetworkList(ctx, types.NetworkListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list networks: %w", err)
-	}
-
-	networkExists := false
-	for _, nw := range networks {
-		if nw.Name == networkName {
-			networkExists = true
-			break
-		}
-	}
-
-	if !networkExists {
-		_, err = cli.NetworkCreate(ctx, networkName, types.NetworkCreate{})
-		if err != nil {
-			return fmt.Errorf("failed to create network: %w", err)
-		}
-		fmt.Printf("Created network: %s\n", networkName)
-	}
-
 	// Start containers
 	containers := make([]string, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		containerName := fmt.Sprintf("bacalhau-node-%d", i)
+		apiPort := 1234 + i
+		publisherPort := 6001 + i
+
+		// Create mount for config file
+		hostConfig := &container.HostConfig{
+			NetworkMode: container.NetworkMode("host"),
+			AutoRemove:  true,
+			Mounts: []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: bacalhauConfig,
+					Target: "/root/bacalhau-cloud-config.yaml",
+				},
+			},
+		}
 
 		resp, err := cli.ContainerCreate(ctx,
 			&container.Config{
-				Image: dockerImage,
-				Tty:   true,
-			},
-			&container.HostConfig{},
-			&network.NetworkingConfig{
-				EndpointsConfig: map[string]*network.EndpointSettings{
-					networkName: {},
+				Image:        dockerImage,
+				Tty:          false,
+				AttachStdout: true,
+				AttachStderr: true,
+				Env: []string{
+					"BACALHAU_NODE_ID=" + containerName,
+					fmt.Sprintf("BACALHAU_API_PORT=%d", apiPort),
+					fmt.Sprintf("BACALHAU_PUBLISHER_PORT=%d", publisherPort),
 				},
 			},
+			hostConfig,
+			nil,
 			nil,
 			containerName,
 		)
@@ -137,14 +146,38 @@ func runRoot(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to create container %s: %w", containerName, err)
 		}
 
-		containerStartOptions := container.StartOptions{}
-
-		if err := cli.ContainerStart(ctx, resp.ID, containerStartOptions); err != nil {
+		// Start container
+		if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 			return fmt.Errorf("failed to start container %s: %w", containerName, err)
 		}
 
 		containers[i] = resp.ID
 		fmt.Printf("Started container: %s (ID: %s)\n", containerName, resp.ID[:12])
+
+		// Stream logs in a goroutine
+		go func(id, name string) {
+			logOptions := container.LogsOptions{
+				ShowStdout: true,
+				ShowStderr: true,
+				Follow:     true,
+				Timestamps: true,
+			}
+
+			logs, err := cli.ContainerLogs(ctx, id, logOptions)
+			if err != nil {
+				fmt.Printf("Error getting logs for %s: %v\n", name, err)
+				return
+			}
+			defer logs.Close()
+
+			scanner := bufio.NewScanner(logs)
+			for scanner.Scan() {
+				fmt.Printf("[%s] %s\n", name, scanner.Text())
+			}
+			if err := scanner.Err(); err != nil {
+				fmt.Printf("Error scanning logs for %s: %v\n", name, err)
+			}
+		}(resp.ID, containerName)
 	}
 
 	// Handle graceful shutdown
@@ -160,14 +193,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		if err := cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
 			fmt.Printf("Warning: failed to stop container %s: %v\n", containerID[:12], err)
 		}
-
-		containerRemoveOptions := container.RemoveOptions{}
-		containerRemoveOptions.Force = true
-		if err := cli.ContainerRemove(ctx, containerID, containerRemoveOptions); err != nil {
-			fmt.Printf("Warning: failed to remove container %s: %v\n", containerID[:12], err)
-		}
 	}
 
-	fmt.Println("All containers stopped and removed")
+	fmt.Println("All containers stopped")
 	return nil
 }
