@@ -1,0 +1,9 @@
+tf.plan
+tf.out
+
+*.yaml
+.env.json
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl

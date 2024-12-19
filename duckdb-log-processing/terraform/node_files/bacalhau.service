@@ -1,0 +1,14 @@
+[Unit]
+Description=Bacalhau Compute Node
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+Environment=BACALHAU_CONFIG_PATH=/etc/bacalhau/config.yaml
+ExecStart=/usr/local/bin/start_bacalhau.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

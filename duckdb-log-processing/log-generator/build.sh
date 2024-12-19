@@ -195,7 +195,6 @@ main() {
     success "Build completed successfully"
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
-    log "docker run -v ~/bacalhau-cloud-config.yaml:/root/bacalhau-cloud-config.yaml $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
 }
 
 # Execute main function

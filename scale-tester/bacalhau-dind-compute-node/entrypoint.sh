@@ -23,10 +23,35 @@ success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Wait for Docker to be fully ready (in addition to the wrapper script check)
-log "Ensuring Docker is fully operational..."
-timeout 30s bash -c 'until docker ps >/dev/null 2>&1; do sleep 1; done' || error "Docker failed to start properly"
-success "Docker is ready"
+# Initialize system
+log "Initializing system..."
+# Only try to create cgroup directories if we have write access
+if mountpoint -q /sys/fs/cgroup && [ -w /sys/fs/cgroup ]; then
+    mkdir -p /sys/fs/cgroup/init || true
+    if [ ! -d "/sys/fs/cgroup/systemd" ]; then
+        mkdir -p /sys/fs/cgroup/systemd || true
+    fi
+else
+    log "Skipping cgroup directory creation - filesystem is read-only or not mounted"
+fi
+
+# Start Docker daemon
+log "Starting Docker daemon..."
+dockerd --storage-driver=overlay2 --iptables=false &
+
+# Wait for Docker to be ready
+DOCKER_READY_TIMEOUT=30
+COUNTER=0
+until docker info >/dev/null 2>&1; do
+    if [ $COUNTER -gt $DOCKER_READY_TIMEOUT ]; then
+        error "Timeout waiting for Docker daemon. Docker logs:
+$(tail -n 50 /var/log/dockerd.log)"
+    fi
+    log "Waiting for Docker daemon... ($COUNTER/$DOCKER_READY_TIMEOUT)"
+    COUNTER=$((COUNTER + 1))
+    sleep 1
+done
+success "Docker daemon is ready"
 
 # Check for required configuration file
 CONFIG_FILE="/root/bacalhau-cloud-config.yaml"
@@ -35,16 +60,13 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 
 # Validate configuration file
-if ! command -v yq &> /dev/null; then
-    log "Installing yq for YAML processing..."
-    wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && \
-    chmod +x /usr/local/bin/yq
-fi
-
-# Validate YAML syntax
 if ! yq eval "$CONFIG_FILE" > /dev/null; then
     error "Invalid YAML configuration file"
 fi
+
+# Update node configuration
+log "Updating node configuration..."
+update-node-config
 
 # Start bacalhau service
 log "Starting bacalhau service..."
@@ -52,10 +74,7 @@ if ! command -v bacalhau &> /dev/null; then
     error "Bacalhau binary not found. Please ensure it was installed correctly."
 fi
 
-# Apply configuration
-log "Applying configuration from $CONFIG_FILE"
+# Apply configuration and start bacalhau
+log "Starting bacalhau node with config from $CONFIG_FILE"
 export BACALHAU_CONFIG_PATH="$CONFIG_FILE"
-
-# Start bacalhau in the foreground
-log "Starting bacalhau node..."
 exec bacalhau serve --config "$CONFIG_FILE"

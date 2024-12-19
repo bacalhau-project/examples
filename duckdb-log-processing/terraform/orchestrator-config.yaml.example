@@ -1,0 +1,29 @@
+node:
+  type: compute
+  id: ${node_id}
+  labels:
+    region: ${region}
+    zone: ${zone}
+    environment: ${environment}
+  host_networking: true
+  compute:
+    docker:
+      host_networking: true
+      volumes:
+        - /var/log/logs_to_process:/var/log/logs_to_process:ro  # Mount log processing directory as read-only
+  storage:
+    local:
+      path: /data
+  ipfs:
+    swarm_addresses:
+      - /ip4/0.0.0.0/tcp/4001
+      - /ip4/0.0.0.0/tcp/4002/ws
+    storage_max: "10GB"
+    storage_gc_interval: "1h"
+  job_selection:
+    capacity: 1
+    total_resource_limits:
+      cpu: 1.0
+      memory: 1Gi
+      gpu: 0
+      disk: 10Gi 
