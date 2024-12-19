@@ -1,0 +1,7 @@
+[project]
+name = "duckdb-log-processing"
+version = "0.1.0"
+authors = [{ name = "David Aronchick", email = "aronchick@expanso.io" }]
+requires-python = ">= 3.11"
+dependencies = []
+
