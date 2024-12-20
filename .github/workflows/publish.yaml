@@ -2,24 +2,8 @@ name: publish
 on: [push]
 
 jobs:
-  render-ipynb:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-      - run: make convert
-      - name: Archive rendered artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: rendered
-          path: |
-            rendered
-
   test-docusaurus:
     runs-on: ubuntu-latest
-    needs: render-ipynb
     steps:
       - name: Checkout Docs
         uses: actions/checkout@v3
@@ -36,13 +20,6 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      - name: Download rendered files
-        uses: actions/download-artifact@v3
-        with:
-          name: rendered
-          path: rendered
-      - name: Copy Files
-        run: cp -r rendered/* docs/examples
       - run: yarn install --frozen-lockfile
       - run: yarn build
 
@@ -51,10 +28,7 @@ jobs:
     needs: test-docusaurus
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Download rendered files
-        uses: actions/download-artifact@v3
-        with:
-          name: rendered
+      - uses: actions/checkout@v3
       - uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
