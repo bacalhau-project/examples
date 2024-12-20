@@ -1,0 +1,27 @@
+Name: Run Over Share
+Namespace: science
+Type: batch
+Count: 1
+Tasks:
+  - Name: Run over share
+    InputSources:
+      - Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /mnt/azureshare
+        Target: /azureshare
+    Publisher:
+      Type: local
+    Engine:
+      Type: docker
+      Params:
+        Image: docker.io/bacalhauproject/python-runner:2024.08.16.1116
+        EnvironmentVariables:
+          - COMMAND={{.fulltext}}
+          - B64_ENCODED=True
+          - FILE_PATH=/azureshare/spliced_blc0001020304050607_guppi_57532_10225_HIP56445_0029.gpuspec.0000.h5
+          - DEBUG1=True
+    Resources:
+      CPU: "4"
+      Memory: "16GB"
+      Disk: "16GB"

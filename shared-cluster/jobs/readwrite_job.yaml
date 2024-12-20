@@ -1,0 +1,29 @@
+Name: Run Over Share
+Namespace: science
+Type: batch
+Count: 1
+Tasks:
+  - Name: Run over share
+    InputSources:
+      - Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /mnt/azureshare
+            ReadWrite: true
+        Target: /azureshare
+    Engine:
+      Type: docker
+      Params:
+        # the docker container that will download videos and perform inference
+        Image: docker.io/bacalhauproject/python-runner:2024.08.16.1047
+        EnvironmentVariables:
+          - COLOR=blue
+          - COMMAND="print('hello world')"
+    Network:
+      # this job requires networking to download content from buckets
+      Type: full
+    Resources:
+      # dependent on compute nodes, this is based on e2-standard-8
+      CPU: "1"
+      Memory: "1GB"
+      Disk: "1GB"

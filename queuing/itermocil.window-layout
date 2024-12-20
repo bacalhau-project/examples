@@ -1,0 +1,12 @@
+windows:
+  - name: queueing
+    root: /Users/daaronch/code/bacalhau-examples/queuing
+    layout: main-vertical
+    panes:
+      - zsh
+      - zsh
+      - zsh
+      - zsh
+      - zsh
+      - zsh
+

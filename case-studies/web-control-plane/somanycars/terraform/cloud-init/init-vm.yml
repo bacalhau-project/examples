@@ -1,0 +1,159 @@
+#cloud-config
+packages:
+  - git
+  - make
+  - curl
+
+write_files:
+  - encoding: b64
+    content: |
+      ${ start_bacalhau }
+    owner: root:root
+    path: /node/start-bacalhau.sh
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ bacalhau_service }
+    owner: root:root
+    path: /etc/systemd/system/bacalhau.service
+    permissions: "0600"
+  - content: |
+      export PROJECT_ID=${ project_id }
+      export REGION=${ region }
+      export ZONE=${ zone }
+      export APPNAME=${ app_name }
+      export SITEURL=${ siteurl }
+      export TOKEN=${ token }
+      export ABSOLUTE_LOCAL_PATH=${ absolute_local_path }
+    owner: root:root
+    permissions: "0444"
+    path: /etc/bacalhau-node-info
+  - encoding: b64
+    content: |
+      ${ bacalhau_bootstrap }
+    owner: root:root
+    path: /etc/bacalhau-bootstrap
+    permissions: "0400"
+  - encoding: b64
+    content: |
+      ${ default_env }
+    owner: root:root
+    path: /node/default.env
+    permissions: "0400"
+  - content: |
+      export VIDEOSDIR=/node/videos
+      export WEIGHTSDIR=/node/weights
+      export CONFIGDIR=/node/config
+    owner: root:root
+    path: /node/.env
+    permissions: "0644"
+  - encoding: b64
+    content: |
+      ${ ml_model_config }
+    owner: root:root
+    path: /node/config/ml-model-config.yaml
+    permissions: "0777"
+  - encoding: b64
+    content: |
+      ${ docker_compose }
+    owner: root:root
+    path: /node/docker-compose.yml
+    permissions: "0600"
+  - encoding: b64
+    content: |
+      ${ start_container }
+    owner: root:root
+    path: /node/start-container.sh
+    permissions: "0700"
+  - encoding: b64
+    content: |
+      ${ version }
+    owner: root:root
+    path: /node/VERSION
+    permissions: "0444"
+
+package_update: true
+
+runcmd:
+  - echo "Copying the SSH Key to the server"
+  - |
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /root/.ssh/authorized_keys
+  - sudo useradd --create-home -r ${ username } -s /usr/bin/bash || echo 'User already exists.'
+  # Make the ssh directory and copy the key as ${ username }
+  - mkdir -p /home/${ username }/.ssh && chmod 0700 /home/${ username }/.ssh && chown ${ username }:${ username } /home/${ username }/.ssh
+  - touch /home/${ username }/.ssh/authorized_keys && chmod 0600 /home/${ username }/.ssh/authorized_keys && chown ${ username }:${ username } /home/${ username }/.ssh/authorized_keys
+  - |
+    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/${ username }/.ssh/authorized_keys
+  - echo "%${ username } ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/${ username }
+  #
+  # Make node directory for all scripts
+  #
+  - mkdir -p /node
+  - chmod 0700 /node
+  - mkdir -p /opt/bacalhau
+  - chmod 0700 /opt/bacalhau
+  #
+  # Install docker
+  #
+  - apt-get update
+  - apt-get install ca-certificates curl
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - sudo apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose docker-compose-plugin
+  - |
+    echo '{"registry-mirrors": ["https://mirror.gcr.io"]}' > /etc/docker/daemon.json
+  #
+  # Install Bacalhau
+  #
+  - |
+    curl -sL https://get.bacalhau.org/install.sh | PRE_RELEASE=true BACALHAU_DIR=/opt/bacalhau bash
+  - echo "Bacalhau downloaded."
+  # Download from videos and weights directory
+  - curl -s itsadash.work/static/somanycars.org/videos.tar.gz -o /node/videos.tar.gz
+  - tar -xvf /node/videos.tar.gz -C /node
+  - curl -s itsadash.work/static/somanycars.org/weights.tar.gz -o /node/weights.tar.gz
+  - tar -xvf /node/weights.tar.gz -C /node
+  - mkdir -p /node/config
+  - chown -R root:root /node/videos /node/weights /node/config
+  - chmod -R 0755 /node/videos /node/weights /node/config
+  #
+  # Copy the node info to the node directory
+  #
+  - chmod 0777 /node/config
+  - chmod 0444 -R /node/config/*
+  - mkdir -p /var/log/uvicorn
+  #
+  # Get the external IP
+  #
+  - export EXTERNAL_IP=$(curl -s ifconfig.me)
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /etc/bacalhau-node-info
+  - echo "export EXTERNAL_IP=$EXTERNAL_IP" >> /node/.env
+  - cp /etc/bacalhau-node-info /node/config/bacalhau-node-info
+  #
+  # Reload the systemd daemon, enable, and start the service
+  #
+  - sudo sysctl -w net.core.rmem_max=2500000
+  - sudo systemctl daemon-reload
+  - sudo systemctl enable docker
+  - sudo systemctl restart docker
+  - sudo systemctl enable bacalhau.service
+  - sudo systemctl restart bacalhau.service
+  #
+  # Start the server
+  #
+  - VERSION=$(cat /node/VERSION) /node/start-container.sh
+  #
+  # Install NVIDIA drivers
+  #
+  # - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring_1.1-1_all.deb
+  # - sudo dpkg -i /tmp/cuda-keyring_1.1-1_all.deb
+  # - sudo apt-get update
+  # - sudo apt-get install -y cuda-drivers
+  # - sudo apt-get install -y nvidia-container-toolkit
+  # - sudo systemctl restart docker

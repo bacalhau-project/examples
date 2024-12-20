@@ -81,7 +81,6 @@ runcmd:
   - |
     echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
   # Set up directory structure and move files
-
   #
   # Add Python3
   #

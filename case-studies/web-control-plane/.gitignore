@@ -1,0 +1,6 @@
+*bacalhau.run*
+*.env*
+*__pycache__*
+*.pyc
+
+somanycars.log

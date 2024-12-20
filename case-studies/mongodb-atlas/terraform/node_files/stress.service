@@ -1,0 +1,11 @@
+[Unit]
+Description=a service for straining the instance for demo purposes
+After=network.target
+
+[Service]
+Restart=always
+RestartSec=120s
+ExecStart=/etc/stress/stress cpu --cpuload 0.6 --duration 10 --cpucore 0
+
+[Install]
+WantedBy=multi-user.target

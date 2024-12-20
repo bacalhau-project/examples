@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+set -x
+set -e
+
+# FROM HERE - https://github.com/nickjj/docker-flask-example/blob/main/run
+
+set -o errexit
+set -o pipefail
+
+DC="${DC:-exec}"
+
+# If we're running in CI we need to disable TTY allocation for docker compose
+# commands that enable it by default, such as exec and run.
+TTY=""
+if [[ ! -t 1 ]]; then
+  TTY="-T"
+fi
+
+# -----------------------------------------------------------------------------
+# Helper functions start with _ and aren't listed in this script's help menu.
+# -----------------------------------------------------------------------------
+
+function _dc {
+  docker compose "${DC}" ${TTY} "${@}"
+}
+
+function _build_run_down {
+  docker compose build
+  docker compose run ${TTY} "${@}"
+  docker compose down
+}
+
+# -----------------------------------------------------------------------------
+
+function lint:dockerfile {
+  # Lint Dockerfile
+  docker container run --rm -i \
+    hadolint/hadolint hadolint --ignore DL3008 -t style "${@}" - < Dockerfile
+}
+
+function check {
+  ruff check .
+}
+
+function format {
+  # Format Python imports
+  ruff format .
+}
+
+function quality {
+  check
+  format
+}
+
+# function test {
+#   # Run test suite
+#   cmd pytest test/ "${@}"
+# }
+
+# function shell {
+#   # Start a shell session in the web container
+#   cmd bash "${@}"
+# }
+
+function build {
+  # Update and export requirements.txt from poetry.lock
+  poetry export --without-hashes --format=requirements.txt > requirements.txt
+
+  # Build the Docker image
+  docker build --platform=linux/amd64 -t somanycars-client .
+}
+
+function serve:local {
+  required_vars=(PORT HOST WEIGHTSDIR VIDEOSDIR)
+  if [ -z "$PORT" ] || [ -z "$HOST" ] || [ -z "$WEIGHTSDIR" ] || [ -z "$VIDEOSDIR" ]; then
+    echo "Missing required environment variables:" "${required_vars[@]}"
+    exit 1
+  fi
+  source default.env && source .env && .venv/bin/python3 app/wsgi.py --port $PORT --host $HOST --source_weights_path $WEIGHTSDIR --source_all_videos_path $VIDEOSDIR
+}
+
+function serve {
+  # Run the Docker container
+
+  VERSION="$(cat "$(pwd)/VERSION")" \
+  DEFAULT_ENV_FILE="$(pwd)/default.env" \
+  ENV_FILE="$(pwd)/.env" \
+  PWD="$(pwd)" \
+  docker compose -f ../terraform/node_files/docker_compose.yml up
+}
+
+function serve:daemon {
+  # Run the Docker container in the background
+  docker compose up -d
+}
+
+function copy-version-to-node-files {
+  cp VERSION ../terraform/node_files/VERSION
+}
+
+function export_requirements {
+  # Update and export requirements.txt from poetry.lock
+  poetry export --without-hashes --format=requirements.txt > requirements.txt
+}
+
+function build-and-submit {
+  # Get the latest version of the client from VERSION file
+  VERSION=$(cat VERSION)
+  # If DEV is set to true, then we are in development mode - add a unique identifier to the version
+  if [ "$DEV" = "true" ]; then
+    VERSION="${VERSION}-dev-$(date +%s)"
+  fi
+
+  export_requirements
+
+  docker buildx build --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+
+  copy-version-to-node-files
+}
+
+function build-and-submit:cloud {
+  # Get the latest version of the client from VERSION file
+  VERSION=$(cat VERSION)
+  # If DEV is set to true, then we are in development mode - add a unique identifier to the version
+  if [ "$DEV" = "true" ]; then
+    VERSION="${VERSION}-dev-$(date +%s)"
+  fi
+
+  export_requirements
+
+  docker buildx build --builder cloud-bacalhauproject-cloud-builder --platform=linux/amd64,linux/arm64 --push -t docker.io/bacalhauproject/somanycars-client:"${VERSION}" .
+
+  copy-version-to-node-files
+}
+
+function help {
+  printf "%s <task> [args]\n\nTasks:\n" "${0}"
+
+  compgen -A function | grep -v "^_" | cat -n
+
+  printf "\nExtended help:\n  Each task has comments for general usage\n"
+}
+
+# This idea is heavily inspired by: https://github.com/adriancooney/Taskfile
+TIMEFORMAT=$'\nTask completed in %3lR'
+time "${@:-help}"

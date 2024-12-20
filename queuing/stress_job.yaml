@@ -1,0 +1,26 @@
+Constraints: []
+Labels: {}
+Count: 37
+Namespace: default
+Priority: 0
+Tasks:
+  - Engine:
+      Params:
+        Image: docker.io/bacalhauproject/stress-ng:1.0.0
+        Parameters:
+          - "--cpu"
+          - "2"
+          - "--timeout"
+          - "60"
+        WorkingDirectory: ""
+      Type: docker
+    Name: main
+    Network:
+      Type: None
+    Publisher:
+      Type: ""
+    Resources: {}
+    Timeouts:
+      ExecutionTimeout: 600
+      QueueTimeout: 600
+Type: batch

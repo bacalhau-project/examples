@@ -1,0 +1,19 @@
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+PermissionsStartOnly=True
+Type=notify
+User=itsadashuser
+Group=itsadashuser
+WorkingDirectory=/home/itsadashuser/itsadashapp
+ExecStart=/home/itsadashuser/itsadashapp/itsadashvenv/bin/gunicorn           --access-logfile /var/log/gunicorn/access.log           --error-logfile /var/log/gunicorn/error.log           --timeout 120           --workers 2           --chdir /home/itsadashuser/itsadashapp           -b 0.0.0.0:14041           -b [::1]:16861           wsgi:app
+ExecReload=/bin/kill -s HUP 
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

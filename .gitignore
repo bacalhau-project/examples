@@ -42,3 +42,16 @@ job-[0-9a-z]*
 !case-studies/**/Dockerfile
 !model-inference/**/Dockerfile
 todo/eurec4a/how_to_eurec4a
+.aider*
+
+node_modules/
+plan.out
+scripts.zip
+case-studies/mongodb-atlas/scripts/_poll.py
+
+VENV/
+
+*.pub
+NOTES.md
+
+**/*.h5

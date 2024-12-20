@@ -1,0 +1,7 @@
+orchestrator_flags:
+  - --node-type=requester
+
+compute_flags:
+  - --node-type=requester
+  - --job-selection-accept-networked
+  - --allow-listed-local-paths "/mnt/azureshare:rw"
