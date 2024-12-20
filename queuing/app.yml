@@ -1,0 +1,10 @@
+name: my-ip-assistant
+assistants:
+  - name: Helix
+    description: Knows about the local ip
+    model: llama3:instruct
+    knowledge:
+      - name: My hostnames
+        source:
+          filestore:
+            path: hostnames/

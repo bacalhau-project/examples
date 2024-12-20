@@ -19,6 +19,7 @@ dpkg
 eastasia
 eastus
 endwin
+FYQZ
 getwin
 hostnames
 hrules
@@ -37,6 +38,7 @@ nohup
 noninteractive
 northeurope
 nproc
+Oezrz
 pkill
 prettytable
 progrium

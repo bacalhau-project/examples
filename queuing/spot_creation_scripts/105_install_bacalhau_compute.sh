@@ -31,16 +31,20 @@ check_orchestrators() {
     fi
 }
 
+set_bacalhau_config_settings() {
+    bacalhau config set  node.compute.controlplanesettings.resourceupdatefrequency 1s
+}
+
 start_bacalhau() {
     log "Starting Bacalhau compute node..."
 
     # Get the instance's private DNS name
     HOSTNAME=$(curl -s http://169.254.169.254/latest/meta-data/local-hostname)
     IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-    
+
     # Construct LABELS from EC2 information
     LABELS="EC2_INSTANCE_FAMILY=${EC2_INSTANCE_FAMILY:-unknown},EC2_VCPU_COUNT=${EC2_VCPU_COUNT:-unknown},EC2_MEMORY_GB=${EC2_MEMORY_GB:-unknown},EC2_DISK_GB=${EC2_DISK_GB:-unknown},ORCHESTRATORS=${ORCHESTRATORS},HOSTNAME=${HOSTNAME},IP=${IP}"
-    
+
     if [ -n "${TOKEN:-}" ]; then
         ORCHESTRATORS="${TOKEN}@${ORCHESTRATORS}"
     fi
@@ -50,8 +54,9 @@ start_bacalhau() {
         --node-type compute \
         --orchestrators "${ORCHESTRATORS}" \
         --labels "${LABELS}" \
+        --job-selection-accept-networked \
         >> "${LOG_FILE}" 2>&1 &
-    
+
     local PID=$!
     log "Bacalhau compute node started with PID ${PID}"
     log "Labels: ${LABELS}"
@@ -66,10 +71,11 @@ stop_bacalhau() {
 # Main execution
 main() {
     local cmd="${1:-}"
-    
+
     case "${cmd}" in
         start)
             check_orchestrators
+            set_bacalhau_config_settings
             start_bacalhau
             ;;
         stop)
@@ -79,6 +85,7 @@ main() {
             stop_bacalhau
             sleep 2
             check_orchestrators
+            set_bacalhau_config_settings
             start_bacalhau
             ;;
         *)

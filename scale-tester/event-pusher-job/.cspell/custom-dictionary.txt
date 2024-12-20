@@ -1,0 +1,16 @@
+AKIA
+bacalhau
+datestamp
+DHGR
+dotenv
+FLDYOBFDVW
+FLDYOBFGMGMNNMZ
+flox
+glyphicon
+GOARCH
+godotenv
+joho
+ldflags
+LEGA
+lzma
+qrcode
