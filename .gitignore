@@ -57,3 +57,4 @@ NOTES.md
 **/*.h5
 
 **/.flox/**
+queuing/job/.flox
