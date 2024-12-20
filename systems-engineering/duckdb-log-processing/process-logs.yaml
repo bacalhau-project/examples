@@ -5,8 +5,6 @@ Tasks:
           - QUERY=SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY "@timestamp"
           - INPUT_PATH=/var/log/logs_to_process
         Image: docker.io/bacalhauproject/duckdb-query:202412181847
-        Parameters:
-          - --latest
         WorkingDirectory: ""
       Type: docker
     Name: sample-job
@@ -26,3 +24,8 @@ Tasks:
       Memory: 250m
     Timeouts: {}
 Type: ops
+Constraints:
+  - Key: gcp.zone
+    Operator: "="
+    Values:
+      - us-east1-c
