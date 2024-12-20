@@ -13,10 +13,18 @@ if [[ -f /etc/bacalhau/orchestrator-config.yaml ]]; then
   CONNECT_PEER="${BACALHAU_NODE_LIBP2P_PEERCONNECT}"
 fi
 
-# If /etc/bacalhau-node-info exists, then load the variables from it
-if [[ -f /etc/bacalhau-node-info ]]; then
-  # shellcheck disable=SC1090
-  . /etc/bacalhau-node-info
+# If /etc/NODE_INFO exists, then load the variables from it
+if [[ -f /etc/NODE_INFO ]]; then
+  # Parse key-value pairs from NODE_INFO
+  while IFS='=' read -r key value; do
+    if [[ $key == *.region ]]; then
+      REGION=$value
+    elif [[ $key == *.zone ]]; then
+      ZONE=$value
+    elif [[ $key == *.name ]]; then
+      APPNAME=$value
+    fi
+  done < /etc/NODE_INFO
 fi
 
 # If REGION is set, then we can assume all labels are set, and we should add it to the labels

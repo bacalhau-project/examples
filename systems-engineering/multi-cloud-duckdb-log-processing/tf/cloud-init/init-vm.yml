@@ -56,12 +56,19 @@ runcmd:
 
   # Set up environment info
   - |
-    cat > /etc/bacalhau-node-info << EOF
-    export REGION=${region}
-    export ZONE=${zone}
-    export APP_NAME=${app_name}
+    # Get instance metadata
+    INSTANCE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || \
+                 curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip 2>/dev/null || \
+                 curl -s -H "Metadata: true" "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/privateIpAddress?api-version=2021-02-01&format=text" 2>/dev/null || \
+                 curl -s http://169.254.169.254/opc/v1/vnics/0/privateIp 2>/dev/null)
+
+    cat > /etc/NODE_INFO << EOF
+    ${provider}.region=${region}
+    ${provider}.zone=${zone}
+    ${provider}.name=${app_name}
+    ip=${INSTANCE_IP}
     EOF
-  - chmod 0444 /etc/bacalhau-node-info
+    chmod 0444 /etc/NODE_INFO
 
   # Verify file creation and permissions
   - echo "Verifying file creation..."
