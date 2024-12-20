@@ -1,0 +1,54 @@
+name: Template Job
+# ops means run on all nodes
+type: batch
+count: 4
+tasks:
+  - name: Perform yolo inference over data in a bucket
+    InputSources:
+      - Source:
+          Type: localDirectory
+          Params:
+            # the directory on each node tells them their rank and total nodes
+            SourcePath: /local_data
+            ReadWrite: false
+        Target: /local_data
+      - Source:
+          Type: urlDownload
+          Params:
+            URL: {{.model_url}}
+        Target: /model
+    Engine:
+      Type: docker
+      Params:
+        # the docker container that will download videos and perform inference
+        Image: frrist/intel-ml-demo:v8.0
+        EnvironmentVariables:
+          # name of the bucket to download videos from. Should be an open bucket
+          - VIDEO_BUCKET_NAME={{.input_bucket}}
+          # 0 means classify people, this is the default option in the container, but shown here for demonstration
+          # complete list of classes is here: https://github.com/ultralytics/yolov5/blob/master/data/coco.yaml
+          - YOLO_CLASSES={{.classes}}
+          # path the inference data is written to. Must match the ResultsPaths section.
+          - YOLO_PROJECT_DIR=/results
+          # reference the model from job input source template
+          - YOLO_WEIGHTS_PATH=/model/{{.model_name}}
+          # end the password
+          - ADB_PASSWORD={{.adb_password}}
+    ResultPaths:
+      - Name: "results"
+        Path: "/results"
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: yolo-interence-results
+        Region: us-west1
+        Key: yolo-results/{date}/{time}/{jobID}/{executionID}
+        Endpoint: https://storage.googleapis.com
+    Network:
+      # this job requires networking to download content from buckets
+      Type: full
+    Resources:
+      # dependent on compute nodes, this is based on e2-standard-8
+      CPU: 6000m
+      Memory: "26GB"
+      Disk: "25GB"
