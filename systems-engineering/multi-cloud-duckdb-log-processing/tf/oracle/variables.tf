@@ -37,11 +37,6 @@ variable "public_key" {
   description = "Public key file that should appear in authorized_keys"
 }
 
-variable "private_key" {
-  type        = string
-  description = "Private key file used to connect to the instance"
-}
-
 variable "bacalhau_installation_id" {
   type        = string
   description = "Bacalhau installation ID for tracking compute nodes"
@@ -57,11 +52,6 @@ variable "logs_to_process_dir" {
   type        = string
   description = "Directory where logs will be processed"
   default     = "/var/log/logs_to_process"
-}
-
-variable "docker_compose_path" {
-  type        = string
-  description = "Path to the Docker Compose file"
 }
 
 # Oracle-specific variables
@@ -87,10 +77,5 @@ variable "private_key_path" {
 
 variable "compartment_id" {
   description = "Oracle compartment OCID"
-  type        = string
-}
-
-variable "tailscale_key" {
-  description = "Tailscale key"
   type        = string
 }

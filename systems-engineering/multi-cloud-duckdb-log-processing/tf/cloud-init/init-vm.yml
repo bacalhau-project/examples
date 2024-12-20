@@ -1,170 +1,127 @@
 #cloud-config
+package_update: true
+package_upgrade: true
+
 packages:
   - git
-  - make
+  - docker.io
+  - jq
   - python3
   - python3-pip
   - python3-venv
-  - python3.11-venv
   - curl
-  - unzip
 
-write_files:
-  - encoding: b64
-    content: |
-      ${ log_generator_py }
-    owner: root:root
-    path: /node/log_generator.py
-    permissions: "0777"
-  - content: |
-      ${ logs_dir }/*.log {
-          hourly
-          missingok
-          rotate 24
-          compress
-          delaycompress
-          olddir /var/log/logs_to_process
-      }
-    owner: root:root
-    path: /etc/logrotate.d/${ app_name }
-    permissions: "0400"
-  - content: |
-      [Unit]
-      Description=Generate ${ app_name } logs
-      After=network.target
-      [Service]
-      User=root
-      WorkingDirectory=/node
-      ExecStart=/node/log_generator_env/bin/python3 /node/log_generator.py -d ${ logs_dir } -n ${ app_name }
-      Restart=always
-      [Install]
-      WantedBy=multi-user.target
-    owner: root:root
-    path: /etc/systemd/system/log-generator.service
-    permissions: "0600"
-  - content: |
-      #!/bin/sh
-      /usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
-    owner: root:root
-    path: /etc/cron.hourly/logrotate
-    permissions: "0700"
-  - encoding: b64
-    content: |
-      ${ start_bacalhau }
-    owner: root:root
-    path: /node/start-bacalhau.sh
-    permissions: "0700"
-  - encoding: b64
-    content: |
-      ${ bacalhau_service }
-    owner: root:root
-    path: /etc/systemd/system/bacalhau.service
-    permissions: "0600"
-  - content: |
-      export REGION=${ region }
-      export ZONE=${ zone }
-      export APPNAME=${ app_name }
-    owner: root:root
-    permissions: "0444"
-    path: /etc/bacalhau-node-info
-  - encoding: b64
-    content: |
-      ${ ipfs_service }
-    owner: root:root
-    permissions: "0600"
-    path: /etc/systemd/system/ipfs.service
-
-package_update: true
+# Create user first
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [docker, sudo]
+    lock_passwd: true
 
 runcmd:
-  - echo "Copying the SSH Key to the server"
-  - |
-    echo -n "${ ssh_key }" | awk 1 ORS=' ' >> /home/ubuntu/.ssh/authorized_keys
-  # Set up directory structure and move files
-  #
-  # Add Python3
-  #
-  - add-apt-repository ppa:deadsnakes/ppa -y
-  - apt-get update -y
-  - apt-get install python3.11 python3.11-venv python3.11-pip -y
-  #
-  # Make node directory for all scripts
-  #
-  # Set up directory structure and move files
-  - sudo mkdir /node
-  - sudo mkdir /data
-  - sudo chmod +x /node/*.sh
-  - sudo chmod 0700 /node
-  - sudo chmod 0700 /data
+  # Create directories and set permissions
+  - echo "Creating directories..."
+  - mkdir -p /etc/bacalhau
+  - mkdir -p /usr/local/bin
+  - mkdir -p /etc/systemd/system
+  - mkdir -p /var/log/logs_to_process
+  - mkdir -p ${ logs_dir }
 
-  #
-  # Install tailscale
-  #
+  - id ubuntu || echo "Ubuntu user not found"
+  - chown -R ubuntu:ubuntu /etc/bacalhau || echo "Failed to set ownership on /etc/bacalhau"
+  - chmod -R 755 /etc/bacalhau || echo "Failed to set permissions on /etc/bacalhau"
+
+  # Write files manually since write_files module is failing
+  - echo "Writing configuration files..."
+  - echo "${orchestrator_config}" | base64 -d > /etc/bacalhau/config.yaml
+  - chown root:root /etc/bacalhau/config.yaml
+  - chmod 0644 /etc/bacalhau/config.yaml
+
+  - echo "${bacalhau_service}" | base64 -d > /etc/systemd/system/bacalhau.service
+  - chown root:root /etc/systemd/system/bacalhau.service
+  - chmod 0644 /etc/systemd/system/bacalhau.service
+
+  - echo "${start_bacalhau}" | base64 -d > /usr/local/bin/start_bacalhau.sh
+  - chown root:root /usr/local/bin/start_bacalhau.sh
+  - chmod 0755 /usr/local/bin/start_bacalhau.sh
+
+  - echo "${ipfs_service}" | base64 -d > /etc/systemd/system/ipfs.service
+  - chown root:root /etc/systemd/system/ipfs.service
+  - chmod 0644 /etc/systemd/system/ipfs.service
+
+  - echo "${log_generator_py}" | base64 -d > /usr/local/bin/log_generator.py
+  - chown root:root /usr/local/bin/log_generator.py
+  - chmod 0755 /usr/local/bin/log_generator.py
+
+  # Set up environment info
   - |
-    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-    sudo curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list
-  - apt-get update -y
-  - apt -y install tailscale
-  - sudo tailscale up --authkey ${ tailscale_key } --hostname ${ node_name }
-  #
-  # Install go
-  #
-  - sudo rm -fr /usr/local/go /usr/local/bin/go
-  - curl --silent --show-error --location --fail 'https://go.dev/dl/go1.20.4.linux-amd64.tar.gz' | sudo tar --extract --gzip --file=- --directory=/usr/local
-  - sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-  #
-  # Install docker
-  #
-  - sudo apt-get install -y ca-certificates curl gnupg lsb-release
-  - sudo mkdir -p /etc/apt/keyrings
-  - |
-    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  - sudo apt-get update -y
-  - sudo apt -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-  #
-  # Install git-lfs
-  #
-  - |
-    curl -s "https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh" | sudo bash
-  - sudo apt -y install git-lfs
-  - HOME=/home/ubuntu git lfs install
-  #
+    cat > /etc/bacalhau-node-info << EOF
+    export REGION=${region}
+    export ZONE=${zone}
+    export APP_NAME=${app_name}
+    EOF
+  - chmod 0444 /etc/bacalhau-node-info
+
+  # Verify file creation and permissions
+  - echo "Verifying file creation..."
+  - ls -la /etc/systemd/system/bacalhau.service || echo "Failed to verify bacalhau.service"
+  - ls -la /usr/local/bin/start_bacalhau.sh || echo "Failed to verify start_bacalhau.sh"
+  - ls -la /etc/systemd/system/ipfs.service || echo "Failed to verify ipfs.service"
+  - ls -la /usr/local/bin/log_generator.py || echo "Failed to verify log_generator.py"
+
   # Install IPFS
-  #
-  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz
-  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz
-  - sudo bash go-ipfs/install.sh
-  - sudo IPFS_PATH=/data/ipfs ipfs init
-  #
+  - echo "Installing IPFS..."
+  - wget https://dist.ipfs.io/go-ipfs/v0.9.1/go-ipfs_v0.9.1_linux-amd64.tar.gz || echo "Failed to download IPFS"
+  - tar xvf go-ipfs_v0.9.1_linux-amd64.tar.gz || echo "Failed to extract IPFS"
+  - sudo bash go-ipfs/install.sh || echo "Failed to install IPFS"
+  - sudo IPFS_PATH=/data/ipfs ipfs init || echo "Failed to initialize IPFS"
+
+  # Start Docker service
+  - echo "Starting Docker service..."
+  - systemctl start docker || echo "Failed to start Docker"
+  - systemctl enable docker || echo "Failed to enable Docker"
+  - systemctl status docker || echo "Docker status check failed"
+
   # Install Bacalhau
-  #
+  - echo "Installing Bacalhau..."
+  - curl -sL https://get.bacalhau.org/install.sh | bash -s -- -v pre-release -d /usr/local/bin || echo "Failed to install Bacalhau"
+  - chmod +x /usr/local/bin/bacalhau || echo "Failed to make Bacalhau executable"
+  - bacalhau version || echo "Failed to get Bacalhau version"
+
+  # Set up Python environment
+  - echo "Setting up Python environment..."
+  - python3 -m venv /usr/local/bacalhau-env || echo "Failed to create Python virtual environment"
+  - /usr/local/bacalhau-env/bin/pip3 install faker || echo "Failed to install Python dependencies"
+
+  # Configure system settings
+  - echo "Configuring system settings..."
+  - sudo sysctl -w net.core.rmem_max=2500000 || echo "Failed to set rmem_max"
+
+  # Start services
+  - echo "Starting services..."
+  - systemctl daemon-reload
+  - systemctl enable ipfs || echo "Failed to enable IPFS service"
+  - systemctl start ipfs || echo "Failed to start IPFS service"
+  - systemctl enable bacalhau.service || echo "Failed to enable Bacalhau service"
+  - systemctl start bacalhau.service || echo "Failed to start Bacalhau service"
+  - systemctl status bacalhau.service || echo "Failed to get Bacalhau service status"
+
+  # Set up log rotation
+  - echo "Setting up log rotation..."
   - |
-    curl -sL https://get.bacalhau.org/install.sh | bash
-  - echo "Bacalhau downloaded."
-  # Create necessary directory
-  - mkdir ${ logs_dir }
-  # Step 0b: Create the log rotation output directory
-  - sudo mkdir -p /var/log/logs_to_process
-  # Step 0c: Create the /etc/cron.hourly/ directory and set appropriate permissions
-  - sudo mkdir -p /etc/cron.hourly
-  - sudo chown root:root /etc/cron.hourly
-  - sudo chmod 755 /etc/cron.hourly
-  # Install virtualenv
-  - python3 -m venv /node/log_generator_env
-  - /node/log_generator_env/bin/pip3 install faker
-  - |
-    curl https://bacalhau-named-builds.s3.ca-central-1.amazonaws.com/clean_words_alpha.txt --output /node/clean_words_alpha.txt
-  # Reload the systemd daemon, enable, and start the service
-  - sudo sysctl -w net.core.rmem_max=2500000
-  - sudo systemctl daemon-reload
-  - sudo systemctl enable ipfs
-  - sudo systemctl restart ipfs
-  - sudo systemctl enable docker
-  - sudo systemctl restart docker
-  - sudo systemctl enable bacalhau.service
-  - sudo systemctl restart bacalhau.service
-  - sudo systemctl enable log-generator.service
-  - sudo systemctl start log-generator.service
-  - sleep 20 # Give the log generator a chance to start - and then force generate four entries
-  - sudo /usr/sbin/logrotate -f --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf
+    cat > /etc/logrotate.d/${app_name} << EOF
+    ${logs_dir}/*.log {
+        hourly
+        missingok
+        rotate 24
+        compress
+        delaycompress
+        olddir /var/log/logs_to_process
+    }
+    EOF
+  - chmod 0444 /etc/logrotate.d/${app_name}
+
+  # Add SSH key
+  - echo "Adding SSH key..."
+  - echo "${ssh_key}" >> /home/ubuntu/.ssh/authorized_keys || echo "Failed to add SSH key"

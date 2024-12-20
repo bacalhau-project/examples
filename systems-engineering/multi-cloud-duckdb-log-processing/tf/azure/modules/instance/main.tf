@@ -41,13 +41,12 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.root}/../cloud-init/init-vm.yml", {
-      bacalhau_service : base64encode(file("${path.root}/../node_files/bacalhau.service")),
-      ipfs_service : base64encode(file("${path.root}/../node_files/ipfs.service")),
-      start_bacalhau : base64encode(file("${path.root}/../node_files/start-bacalhau.sh")),
+    content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
+      bacalhau_service : base64encode(file("${path.module}/../../node_files/bacalhau.service")),
+      ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
+      start_bacalhau : base64encode(file("${path.module}/../../node_files/start-bacalhau.sh")),
       logs_dir : "/var/log/${var.app_tag}_logs",
-      log_generator_py : filebase64("${path.root}/../node_files/log_generator.py"),
-      tailscale_key : var.tailscale_key,
+      log_generator_py : filebase64("${path.module}/../../node_files/log_generator.py"),
       node_name : "${var.app_tag}-${var.location}-vm",
       ssh_key : compact(split("\n", file(var.public_key)))[0],
       region : var.location,
@@ -61,13 +60,13 @@ resource "azurerm_linux_virtual_machine" "vm" {
   resource_group_name = var.resource_group_name
   location            = var.location
   size                = var.vm_size
-  admin_username      = var.admin_username
+  admin_username      = var.username
   network_interface_ids = [
     azurerm_network_interface.nic.id,
   ]
 
   admin_ssh_key {
-    username   = var.admin_username
+    username   = var.username
     public_key = file(var.public_key)
   }
 
@@ -108,49 +107,26 @@ resource "azurerm_storage_container" "container" {
   container_access_type = "private"
 }
 
-resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
-  count = var.bootstrap_region == var.location ? 1 : 0
-
+resource "null_resource" "configure_instance" {
   depends_on = [azurerm_linux_virtual_machine.vm]
 
   connection {
     host        = azurerm_public_ip.pip.ip_address
-    user        = var.admin_username
-    private_key = file(var.private_key)
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo 'SSHD is now alive.'",
-      "timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done'",
-      "echo 'Bacalhau is now alive.'",
-    ]
-  }
-
-  provisioner "local-exec" {
-    command = "ssh -o StrictHostKeyChecking=no ${var.admin_username}@${azurerm_public_ip.pip.ip_address} 'sudo cat /data/bacalhau.run' > ${var.bacalhau_run_file}"
-  }
-}
-
-resource "null_resource" "copy-to-node-if-worker" {
-  count = var.bootstrap_region == var.location ? 0 : 1
-
-  connection {
-    host        = azurerm_public_ip.pip.ip_address
-    user        = var.admin_username
-    private_key = file(var.private_key)
+    port        = 22
+    user        = var.username
   }
 
   provisioner "file" {
-    destination = "/home/${var.admin_username}/bacalhau-bootstrap"
-    content     = file(var.bacalhau_run_file)
+    source      = var.orchestrator_config_path
+    destination = "/home/${var.username}/orchestrator-config.yaml"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo mv /home/${var.admin_username}/bacalhau-bootstrap /etc/bacalhau-bootstrap",
+      "sudo mkdir -p /etc/bacalhau",
+      "sudo mv /home/${var.username}/orchestrator-config.yaml /etc/bacalhau/orchestrator-config.yaml",
       "sudo systemctl daemon-reload",
-      "sudo systemctl restart bacalhau.service",
+      "sudo systemctl restart bacalhau.service"
     ]
   }
 }

@@ -18,9 +18,10 @@ variable "machine_type" {
   type        = string
   description = "Machine type to use for the instances"
 }
-variable "bacalhau_run_file" {
+
+variable "orchestrator_config_path" {
   type        = string
-  description = "Bacalhau Run File location"
+  description = "Path to the Bacalhau orchestrator configuration YAML file"
 }
 
 variable "username" {
@@ -33,12 +34,19 @@ variable "public_key" {
   description = "Public key file that should appear in authorized_keys"
 }
 
-variable "private_key" {
+variable "bacalhau_installation_id" {
   type        = string
-  description = "Private key file used to connect to the instance"
+  description = "Bacalhau installation ID for tracking compute nodes"
 }
 
-variable "tailscale_key" {
-  description = "Tailscale key"
+variable "logs_dir" {
   type        = string
+  description = "Directory where logs will be generated"
+  default     = "/var/log/app"
+}
+
+variable "logs_to_process_dir" {
+  type        = string
+  description = "Directory where logs will be processed"
+  default     = "/var/log/logs_to_process"
 }

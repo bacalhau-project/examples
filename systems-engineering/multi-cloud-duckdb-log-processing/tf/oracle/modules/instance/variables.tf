@@ -28,9 +28,9 @@ variable "nsg_ids" {
   description = "Network security group IDs"
 }
 
-variable "ssh_user" {
+variable "username" {
   type        = string
-  description = "SSH username"
+  description = "Username for login"
 }
 
 variable "public_key" {
@@ -38,22 +38,7 @@ variable "public_key" {
   description = "Public key file path"
 }
 
-variable "private_key" {
+variable "orchestrator_config_path" {
   type        = string
-  description = "Private key file path"
-}
-
-variable "tailscale_key" {
-  type        = string
-  description = "Tailscale key"
-}
-
-variable "bacalhau_run_file" {
-  type        = string
-  description = "Bacalhau run file location"
-}
-
-variable "bootstrap_region" {
-  type        = string
-  description = "Bootstrap region"
+  description = "Path to the Bacalhau orchestrator configuration YAML file"
 }

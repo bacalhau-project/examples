@@ -1,87 +1,49 @@
-# Deploying Multi-Cloud Bacalhau Nodes with Tailscale
+# Multi-Cloud Bacalhau Log Processing
 
 ## Overview
-In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run log processing jobs across multiple clouds simultaneously.
+In this guide, we will deploy Bacalhau nodes across multiple cloud providers (AWS, GCP, Azure, and Oracle Cloud) and demonstrate how to run log processing jobs across multiple clouds simultaneously.
 
+## Prerequisites
+- AWS, GCP, Azure, and Oracle Cloud accounts with appropriate credentials
+- Terraform installed locally
+- Bacalhau CLI installed locally
 
-Create a tailscale account.
-Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
+## Deployment
+1. Configure your cloud provider credentials
+2. Review and customize the variables in `tf/variables.tf`
+3. Run `./bulk-deploy.sh` to create/switch to a terraform workspace for every zone
 
-```jsonc
-// Example/default ACLs for unrestricted connections.
-{
-	// Declare static groups of users. Use autogroups for all users or users with a specific role.
-	// "groups": {
-	//  	"group:example": ["alice@example.com", "bob@example.com"],
-	// },
+## Environment Setup
+After successful Terraform deployment, set up the environment variables:
 
-	// Define the tags which can be applied to devices and by which users.
-	"tagOwners": {
-    "tag:bacalhau-multi-region-example": ["autogroup:admin"],
-	},
-
-	// Define access control lists for users, groups, autogroups, tags,
-	// Tailscale IP addresses, and subnet ranges.
-	"acls": [
-		// Allow all connections.
-		// Comment this section out if you want to define specific restrictions.
-		{"action": "accept", "src": ["*"], "dst": ["*:*"]},
-	],
-
-	// Define users and devices that can use Tailscale SSH.
-	"ssh": [
-		// Allow all users to SSH into their own devices in check mode.
-		// Comment this section out if you want to define specific restrictions.
-		{
-			"action": "check",
-			"src":    ["autogroup:members"],
-			"dst":    ["autogroup:self"],
-			"users":  ["autogroup:nonroot", "root"],
-		},
-	],
-
-	// Test access rules every time they're saved.
-	// "tests": [
-	//  	{
-	//  		"src": "alice@example.com",
-	//  		"accept": ["tag:example"],
-	//  		"deny": ["100.101.102.103:443"],
-	//  	},
-	// ],
-}
-```
-Generate a tailscale auth key - https://login.tailscale.com/admin/settings/keys
-
-Copy the auth key to the install_tailscale.sh.example script and rename it to install_tailscale.sh
-
-Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspace for every zone in the zone.txt file.
-
-After successfully completing the Terraform deployment, execute the following commands in your terminal to set up the environment variables:
-
-```
-cd tf/aws/ && source bacalhau.run
-export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
+```bash
+export BACALHAU_NODE_CLIENTAPI_HOST=$(terraform output -raw ip_address)
 export BACALHAU_IPFS_SWARM_ADDRESSES=$BACALHAU_NODE_IPFS_SWARMADDRESSES
-cd ../../
 ```
-To Check whether all the nodes you deployed are in the network run this command
-```
+
+## Verify Deployment
+Check if all deployed nodes are in the network:
+```bash
 bacalhau node list
 ```
-To test the network, run a simple job across all nodes using the following command:
-```
+
+Test the network with a simple job across all nodes:
+```bash
 bacalhau docker run --target=all ubuntu echo hello
 ```
 
-To Run the Log Processing Job accross all the nodes run this command:
-```
+## Run Log Processing Jobs
+Run the log processing job across all nodes:
+```bash
 bacalhau create job_multizone.yaml
 ```
-Before Downloading make sure that you can access 45337 port
+
+Before downloading results, verify port access:
+```bash
+nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
 ```
- nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
-```
-To Fetch the Results of your job run this command (Replace <JOB_ID> with the ID of your job):
-```
+
+Fetch job results (replace `<JOB_ID>` with your job ID):
+```bash
 bacalhau get <JOB_ID>
 ```

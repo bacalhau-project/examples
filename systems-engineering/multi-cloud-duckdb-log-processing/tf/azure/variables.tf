@@ -37,11 +37,6 @@ variable "public_key" {
   description = "Public key file that should appear in authorized_keys"
 }
 
-variable "private_key" {
-  type        = string
-  description = "Private key file used to connect to the instance"
-}
-
 variable "bacalhau_installation_id" {
   type        = string
   description = "Bacalhau installation ID for tracking compute nodes"
@@ -59,17 +54,7 @@ variable "logs_to_process_dir" {
   default     = "/var/log/logs_to_process"
 }
 
-variable "docker_compose_path" {
-  type        = string
-  description = "Path to the Docker Compose file"
-}
-
 variable "subscription_id" {
   description = "Azure subscription ID"
-  type        = string
-}
-
-variable "tailscale_key" {
-  description = "Tailscale key"
   type        = string
 }
