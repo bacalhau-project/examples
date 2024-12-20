@@ -1,0 +1,20 @@
+Tasks:
+  - Engine:
+      Params:
+        Image: ubuntu
+        Parameters:
+          - ls
+          - -la
+          - /var/log/logs_to_process
+        WorkingDirectory: ""
+      Type: docker
+    Name: directory-job
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/var/log/logs_to_process"
+            ReadWrite: true
+        Target: "/var/log/logs_to_process"
+Type: batch
+Count: 1

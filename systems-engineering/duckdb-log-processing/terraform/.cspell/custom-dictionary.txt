@@ -1,0 +1,13 @@
+aperitivo
+bacalhau
+cloudinit
+daaronch
+duckdb
+FEEEEEEEEE
+filebase
+fileexists
+northamerica
+NORTHAMERICA
+southamerica
+templatefile
+tobool
