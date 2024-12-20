@@ -1,15 +1,14 @@
-variable "subscription_id" {
-  description = "Azure subscription ID"
+variable "project_id" {
+  description = "The project ID to deploy to."
+}
+
+variable "app_name" {
   type        = string
+  description = "application name to propagate to resources"
 }
 
 variable "app_tag" {
   description = "Environment tag"
-  type        = string
-}
-
-variable "region" {
-  description = "Azure region"
   type        = string
 }
 
@@ -18,24 +17,19 @@ variable "locations" {
   type        = map(map(string))
 }
 
-variable "vm_size" {
-  description = "Azure VM size"
+variable "machine_type" {
   type        = string
+  description = "Machine type to use for the instances"
 }
 
-variable "bootstrap_region" {
-  description = "Region where the bootstrap node will be created"
+variable "orchestrator_config_path" {
   type        = string
+  description = "Path to the Bacalhau orchestrator configuration YAML file"
 }
 
-variable "bacalhau_run_file" {
+variable "username" {
   type        = string
-  description = "Bacalhau Run File location"
-}
-
-variable "admin_username" {
-  type        = string
-  description = "Admin username for VMs"
+  description = "Username for login"
 }
 
 variable "public_key" {
@@ -46,6 +40,33 @@ variable "public_key" {
 variable "private_key" {
   type        = string
   description = "Private key file used to connect to the instance"
+}
+
+variable "bacalhau_installation_id" {
+  type        = string
+  description = "Bacalhau installation ID for tracking compute nodes"
+}
+
+variable "logs_dir" {
+  type        = string
+  description = "Directory where logs will be generated"
+  default     = "/var/log/app"
+}
+
+variable "logs_to_process_dir" {
+  type        = string
+  description = "Directory where logs will be processed"
+  default     = "/var/log/logs_to_process"
+}
+
+variable "docker_compose_path" {
+  type        = string
+  description = "Path to the Docker Compose file"
+}
+
+variable "subscription_id" {
+  description = "Azure subscription ID"
+  type        = string
 }
 
 variable "tailscale_key" {
