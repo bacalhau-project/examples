@@ -123,7 +123,7 @@ resource "google_storage_bucket" "node_bucket" {
   for_each = var.locations
 
   name     = "${var.project_id}-${each.key}-archive-bucket"
-  location = var.locations[each.key].storage_location
+  location = regex("^([a-z]+-[a-z]+[0-9])", each.key)[0]
 
   lifecycle_rule {
     condition {
@@ -143,7 +143,7 @@ resource "google_storage_bucket" "global_archive_bucket" {
   for_each = { for k, v in var.locations : k => v if k == keys(var.locations)[0] }
 
   name     = "${var.project_id}-global-archive-bucket"
-  location = var.locations[each.key].storage_location
+  location = regex("^([a-z]+-[a-z]+[0-9])", each.key)[0]
 
   lifecycle_rule {
     condition {
