@@ -1,0 +1,14 @@
+bacalhau
+Bacalhau
+BACALHAU
+bacalhauproject
+buildcache
+BUILDKIT
+buildx
+dind
+envsubst
+mktemp
+mountpoint
+multiarch
+VCPU
+YYMMDDHHMM
