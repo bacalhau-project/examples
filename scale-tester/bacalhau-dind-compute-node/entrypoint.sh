@@ -47,7 +47,7 @@ COUNTER=0
 until docker info >/dev/null 2>&1; do
     if [ $COUNTER -gt $DOCKER_READY_TIMEOUT ]; then
         error "Timeout waiting for Docker daemon. Docker logs:
-$(tail -n 50 /var/log/dockerd.log)"
+        $(tail -n 50 /var/log/dockerd.log)"
     fi
     log "Waiting for Docker daemon... ($COUNTER/$DOCKER_READY_TIMEOUT)"
     COUNTER=$((COUNTER + 1))

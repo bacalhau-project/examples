@@ -42,21 +42,21 @@ fi
 get_labels() {
     local labels=""
     while IFS= read -r line
-    do  
+    do
         # Skip empty lines and lines starting with TOKEN
         [[ -z "$line" || "$line" =~ ^TOKEN ]] && continue
-    
+
         # Extract variable name and value
         var_name=$(echo "$line" | cut -d'=' -f1)
         var_value=${!var_name}
-    
+
         # Remove any quotes from the value
         var_value=$(echo "$var_value" | tr -d '\"')
-    
+
         # Append to labels string
         labels="${labels:+$labels,}${var_name}=${var_value}"
     done < /etc/node-config
-    
+
     echo "$labels"
 }
 
@@ -73,10 +73,10 @@ check_env_vars() {
 
 start_bacalhau() {
     log "Starting Bacalhau..."
-    
+
     # Get labels from configuration
     LABELS=$(get_labels)
-    
+
     # Validate environment
     if ! check_env_vars; then
         log_error "Environment validation failed"
@@ -88,7 +88,7 @@ start_bacalhau() {
     log_debug "NODE_TYPE: ${NODE_TYPE}"
     log_debug "ORCHESTRATORS: ${ORCHESTRATORS}"
     log_debug "LABELS: ${LABELS}"
-    
+
     if [ -n "${TOKEN:-}" ]; then
         ORCHESTRATORS="${TOKEN}@${ORCHESTRATORS}"
     fi
@@ -100,10 +100,10 @@ start_bacalhau() {
         --labels "${LABELS}" \
         --log-level debug \
         >> "${LOG_FILE}" 2>&1
-    
+
     local exit_code=$?
     log_debug "Bacalhau exit code: ${exit_code}"
-    
+
     return ${exit_code}
 }
 
@@ -116,7 +116,7 @@ stop_bacalhau() {
 # Main execution
 main() {
     local cmd="${1:-}"
-    
+
     case "${cmd}" in
         start)
             start_bacalhau

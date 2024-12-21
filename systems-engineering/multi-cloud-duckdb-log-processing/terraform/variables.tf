@@ -127,3 +127,8 @@ variable "central_logging_region" {
   description = "GCP region for central logging bucket"
   default     = "us-central1"
 }
+
+variable "create_node_info" {
+  description = "Base64 encoded create_node_info.sh script"
+  type        = string
+}
