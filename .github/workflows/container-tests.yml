@@ -1,5 +1,13 @@
 name: Container Tests
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'tests/container/**'
+      - '.github/workflows/container-tests.yml'
+  pull_request:
+    paths:
+      - 'tests/container/**'
+      - '.github/workflows/container-tests.yml'
 
 jobs:
   test:
@@ -28,11 +36,16 @@ jobs:
 
       - name: Install UV
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sudo sh -s -- -y
-          sudo ln -sf /root/.cargo/bin/uv /usr/local/bin/uv
+          sudo mkdir -p /usr/local/uv
+          curl -LsSf https://astral.sh/uv/install.sh | sudo CARGO_HOME=/usr/local/uv sh -s -- -y
+          sudo ln -sf /usr/local/uv/bin/uv /usr/local/bin/uv
+          sudo chown -R root:root /usr/local/uv
+          sudo chmod -R 755 /usr/local/uv
 
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           cd tests/container
-          sudo -E uv pip install pytest pytest-timeout docker
-          sudo -E pytest -v --log-cli-level=DEBUG --tb=short -x --maxfail=1
+          sudo -E env "PATH=$PATH" "PYTHONPATH=$PYTHONPATH" uv pip install pytest pytest-timeout docker
+          sudo -E env "PATH=$PATH" "PYTHONPATH=$PYTHONPATH" pytest -v --log-cli-level=DEBUG --tb=short -x --maxfail=1
