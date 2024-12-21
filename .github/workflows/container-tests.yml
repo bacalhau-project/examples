@@ -28,10 +28,11 @@ jobs:
 
       - name: Install UV
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sudo sh -s -- -y
+          sudo ln -sf /root/.cargo/bin/uv /usr/local/bin/uv
 
       - name: Run tests
         run: |
           cd tests/container
-          sudo -E uv run --script test_container_orchestration.py -v --log-cli-level=DEBUG
+          sudo -E uv pip install pytest pytest-timeout docker
+          sudo -E pytest -v --log-cli-level=DEBUG --tb=short -x --maxfail=1
