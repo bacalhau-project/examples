@@ -43,16 +43,16 @@ data "cloudinit_config" "user_data" {
 
     content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
       bacalhau_service         = filebase64("${path.module}/../node_files/bacalhau.service")
-      start_bacalhau          = filebase64("${path.module}/../node_files/start_bacalhau.sh")
-      orchestrator_config     = filebase64(var.orchestrator_config_path)
+      start_bacalhau           = filebase64("${path.module}/../node_files/start_bacalhau.sh")
+      orchestrator_config      = filebase64(var.orchestrator_config_path)
       bacalhau_installation_id = var.bacalhau_installation_id
-      logs_dir               = var.logs_dir
-      logs_to_process_dir    = var.logs_to_process_dir
-      central_logging_bucket = var.central_logging_bucket
-      ssh_key               = compact(split("\n", file(var.public_key)))[0]
-      username             = var.username
-      region              = var.location
-      zone                = var.location
+      logs_dir                 = var.logs_dir
+      logs_to_process_dir      = var.logs_to_process_dir
+      central_logging_bucket   = var.central_logging_bucket
+      ssh_key                  = compact(split("\n", file(var.public_key)))[0]
+      username                 = var.username
+      region                   = var.location
+      zone                     = var.location
     })
   }
 }
@@ -113,9 +113,9 @@ resource "null_resource" "configure_instance" {
   depends_on = [azurerm_linux_virtual_machine.vm]
 
   connection {
-    host        = azurerm_public_ip.pip.ip_address
-    port        = 22
-    user        = var.username
+    host = azurerm_public_ip.pip.ip_address
+    port = 22
+    user = var.username
   }
 
   provisioner "file" {

@@ -1,15 +1,9 @@
 #!/bin/bash
-
-# Exit on error, undefined variables, and pipe failures
 set -euo pipefail
-trap 'echo "Error on line $LINENO"' ERR
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+export PATH="$PATH:/usr/local/go/bin"
 
+# Logging functions (for improved debugging)
 log() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }

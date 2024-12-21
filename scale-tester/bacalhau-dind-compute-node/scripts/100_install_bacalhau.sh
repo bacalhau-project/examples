@@ -1,25 +1,34 @@
 #!/usr/bin/env bash
 
+# Include functions from install_uv.sh
+source install_uv.sh
+
+# Include functions from logging.sh
+source logging.sh
+
+# Set the BACALHAU_INSTALL_ID
+# If not set, use a default value
 BACALHAU_INSTALL_ID=${BACALHAU_INSTALL_ID:-"BACA14A0-4222-EEEE-8EEE-EEEEEEEEEEEE"}
+
+log_info() {
+    log "INFO" "$1"
+}
+
+log_success() {
+    log "SUCCESS" "$1"
+}
+
+log_error() {
+    log "ERROR" "$1"
+}
+
 
 ensure_jq_installed() {
     if ! command -v jq &> /dev/null; then
-        log "jq is not installed. Attempting to install..."
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y jq
-            elif command -v yum &> /dev/null; then
-            sudo yum install -y jq
-            elif command -v dnf &> /dev/null; then
-            sudo dnf install -y jq
-            elif command -v brew &> /dev/null; then
-            brew install jq
-        else
-            log "Error: Unable to install jq. Please install it manually."
-            exit 1
-        fi
-        log "jq has been installed successfully."
+        log_error "JQ is not installed, please install it manually."
+        exit 1
     else
-        log "jq is already installed."
+        log_info "jq is installed."
     fi
 }
 
@@ -45,13 +54,6 @@ if ! curl --fail --silent --show-error --tlsv1.2 --proto "=https" \
     rm -f "${TEMP_SCRIPT}"
     exit 1
 fi
-
-# TODO: Add checksum verification here
-# if ! echo "${EXPECTED_CHECKSUM}  ${TEMP_SCRIPT}" | sha256sum --check; then
-#   echo "Checksum verification failed"
-#   rm -f "${TEMP_SCRIPT}"
-#   exit 1
-# fi
 
 # Execute the verified script
 sudo bash "${TEMP_SCRIPT}"
