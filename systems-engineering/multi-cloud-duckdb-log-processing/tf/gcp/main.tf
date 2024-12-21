@@ -50,7 +50,7 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.module}/cloud-init/init-vm.yml", {
+    content = templatefile("${path.module}/../cloud-init/init-vm.yml", {
       bacalhau_service         = filebase64("${path.module}/node_files/bacalhau.service")
       start_bacalhau          = filebase64("${path.module}/node_files/start_bacalhau.sh")
       orchestrator_config     = filebase64(var.orchestrator_config_path)
