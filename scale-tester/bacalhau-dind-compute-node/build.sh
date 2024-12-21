@@ -62,6 +62,9 @@ validate_requirements() {
     local requirements=(
         "docker:Docker is required but not installed"
         "git:Git is required but not installed"
+        "curl:Curl is required but not installed"
+        "python3:Python 3 is required but not installed"
+        "jq:jq is required but not installed"
     )
     
     for req in "${requirements[@]}"; do
