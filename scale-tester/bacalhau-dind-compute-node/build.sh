@@ -62,9 +62,8 @@ validate_requirements() {
     local requirements=(
         "docker:Docker is required but not installed"
         "git:Git is required but not installed"
-        "curl:Curl is required but not installed"
     )
-
+    
     for req in "${requirements[@]}"; do
         local cmd="${req%%:*}"
         local msg="${req#*:}"
@@ -72,17 +71,17 @@ validate_requirements() {
             error "$msg"
         fi
     done
-
+    
     # Check if dockerfile exists
     if [ ! -f "$DOCKERFILE" ]; then
         error "Dockerfile not found at $DOCKERFILE"
     fi
-
+    
     # Check docker daemon is running
     if ! docker info >/dev/null 2>&1; then
         error "Docker daemon is not running"
     fi
-
+    
     # Check buildx support
     if ! docker buildx version >/dev/null 2>&1; then
         error "Docker buildx support is required. Please ensure Docker buildx is installed and configured"
@@ -97,15 +96,15 @@ setup_builder() {
     fi
     
     docker buildx create --name "$BUILDER_NAME" \
-        --driver docker-container \
-        --bootstrap || error "Failed to create buildx builder"
+    --driver docker-container \
+    --bootstrap || error "Failed to create buildx builder"
     docker buildx use "$BUILDER_NAME"
 }
 
 generate_tags() {
     local base_tag="$REGISTRY/$IMAGE_NAME"
     local tags=()
-
+    
     # Add version tag
     tags+=("$base_tag:$VERSION_TAG")
     
@@ -117,7 +116,7 @@ generate_tags() {
         local git_hash=$(git rev-parse --short HEAD)
         tags+=("$base_tag:$git_hash")
     fi
-
+    
     # Convert tags array to --tag arguments for docker buildx
     local tag_args=""
     for tag in "${tags[@]}"; do
@@ -136,15 +135,20 @@ build_and_push_images() {
     local build_args=(
         --platform "$platforms"
         --file "$DOCKERFILE"
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --memory="2g"
+        --cpu-quota="150000"
+        --squash
+        --compress
         $tag_args
     )
-
+    
     # Add cache settings
     if [ "$BUILD_CACHE" = "true" ]; then
         build_args+=(--cache-from "type=registry,ref=$REGISTRY/$IMAGE_NAME:buildcache")
         build_args+=(--cache-to "type=registry,ref=$REGISTRY/$IMAGE_NAME:buildcache,mode=max")
     fi
-
+    
     # Add push flag if not skipping
     if [ "$SKIP_PUSH" = "false" ]; then
         build_args+=(--push)
@@ -152,9 +156,13 @@ build_and_push_images() {
     else
         build_args+=(--load)
     fi
-
-    # Execute build
-    if ! docker buildx build "${build_args[@]}" .; then
+    
+    # Execute build with resource constraints
+    if ! DOCKER_BUILDKIT=1 docker buildx build \
+    --builder="$BUILDER_NAME" \
+    "${build_args[@]}" \
+    --progress=plain \
+    .; then
         error "Build failed for $platforms"
     fi
     
@@ -180,7 +188,7 @@ main() {
         print_usage
         exit 0
     fi
-
+    
     log "Starting build process..."
     validate_requirements
     
@@ -190,7 +198,10 @@ main() {
     success "Build completed successfully"
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
-    log "docker run -v ~/bacalhau-cloud-config.yaml:/root/bacalhau-cloud-config.yaml $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
+    log "docker run \
+    -v orchestrator-config.yaml:/root/bacalhau-cloud-config.yaml \
+    -v node-info:/etc/node-info \
+    $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
 }
 
 # Execute main function

@@ -12,6 +12,7 @@ bacalhau
 .vscode/
 **/Dockerfile
 !tools/**/Dockerfile
+!scale-tester/**/Dockerfile
 **/.py
 .vscode
 js-helloworld/outputs/*
@@ -58,5 +59,6 @@ NOTES.md
 
 **/.flox/**
 queuing/job/.flox
-scale-tester/event-pusher/credentials.json
-scale-tester/event-pusher/sqs-policy.json
+
+event-puller/*.json
+event-pusher/*.json
