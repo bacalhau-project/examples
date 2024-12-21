@@ -23,12 +23,14 @@ if [[ -f /etc/NODE_INFO ]]; then
       ZONE=$value
     elif [[ $key == *.name ]]; then
       APPNAME=$value
+    elif [[ $key == *.bucket ]]; then
+      BUCKET=$value
     fi
   done < /etc/NODE_INFO
 fi
 
 # If REGION is set, then we can assume all labels are set, and we should add it to the labels
-labels="region=${REGION},zone=${ZONE},appname=${APPNAME}"
+labels="region=${REGION},zone=${ZONE},appname=${APPNAME},bucket=${BUCKET}"
 
 bacalhau serve \
   --node-type requester,compute \
