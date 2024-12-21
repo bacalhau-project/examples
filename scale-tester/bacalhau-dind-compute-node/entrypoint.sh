@@ -25,31 +25,31 @@ success() {
 
 # Initialize system
 log "Initializing system..."
-# Configure Docker daemon for read-only cgroup filesystem
+
+# Start Docker daemon with minimal configuration
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<EOF
 {
     "storage-driver": "overlay2",
     "iptables": false,
-    "cgroup-parent": "docker",
     "live-restore": true,
-    "default-cgroupfs-mode": "private"
+    "exec-opts": ["native.cgroupdriver=cgroupfs"],
+    "cgroup-parent": "docker.slice"
 }
 EOF
 
-# Start Docker daemon with systemd cgroup driver
+# Start Docker daemon
 log "Starting Docker daemon..."
-dockerd --storage-driver=overlay2 --iptables=false --cgroup-parent=docker &
+dockerd --storage-driver=overlay2 --iptables=false &
 
 # Wait for Docker to be ready
-DOCKER_READY_TIMEOUT=30
+DOCKER_READY_TIMEOUT=15
 COUNTER=0
-until docker info >/dev/null 2>&1; do
+while ! docker info >/dev/null 2>&1; do
     if [ $COUNTER -gt $DOCKER_READY_TIMEOUT ]; then
-        error "Timeout waiting for Docker daemon. Docker logs:
-$(tail -n 50 /var/log/dockerd.log)"
+        error "Docker daemon failed to start within ${DOCKER_READY_TIMEOUT} seconds"
+        exit 1
     fi
-    log "Waiting for Docker daemon... ($COUNTER/$DOCKER_READY_TIMEOUT)"
     COUNTER=$((COUNTER + 1))
     sleep 1
 done

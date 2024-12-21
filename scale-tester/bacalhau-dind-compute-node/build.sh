@@ -136,6 +136,11 @@ build_and_push_images() {
     local build_args=(
         --platform "$platforms"
         --file "$DOCKERFILE"
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --memory="2g"
+        --cpu-quota="150000"
+        --squash
+        --compress
         $tag_args
     )
 
@@ -153,8 +158,12 @@ build_and_push_images() {
         build_args+=(--load)
     fi
 
-    # Execute build
-    if ! docker buildx build "${build_args[@]}" .; then
+    # Execute build with resource constraints
+    if ! DOCKER_BUILDKIT=1 docker buildx build \
+        --builder="$BUILDER_NAME" \
+        "${build_args[@]}" \
+        --progress=plain \
+        .; then
         error "Build failed for $platforms"
     fi
     
