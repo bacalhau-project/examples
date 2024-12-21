@@ -37,7 +37,9 @@ jobs:
       - name: Install UV
         run: |
           sudo mkdir -p /usr/local/uv
-          curl -LsSf https://astral.sh/uv/install.sh | sudo CARGO_HOME=/usr/local/uv sh -s -- -y
+          curl -LsSf https://astral.sh/uv/install.sh | sudo CARGO_HOME=/usr/local/uv sh -s
+          sudo mkdir -p /usr/local/uv/bin
+          sudo mv /root/.local/bin/uv* /usr/local/uv/bin/
           sudo ln -sf /usr/local/uv/bin/uv /usr/local/bin/uv
           sudo chown -R root:root /usr/local/uv
           sudo chmod -R 755 /usr/local/uv

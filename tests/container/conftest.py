@@ -55,12 +55,13 @@ def container_mounts(config_file, temp_dir=None):
             target="/sys/fs/cgroup",
             source="/sys/fs/cgroup",
             type="bind",
-            read_only=True  # Changed to True since host mount is read-only
+            read_only=False  # Changed to False to allow Docker to initialize cgroups
         ),
-        # Tmpfs mount for writable cgroup operations
+        # Mount Docker socket
         docker.types.Mount(
-            target="/sys/fs/cgroup/init",
-            type="tmpfs",
+            target="/var/run/docker.sock",
+            source="/var/run/docker.sock",
+            type="bind",
             read_only=False
         )
     ]
