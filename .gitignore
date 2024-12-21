@@ -58,3 +58,5 @@ NOTES.md
 
 **/.flox/**
 queuing/job/.flox
+scale-tester/event-pusher/credentials.json
+scale-tester/event-pusher/sqs-policy.json
