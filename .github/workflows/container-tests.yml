@@ -12,6 +12,14 @@ jobs:
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
+
+      - name: Docker info
+        run: |
+          docker version
+          docker info
+          docker ps
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -20,8 +28,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install pytest docker
+          python -m pip install --upgrade pip
+          python -m pip install pytest docker pytest-timeout
 
       - name: Run tests
         run: |
-          pytest tests/container/
+          pytest -v tests/container/ --log-cli-level=DEBUG
