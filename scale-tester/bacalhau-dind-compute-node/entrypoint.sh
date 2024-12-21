@@ -5,7 +5,7 @@ set -euo pipefail
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<EOF
 {
-    "storage-driver": "overlay2",
+    "storage-driver": "vfs",
     "iptables": false,
     "live-restore": false,
     "exec-opts": ["native.cgroupdriver=cgroupfs"],
@@ -13,8 +13,8 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-# Start Docker daemon
-dockerd --storage-driver=overlay2 --iptables=false &
+# Start Docker daemon (without duplicate flags)
+dockerd &
 
 # Wait for Docker with fail-fast
 TIMEOUT=15
