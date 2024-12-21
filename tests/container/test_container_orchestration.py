@@ -33,7 +33,9 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
                 "BACALHAU_HOST_NETWORK": "true"
             },
             mounts=container_mounts,
-            network_mode="host"
+            network_mode="host",
+            privileged=True,
+            security_opt=['seccomp=unconfined', 'apparmor=unconfined']
         )
         containers.append(orchestrator)
 
@@ -59,7 +61,9 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
                 "BACALHAU_NODE_NETWORK_ORCHESTRATORS": "localhost:1234"
             },
             mounts=container_mounts,
-            network_mode="host"
+            network_mode="host",
+            privileged=True,
+            security_opt=['seccomp=unconfined', 'apparmor=unconfined']
         )
         containers.append(compute)
         print("Compute container started, checking for connection...")

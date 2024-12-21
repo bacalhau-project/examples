@@ -26,18 +26,26 @@ def config_file():
 
 @pytest.fixture(scope="function")
 def container_mounts(config_file, temp_dir=None):
-    """Create container volume mounts including config."""
+    """Create container volume mounts including config and system mounts."""
     # Ensure the config file exists
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"Configuration file not found at {config_file}")
 
     # Create list of mount specifications in Docker SDK format
     mounts = [
+        # Config file mount
         docker.types.Mount(
             target="/root/bacalhau-cloud-config.yaml",
             source=config_file,
             type="bind",
             read_only=True
+        ),
+        # Cgroup mount for Docker-in-Docker
+        docker.types.Mount(
+            target="/sys/fs/cgroup",
+            source="/sys/fs/cgroup",
+            type="bind",
+            read_only=False
         )
     ]
 

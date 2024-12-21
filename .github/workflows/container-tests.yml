@@ -33,4 +33,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -v tests/container/ --log-cli-level=DEBUG
+          sudo pytest -v tests/container/ --log-cli-level=DEBUG
