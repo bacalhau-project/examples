@@ -1,49 +1,85 @@
-# Multi-Cloud Bacalhau Log Processing
+# Multi-Cloud Log Processing with DuckDB and Bacalhau
 
 ## Overview
-In this guide, we will deploy Bacalhau nodes across multiple cloud providers (AWS, GCP, Azure, and Oracle Cloud) and demonstrate how to run log processing jobs across multiple clouds simultaneously.
+This example demonstrates how to process logs across multiple cloud providers using DuckDB and Bacalhau. The system deploys nodes across AWS, GCP, Azure, and Oracle Cloud, enabling distributed log processing and analysis with results aggregated in a central location.
 
 ## Prerequisites
-- AWS, GCP, Azure, and Oracle Cloud accounts with appropriate credentials
-- Terraform installed locally
-- Bacalhau CLI installed locally
+- Cloud provider accounts and credentials:
+  - Google Cloud Platform with billing enabled
+  - AWS account with appropriate IAM permissions
+  - Azure subscription
+  - Oracle Cloud account
+- CLI tools installed and configured:
+  - `gcloud` CLI
+  - `aws` CLI
+  - `az` CLI
+  - `oci` CLI
+- Terraform (v1.0.0+)
+- Bacalhau CLI
+- Docker
 
-## Deployment
-1. Configure your cloud provider credentials
-2. Review and customize the variables in `tf/variables.tf`
-3. Run `./bulk-deploy.sh` to create/switch to a terraform workspace for every zone
+## Quick Start
 
-## Environment Setup
-After successful Terraform deployment, set up the environment variables:
-
+1. Configure cloud provider credentials:
 ```bash
-export BACALHAU_NODE_CLIENTAPI_HOST=$(terraform output -raw ip_address)
-export BACALHAU_IPFS_SWARM_ADDRESSES=$BACALHAU_NODE_IPFS_SWARMADDRESSES
+# AWS
+aws configure
+# GCP
+gcloud auth application-default login
+# Azure
+az login
+# Oracle Cloud
+oci setup config
 ```
 
-## Verify Deployment
-Check if all deployed nodes are in the network:
+2. Review and customize variables:
 ```bash
+cp tf/variables.tf.example tf/variables.tf
+# Edit tf/variables.tf with your configuration
+```
+
+3. Deploy infrastructure:
+```bash
+cd tf
+./bulk-deploy.sh
+```
+
+4. Configure environment:
+```bash
+# Load node configuration
+source ./node-config.sh
+
+# Verify deployment
 bacalhau node list
 ```
 
-Test the network with a simple job across all nodes:
+5. Start log processing:
 ```bash
-bacalhau docker run --target=all ubuntu echo hello
+# Deploy log generator
+bacalhau job submit start-logging-container.yaml
+
+# Process logs
+bacalhau job run process-logs.yaml
 ```
 
-## Run Log Processing Jobs
-Run the log processing job across all nodes:
+6. View results:
 ```bash
-bacalhau create job_multizone.yaml
+# Results are stored in cloud-specific buckets and
+# aggregated in the central GCP bucket
+gsutil ls gs://${CENTRAL_BUCKET}/
 ```
 
-Before downloading results, verify port access:
-```bash
-nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
-```
+For detailed instructions and advanced usage, see [PAGE.md](./PAGE.md).
 
-Fetch job results (replace `<JOB_ID>` with your job ID):
+## Architecture
+- Nodes deployed across multiple cloud providers
+- Each node generates and processes logs locally
+- Results stored in provider-specific buckets
+- Central aggregation in GCP bucket
+- Cross-cloud networking via provider gateways
+
+## Cleanup
 ```bash
-bacalhau get <JOB_ID>
+cd tf
+./bulk-deploy.sh destroy
 ```
