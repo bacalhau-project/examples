@@ -59,3 +59,6 @@ NOTES.md
 
 **/.flox/**
 queuing/job/.flox
+
+event-puller/*.json
+event-pusher/*.json
