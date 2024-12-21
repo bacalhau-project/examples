@@ -27,6 +27,7 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
                 "BACALHAU_NODE_TYPE": "compute",
                 "BACALHAU_NODE_NETWORK_ORCHESTRATORS": "localhost:1234"
             },
+            volumes=container_mounts,  # Add config mount to compute container
             network_mode="host"
         )
 
@@ -40,7 +41,7 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
         compute.remove(force=True)
 
 def test_platform_specific_volume_mounts(docker_client, temp_dir, container_mounts):
-    test_file = os.path.join(temp_dir, "test.txt")
+    test_file = Path(temp_dir) / "test.txt"  # Convert to Path object
     test_file.write_text("test content")
 
     # Test volume mounting
