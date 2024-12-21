@@ -1,87 +1,85 @@
-# Deploying Multi-Cloud Bacalhau Nodes with Tailscale
+# Multi-Cloud Log Processing with DuckDB and Bacalhau
 
 ## Overview
-In this guide, we will deploy Bacalhau nodes on both AWS and GCP, and demonstrate how to run log processing jobs across multiple clouds simultaneously.
+This example demonstrates how to process logs across multiple cloud providers using DuckDB and Bacalhau. The system deploys nodes across AWS, GCP, Azure, and Oracle Cloud, enabling distributed log processing and analysis with results aggregated in a central location.
 
+## Prerequisites
+- Cloud provider accounts and credentials:
+  - Google Cloud Platform with billing enabled
+  - AWS account with appropriate IAM permissions
+  - Azure subscription
+  - Oracle Cloud account
+- CLI tools installed and configured:
+  - `gcloud` CLI
+  - `aws` CLI
+  - `az` CLI
+  - `oci` CLI
+- Terraform (v1.0.0+)
+- Bacalhau CLI
+- Docker
 
-Create a tailscale account.
-Add a tag to your tailscale account - https://login.tailscale.com/admin/acls
+## Quick Start
 
-```jsonc
-// Example/default ACLs for unrestricted connections.
-{
-	// Declare static groups of users. Use autogroups for all users or users with a specific role.
-	// "groups": {
-	//  	"group:example": ["alice@example.com", "bob@example.com"],
-	// },
-
-	// Define the tags which can be applied to devices and by which users.
-	"tagOwners": {
-    "tag:bacalhau-multi-region-example": ["autogroup:admin"],
-	},
-
-	// Define access control lists for users, groups, autogroups, tags,
-	// Tailscale IP addresses, and subnet ranges.
-	"acls": [
-		// Allow all connections.
-		// Comment this section out if you want to define specific restrictions.
-		{"action": "accept", "src": ["*"], "dst": ["*:*"]},
-	],
-
-	// Define users and devices that can use Tailscale SSH.
-	"ssh": [
-		// Allow all users to SSH into their own devices in check mode.
-		// Comment this section out if you want to define specific restrictions.
-		{
-			"action": "check",
-			"src":    ["autogroup:members"],
-			"dst":    ["autogroup:self"],
-			"users":  ["autogroup:nonroot", "root"],
-		},
-	],
-
-	// Test access rules every time they're saved.
-	// "tests": [
-	//  	{
-	//  		"src": "alice@example.com",
-	//  		"accept": ["tag:example"],
-	//  		"deny": ["100.101.102.103:443"],
-	//  	},
-	// ],
-}
+1. Configure cloud provider credentials:
+```bash
+# AWS
+aws configure
+# GCP
+gcloud auth application-default login
+# Azure
+az login
+# Oracle Cloud
+oci setup config
 ```
-Generate a tailscale auth key - https://login.tailscale.com/admin/settings/keys
 
-Copy the auth key to the install_tailscale.sh.example script and rename it to install_tailscale.sh
-
-Now just run "./bulk-deploy.sh". This will create/switch to a terraform workspace for every zone in the zone.txt file.
-
-After successfully completing the Terraform deployment, execute the following commands in your terminal to set up the environment variables:
-
+2. Review and customize variables:
+```bash
+cp tf/variables.tf.example tf/variables.tf
+# Edit tf/variables.tf with your configuration
 ```
-cd tf/aws/ && source bacalhau.run
-export BACALHAU_NODE_CLIENTAPI_HOST=$(jq -r '.outputs.ip_address.value' terraform.tfstate.d/ca-central-1/terraform.tfstate)
-export BACALHAU_IPFS_SWARM_ADDRESSES=$BACALHAU_NODE_IPFS_SWARMADDRESSES
-cd ../../
+
+3. Deploy infrastructure:
+```bash
+cd tf
+./bulk-deploy.sh
 ```
-To Check whether all the nodes you deployed are in the network run this command
-```
+
+4. Configure environment:
+```bash
+# Load node configuration
+source ./node-config.sh
+
+# Verify deployment
 bacalhau node list
 ```
-To test the network, run a simple job across all nodes using the following command:
-```
-bacalhau docker run --target=all ubuntu echo hello
+
+5. Start log processing:
+```bash
+# Deploy log generator
+bacalhau job submit start-logging-container.yaml
+
+# Process logs
+bacalhau job run process-logs.yaml
 ```
 
-To Run the Log Processing Job accross all the nodes run this command:
+6. View results:
+```bash
+# Results are stored in cloud-specific buckets and
+# aggregated in the central GCP bucket
+gsutil ls gs://${CENTRAL_BUCKET}/
 ```
-bacalhau create job_multizone.yaml
-```
-Before Downloading make sure that you can access 45337 port
-```
- nc -zv $BACALHAU_NODE_CLIENTAPI_HOST 45337
-```
-To Fetch the Results of your job run this command (Replace <JOB_ID> with the ID of your job):
-```
-bacalhau get <JOB_ID>
+
+For detailed instructions and advanced usage, see [PAGE.md](./PAGE.md).
+
+## Architecture
+- Nodes deployed across multiple cloud providers
+- Each node generates and processes logs locally
+- Results stored in provider-specific buckets
+- Central aggregation in GCP bucket
+- Cross-cloud networking via provider gateways
+
+## Cleanup
+```bash
+cd tf
+./bulk-deploy.sh destroy
 ```

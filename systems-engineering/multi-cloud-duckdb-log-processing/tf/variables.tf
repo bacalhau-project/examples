@@ -1,7 +1,7 @@
 # Common Variables
 variable "app_name" {
   type        = string
-  description = "application name to propagate to resources"
+  description = "Application name to propagate to resources"
 }
 
 variable "app_tag" {
@@ -41,6 +41,22 @@ variable "bacalhau_installation_id" {
   description = "Bacalhau installation ID for tracking compute nodes"
 }
 
+# GCP-specific Variables
+variable "gcp_project_id" {
+  description = "The GCP project ID to deploy to"
+}
+
+variable "gcp_regions" {
+  type        = list(string)
+  description = "List of GCP regions to deploy resources"
+}
+
+variable "gcp_machine_type" {
+  type        = string
+  description = "GCP machine type for compute instances"
+  default     = "n1-standard-2"
+}
+
 # AWS-specific Variables
 variable "aws_regions" {
   type        = list(string)
@@ -53,6 +69,41 @@ variable "aws_instance_type" {
   default     = "t2.medium"
 }
 
+# Azure-specific Variables
+variable "azure_subscription_id" {
+  type        = string
+  description = "Azure subscription ID"
+}
+
+variable "azure_regions" {
+  type        = list(string)
+  description = "List of Azure regions to deploy resources"
+}
+
+variable "azure_vm_size" {
+  type        = string
+  description = "Azure VM size for compute instances"
+  default     = "Standard_D2s_v3"
+}
+
+# Oracle Cloud-specific Variables
+variable "oci_tenancy_ocid" {
+  type        = string
+  description = "Oracle Cloud Infrastructure tenancy OCID"
+}
+
+variable "oci_regions" {
+  type        = list(string)
+  description = "List of Oracle Cloud regions to deploy resources"
+}
+
+variable "oci_instance_shape" {
+  type        = string
+  description = "Oracle Cloud compute instance shape"
+  default     = "VM.Standard2.2"
+}
+
+# Resource Count Variables
 variable "instances_per_region" {
   type        = number
   description = "Number of compute instances to deploy per region"
@@ -65,26 +116,14 @@ variable "buckets_per_region" {
   default     = 5
 }
 
+# Central Logging Configuration
 variable "central_logging_bucket" {
   type        = string
   description = "Name of the central GCP bucket for aggregated logging"
 }
 
-# AWS Network Configuration
-variable "aws_ami" {
+variable "central_logging_region" {
   type        = string
-  description = "AMI ID for AWS instances"
-  default     = "ami-0c7217cdde317cfec"
-}
-
-variable "aws_vpc_cidr" {
-  type        = string
-  description = "CIDR block for VPC"
-  default     = "10.0.0.0/16"
-}
-
-variable "aws_subnet_cidr" {
-  type        = string
-  description = "CIDR block for subnet"
-  default     = "10.0.1.0/24"
+  description = "GCP region for central logging bucket"
+  default     = "us-central1"
 }

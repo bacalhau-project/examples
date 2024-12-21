@@ -1,15 +1,14 @@
 [Unit]
-Description=Bacalhau Daemon
-After=network-online.target
-Wants=network-online.target systemd-networkd-wait-online.service
+Description=Bacalhau Compute Node
+After=network.target
 
 [Service]
-Environment="LOG_TYPE=json"
-Environment="BACALHAU_PATH=/data"
-Environment="BACALHAU_DIR=/data"
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+Environment=BACALHAU_CONFIG_PATH=/etc/bacalhau/config.yaml
+ExecStart=/usr/local/bin/start_bacalhau.sh
 Restart=always
-RestartSec=5s
-ExecStart=bash /node/start-bacalhau.sh
 
 [Install]
 WantedBy=multi-user.target
