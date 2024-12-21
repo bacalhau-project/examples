@@ -2,36 +2,43 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.31.0"
     }
   }
 }
 
 provider "aws" {
-  region = var.region
+  for_each = toset(var.aws_regions)
+  region   = each.value
 }
 
-resource "tls_private_key" "tls_pk" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+locals {
+  required_files = {
+    bacalhau_service    = fileexists("${path.module}/../node_files/bacalhau.service")
+    start_bacalhau      = fileexists("${path.module}/../node_files/start_bacalhau.sh")
+    orchestrator_config = fileexists(var.orchestrator_config_path)
+  }
+
+  missing_files = [for name, exists in local.required_files : name if !exists]
+
+  validate_files = length(local.missing_files) == 0 ? true : tobool(
+    "Missing required files: ${join(", ", local.missing_files)}"
+  )
 }
 
 resource "aws_key_pair" "keypair" {
-  key_name   = "${var.app_tag}-key-pair-${var.region}"
-  public_key = tls_private_key.tls_pk.public_key_openssh
+  for_each   = toset(var.aws_regions)
+  key_name   = "${var.app_name}-key-pair-${each.value}"
+  public_key = file(var.public_key)
+  provider   = aws[each.value]
 }
 
-resource "local_sensitive_file" "pem_file" {
-  filename             = pathexpand("./${var.app_tag}-key-pair-${var.region}.pem")
-  file_permission      = "600"
-  directory_permission = "700"
-  content              = tls_private_key.tls_pk.private_key_pem
-}
 module "networkModule" {
-  source  = "./modules/network"
-  app_tag = var.app_tag
-  region  = var.region
-  zone    = var.locations[var.region].zone
+  for_each = toset(var.aws_regions)
+  source   = "./modules/network"
+  app_name = var.app_name
+  region   = each.value
+  provider = aws[each.value]
 
   cidr_block_range         = "10.0.0.0/16"
   subnet1_cidr_block_range = "10.0.1.0/24"
@@ -39,31 +46,34 @@ module "networkModule" {
 }
 
 module "securityGroupModule" {
-  source = "./modules/securityGroup"
+  for_each = toset(var.aws_regions)
+  source   = "./modules/securityGroup"
+  provider = aws[each.value]
 
-  vpc_id  = module.networkModule.vpc_id
-  app_tag = var.app_tag
+  vpc_id   = module.networkModule[each.value].vpc_id
+  app_name = var.app_name
 }
 
 module "instanceModule" {
-  source = "./modules/instance"
+  for_each = toset(var.aws_regions)
+  source   = "./modules/instance"
+  provider = aws[each.value]
 
-  instance_type      = var.instance_type
-  instance_ami       = var.locations[var.region].instance_ami
-  region             = var.region
-  zone               = var.locations[var.region].zone
-  vpc_id             = module.networkModule.vpc_id
-  subnet_public_id   = module.networkModule.public_subnets[0]
-  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_1234, module.securityGroupModule.sg_1235]
-  app_tag            = var.app_tag
-  bacalhau_run_file  = var.bacalhau_run_file
-  bootstrap_region   = var.bootstrap_region
+  count               = var.instances_per_region
+  instance_type       = var.aws_instance_type
+  region              = each.value
+  vpc_id              = module.networkModule[each.value].vpc_id
+  subnet_public_id    = module.networkModule[each.value].public_subnets[0]
+  security_group_ids  = [module.securityGroupModule[each.value].sg_22]
+  app_name            = var.app_name
 
-  key_pair_name    = aws_key_pair.keypair.key_name
-  pem_file_content = local_sensitive_file.pem_file.content
-  shelluser        = var.shelluser
-  public_key       = var.public_key
-  private_key      = var.private_key
-  tailscale_key    = var.tailscale_key
+  orchestrator_config_path = var.orchestrator_config_path
+  bacalhau_installation_id = var.bacalhau_installation_id
+  key_pair_name            = aws_key_pair.keypair[each.value].key_name
+  username                 = var.username
+  public_key               = var.public_key
+  logs_dir                 = var.logs_dir
+  logs_to_process_dir      = var.logs_to_process_dir
+  central_logging_bucket   = var.central_logging_bucket
 }
 

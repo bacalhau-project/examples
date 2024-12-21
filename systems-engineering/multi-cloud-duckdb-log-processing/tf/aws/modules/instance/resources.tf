@@ -1,4 +1,3 @@
-
 data "cloudinit_config" "user_data" {
   gzip          = false
   base64_encode = false
@@ -7,13 +6,12 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.module}/../../../cloud-init/init-vm.yml", {
+    content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
       bacalhau_service : base64encode(file("${path.module}/../../../node_files/bacalhau.service")),
       ipfs_service : base64encode(file("${path.module}/../../../node_files/ipfs.service")),
       start_bacalhau : base64encode(file("${path.module}/../../../node_files/start-bacalhau.sh")),
       logs_dir : "/var/log/${var.app_tag}_logs",
       log_generator_py : filebase64("${path.module}/../../../node_files/log_generator.py"),
-      tailscale_key : var.tailscale_key
       node_name : "${var.app_tag}-${var.region}-vm"
       ssh_key : compact(split("\n", file(var.public_key)))[0]
       region : var.region
@@ -21,7 +19,6 @@ data "cloudinit_config" "user_data" {
       app_name : var.app_tag
     })
   }
-}
 
 resource "aws_iam_role" "vm_iam_role" {
   name               = "${var.app_tag}-${var.region}_vm_iam_role"
@@ -114,11 +111,10 @@ resource "aws_iam_role_policy_attachment" "images_bucket_policy" {
 }
 
 resource "aws_instance" "instance" {
-  ami                    = var.instance_ami
-  instance_type          = var.instance_type
+  ami                    = var.aws_ami
+  instance_type          = var.aws_instance_type
   subnet_id              = var.subnet_public_id
   vpc_security_group_ids = var.security_group_ids
-  key_name               = var.key_pair_name
   availability_zone      = var.zone
   user_data              = data.cloudinit_config.user_data.rendered
   iam_instance_profile   = aws_iam_instance_profile.vm_instance_profile.name
@@ -138,55 +134,25 @@ resource "aws_eip" "instanceeip" {
   }
 }
 
-resource "null_resource" "copy-bacalhau-bootstrap-to-local" {
-  // Only run this on the bootstrap node
-
-  count = var.bootstrap_region == var.region ? 1 : 0
-
+resource "null_resource" "configure_instance" {
   depends_on = [aws_instance.instance]
 
   connection {
-    host        = aws_eip.instanceeip.public_ip
-    port        = 22
-    user        = "ubuntu"
-    private_key = file(var.private_key)
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo 'SSHD is now alive.'",
-      "timeout 300 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done'",
-      "echo 'Bacalhau is now alive.'",
-    ]
-  }
-
-  provisioner "local-exec" {
-    command = "ssh -o StrictHostKeyChecking=no ubuntu@${aws_eip.instanceeip.public_ip} 'sudo cat /data/bacalhau.run' > ${var.bacalhau_run_file}"
-  }
-
-}
-
-resource "null_resource" "copy-to-node-if-worker" {
-  // Only run this on worker nodes, not the bootstrap node
-  count = var.bootstrap_region == var.region ? 0 : 1
-
-  connection {
-    host        = aws_eip.instanceeip.public_ip
-    port        = 22
-    user        = "ubuntu"
-    private_key = file(var.private_key)
+    host = aws_eip.instanceeip.public_ip
+    port = 22
+    user = var.username
   }
 
   provisioner "file" {
-    destination = "/home/ubuntu/bacalhau-bootstrap"
-    content     = file(var.bacalhau_run_file)
+    source      = var.orchestrator_config_path
+    destination = "/home/${var.username}/orchestrator-config.yaml"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo mv /home/ubuntu/bacalhau-bootstrap /etc/bacalhau-bootstrap",
+      "sudo mv /home/${var.username}/orchestrator-config.yaml /etc/bacalhau/orchestrator-config.yaml",
       "sudo systemctl daemon-reload",
-      "sudo systemctl restart bacalhau.service",
+      "sudo systemctl restart bacalhau.service"
     ]
   }
 }
