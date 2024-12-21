@@ -1,0 +1,77 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - git
+  - jq
+  - python3
+  - python3-pip
+
+# Create user first
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [sudo]
+    lock_passwd: true
+
+runcmd:
+  # Create directories and set permissions
+  - echo "Creating directories..."
+  - mkdir -p /etc/bacalhau
+  - mkdir -p /usr/local/bin
+  - mkdir -p /etc/systemd/system
+
+  - id ubuntu || echo "Ubuntu user not found"
+  - chown -R ubuntu:ubuntu /etc/bacalhau || echo "Failed to set ownership on /etc/bacalhau"
+  - chmod -R 755 /etc/bacalhau || echo "Failed to set permissions on /etc/bacalhau"
+
+  # Write files manually since write_files module is failing
+  - echo "Writing configuration files..."
+  - echo "${orchestrator_config}" | base64 -d > /etc/bacalhau/config.yaml
+  - chown root:root /etc/bacalhau/config.yaml
+  - chmod 0644 /etc/bacalhau/config.yaml
+
+  - echo "${bacalhau_service}" | base64 -d > /etc/systemd/system/bacalhau.service
+  - chown root:root /etc/systemd/system/bacalhau.service
+  - chmod 0644 /etc/systemd/system/bacalhau.service
+
+  - echo "${start_bacalhau}" | base64 -d > /usr/local/bin/start_bacalhau.sh
+  - chown root:root /usr/local/bin/start_bacalhau.sh
+  - chmod 0755 /usr/local/bin/start_bacalhau.sh
+
+  # Set up environment info
+  - echo "Setting up node information..."
+  - echo "${create_node_info}" | base64 -d > /usr/local/bin/create_node_info.sh
+  - chmod +x /usr/local/bin/create_node_info.sh
+  - /usr/local/bin/create_node_info.sh "${central_logging_bucket}" "${format("%02d", count.index + 1)}" "${app_name}"
+
+  # Verify file creation and permissions
+  - echo "Verifying file creation..."
+  - ls -la /etc/NODE_INFO || echo "Failed to verify NODE_INFO"
+
+  # Install Bacalhau
+  - echo "Installing Bacalhau..."
+  - curl -sL https://get.bacalhau.org/install.sh | bash -s -- -v pre-release -d /usr/local/bin || echo "Failed to install Bacalhau"
+  - chmod +x /usr/local/bin/bacalhau || echo "Failed to make Bacalhau executable"
+  - bacalhau version || echo "Failed to get Bacalhau version"
+
+  # Install uv instead of manually creating a venv
+  - echo "Installing uv..."
+  - pip3 install uv || echo "Failed to install uv"
+
+  # Configure system settings
+  - echo "Configuring system settings..."
+  - sudo sysctl -w net.core.rmem_max=2500000 || echo "Failed to set rmem_max"
+
+  # Start services
+  - echo "Starting services..."
+  - systemctl daemon-reload
+  - systemctl enable bacalhau.service || echo "Failed to enable Bacalhau service"
+  - systemctl start bacalhau.service || echo "Failed to start Bacalhau service"
+  - systemctl status bacalhau.service || echo "Failed to get Bacalhau service status"
+
+  # Add SSH key
+  - echo "Adding SSH key..."
+  - echo "${ssh_key}" >> /home/ubuntu/.ssh/authorized_keys || echo "Failed to add SSH key"
