@@ -12,6 +12,7 @@ bacalhau
 .vscode/
 **/Dockerfile
 !tools/**/Dockerfile
+!scale-tester/**/Dockerfile
 **/.py
 .vscode
 js-helloworld/outputs/*
