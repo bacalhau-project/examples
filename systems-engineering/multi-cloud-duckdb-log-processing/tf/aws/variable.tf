@@ -1,3 +1,4 @@
+# Common Variables
 variable "app_name" {
   type        = string
   description = "application name to propagate to resources"
@@ -40,6 +41,7 @@ variable "bacalhau_installation_id" {
   description = "Bacalhau installation ID for tracking compute nodes"
 }
 
+# AWS-specific Variables
 variable "aws_regions" {
   type        = list(string)
   description = "List of AWS regions to deploy resources"
@@ -68,6 +70,7 @@ variable "central_logging_bucket" {
   description = "Name of the central GCP bucket for aggregated logging"
 }
 
+# AWS Network Configuration
 variable "aws_ami" {
   type        = string
   description = "AMI ID for AWS instances"

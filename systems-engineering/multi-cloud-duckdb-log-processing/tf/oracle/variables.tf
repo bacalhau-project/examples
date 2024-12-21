@@ -1,7 +1,3 @@
-variable "project_id" {
-  description = "The project ID to deploy to."
-}
-
 variable "app_name" {
   type        = string
   description = "application name to propagate to resources"
@@ -12,14 +8,15 @@ variable "app_tag" {
   type        = string
 }
 
-variable "locations" {
-  description = "Locations and resources to deploy"
-  type        = map(map(string))
+variable "oci_regions" {
+  type        = list(string)
+  description = "List of Oracle Cloud regions to deploy resources"
 }
 
-variable "machine_type" {
+variable "oci_instance_shape" {
   type        = string
-  description = "Machine type to use for the instances"
+  description = "Oracle Cloud compute instance shape"
+  default     = "VM.Standard2.2"
 }
 
 variable "orchestrator_config_path" {
@@ -70,12 +67,24 @@ variable "fingerprint" {
   type        = string
 }
 
-variable "private_key_path" {
-  description = "Path to API private key"
-  type        = string
-}
-
 variable "compartment_id" {
   description = "Oracle compartment OCID"
   type        = string
+}
+
+variable "instances_per_region" {
+  type        = number
+  description = "Number of compute instances to deploy per region"
+  default     = 5
+}
+
+variable "buckets_per_region" {
+  type        = number
+  description = "Number of storage buckets to deploy per region"
+  default     = 5
+}
+
+variable "central_logging_bucket" {
+  type        = string
+  description = "Name of the central GCP bucket for aggregated logging"
 }

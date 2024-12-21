@@ -111,11 +111,10 @@ resource "aws_iam_role_policy_attachment" "images_bucket_policy" {
 }
 
 resource "aws_instance" "instance" {
-  ami                    = var.instance_ami
-  instance_type          = var.instance_type
+  ami                    = var.aws_ami
+  instance_type          = var.aws_instance_type
   subnet_id              = var.subnet_public_id
   vpc_security_group_ids = var.security_group_ids
-  key_name               = var.key_pair_name
   availability_zone      = var.zone
   user_data              = data.cloudinit_config.user_data.rendered
   iam_instance_profile   = aws_iam_instance_profile.vm_instance_profile.name

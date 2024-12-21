@@ -1,6 +1,7 @@
 variable "project_id" {
   description = "The project ID to deploy to."
 }
+
 variable "app_name" {
   type        = string
   description = "application name to propagate to resources"
@@ -10,13 +11,16 @@ variable "app_tag" {
   description = "Environment tag"
   type        = string
 }
-variable "locations" {
-  description = "Locations and resources to deploy"
-  type        = map(map(string))
+
+variable "gcp_regions" {
+  type        = list(string)
+  description = "List of GCP regions to deploy resources"
 }
-variable "machine_type" {
+
+variable "gcp_machine_type" {
   type        = string
   description = "Machine type to use for the instances"
+  default     = "n1-standard-2"
 }
 
 variable "orchestrator_config_path" {
@@ -49,4 +53,21 @@ variable "logs_to_process_dir" {
   type        = string
   description = "Directory where logs will be processed"
   default     = "/var/log/logs_to_process"
+}
+
+variable "instances_per_region" {
+  type        = number
+  description = "Number of compute instances to deploy per region"
+  default     = 5
+}
+
+variable "buckets_per_region" {
+  type        = number
+  description = "Number of storage buckets to deploy per region"
+  default     = 5
+}
+
+variable "central_logging_bucket" {
+  type        = string
+  description = "Name of the central GCP bucket for aggregated logging"
 }

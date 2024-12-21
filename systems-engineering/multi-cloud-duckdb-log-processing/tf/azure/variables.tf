@@ -1,7 +1,3 @@
-variable "project_id" {
-  description = "The project ID to deploy to."
-}
-
 variable "app_name" {
   type        = string
   description = "application name to propagate to resources"
@@ -12,14 +8,15 @@ variable "app_tag" {
   type        = string
 }
 
-variable "locations" {
-  description = "Locations and resources to deploy"
-  type        = map(map(string))
+variable "azure_regions" {
+  type        = list(string)
+  description = "List of Azure regions to deploy resources"
 }
 
-variable "machine_type" {
+variable "azure_vm_size" {
   type        = string
-  description = "Machine type to use for the instances"
+  description = "Azure VM size for compute instances"
+  default     = "Standard_D2s_v3"
 }
 
 variable "orchestrator_config_path" {
@@ -57,4 +54,21 @@ variable "logs_to_process_dir" {
 variable "subscription_id" {
   description = "Azure subscription ID"
   type        = string
+}
+
+variable "instances_per_region" {
+  type        = number
+  description = "Number of compute instances to deploy per region"
+  default     = 5
+}
+
+variable "buckets_per_region" {
+  type        = number
+  description = "Number of storage buckets to deploy per region"
+  default     = 5
+}
+
+variable "central_logging_bucket" {
+  type        = string
+  description = "Name of the central GCP bucket for aggregated logging"
 }
