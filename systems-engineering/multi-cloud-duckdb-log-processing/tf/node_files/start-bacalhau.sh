@@ -6,34 +6,37 @@ IFS=$'\n\t'
 # we start with none as the default ("none" prevents the node connecting to our default bootstrap list)
 export CONNECT_PEER="none"
 
-# Special case - get tailscale address if any
-# If the tailscale0 address exists in the command ip
-export TAILSCALE_ADDRESS=$(ip -4 a l tailscale0 | awk '/inet/ {print $2}' | cut -d/ -f1)
-
-# if TAILSCALE_ADDRESS is set, use it to populate the CONNECT_PEER variable
-if [[ -n "${TAILSCALE_ADDRESS}" ]]; then
-  export BACALHAU_PREFERRED_ADDRESS="${TAILSCALE_ADDRESS}"
-fi
-
-# if the file /etc/bacalhau-bootstrap exists, use it to populate the CONNECT_PEER variable
-if [[ -f /etc/bacalhau-bootstrap ]]; then
+# If /etc/bacalhau/orchestrator-config.yaml exists, use it to populate the CONNECT_PEER variable
+if [[ -f /etc/bacalhau/orchestrator-config.yaml ]]; then
   # shellcheck disable=SC1090
-  source /etc/bacalhau-bootstrap
+  source /etc/bacalhau/orchestrator-config.yaml
   CONNECT_PEER="${BACALHAU_NODE_LIBP2P_PEERCONNECT}"
 fi
 
-# If /etc/bacalhau-node-info exists, then load the variables from it
-if [[ -f /etc/bacalhau-node-info ]]; then
-  # shellcheck disable=SC1090
-  . /etc/bacalhau-node-info
-fi
+# If /etc/NODE_INFO exists, then load the variables from it
+if [[ -f /etc/NODE_INFO ]]; then
+  # Parse key-value pairs from NODE_INFO
+  while IFS='=' read -r key value; do
+    # Remove leading/trailing whitespace
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
 
-labels="ip=${TAILSCALE_ADDRESS}"
+    if [[ $key == "provider" ]]; then
+      PROVIDER=$value
+    elif [[ $key == "STORAGE_BUCKET" ]]; then
+      BUCKET=$value
+    elif [[ $key == *.region ]]; then
+      REGION=$value
+    elif [[ $key == *.zone ]]; then
+      ZONE=$value
+    elif [[ $key == *.name ]]; then
+      APPNAME=$value
+    fi
+  done < /etc/NODE_INFO
+fi
 
 # If REGION is set, then we can assume all labels are set, and we should add it to the labels
-if [[ -n "${REGION}" ]]; then
-  labels="${labels},region=${REGION},zone=${ZONE},appname=${APPNAME}"
-fi
+labels="provider=${PROVIDER},region=${REGION},zone=${ZONE},appname=${APPNAME},bucket=${BUCKET}"
 
 bacalhau serve \
   --node-type requester,compute \
