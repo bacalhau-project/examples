@@ -17,20 +17,26 @@ fi
 if [[ -f /etc/NODE_INFO ]]; then
   # Parse key-value pairs from NODE_INFO
   while IFS='=' read -r key value; do
-    if [[ $key == *.region ]]; then
+    # Remove leading/trailing whitespace
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
+
+    if [[ $key == "provider" ]]; then
+      PROVIDER=$value
+    elif [[ $key == "STORAGE_BUCKET" ]]; then
+      BUCKET=$value
+    elif [[ $key == *.region ]]; then
       REGION=$value
     elif [[ $key == *.zone ]]; then
       ZONE=$value
     elif [[ $key == *.name ]]; then
       APPNAME=$value
-    elif [[ $key == *.bucket ]]; then
-      BUCKET=$value
     fi
   done < /etc/NODE_INFO
 fi
 
 # If REGION is set, then we can assume all labels are set, and we should add it to the labels
-labels="region=${REGION},zone=${ZONE},appname=${APPNAME},bucket=${BUCKET}"
+labels="provider=${PROVIDER},region=${REGION},zone=${ZONE},appname=${APPNAME},bucket=${BUCKET}"
 
 bacalhau serve \
   --node-type requester,compute \

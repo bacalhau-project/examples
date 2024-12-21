@@ -63,6 +63,8 @@ runcmd:
                  curl -s http://169.254.169.254/opc/v1/vnics/0/privateIp 2>/dev/null)
 
     cat > /etc/NODE_INFO << EOF
+    provider=${provider}
+    STORAGE_BUCKET=${central_logging_bucket}-${region}-${format("%02d", count.index + 1)}
     ${provider}.region=${region}
     ${provider}.zone=${zone}
     ${provider}.name=${app_name}

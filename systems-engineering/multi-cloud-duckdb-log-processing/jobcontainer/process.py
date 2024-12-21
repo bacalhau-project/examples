@@ -32,6 +32,8 @@ def get_node_info():
     try:
         with open("/etc/NODE_INFO") as f:
             for line in f:
+                if "=" not in line:
+                    continue
                 key, value = line.strip().split("=", 1)
                 info[key.strip()] = value.strip()
     except FileNotFoundError:
@@ -40,9 +42,9 @@ def get_node_info():
 
 
 def upload_to_provider_bucket(client, provider, node_info, output_file_name, result_json):
-    bucket = node_info.get(f"{provider}.bucket")
+    bucket = node_info.get("STORAGE_BUCKET")
     if not bucket:
-        raise ValueError(f"Bucket not found in NODE_INFO for provider {provider}")
+        raise ValueError("STORAGE_BUCKET not found in NODE_INFO")
 
     if provider == "gcp":
         bucket_obj = client.get_bucket(bucket)
@@ -110,7 +112,9 @@ def main(input_file, query, output_directory):
     result_json = result.to_json(orient="records")
 
     node_info = get_node_info()
-    provider = next(key.split('.')[0] for key in node_info.keys() if key.endswith('.region'))
+    provider = node_info.get("provider", "").lower()
+    if not provider:
+        raise ValueError("provider not found in NODE_INFO")
     output_file_name = f"{node_info[f'{provider}.name']}-{datetime.now().strftime('%Y%m%d%H%M')}.json"
     client = get_storage_client(provider)
 
