@@ -17,8 +17,6 @@ google-cloud-storage = "^2.9.0"
 azure-mgmt-resource = "^23.0.1"
 azure-identity = "^1.13.0"
 boto3 = "^1.26.158"
-pytest = "^7.0.0"
-docker = "^6.0.0"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.10.0", allow-prereleases = true}
