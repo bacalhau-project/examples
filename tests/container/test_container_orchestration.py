@@ -5,11 +5,12 @@ import tempfile
 from pathlib import Path
 import time
 
+@pytest.mark.timeout(30)
 def test_container_orchestrator_connection(docker_client, container_mounts):
     """Test container orchestrator connection with configuration."""
+    containers = []
     print("\nVerifying config file mount...")
     try:
-        # First verify config file is accessible without starting service
         config_check = docker_client.containers.run(
             "bacalhauproject/bacalhau-minimal",
             command=["ls", "-l", "/root/bacalhau-cloud-config.yaml"],
@@ -21,27 +22,31 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
         pytest.fail(f"Failed to access config file: {str(e)}")
 
     print("\nStarting orchestrator container...")
-    # Start orchestrator container
-    orchestrator = docker_client.containers.run(
-        "bacalhauproject/bacalhau-minimal",
-        detach=True,
-        environment={
-            "BACALHAU_NODE_ID": "test-orchestrator",
-            "BACALHAU_NODE_TYPE": "orchestrator",
-            "BACALHAU_API_PORT": "1234",
-            "BACALHAU_HOST_NETWORK": "true"
-        },
-        mounts=container_mounts,
-        network_mode="host"
-    )
-
     try:
-        print("Orchestrator container started, waiting for initialization...")
-        print(f"Orchestrator logs: {orchestrator.logs().decode()}")
-        # Wait for orchestrator to start (reduced from 5s to 2s)
-        time.sleep(2)
+        orchestrator = docker_client.containers.run(
+            "bacalhauproject/bacalhau-minimal",
+            detach=True,
+            environment={
+                "BACALHAU_NODE_ID": "test-orchestrator",
+                "BACALHAU_NODE_TYPE": "orchestrator",
+                "BACALHAU_API_PORT": "1234",
+                "BACALHAU_HOST_NETWORK": "true"
+            },
+            mounts=container_mounts,
+            network_mode="host"
+        )
+        containers.append(orchestrator)
 
-        # Start compute container
+        print("Orchestrator container started, waiting for initialization...")
+        orchestrator_logs = orchestrator.logs().decode()
+        print(f"Orchestrator logs: {orchestrator_logs}")
+
+        if "error" in orchestrator_logs.lower():
+            pytest.fail(f"Orchestrator failed to start: {orchestrator_logs}")
+
+        if "Started Bacalhau" not in orchestrator_logs:
+            time.sleep(1)
+
         print("\nStarting compute container...")
         compute = docker_client.containers.run(
             "bacalhauproject/bacalhau-minimal",
@@ -56,30 +61,35 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
             mounts=container_mounts,
             network_mode="host"
         )
+        containers.append(compute)
         print("Compute container started, checking for connection...")
 
-        # Reduced max retries and retry interval for faster failure
-        max_retries = 6  # Reduced from 12
-        retry_interval = 2  # Reduced from 5
+        max_retries = 3
+        retry_interval = 1
         connected = False
 
-        for _ in range(max_retries):
+        for attempt in range(max_retries):
             compute_logs = compute.logs().decode()
+            if "error" in compute_logs.lower():
+                pytest.fail(f"Compute node error on attempt {attempt + 1}: {compute_logs}")
             if "Connected to orchestrator" in compute_logs:
                 connected = True
                 break
+            print(f"Attempt {attempt + 1}/{max_retries}: Waiting for connection...")
             time.sleep(retry_interval)
 
         assert connected, f"Connection failed after {max_retries * retry_interval} seconds. Logs: {compute_logs}"
 
     finally:
-        # Cleanup
-        orchestrator.remove(force=True)
-        compute.remove(force=True)
+        for container in containers:
+            try:
+                container.remove(force=True)
+            except Exception as e:
+                print(f"Warning: Failed to remove container: {e}")
 
+@pytest.mark.timeout(15)
 def test_platform_specific_volume_mounts(docker_client, temp_dir, container_mounts):
     """Test platform-specific volume mounts including config."""
-    # First verify config mount
     print("\nVerifying config file mount...")
     try:
         config_check = docker_client.containers.run(
@@ -92,7 +102,6 @@ def test_platform_specific_volume_mounts(docker_client, temp_dir, container_moun
     except docker.errors.ContainerError as e:
         pytest.fail(f"Failed to access config file: {str(e)}")
 
-    # Test data volume mount
     test_file = Path(temp_dir) / "test.txt"
     test_file.write_text("test content")
 
@@ -102,7 +111,7 @@ def test_platform_specific_volume_mounts(docker_client, temp_dir, container_moun
             command=["cat", "/data/test.txt"],
             mounts=container_mounts,
             remove=True,
-            timeout=10
+            timeout=5
         )
 
         output = container.decode('utf-8').strip()
