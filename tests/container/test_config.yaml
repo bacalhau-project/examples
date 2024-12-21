@@ -1,0 +1,7 @@
+compute:
+  node_type: compute
+  host_network: true
+  docker_host: unix:///var/run/docker.sock
+orchestrator:
+  node_type: orchestrator
+  host_network: true
