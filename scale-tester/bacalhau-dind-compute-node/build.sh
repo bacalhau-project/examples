@@ -62,6 +62,7 @@ validate_requirements() {
     local requirements=(
         "docker:Docker is required but not installed"
         "git:Git is required but not installed"
+        "curl:Curl is required but not installed"
     )
 
     for req in "${requirements[@]}"; do
@@ -84,13 +85,7 @@ validate_requirements() {
 
     # Check buildx support
     if ! docker buildx version >/dev/null 2>&1; then
-        error "Docker buildx support is required. Please ensure:
-        1. Docker Desktop is installed and running
-        2. Enable experimental features:
-           - Open Docker Desktop
-           - Go to Settings/Preferences > Docker Engine
-           - Ensure experimental features are enabled
-        3. Restart Docker Desktop"
+        error "Docker buildx support is required. Please ensure Docker buildx is installed and configured"
     fi
 }
 

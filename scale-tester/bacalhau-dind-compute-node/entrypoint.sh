@@ -25,19 +25,21 @@ success() {
 
 # Initialize system
 log "Initializing system..."
-# Only try to create cgroup directories if we have write access
-if mountpoint -q /sys/fs/cgroup && [ -w /sys/fs/cgroup ]; then
-    mkdir -p /sys/fs/cgroup/init || true
-    if [ ! -d "/sys/fs/cgroup/systemd" ]; then
-        mkdir -p /sys/fs/cgroup/systemd || true
-    fi
-else
-    log "Skipping cgroup directory creation - filesystem is read-only or not mounted"
-fi
+# Configure Docker daemon for read-only cgroup filesystem
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<EOF
+{
+    "storage-driver": "overlay2",
+    "iptables": false,
+    "cgroup-parent": "docker",
+    "live-restore": true,
+    "default-cgroupfs-mode": "private"
+}
+EOF
 
-# Start Docker daemon
+# Start Docker daemon with systemd cgroup driver
 log "Starting Docker daemon..."
-dockerd --storage-driver=overlay2 --iptables=false &
+dockerd --storage-driver=overlay2 --iptables=false --cgroup-parent=docker &
 
 # Wait for Docker to be ready
 DOCKER_READY_TIMEOUT=30
