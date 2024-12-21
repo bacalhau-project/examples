@@ -70,6 +70,7 @@ resource "google_compute_instance" "gcp_instance" {
   name         = "${var.app_name}-${var.gcp_regions[floor(count.index / var.instances_per_region)]}-vm-${count.index % var.instances_per_region + 1}"
   machine_type = var.gcp_machine_type
   zone         = "${var.gcp_regions[floor(count.index / var.instances_per_region)]}-a"
+  tags         = ["${var.app_name}"]
 
   boot_disk {
     initialize_params {
@@ -114,6 +115,24 @@ resource "google_storage_bucket" "node_bucket" {
   uniform_bucket_level_access = true
   storage_class               = "ARCHIVE"
   force_destroy              = true
+}
+
+resource "google_compute_firewall" "allow_storage" {
+  name    = "${var.app_name}-allow-storage"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  direction = "EGRESS"
+  destination_ranges = [
+    "storage.googleapis.com",
+    "*.storage.googleapis.com"
+  ]
+
+  target_tags = ["${var.app_name}"]
 }
 
 resource "google_storage_bucket" "central_logging_bucket" {
