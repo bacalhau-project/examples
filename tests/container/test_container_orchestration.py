@@ -16,7 +16,7 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
             "BACALHAU_API_PORT": "1234",
             "BACALHAU_HOST_NETWORK": "true"
         },
-        volumes=container_mounts,
+        mounts=container_mounts,
         network_mode="host"
     )
 
@@ -35,7 +35,7 @@ def test_container_orchestrator_connection(docker_client, container_mounts):
                 "BACALHAU_DOCKER_HOST": "unix:///var/run/docker.sock",
                 "BACALHAU_NODE_NETWORK_ORCHESTRATORS": "localhost:1234"
             },
-            volumes=container_mounts,
+            mounts=container_mounts,
             network_mode="host"
         )
 
@@ -66,7 +66,7 @@ def test_platform_specific_volume_mounts(docker_client, temp_dir, container_moun
         container = docker_client.containers.run(
             "bacalhauproject/bacalhau-minimal",
             command=["cat", "/data/test.txt"],
-            volumes=container_mounts,
+            mounts=container_mounts,
             remove=True
         )
 

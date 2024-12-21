@@ -31,17 +31,24 @@ def container_mounts(config_file, temp_dir=None):
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"Configuration file not found at {config_file}")
 
-    mounts = {
-        config_file: {
-            "bind": "/root/bacalhau-cloud-config.yaml",
-            "mode": "ro"
-        }
-    }
+    # Create list of mount specifications in Docker SDK format
+    mounts = [
+        docker.types.Mount(
+            target="/root/bacalhau-cloud-config.yaml",
+            source=config_file,
+            type="bind",
+            read_only=True
+        )
+    ]
 
     if temp_dir:
-        mounts[temp_dir] = {
-            "bind": "/data",
-            "mode": "rw"  # Changed to rw to allow tests to write files
-        }
+        mounts.append(
+            docker.types.Mount(
+                target="/data",
+                source=temp_dir,
+                type="bind",
+                read_only=False
+            )
+        )
 
     return mounts
