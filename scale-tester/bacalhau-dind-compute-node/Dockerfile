@@ -1,15 +1,15 @@
 FROM docker:dind
 
 # Install required packages
-RUN apk add --no-cache bash curl
+RUN apk add --no-cache bash curl jq python3 sudo
 
 # Install Bacalhau
-RUN curl -sL https://get.bacalhau.org/install.sh | bash
+COPY scripts/logging.sh scripts/install_uv.sh scripts/100_install_bacalhau.sh /usr/local/bin/
+RUN /usr/local/bin/100_install_bacalhau.sh
 
 # Copy configuration scripts
 COPY entrypoint.sh /entrypoint.sh
-COPY scripts/105_install_run_bacalhau.sh /usr/local/bin/run-bacalhau
 
-RUN chmod +x /entrypoint.sh /usr/local/bin/run-bacalhau
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
