@@ -1,18 +1,18 @@
 # Azure Instance Module
 
 resource "azurerm_public_ip" "pip" {
-  name                = "${var.app_tag}-pip"
+  name                = "${var.app_name}-pip"
   resource_group_name = var.resource_group_name
   location            = var.location
   allocation_method   = "Static"
 
   tags = {
-    App = var.app_tag
+    App = var.app_name
   }
 }
 
 resource "azurerm_network_interface" "nic" {
-  name                = "${var.app_tag}-nic"
+  name                = "${var.app_name}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -24,7 +24,7 @@ resource "azurerm_network_interface" "nic" {
   }
 
   tags = {
-    App = var.app_tag
+    App = var.app_name
   }
 }
 
@@ -42,21 +42,23 @@ data "cloudinit_config" "user_data" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
-      bacalhau_service : base64encode(file("${path.module}/../../node_files/bacalhau.service")),
-      ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
-      start_bacalhau : base64encode(file("${path.module}/../../node_files/start-bacalhau.sh")),
-      logs_dir : "/var/log/${var.app_tag}_logs",
-      log_generator_py : filebase64("${path.module}/../../node_files/log_generator.py"),
-      node_name : "${var.app_tag}-${var.location}-vm",
-      ssh_key : compact(split("\n", file(var.public_key)))[0],
-      region : var.location,
-      zone : var.location
+      bacalhau_service         = filebase64("${path.module}/../node_files/bacalhau.service")
+      start_bacalhau          = filebase64("${path.module}/../node_files/start_bacalhau.sh")
+      orchestrator_config     = filebase64(var.orchestrator_config_path)
+      bacalhau_installation_id = var.bacalhau_installation_id
+      logs_dir               = var.logs_dir
+      logs_to_process_dir    = var.logs_to_process_dir
+      central_logging_bucket = var.central_logging_bucket
+      ssh_key               = compact(split("\n", file(var.public_key)))[0]
+      username             = var.username
+      region              = var.location
+      zone                = var.location
     })
   }
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                = "${var.app_tag}-vm"
+  name                = "${var.app_name}-vm"
   resource_group_name = var.resource_group_name
   location            = var.location
   size                = var.vm_size
@@ -85,24 +87,24 @@ resource "azurerm_linux_virtual_machine" "vm" {
   custom_data = base64encode(data.cloudinit_config.user_data.rendered)
 
   tags = {
-    App = var.app_tag
+    App = var.app_name
   }
 }
 
 resource "azurerm_storage_account" "storage" {
-  name                     = lower(replace("${var.app_tag}${var.location}sa", "/[^a-z0-9]/", ""))
+  name                     = lower(replace("${var.app_name}${var.location}sa", "/[^a-z0-9]/", ""))
   resource_group_name      = var.resource_group_name
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
   tags = {
-    App = var.app_tag
+    App = var.app_name
   }
 }
 
 resource "azurerm_storage_container" "container" {
-  name                  = "${var.app_tag}-${var.location}-container"
+  name                  = "${var.app_name}-${var.location}-container"
   storage_account_name  = azurerm_storage_account.storage.name
   container_access_type = "private"
 }

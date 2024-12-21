@@ -7,11 +7,11 @@ data "cloudinit_config" "user_data" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
-      bacalhau_service : base64encode(file("${path.module}/../../node_files/bacalhau.service")),
-      ipfs_service : base64encode(file("${path.module}/../../node_files/ipfs.service")),
-      start_bacalhau : base64encode(file("${path.module}/../../node_files/start-bacalhau.sh")),
+      bacalhau_service : base64encode(file("${path.module}/../../../node_files/bacalhau.service")),
+      ipfs_service : base64encode(file("${path.module}/../../../node_files/ipfs.service")),
+      start_bacalhau : base64encode(file("${path.module}/../../../node_files/start-bacalhau.sh")),
       logs_dir : "/var/log/${var.app_tag}_logs",
-      log_generator_py : filebase64("${path.module}/../../node_files/log_generator.py"),
+      log_generator_py : filebase64("${path.module}/../../../node_files/log_generator.py"),
       node_name : "${var.app_tag}-${var.region}-vm"
       ssh_key : compact(split("\n", file(var.public_key)))[0]
       region : var.region
@@ -19,7 +19,6 @@ data "cloudinit_config" "user_data" {
       app_name : var.app_tag
     })
   }
-}
 
 resource "aws_iam_role" "vm_iam_role" {
   name               = "${var.app_tag}-${var.region}_vm_iam_role"

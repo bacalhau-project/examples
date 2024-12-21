@@ -13,8 +13,8 @@ provider "google" {
 
 locals {
   required_files = {
-    bacalhau_service    = fileexists("${path.module}/node_files/bacalhau.service")
-    start_bacalhau      = fileexists("${path.module}/node_files/start_bacalhau.sh")
+    bacalhau_service    = fileexists("${path.module}/../node_files/bacalhau.service")
+    start_bacalhau      = fileexists("${path.module}/../node_files/start_bacalhau.sh")
     orchestrator_config = fileexists(var.orchestrator_config_path)
   }
 
@@ -51,8 +51,8 @@ data "cloudinit_config" "user_data" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../cloud-init/init-vm.yml", {
-      bacalhau_service         = filebase64("${path.module}/node_files/bacalhau.service")
-      start_bacalhau          = filebase64("${path.module}/node_files/start_bacalhau.sh")
+      bacalhau_service         = filebase64("${path.module}/../node_files/bacalhau.service")
+      start_bacalhau          = filebase64("${path.module}/../node_files/start_bacalhau.sh")
       orchestrator_config     = filebase64(var.orchestrator_config_path)
       bacalhau_installation_id = var.bacalhau_installation_id
       ssh_key                = compact(split("\n", file(var.public_key)))[0]

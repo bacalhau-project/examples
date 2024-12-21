@@ -14,8 +14,8 @@ provider "aws" {
 
 locals {
   required_files = {
-    bacalhau_service    = fileexists("${path.module}/node_files/bacalhau.service")
-    start_bacalhau      = fileexists("${path.module}/node_files/start_bacalhau.sh")
+    bacalhau_service    = fileexists("${path.module}/../node_files/bacalhau.service")
+    start_bacalhau      = fileexists("${path.module}/../node_files/start_bacalhau.sh")
     orchestrator_config = fileexists(var.orchestrator_config_path)
   }
 
