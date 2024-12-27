@@ -1,6 +1,8 @@
 AKIA
 bacalhau
 bacalhauproject
+bubbletea
+charmbracelet
 datestamp
 DHGR
 dotenv
@@ -13,5 +15,7 @@ godotenv
 joho
 ldflags
 LEGA
+lipgloss
 lzma
 qrcode
+termui

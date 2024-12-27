@@ -116,7 +116,8 @@ generate_tags() {
     
     # If in git repo, add git commit hash tag
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        local git_hash=$(git rev-parse --short HEAD)
+        local git_hash
+        git_hash=$(git rev-parse --short HEAD)
         tags+=("$base_tag:$git_hash")
     fi
     
@@ -143,7 +144,7 @@ build_and_push_images() {
         --cpu-quota="150000"
         --squash
         --compress
-        $tag_args
+        "$tag_args"
     )
     
     # Add cache settings

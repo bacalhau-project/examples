@@ -5,22 +5,41 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
+// Add counters for monitoring
+var (
+	messagesSent  uint64
+	messagesError uint64
+)
+
 // Message represents the structure we'll send to SQS
 type Message struct {
-	VMName    string `json:"vm_name"`
-	IconName  string `json:"icon_name"`
-	Timestamp string `json:"timestamp"`
+	VMName      string `json:"vm_name"`
+	IconName    string `json:"icon_name"`
+	Timestamp   string `json:"timestamp"`
+	Color       string `json:"color"`
+	ContainerID string `json:"container_id"`
+}
+
+// Simple regex to validate a 6-digit hex code with a leading '#'
+var hexColorRegex = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+
+const containerIDLength = 8
+
+func GetRandomIcon(r *rand.Rand) string {
+	return GetRandomEmoji(r)
 }
 
 func getSignatureKey(key, datestamp, region, service string) []byte {
@@ -101,10 +120,15 @@ func sendSQSMessage(msg Message, region, accessKey, secretKey, queueURL string) 
 		return fmt.Errorf("invalid queue URL: %w", err)
 	}
 
+	// Create a unique deduplication ID based on the message content and timestamp
+	deduplicationID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s-%s", msgJSON, msg.Timestamp))))
+
 	params := map[string]string{
-		"Action":      "SendMessage",
-		"MessageBody": string(msgJSON),
-		"Version":     "2012-11-05",
+		"Action":                 "SendMessage",
+		"MessageBody":            string(msgJSON),
+		"Version":                "2012-11-05",
+		"MessageGroupId":         msg.VMName, // Use VM name as the group ID to maintain order per VM
+		"MessageDeduplicationId": deduplicationID,
 	}
 
 	// Use the full SQS hostname
@@ -140,50 +164,188 @@ func sendSQSMessage(msg Message, region, accessKey, secretKey, queueURL string) 
 
 	// Check response
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("SQS error (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	return nil
 }
 
+func getContainerID() string {
+	// Try to get container ID from /proc/self/mountinfo (works in most container runtimes)
+	if mountData, err := os.ReadFile("/proc/self/mountinfo"); err == nil {
+		lines := strings.Split(string(mountData), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "/containers/") {
+				parts := strings.Split(line, "/containers/")
+				if len(parts) > 1 {
+					containerID := strings.Split(parts[1], "/")[0]
+					if len(containerID) >= containerIDLength {
+						return containerID[:containerIDLength]
+					}
+				}
+			}
+		}
+	}
+
+	// Try to get container ID from cgroup file (Docker)
+	if cgroupData, err := os.ReadFile("/proc/self/cgroup"); err == nil {
+		lines := strings.Split(string(cgroupData), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "docker") {
+				parts := strings.Split(line, "/")
+				containerID := parts[len(parts)-1]
+				if len(containerID) >= containerIDLength {
+					return containerID[:containerIDLength]
+				}
+			}
+			// Check for containerd format
+			if strings.Contains(line, "containers") {
+				parts := strings.Split(line, "/")
+				for i, part := range parts {
+					if strings.HasPrefix(part, "containers") && i+1 < len(parts) {
+						containerID := parts[i+1]
+						if len(containerID) >= containerIDLength {
+							return containerID[:containerIDLength]
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Try to get container ID from hostname (Kubernetes pods)
+	if hostname, err := os.Hostname(); err == nil {
+		// Kubernetes pod names often contain the container/pod ID
+		if strings.Contains(hostname, "-") {
+			parts := strings.Split(hostname, "-")
+			lastPart := parts[len(parts)-1]
+			if len(lastPart) >= containerIDLength {
+				return lastPart[:containerIDLength]
+			}
+		}
+		return hostname
+	}
+
+	return "unknown"
+}
+
 func main() {
 	// Initialize local random source
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		fmt.Printf("Error loading .env file: %v\n", err)
+	// Check for ENV_FILE environment variable
+	envFile := os.Getenv("ENV_FILE")
+	var envSource string
+
+	if envFile != "" {
+		// Check if the specified file exists and is readable
+		if _, err := os.Stat(envFile); err != nil {
+			fmt.Printf("Error: Specified ENV_FILE '%s' is not accessible: %v\n", envFile, err)
+			os.Exit(1)
+		}
+		// Load the specified env file
+		if err := godotenv.Load(envFile); err != nil {
+			fmt.Printf("Error loading specified env file '%s': %v\n", envFile, err)
+			os.Exit(1)
+		}
+		envSource = fmt.Sprintf("Environment loaded from specified ENV_FILE: %s", envFile)
+	} else {
+		// Try to load default .env file, but don't error if it doesn't exist
+		if err := godotenv.Load(); err != nil {
+			envSource = "Using environment variables (no .env file found)"
+		} else {
+			envSource = "Environment loaded from default .env file in current directory"
+		}
+	}
+
+	fmt.Println(envSource)
+
+	// Get environment variables
+	required := map[string]string{
+		"AWS_REGION":            os.Getenv("AWS_REGION"),
+		"AWS_ACCESS_KEY_ID":     os.Getenv("AWS_ACCESS_KEY_ID"),
+		"AWS_SECRET_ACCESS_KEY": os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		"SQS_QUEUE_URL":         os.Getenv("SQS_QUEUE_URL"),
+	}
+
+	// Check for missing required variables
+	var missing []string
+	for name, value := range required {
+		if value == "" {
+			missing = append(missing, name)
+		}
+	}
+
+	if len(missing) > 0 {
+		fmt.Printf("\nMissing required environment variables in %s:\n%s\n\n",
+			strings.TrimPrefix(envSource, "Environment loaded from "),
+			strings.Join(missing, "\n"))
+		fmt.Println("Required variables:")
+		fmt.Println("- AWS_REGION")
+		fmt.Println("- AWS_ACCESS_KEY_ID")
+		fmt.Println("- AWS_SECRET_ACCESS_KEY")
+		fmt.Println("- SQS_QUEUE_URL")
+		fmt.Println("\nOptional variables:")
+		fmt.Println("- COLOR (hex color code, e.g., #4287f5)")
 		os.Exit(1)
 	}
 
-	// Get configuration from environment variables
-	awsRegion := os.Getenv("AWS_REGION")
-	awsAccessKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	awsSecretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	queueURL := os.Getenv("AWS_SQS_QUEUE_URL")
+	// Get optional color variable
+	color := os.Getenv("COLOR")
+	if color == "" {
+		color = "#4287f5" // Default to a nice blue if not specified
+	}
 
-	// Validate required environment variables
-	if awsRegion == "" || awsAccessKey == "" || awsSecretKey == "" || queueURL == "" {
-		fmt.Println("Missing required environment variables. Please ensure all AWS credentials are set in .env file")
+	// Validate color format
+	if !hexColorRegex.MatchString(color) {
+		fmt.Printf("Error: COLOR must be a valid hex color code (e.g., #4287f5), got: %s\n", color)
 		os.Exit(1)
 	}
 
 	fmt.Println("Starting message publisher...")
+	startTime := time.Now()
+
+	// Print stats every minute
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			sent := atomic.LoadUint64(&messagesSent)
+			errors := atomic.LoadUint64(&messagesError)
+			uptime := time.Since(startTime).Round(time.Second)
+
+			fmt.Printf("\n=== Stats (Uptime: %v) ===\n", uptime)
+			fmt.Printf("Messages Sent: %d\n", sent)
+			fmt.Printf("Errors: %d\n", errors)
+			fmt.Printf("Success Rate: %.2f%%\n", float64(sent)/(float64(sent+errors))*100)
+			fmt.Println("===========================")
+		}
+	}()
 
 	// Continuously send messages
 	for {
-		msg := Message{
-			VMName:    fmt.Sprintf("vm-%d", r.Intn(100)),
-			IconName:  GetRandomIcon(r),
-			Timestamp: time.Now().Format(time.RFC3339),
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = "unknown"
 		}
 
-		if err := sendSQSMessage(msg, awsRegion, awsAccessKey, awsSecretKey, queueURL); err != nil {
-			fmt.Printf("Error: %v\n", err)
+		msg := Message{
+			VMName:      hostname,
+			IconName:    GetRandomIcon(r),
+			Timestamp:   time.Now().Format(time.RFC3339),
+			Color:       color,
+			ContainerID: getContainerID(),
+		}
+
+		if err := sendSQSMessage(msg, os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("SQS_QUEUE_URL")); err != nil {
+			atomic.AddUint64(&messagesError, 1)
+			fmt.Printf("❌ Error sending message: %v\n", err)
 		} else {
+			atomic.AddUint64(&messagesSent, 1)
 			msgJSON, _ := json.Marshal(msg)
-			fmt.Printf("Sent message: %s\n", string(msgJSON))
+			fmt.Printf("✅ Successfully sent message: %s\n", string(msgJSON))
 		}
 
 		sleepTime := 100 + r.Intn(2900) // 100ms to 3000ms
