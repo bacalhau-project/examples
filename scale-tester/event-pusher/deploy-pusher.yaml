@@ -1,0 +1,26 @@
+Tasks:
+  - Engine:
+      Params:
+        EnvironmentVariables:
+          - ENV_FILE=/config/.env
+        Image: docker.io/bacalhauproject/event-pusher:202412241225
+        WorkingDirectory: ""
+      Type: docker
+    Name: event-pusher
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/config"
+            ReadWrite: true
+        Target: "/config"
+    Network:
+      Type: Full
+    Publisher:
+      Type: ""
+    Resources:
+      CPU: 250m
+      Memory: 250m
+    Timeouts: {}
+Type: ops
+Count: 1

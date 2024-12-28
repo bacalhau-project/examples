@@ -62,6 +62,9 @@ validate_requirements() {
     local requirements=(
         "docker:Docker is required but not installed"
         "git:Git is required but not installed"
+        "curl:Curl is required but not installed"
+        "python3:Python 3 is required but not installed"
+        "jq:jq is required but not installed"
     )
     
     for req in "${requirements[@]}"; do
@@ -113,7 +116,8 @@ generate_tags() {
     
     # If in git repo, add git commit hash tag
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        local git_hash=$(git rev-parse --short HEAD)
+        local git_hash
+        git_hash=$(git rev-parse --short HEAD)
         tags+=("$base_tag:$git_hash")
     fi
     
@@ -140,7 +144,7 @@ build_and_push_images() {
         --cpu-quota="150000"
         --squash
         --compress
-        $tag_args
+        "$tag_args"
     )
     
     # Add cache settings
@@ -199,8 +203,8 @@ main() {
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
     log "docker run \
-    -v orchestrator-config.yaml:/root/bacalhau-cloud-config.yaml \
-    -v node-info:/etc/node-info \
+    -v ./orchestrator-config.yaml:/etc/bacalhau/config.yaml \
+    -v ./node-info:/etc/node-info \
     $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
 }
 

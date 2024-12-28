@@ -1,0 +1,41 @@
+{
+  "builds": [
+    {
+      "name": "bacalhau",
+      "builder_type": "amazon-ebs",
+      "build_time": 1735180349,
+      "files": null,
+      "artifact_id": "us-west-2:ami-086226999dfcfb65e",
+      "packer_run_uuid": "e80e2262-bb0c-6651-3317-367c51ece800",
+      "custom_data": null
+    },
+    {
+      "name": "bacalhau",
+      "builder_type": "amazon-ebs",
+      "build_time": 1735182030,
+      "files": null,
+      "artifact_id": "us-west-2:ami-048b600c5aec10c6f",
+      "packer_run_uuid": "ffe67ef6-ce1e-1ff3-43ca-a158d2512eee",
+      "custom_data": null
+    },
+    {
+      "name": "bacalhau",
+      "builder_type": "amazon-ebs",
+      "build_time": 1735257649,
+      "files": null,
+      "artifact_id": "us-west-2:ami-06e47c5231eb29362",
+      "packer_run_uuid": "176d7b70-e9c0-9261-215f-271a6899417e",
+      "custom_data": null
+    },
+    {
+      "name": "bacalhau",
+      "builder_type": "amazon-ebs",
+      "build_time": 1735279388,
+      "files": null,
+      "artifact_id": "us-west-2:ami-03212e939b49e6f64",
+      "packer_run_uuid": "3eb3ad61-2037-c14d-5c92-600bc3ab448d",
+      "custom_data": null
+    }
+  ],
+  "last_run_uuid": "3eb3ad61-2037-c14d-5c92-600bc3ab448d"
+}
