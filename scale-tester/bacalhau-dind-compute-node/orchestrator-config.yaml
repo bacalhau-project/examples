@@ -11,5 +11,9 @@ Compute:
     RequireTLS: true
   AllowListedLocalPaths:
     - /var/log/logs_to_process:rw
+  Engine:
+    Resources:
+      CPU: 1
+      Memory: 1GB
 JobAdmissionControl:
   AcceptNetworkedJobs: true

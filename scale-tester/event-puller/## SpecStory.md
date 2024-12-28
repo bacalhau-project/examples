@@ -916,14 +916,14 @@ I'll help create a .env file based on the credentials.json and the required envi
 AWS_REGION=us-east-1  # Replace with your desired region
 AWS_ACCESS_KEY_ID=AIDA3FLDYOBFDVW3XPP5B
 AWS_SECRET_ACCESS_KEY=<YOUR_SECRET_ACCESS_KEY>  # This needs to be filled in securely
-AWS_SQS_QUEUE_URL=https://sqs.<region>.amazonaws.com/<account-id>/<queue-name>  # Replace with your SQS queue URL
+SQS_QUEUE_URL=https://sqs.<region>.amazonaws.com/<account-id>/<queue-name>  # Replace with your SQS queue URL
 ```
 
 Important security notes:
 1. Never commit the .env file to version control
 2. Add .env to your .gitignore file
 3. The AWS_SECRET_ACCESS_KEY needs to be obtained securely from your AWS IAM console
-4. The AWS_SQS_QUEUE_URL needs to be filled in with your actual SQS queue URL
+4. The SQS_QUEUE_URL needs to be filled in with your actual SQS queue URL
 5. The AWS_REGION should be set to your desired AWS region
 
 You should also add a .env.example file that can be safely committed to version control:
@@ -935,7 +935,7 @@ You should also add a .env.example file that can be safely committed to version 
 AWS_REGION=<region>
 AWS_ACCESS_KEY_ID=<access_key_id>
 AWS_SECRET_ACCESS_KEY=<secret_access_key>
-AWS_SQS_QUEUE_URL=<sqs_queue_url>
+SQS_QUEUE_URL=<sqs_queue_url>
 ```
 
 And add this to your .gitignore:
@@ -1215,7 +1215,7 @@ Also, make sure your AWS credentials and region are correctly set in your .env f
 AWS_REGION=us-west-2
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_SQS_QUEUE_URL=https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+SQS_QUEUE_URL=https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
 ```
 
 This should resolve the SignatureDoesNotMatch error you're encountering.
