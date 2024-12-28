@@ -1,0 +1,28 @@
+Tasks:
+  - Engine:
+      Params:
+        EnvironmentVariables:
+          - ENV_FILE_B64={{.env_file_b64}}
+        Image: ubuntu:latest
+        WorkingDirectory: ""
+        Entrypoint:
+          ["/bin/bash", "-c", "echo $ENV_FILE_B64 | base64 -d > /config/.env"]
+      Type: docker
+    Name: env-writer
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/config"
+    Network:
+      Type: Full
+    Publisher:
+      Type: ""
+    Resources:
+      CPU: 250m
+      Memory: 250m
+    Timeouts: {}
+Type: ops
+Count: 1

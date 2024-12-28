@@ -1,3 +1,9 @@
 .many-node-runner.yaml
 many-node-runner
 vendor/
+sqs-policy.json
+event-pusher/bin*
+credentials.json
+aws_spot/aws-spot-env.*
+aws_spot/pusher_env.*
+*SpecStory*

@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  event-publisher:
+    image: docker.io/bacalhauproject/event-pusher:202412231206
+    # Mount the .env file into the container for credentials
+    environment:
+      - ENV_FILE=/config/.env
+    volumes:
+      - ./config:/config:rw
+    # Run the compiled binary
+    command: ["/app"]
+    # Always restart to keep the containers running until shutdown
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 1

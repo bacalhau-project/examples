@@ -1,0 +1,17 @@
+NameProvider: "uuid"
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://ns101607.ip-147-135-16.us:4222
+  Auth:
+    Token: 93182ba0-6a4a-4c5b-9554-deb0b19ee71f
+  AllowListedLocalPaths:
+    - /bacalhau_data:rw
+  Engine:
+    Resources:
+      CPU: 1
+      Memory: 1GB
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
