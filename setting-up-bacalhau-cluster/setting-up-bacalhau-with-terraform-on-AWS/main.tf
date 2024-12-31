@@ -1,9 +1,5 @@
 
-# Provider configuration
-provider "aws" {
-  region = "us-east-1"
-}
-
+# Provider configurations
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
@@ -18,9 +14,7 @@ provider "aws" {
 module "region_us_east_1" {
   source = "./modules/region"
 
-  providers = {
-    aws = aws.us_east_1
-  }
+  aws = aws.us_east_1
 
   app_name                 = var.app_name
   app_tag                  = var.app_tag
@@ -37,9 +31,7 @@ module "region_us_east_1" {
 module "region_eu_west_1" {
   source = "./modules/region"
 
-  providers = {
-    aws = aws.eu_west_1
-  }
+  aws = aws.eu_west_1
 
   app_name                 = var.app_name
   app_tag                  = var.app_tag

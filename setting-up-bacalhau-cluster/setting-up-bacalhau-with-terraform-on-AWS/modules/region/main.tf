@@ -1,14 +1,10 @@
- terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.0"
-    }
-  }
+
+variable "aws" {
+  type = any
 }
 
 provider "aws" {
-  # Configuration is passed from the root module
+  alias = "region"
 }
 
 # Input variables
