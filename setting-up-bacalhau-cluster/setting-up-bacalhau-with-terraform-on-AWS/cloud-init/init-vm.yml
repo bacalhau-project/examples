@@ -1,1 +1,33 @@
- 
+ #cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - git
+  - vim
+  - htop
+  - jq
+  - unzip
+  - awscli
+
+users:
+  - name: ubuntu
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAr... # Replace with your SSH public key
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+
+runcmd:
+  - echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+  - echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+  - systemctl restart sshd
+  - timedatectl set-timezone UTC
+  - ufw allow ssh
+  - ufw enable
+
+write_files:
+  - path: /etc/motd
+    content: |
+      Welcome to Bacalhau Cluster Node
+      Managed by Terraform
