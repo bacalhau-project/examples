@@ -1,4 +1,18 @@
 
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "aws" {
+  alias  = "region"
+  region = var.region
+}
+
 module "networkModule" {
   source  = "../network"
   app_tag = var.app_tag
