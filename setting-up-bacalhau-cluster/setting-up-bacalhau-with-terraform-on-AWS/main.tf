@@ -7,6 +7,11 @@ provider "aws" {
   region = "us-east-1" # Default region, will be overridden in each module
 }
 
+provider "aws" {
+  alias  = "default"
+  region = "us-east-1"
+}
+
 module "regions" {
   for_each = local.env_data.locations
 
