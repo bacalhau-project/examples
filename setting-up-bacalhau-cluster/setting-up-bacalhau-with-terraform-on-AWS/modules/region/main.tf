@@ -1,30 +1,37 @@
-
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-      configuration_aliases = [aws.region]
-    }
-  }
+provider "aws" {
+  region = var.region
 }
 
-# Input variables
-variable "app_name" {}
-variable "app_tag" {}
-variable "bacalhau_installation_id" {}
-variable "username" {}
-variable "public_key" {}
-variable "private_key" {}
-variable "bacalhau_data_dir" {}
-variable "bacalhau_node_dir" {}
-variable "aws_instance_type" {}
-variable "region_config" {}
+module "networkModule" {
+  source  = "./modules/network"
+  app_tag = var.app_tag
+  region  = var.region
+  zone    = var.locations[var.region].zone
 
-# Outputs
-output "instance_public_ips" {
-  value = {}
+  cidr_block_range         = "10.0.0.0/16"
+  subnet1_cidr_block_range = "10.0.1.0/24"
+  subnet2_cidr_block_range = "10.0.2.0/24"
 }
 
-output "instance_ids" {
-  value = {}
+module "securityGroupModule" {
+  source = "./modules/securityGroup"
+
+  vpc_id  = module.networkModule.vpc_id
+  app_tag = var.app_tag
 }
+
+module "instanceModule" {
+  source = "./modules/instance"
+
+  instance_type      = var.instance_type
+  instance_ami       = var.locations[var.region].instance_ami
+  region             = var.region
+  zone               = var.locations[var.region].zone
+  vpc_id             = module.networkModule.vpc_id
+  subnet_public_id   = module.networkModule.public_subnets[0]
+  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_4222]
+  app_tag            = var.app_tag
+
+  public_key = var.public_key
+}
+
