@@ -12,7 +12,7 @@ provider "aws" {
 }
 
 module "networkModule" {
-  source  = "./modules/network"
+  source  = "../network"
   app_tag = var.app_tag
   region  = var.region
   zone    = var.locations[var.region].zone
@@ -23,7 +23,7 @@ module "networkModule" {
 }
 
 module "securityGroupModule" {
-  source = "./modules/securityGroup"
+  source = "../securityGroup"
 
   vpc_id  = module.networkModule.vpc_id
   app_tag = var.app_tag
@@ -32,17 +32,23 @@ module "securityGroupModule" {
 module "instanceModule" {
   count = var.locations[var.region].node_count
 
-  source = "./modules/instance"
+  source = "../instance"
 
-  instance_type      = var.instance_type
-  instance_ami       = var.locations[var.region].instance_ami
-  region             = var.region
-  zone               = var.locations[var.region].zone
-  vpc_id             = module.networkModule.vpc_id
-  subnet_public_id   = module.networkModule.public_subnets[0]
-  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_4222]
-  app_tag            = "${var.app_tag}-${count.index}"
-  public_key         = var.public_key
+  aws_instance_type        = var.aws_instance_type
+  instance_ami             = var.locations[var.region].instance_ami
+  region                   = var.region
+  zone                     = var.locations[var.region].zone
+  vpc_id                   = module.networkModule.vpc_id
+  subnet_public_id         = module.networkModule.public_subnets[0]
+  security_group_ids       = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_4222]
+  app_tag                  = "${var.app_tag}-${count.index}"
+  public_key               = var.public_key
+  private_key              = var.private_key
+  app_name                 = var.app_name
+  bacalhau_installation_id = var.bacalhau_installation_id
+  bacalhau_data_dir        = var.bacalhau_data_dir
+  bacalhau_node_dir        = var.bacalhau_node_dir
+  username                 = var.username
 }
 
 output "public_ips" {
