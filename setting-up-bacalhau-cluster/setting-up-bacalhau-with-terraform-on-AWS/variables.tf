@@ -46,6 +46,3 @@ variable "bacalhau_config_file_path" {
   type = string
 }
 
-variable "aws_credentials_file_path" {
-  type = string
-}
