@@ -3,6 +3,11 @@ locals {
 }
 
 
+provider "aws" {
+  alias  = "primary"
+  region = keys(local.env_data.locations)[0]
+}
+
 module "regions" {
   for_each = local.env_data.locations
 
@@ -20,6 +25,9 @@ module "regions" {
   bacalhau_node_dir        = local.env_data.bacalhau_node_dir
   username                 = local.env_data.username
 
+  providers = {
+    aws = aws.primary
+  }
 }
 
 output "instance_public_ips" {
