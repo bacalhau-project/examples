@@ -11,6 +11,7 @@ packages:
   - awscli
   - docker.io
   - docker-compose
+  - nfs-common
 
 users:
   - name: ubuntu
@@ -30,9 +31,14 @@ runcmd:
   - curl -sL https://get.bacalhau.org/install.sh | bash
   - systemctl enable docker
   - systemctl start docker
+  - mkdir -p /mnt/nfs
+  - mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 <nfs-server-ip>:/ /mnt/nfs
 
 write_files:
   - path: /etc/motd
     content: |
       Welcome to Bacalhau Cluster Node
       Managed by Terraform
+  - path: /etc/fstab
+    content: |
+      <nfs-server-ip>:/ /mnt/nfs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0
