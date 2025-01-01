@@ -2,15 +2,6 @@ locals {
   env_data = jsondecode(file("${path.module}/.env.json"))
 }
 
-provider "aws" {
-  alias  = "region"
-  region = "us-east-1" # Default region, will be overridden in each module
-}
-
-provider "aws" {
-  alias  = "default"
-  region = "us-east-1"
-}
 
 module "regions" {
   for_each = local.env_data.locations
@@ -29,9 +20,6 @@ module "regions" {
   bacalhau_node_dir        = local.env_data.bacalhau_node_dir
   username                 = local.env_data.username
 
-  providers = {
-    aws = aws.region
-  }
 }
 
 output "instance_public_ips" {
