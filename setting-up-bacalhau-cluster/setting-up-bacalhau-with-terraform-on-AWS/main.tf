@@ -10,11 +10,17 @@ provider "aws" {
   region = "eu-west-1"
 }
 
+# Variables
+variable "start_node_script_path" {}
+variable "orchestrator_config_path" {}
+
 # Create VPC and base infrastructure for each region
 module "region_us_east_1" {
   source = "./modules/region"
 
-  aws = aws.us_east_1
+  providers = {
+    aws.region = aws.us_east_1
+  }
 
   app_name                 = var.app_name
   app_tag                  = var.app_tag
@@ -31,7 +37,9 @@ module "region_us_east_1" {
 module "region_eu_west_1" {
   source = "./modules/region"
 
-  aws = aws.eu_west_1
+  providers = {
+    aws.region = aws.eu_west_1
+  }
 
   app_name                 = var.app_name
   app_tag                  = var.app_tag
