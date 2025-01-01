@@ -1,15 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-    }
-  }
-}
-
-provider "aws" {
-  alias  = "region"
-  region = var.region
-}
 
 module "networkModule" {
   source  = "../network"
