@@ -1,29 +1,24 @@
-locals {
-  env_data = jsondecode(file("${path.module}/.env.json"))
-}
-
-
 provider "aws" {
   alias  = "primary"
-  region = keys(local.env_data.locations)[0]
+  region = keys(var.locations)[0]
 }
 
 module "regions" {
-  for_each = local.env_data.locations
+  for_each = var.locations
 
   source = "./modules/region"
 
   region                   = each.key
-  locations                = local.env_data.locations
-  app_tag                  = local.env_data.app_tag
-  aws_instance_type        = local.env_data.aws_instance_type
-  public_key               = local.env_data.public_key
-  private_key              = local.env_data.private_key
-  app_name                 = local.env_data.app_name
-  bacalhau_installation_id = local.env_data.bacalhau_installation_id
-  bacalhau_data_dir        = local.env_data.bacalhau_data_dir
-  bacalhau_node_dir        = local.env_data.bacalhau_node_dir
-  username                 = local.env_data.username
+  locations                = var.locations
+  app_tag                  = var.app_tag
+  aws_instance_type        = var.aws_instance_type
+  public_key               = var.public_key
+  private_key              = var.private_key
+  app_name                 = var.app_name
+  bacalhau_installation_id = var.bacalhau_installation_id
+  bacalhau_data_dir        = var.bacalhau_data_dir
+  bacalhau_node_dir        = var.bacalhau_node_dir
+  username                 = var.username
 
   providers = {
     aws = aws.primary
