@@ -2,10 +2,9 @@ provider "aws" {
   alias  = "primary"
   region = keys(var.locations)[0]
   
-  # Explicitly tell Terraform to use environment variables
-  access_key = null
-  secret_key = null
-  token      = null
+  # Configure for SSO credentials
+  shared_config_files      = ["~/.aws/config"]
+  shared_credentials_files = ["~/.aws/credentials"]
 }
 
 # Check if AWS credentials are properly configured
