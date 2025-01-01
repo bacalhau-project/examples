@@ -8,6 +8,11 @@ terraform {
   }
 }
 
+provider "aws" {
+  alias  = "primary"
+  region = var.region
+}
+
 
 module "networkModule" {
   source  = "../network"
@@ -18,6 +23,10 @@ module "networkModule" {
   cidr_block_range         = "10.0.0.0/16"
   subnet1_cidr_block_range = "10.0.1.0/24"
   subnet2_cidr_block_range = "10.0.2.0/24"
+  
+  providers = {
+    aws = aws.primary
+  }
 }
 
 module "securityGroupModule" {
@@ -25,6 +34,10 @@ module "securityGroupModule" {
 
   vpc_id  = module.networkModule.vpc_id
   app_tag = var.app_tag
+  
+  providers = {
+    aws = aws.primary
+  }
 }
 
 module "instanceModule" {
@@ -46,6 +59,10 @@ module "instanceModule" {
   bacalhau_node_dir         = var.bacalhau_node_dir
   bacalhau_config_file_path = var.bacalhau_config_file_path
   username                  = var.username
+  
+  providers = {
+    aws = aws.primary
+  }
 }
 
 output "public_ips" {
