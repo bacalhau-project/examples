@@ -21,6 +21,8 @@ module "securityGroupModule" {
 }
 
 module "instanceModule" {
+  count = var.locations[var.region].node_count
+
   source = "./modules/instance"
 
   instance_type      = var.instance_type
@@ -30,8 +32,11 @@ module "instanceModule" {
   vpc_id             = module.networkModule.vpc_id
   subnet_public_id   = module.networkModule.public_subnets[0]
   security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_4222]
-  app_tag            = var.app_tag
+  app_tag            = "${var.app_tag}-${count.index}"
+  public_key         = var.public_key
+}
 
-  public_key = var.public_key
+output "public_ips" {
+  value = module.instanceModule[*].public_ip
 }
 
