@@ -1,7 +1,3 @@
-variable "start_node_script_path" {
-  type = string
-}
-
 variable "app_tag" {
   type = string
 }
@@ -44,4 +40,12 @@ variable "locations" {
     instance_ami = string
     node_count   = number
   }))
+}
+
+variable "bacalhau_config_file_path" {
+  type = string
+}
+
+variable "aws_credentials_file_path" {
+  type = string
 }
