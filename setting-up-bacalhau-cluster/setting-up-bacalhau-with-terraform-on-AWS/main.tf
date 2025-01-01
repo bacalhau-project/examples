@@ -5,6 +5,7 @@ provider "aws" {
   # Configure for SSO credentials
   shared_config_files      = ["~/.aws/config"]
   shared_credentials_files = ["~/.aws/credentials"]
+  profile                  = "default"  # or your specific SSO profile name
 }
 
 # Check if AWS credentials are properly configured
