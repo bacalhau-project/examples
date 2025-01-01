@@ -1,6 +1,10 @@
 provider "aws" {
   alias  = "primary"
   region = keys(var.locations)[0]
+  
+  # These will be automatically picked up from environment variables
+  # access_key = var.aws_access_key
+  # secret_key = var.aws_secret_key
 }
 
 module "regions" {
