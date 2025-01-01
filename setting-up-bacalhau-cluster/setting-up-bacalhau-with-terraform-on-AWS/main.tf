@@ -10,13 +10,13 @@ module "regions" {
   region       = each.key
   locations    = local.env_data.locations
   app_tag      = local.env_data.app_tag
-  instance_type = local.env_data.instance_type
+  instance_type = local.env_data.aws_instance_type
   public_key   = local.env_data.public_key
 }
 
 output "instance_public_ips" {
   value = {
     for region, module in module.regions :
-    region => module.instanceModule.public_ip
+    region => module.public_ips
   }
 }
