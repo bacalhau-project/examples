@@ -3,6 +3,7 @@ locals {
 }
 
 provider "aws" {
+  alias  = "region"
   region = "us-east-1" # Default region, will be overridden in each module
 }
 
@@ -24,7 +25,7 @@ module "regions" {
   username                 = local.env_data.username
 
   providers = {
-    aws = aws
+    aws = aws.region
   }
 }
 
