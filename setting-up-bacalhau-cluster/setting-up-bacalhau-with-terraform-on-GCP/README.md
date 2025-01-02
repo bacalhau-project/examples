@@ -25,9 +25,18 @@ Here's what each variable in `env.json` controls:
 
 - `bootstrap_project_id`: Existing GCP project ID used to create the new project and grant permissions. It will only be used to create the new project.
 - `base_project_name`: Base name for the new GCP project (will have timestamp appended)
-- `gcp_billing_account_id`: Your GCP billing account ID for project charges
-- `gcp_user_email`: Email of the GCP user to grant owner permissions
-- `org_id`: Your GCP organization ID
+- `gcp_billing_account_id`: Your GCP billing account ID for project charges. Get it with:
+  ```bash
+  gcloud beta billing accounts list --format="value(name)"
+  ```
+- `gcp_user_email`: Email of the GCP user to grant owner permissions. Get it with:
+  ```bash
+  gcloud config get-value account
+  ```
+- `org_id`: Your GCP organization ID. Get it with:
+  ```bash
+  gcloud organizations list --format="value(name)"
+  ```
 - `app_tag`: Custom tag for identifying resources (e.g., "bacalhau-demo-cluster")
 - `bacalhau_data_dir`: Directory path for Bacalhau job data storage
 - `bacalhau_node_dir`: Directory path for Bacalhau node configuration
