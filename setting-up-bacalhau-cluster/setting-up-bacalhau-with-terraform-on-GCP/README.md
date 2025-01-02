@@ -6,11 +6,7 @@ This Terraform configuration sets up a Bacalhau cluster across multiple Google C
 - Each node runs Bacalhau in a Docker container
 - Automatic health checks and monitoring
 
-The cluster is configured through the `env.json` file which specifies:
-- GCP project and billing details
-- Machine types and zones for each region
-- User configuration (username, public key)
-- Where you would like the Bacalhau data and node directories
+The cluster is configured through the `env.json`.
 
 ## Key Components
 
@@ -27,7 +23,7 @@ The VAST majority of the configuration is done through the `env.json` file - tho
 
 Here's what each variable in `env.json` controls:
 
-- `bootstrap_project_id`: Existing GCP project ID used to create the new Bacalhau project
+- `bootstrap_project_id`: Existing GCP project ID used to create the new project and grant permissions. It will only be used to create the new project.
 - `base_project_name`: Base name for the new GCP project (will have timestamp appended)
 - `gcp_billing_account_id`: Your GCP billing account ID for project charges
 - `gcp_user_email`: Email of the GCP user to grant owner permissions
@@ -57,7 +53,7 @@ Here's what each variable in `env.json` controls:
 cp env.json.example env.json
 ```
 
-1. Edit `env.json` with your GCP details:
+1. Edit `env.json` with your GCP details.
 
 
 2. Initialize Terraform:
