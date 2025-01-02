@@ -1,171 +1,176 @@
-# Bacalhau Multi-Region GCP Cluster Setup
+# Setting Up Your Bacalhau Multi-Region Cluster on GCP 🚀
 
-This Terraform configuration sets up a Bacalhau cluster across multiple Google Cloud Platform (GCP) regions. The cluster consists of:
+Welcome to the guide for setting up your own Bacalhau cluster across multiple Google Cloud Platform (GCP) regions! This guide will walk you through creating a robust, distributed compute cluster that's perfect for running your Bacalhau workloads.
 
-- Multiple compute nodes across specified GCP regions
-- Each node runs Bacalhau in a Docker container
-- Automatic health checks and monitoring
+## What You'll Build
 
-The cluster is configured through the `env.json`.
+Think of this as building your own distributed supercomputer! Your cluster will provision compute nodes spread across different GCP regions for global coverage.
 
-## Key Components
+## Before You Start
 
-### Configuration Files
+You'll need a few things ready:
+- Terraform (version 1.0.0 or newer)
+- Google Cloud SDK installed and set up
+- An active GCP billing account
+- Your organization ID handy
+- An SSH key pair for securely accessing your nodes
 
-- `cloud-init/init-vm.yml`: Cloud-init configuration that sets up the VM environment, installs required packages, configures systemd services, and deploys Bacalhau configuration files.
-- `config/docker-compose.yml`: Docker Compose configuration that runs Bacalhau in a privileged container, mounts necessary volumes, configures health checks, and ensures container restart on failure.
-- `scripts/bacalhau-startup.service`: Systemd service that runs after Docker is available
-- `scripts/startup.sh`: Bash script for running by systemd that detects cloud provider metadata, configures node information, starts Docker Compose services, verifies container health, and handles error conditions.
+## Quick Setup Guide
 
-The VAST majority of the configuration is done through the `env.json` file - though lots more configuration is possible!
+1. First, grab a copy of the example environment file:
+   ```bash
+   cp env.json.example env.json
+   ```
 
-## Configuration Variables
+2. Open up `env.json` and fill in your GCP details (more on this below!)
 
-Here's what each variable in `env.json` controls:
+3. Let Terraform get everything ready:
+   ```bash
+   terraform init --env-file env.json
+   ```
 
-- `bootstrap_project_id`: Existing GCP project ID used to create the new project and grant permissions. It will only be used to create the new project.
-- `base_project_name`: Base name for the new GCP project (will have timestamp appended)
-- `gcp_billing_account_id`: Your GCP billing account ID for project charges. Get it with:
-  ```bash
-  gcloud beta billing accounts list --format="value(name)"
-  ```
-- `gcp_user_email`: Email of the GCP user to grant owner permissions. Get it with:
-  ```bash
-  gcloud config get-value account
-  ```
-- `org_id`: Your GCP organization ID. Get it with:
-  ```bash
-  gcloud organizations list --format="value(name)"
-  ```
-- `app_tag`: Custom tag for identifying resources (e.g., "bacalhau-demo-cluster")
-- `bacalhau_data_dir`: Directory path for Bacalhau job data storage
-- `bacalhau_node_dir`: Directory path for Bacalhau node configuration
-- `username`: SSH username for accessing the compute nodes
-- `public_key`: Path to your public SSH key for node access
-- `locations`: Map of regions and their configuration:
-  - `zone`: GCP zone within the region
-  - `node_count`: Number of nodes to create in this region
-  - `machine_type`: GCP machine type for the nodes (e.g., "e2-standard-4")
+4. Launch your cluster:
+   ```bash
+   terraform apply --env-file env.json
+   ```
 
-## Prerequisites
+## Setting Up Your Configuration
 
-- Terraform >= 1.0.0
-- Google Cloud SDK installed and configured
-- GCP billing account enabled
-- Organization ID available
-- SSH key pair for instance access
+The `env.json` file is where all the magic happens. Here's what you'll need to fill in:
 
-## Quick Start
+### Essential Settings
+- `bootstrap_project_id`: Your existing GCP project (just used for setup)
+- `base_project_name`: What you want to call your new project
+- `gcp_billing_account_id`: Where the charges should go
+- `gcp_user_email`: Your GCP email address
+- `org_id`: Your organization's ID
+- `app_tag`: A friendly name for your resources (like "bacalhau-demo")
 
-1. Copy the example environment file:
-```bash
-cp env.json.example env.json
+### Node Configuration
+- `bacalhau_data_dir`: Where job data should be stored
+- `bacalhau_node_dir`: Where node configs should live
+- `username`: Your SSH username
+- `public_key`: Path to your SSH public key
+
+### Location Settings
+You can set up nodes in different regions with custom configurations:
+```json
+"locations": {
+  "us-central1": {
+    "zone": "us-central1-a",
+    "node_count": 3,
+    "machine_type": "e2-standard-4"
+  }
+}
 ```
 
-1. Edit `env.json` with your GCP details.
+## Taking Your Cluster for a Test Drive
 
+Once everything's up and running, let's make sure it works!
 
-2. Initialize Terraform:
+First, make sure you have the Bacalhau CLI installed. You can read more about installing the CLI [here](https://docs.bacalhau.org/getting-started/installation).
+
+0. First configure the CLI to use your cluster:
+   ```bash
+   bacalhau config set -c API.Host=<orchestrator-ip>
+   ```
+
+1. Check on the health of your nodes:
+   ```bash
+   bacalhau node list
+   ```
+
+2. If you're using the Expanso Cloud hosted orchestrator (Recommended!), you can look at your nodes on the [Expanso Cloud](https://cloud.expanso.io/networks/) dashboard in real-time.
+
+3. Run a simple test job:
+   ```bash
+   bacalhau docker run ubuntu echo "Hello from my cluster!" 
+   ```
+
+4. Check on your jobs:
+   ```bash
+   bacalhau list
+   ```
+
+5. Get your results:
+   ```bash
+   bacalhau get <job-id>
+   ```
+
+## Troubleshooting Tips
+
+Having issues? Here are some common solutions:
+
+### Deployment Problems
+- Double-check your GCP permissions
+- Make sure your billing account is active
+- Verify that all needed APIs are turned on in GCP
+
+### Node Health Issues
+- Look at the logs on a node: `journalctl -u bacalhau-startup.service`
+- Check Docker logs on a node: `docker logs <container-id>`
+- Make sure that port 4222 isn't blocked
+
+### Job Running Troubles
+- Verify your NATS connection settings
+- Check if nodes are properly registered
+- Make sure compute is enabled in your config
+
+## Cleaning Up
+
+When you're done, clean everything up with:
 ```bash
-terraform init
+terraform destroy --env-file env.json
 ```
 
-1. Apply the configuration:
-```bash
-terraform apply
-```
+## Need to Check on Things?
 
-## Verifying Cluster Health
+If you need to peek under the hood, here's how:
 
-After deployment, you can verify the health of your Bacalhau nodes:
-
-1. Get the instance IPs:
-```bash
-terraform output instance_ips
-```
+1. Find your node IPs:
+   ```bash
+   terraform output instance_ips
+   ```
 
 2. SSH into a node:
-```bash
-ssh -i ~/.ssh/id_rsa ubuntu@<public-ip>
-```
+   ```bash
+   ssh -i ~/.ssh/id_rsa ubuntu@<public-ip>
+   ```
 
-3. Check Docker container status:
-```bash
-docker ps
-```
+3. Check on Docker:
+   ```bash
+   docker ps
+   ```
 
-4. Verify Bacalhau node health:
-```bash
-curl localhost:1234
-```
+4. Go into the container on the node:
+   ```bash
+   CONTAINER_ID=$(docker ps --filter name=^/bacalhau_node --format '{{.ID}}' | head -n1)
+   docker exec -it $CONTAINER_ID /bin/bash
+   ```
 
-## Running Your First Job
+## Understanding the Configuration Files
 
-Once the cluster is healthy, you can submit jobs:
+Here's what each important file does in your setup:
 
-1. Install Bacalhau CLI:
-```bash
-curl -sL https://get.bacalhau.org/install.sh | bash
-```
+### Core Files
+- `main.tf`: Your main Terraform configuration
+- `variables.tf`: Where input variables are defined
+- `outputs.tf`: What information Terraform will show you
+- `config/config.yaml`: How your Bacalhau nodes are configured
+- `scripts/startup.sh`: Gets your nodes ready to run
+- `scripts/bacalhau-startup.service`: Manages the Bacalhau service
 
-2. Submit a test job:
-```bash
-bacalhau docker run ubuntu echo "Hello from Bacalhau!"
-```
+### Cloud-Init and Docker Setup
+- `cloud-init/init-vm.yml`: Sets up your VM environment, installs packages, and gets services running
+- `config/docker-compose.yml`: Runs Bacalhau in a privileged container with all the right volumes and health checks
 
-3. List jobs:
-```bash
-bacalhau list
-```
+The neat thing is that most of your configuration happens in just one file: `env.json`. Though if you want to get fancy, there's lots more you can customize! 
 
-4. Get job results:
-```bash
-bacalhau get <job-id>
-```
+## Need Help?
 
-## Configuration Details
+If you get stuck or have questions:
+- Check out the [official Bacalhau Documentation](https://docs.bacalhau.org/)
+- Open an issue in our [GitHub repository](https://github.com/bacalhau-project/bacalhau)
+- Join our [Slack](https://bit.ly/bacalhau-project-slack)
 
-### Key Files
-
-- `main.tf`: Main Terraform configuration
-- `variables.tf`: Input variables for the deployment
-- `outputs.tf`: Output values from the deployment
-- `config/config.yaml`: Bacalhau node configuration
-- `config/docker-compose.yml`: Docker Compose setup
-- `scripts/startup.sh`: Node initialization script
-- `scripts/bacalhau-startup.service`: Systemd service file
-
-### Customization Options
-
-- Add more regions in `env.json` under `locations`
-- Change machine types for different performance needs
-- Modify Bacalhau configuration in `config/config.yaml`
-- Adjust Docker Compose settings in `config/docker-compose.yml`
-
-## Cleanup
-
-To destroy the cluster and associated resources:
-```bash
-terraform destroy
-```
-
-## Troubleshooting
-
-1. **Deployment Fails**
-   - Verify GCP permissions
-   - Check billing account status
-   - Ensure APIs are enabled in GCP console
-
-2. **Nodes Not Healthy**
-   - Check system logs: `journalctl -u bacalhau-startup.service`
-   - Verify Docker logs: `docker logs <container-id>`
-   - Ensure ports 1234 and 4222 are open
-
-3. **Jobs Not Running**
-   - Verify NATS connection in config
-   - Check node registration status
-   - Ensure compute is enabled in config
-
-## Support
-
-For additional help, please refer to the official Bacalhau documentation or open an issue in the repository.
+We're here to help you get your cluster running smoothly! 🌟
