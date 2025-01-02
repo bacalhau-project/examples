@@ -1,6 +1,47 @@
 # Bacalhau Multi-Region GCP Cluster Setup
 
-This Terraform configuration sets up a Bacalhau cluster across multiple Google Cloud Platform (GCP) regions.
+This Terraform configuration sets up a Bacalhau cluster across multiple Google Cloud Platform (GCP) regions. The cluster consists of:
+
+- Multiple compute nodes across specified GCP regions
+- Each node runs Bacalhau in a Docker container
+- Automatic health checks and monitoring
+- Secure communication between nodes
+- Persistent storage for job data
+
+The cluster is configured through the `env.json` file which specifies:
+- GCP project and billing details
+- Machine types and zones for each region
+- SSH access configuration
+- Bacalhau data and node directories
+
+## Key Components
+
+### Configuration Files
+
+- `cloud-init/init-vm.yml`: Cloud-init configuration that:
+  - Sets up the VM environment
+  - Installs required packages (Docker, Docker Compose)
+  - Configures systemd services
+  - Deploys Bacalhau configuration files
+
+- `config/docker-compose.yml`: Docker Compose configuration that:
+  - Runs Bacalhau in a privileged container
+  - Mounts necessary volumes
+  - Configures health checks
+  - Ensures container restart on failure
+
+- `scripts/bacalhau-startup.service`: Systemd service that:
+  - Runs after Docker is available
+  - Executes the startup script
+  - Ensures proper service ordering
+  - Provides logging through journald
+
+- `scripts/startup.sh`: Bash script that:
+  - Detects cloud provider metadata
+  - Configures node information
+  - Starts Docker Compose services
+  - Verifies container health
+  - Handles error conditions
 
 ## Prerequisites
 
