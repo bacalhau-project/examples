@@ -51,6 +51,18 @@ variable "logs_to_process_dir" {
   default     = "/var/log/logs_to_process"
 }
 
+variable "bacalhau_data_dir" {
+  description = "Directory for Bacalhau data"
+  type        = string
+  default     = "/bacalhau_data"
+}
+
+variable "bacalhau_node_dir" {
+  description = "Directory for Bacalhau node"
+  type        = string
+  default     = "/bacalhau_node"
+}
+
 variable "subscription_id" {
   description = "Azure subscription ID"
   type        = string
