@@ -23,9 +23,28 @@ The cluster is configured through the `env.json` file which specifies:
 
 The VAST majority of the configuration is done through the `env.json` file - though lots more configuration is possible!
 
+## Configuration Variables
+
+Here's what each variable in `env.json` controls:
+
+- `bootstrap_project_id`: Existing GCP project ID used to create the new Bacalhau project
+- `base_project_name`: Base name for the new GCP project (will have timestamp appended)
+- `gcp_billing_account_id`: Your GCP billing account ID for project charges
+- `gcp_user_email`: Email of the GCP user to grant owner permissions
+- `org_id`: Your GCP organization ID
+- `app_tag`: Custom tag for identifying resources (e.g., "bacalhau-demo-cluster")
+- `bacalhau_data_dir`: Directory path for Bacalhau job data storage
+- `bacalhau_node_dir`: Directory path for Bacalhau node configuration
+- `username`: SSH username for accessing the compute nodes
+- `public_key`: Path to your public SSH key for node access
+- `locations`: Map of regions and their configuration:
+  - `zone`: GCP zone within the region
+  - `node_count`: Number of nodes to create in this region
+  - `machine_type`: GCP machine type for the nodes (e.g., "e2-standard-4")
+
 ## Prerequisites
 
-- Terraform >= 1.0.0 ()
+- Terraform >= 1.0.0
 - Google Cloud SDK installed and configured
 - GCP billing account enabled
 - Organization ID available
