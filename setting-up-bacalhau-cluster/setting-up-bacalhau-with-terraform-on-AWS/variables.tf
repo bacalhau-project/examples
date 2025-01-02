@@ -2,7 +2,7 @@ variable "app_tag" {
   type = string
 }
 
-variable "aws_instance_type" {
+variable "instance_type" {
   type = string
 }
 
@@ -34,12 +34,20 @@ variable "username" {
   type = string
 }
 
-variable "locations" {
-  type = map(object({
-    zone         = string
-    instance_ami = string
-    node_count   = number
-  }))
+variable "region" {
+  type = string
+}
+
+variable "zone" {
+  type = string
+}
+
+variable "instance_ami" {
+  type = string
+}
+
+variable "node_count" {
+  type = number
 }
 
 variable "bacalhau_config_file_path" {
