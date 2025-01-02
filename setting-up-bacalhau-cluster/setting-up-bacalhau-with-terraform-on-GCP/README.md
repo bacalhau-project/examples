@@ -5,47 +5,27 @@ This Terraform configuration sets up a Bacalhau cluster across multiple Google C
 - Multiple compute nodes across specified GCP regions
 - Each node runs Bacalhau in a Docker container
 - Automatic health checks and monitoring
-- Secure communication between nodes
-- Persistent storage for job data
 
 The cluster is configured through the `env.json` file which specifies:
 - GCP project and billing details
 - Machine types and zones for each region
-- SSH access configuration
-- Bacalhau data and node directories
+- User configuration (username, public key)
+- Where you would like the Bacalhau data and node directories
 
 ## Key Components
 
 ### Configuration Files
 
-- `cloud-init/init-vm.yml`: Cloud-init configuration that:
-  - Sets up the VM environment
-  - Installs required packages (Docker, Docker Compose)
-  - Configures systemd services
-  - Deploys Bacalhau configuration files
+- `cloud-init/init-vm.yml`: Cloud-init configuration that sets up the VM environment, installs required packages, configures systemd services, and deploys Bacalhau configuration files.
+- `config/docker-compose.yml`: Docker Compose configuration that runs Bacalhau in a privileged container, mounts necessary volumes, configures health checks, and ensures container restart on failure.
+- `scripts/bacalhau-startup.service`: Systemd service that runs after Docker is available
+- `scripts/startup.sh`: Bash script for running by systemd that detects cloud provider metadata, configures node information, starts Docker Compose services, verifies container health, and handles error conditions.
 
-- `config/docker-compose.yml`: Docker Compose configuration that:
-  - Runs Bacalhau in a privileged container
-  - Mounts necessary volumes
-  - Configures health checks
-  - Ensures container restart on failure
-
-- `scripts/bacalhau-startup.service`: Systemd service that:
-  - Runs after Docker is available
-  - Executes the startup script
-  - Ensures proper service ordering
-  - Provides logging through journald
-
-- `scripts/startup.sh`: Bash script that:
-  - Detects cloud provider metadata
-  - Configures node information
-  - Starts Docker Compose services
-  - Verifies container health
-  - Handles error conditions
+The VAST majority of the configuration is done through the `env.json` file - though lots more configuration is possible!
 
 ## Prerequisites
 
-- Terraform >= 1.0.0
+- Terraform >= 1.0.0 ()
 - Google Cloud SDK installed and configured
 - GCP billing account enabled
 - Organization ID available
@@ -58,34 +38,15 @@ The cluster is configured through the `env.json` file which specifies:
 cp env.json.example env.json
 ```
 
-2. Edit `env.json` with your GCP details:
-```json
-{
-    "base_project_name": "bacalhau-cluster",
-    "org_id": "your-org-id",
-    "gcp_billing_account_id": "your-billing-account-id",
-    "gcp_user_email": "your-email@example.com",
-    "locations": {
-        "us-central1-a": {
-            "machine_type": "e2-medium",
-            "zone": "us-central1-a"
-        }
-    },
-    "app_name": "bacalhau",
-    "username": "ubuntu",
-    "public_key": "~/.ssh/id_rsa.pub",
-    "bacalhau_config_file_path": "./config/config.yaml",
-    "bacalhau_data_dir": "/var/lib/bacalhau",
-    "bacalhau_node_dir": "/var/lib/bacalhau/node"
-}
-```
+1. Edit `env.json` with your GCP details:
 
-3. Initialize Terraform:
+
+2. Initialize Terraform:
 ```bash
 terraform init
 ```
 
-4. Apply the configuration:
+1. Apply the configuration:
 ```bash
 terraform apply
 ```
