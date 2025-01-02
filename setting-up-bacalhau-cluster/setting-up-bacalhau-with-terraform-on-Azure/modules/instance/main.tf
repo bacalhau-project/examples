@@ -42,17 +42,18 @@ data "cloudinit_config" "user_data" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
-      bacalhau_service         = filebase64("${path.module}/../node_files/bacalhau.service")
-      start_bacalhau           = filebase64("${path.module}/../node_files/start_bacalhau.sh")
-      orchestrator_config      = filebase64(var.orchestrator_config_path)
-      bacalhau_installation_id = var.bacalhau_installation_id
-      logs_dir                 = var.logs_dir
-      logs_to_process_dir      = var.logs_to_process_dir
-      central_logging_bucket   = var.central_logging_bucket
-      ssh_key                  = compact(split("\n", file(var.public_key)))[0]
-      username                 = var.username
-      region                   = var.location
-      zone                     = var.location
+      username : var.username,
+      region : var.location,
+      zone : var.location,
+      bacalhau_startup_service_file : filebase64("${path.module}/../../scripts/bacalhau-startup.service"),
+      bacalhau_startup_script_file : filebase64("${path.module}/../../scripts/startup.sh"),
+      bacalhau_config_file : filebase64(var.orchestrator_config_path),
+      bacalhau_docker_compose_file : filebase64("${path.module}/../../config/docker-compose.yml"),
+      bacalhau_data_dir : "/bacalhau_data",
+      bacalhau_node_dir : "/bacalhau_node",
+      ssh_key : compact(split("\n", file(var.public_key)))[0],
+      healthz_web_server_script_file : filebase64("${path.module}/../../scripts/healthz-web-server.py"),
+      healthz_service_file : filebase64("${path.module}/../../scripts/healthz-web.service"),
     })
   }
 }
