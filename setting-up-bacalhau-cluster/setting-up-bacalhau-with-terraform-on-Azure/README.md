@@ -17,24 +17,29 @@ You'll need a few things ready:
 
 ## Quick Setup Guide
 
-1. First, create a `terraform.tfvars` file with your Azure details:
+0. First, set up an orchestrator node. We recommend using [Expanso Cloud](https://expanso.cloud) for this!
+
+1. First, create a `terraform.tfvars.json` file with your Azure details:
    ```bash
-   cp terraform.tfvars.example terraform.tfvars
+   cp terraform.tfvars.example.json terraform.tfvars.json
    ```
 
-2. Open up `terraform.tfvars` and fill in your Azure details:
-   ```hcl
-   subscription_id = "your-subscription-id"
-   app_tag = "bacalhau-demo"
-   username = "your-ssh-username"
-   public_key = "~/.ssh/id_rsa.pub"
-   resource_group_region = "eastus"
+2. Open up `terraform.tfvars.json` and fill in your Azure details:
+   ```json
+    "subscription_id": "f67231aa-8387-498b-9ca3-EXAMPLE",
+    "app_tag": "bacalhau-cluster",
+    "resource_group_region": "eastus",
+    "username": "bacalhau-runner",
+    "public_key": "~/.ssh/id_rsa.pub",
+    "bacalhau_data_dir": "/bacalhau_data",
+    "bacalhau_node_dir": "/bacalhau_node",
+    "bacalhau_config_file_path": "./config/config.yaml",
    
-   locations = {
-     "eastus" = {
-       machine_type = "Standard_D4s_v3"
-       node_count   = 3
-     }
+    "locations": {
+        "eastus": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        }
    }
    ```
 
@@ -60,6 +65,11 @@ The infrastructure is organized into modules:
 Once everything's up and running, let's make sure it works!
 
 1. First, make sure you have the Bacalhau CLI installed. You can read more about installing the CLI [here](https://docs.bacalhau.org/getting-started/installation).
+
+1. Setup your configuration to point at your orchestrator node:
+   ```bash
+   bacalhau config set -c API.Host=<public-ip>
+   ```
 
 2. Check on the health of your nodes:
    ```bash
