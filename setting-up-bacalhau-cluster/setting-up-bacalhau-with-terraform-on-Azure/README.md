@@ -17,7 +17,7 @@ You'll need a few things ready:
 
 ## Quick Setup Guide
 
-0. First, set up an orchestrator node. We recommend using [Expanso Cloud](https://expanso.cloud) for this!
+0. First, set up an orchestrator node. We recommend using [Expanso Cloud](https://cloud.expanso.io/) for this! But you can always set up your own - follow the instructions [here](https://docs.bacalhau.org/getting-started/create-private-network#start-initial-orchestrator-node).
 
 1. First, create a `terraform.tfvars.json` file with your Azure details:
    ```bash
@@ -68,7 +68,7 @@ Once everything's up and running, let's make sure it works!
 
 1. Setup your configuration to point at your orchestrator node:
    ```bash
-   bacalhau config set -c API.Host=<public-ip>
+   bacalhau config set -c API.Host=<ip-address-of-orchestrator>
    ```
 
 2. Check on the health of your nodes:
@@ -78,7 +78,7 @@ Once everything's up and running, let's make sure it works!
 
 3. Run a simple test job:
    ```bash
-   bacalhau docker run ubuntu echo "Hello from my Azure cluster!" 
+   bacalhau docker run docker.io/bacalhauproject/hello-world
    ```
 
 4. Check on your jobs:
@@ -160,16 +160,9 @@ Here's what each important file does in your setup:
 - `cloud-init/init-vm.yml`: Sets up your VM environment, installs packages, and gets services running
 - `config/docker-compose.yml`: Runs Bacalhau in a privileged container with all the right volumes and health checks
 
-## Need Help?
-
-If you get stuck or have questions:
-- Check out the [official Bacalhau Documentation](https://docs.bacalhau.org/)
-- Open an issue in our [GitHub repository](https://github.com/bacalhau-project/bacalhau)
-- Join our [Slack](https://bit.ly/bacalhau-project-slack)
-
-We're here to help you get your cluster running smoothly! 🌟
-
 ## Azure Specific Commands
+
+For ensuring that you have configured your Azure CLI correctly, here are some commands you can use:
 
 ### Get available Azure locations
 ```bash
@@ -185,3 +178,12 @@ az vm list-sizes --location eastus --query "[].{Name:name, vCPUs:numberOfCores, 
 ```bash
 az account show --query "id"
 ```
+
+## Need Help?
+
+If you get stuck or have questions:
+- Check out the [official Bacalhau Documentation](https://docs.bacalhau.org/)
+- Open an issue in our [GitHub repository](https://github.com/bacalhau-project/bacalhau)
+- Join our [Slack](https://bit.ly/bacalhau-project-slack)
+
+We're here to help you get your cluster running smoothly! 🌟
