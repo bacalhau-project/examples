@@ -1,5 +1,11 @@
 # Variables
 
+variable "node_count" {
+  description = "Number of nodes to create"
+  type        = number
+  default     = 1
+}
+
 variable "vpc_id" {
   description = "VPC id"
   type        = string
