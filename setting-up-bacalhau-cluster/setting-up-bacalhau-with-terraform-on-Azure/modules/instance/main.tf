@@ -1,18 +1,27 @@
 # Azure Instance Module
 
+resource "random_string" "prefix" {
+  count   = var.node_count
+  length  = 8
+  special = false
+  upper   = false
+}
+
 resource "azurerm_public_ip" "pip" {
-  name                = "${var.app_name}-pip"
+  count               = var.node_count
+  name                = "${random_string.prefix[count.index].result}-pip"
   resource_group_name = var.resource_group_name
   location            = var.location
   allocation_method   = "Static"
 
   tags = {
-    App = var.app_name
+    App = var.app_tag
   }
 }
 
 resource "azurerm_network_interface" "nic" {
-  name                = "${var.app_name}-nic"
+  count               = var.node_count
+  name                = "${random_string.prefix[count.index].result}-nic"
   location            = var.location
   resource_group_name = var.resource_group_name
 
@@ -20,20 +29,22 @@ resource "azurerm_network_interface" "nic" {
     name                          = "internal"
     subnet_id                     = var.subnet_id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.pip.id
+    public_ip_address_id          = azurerm_public_ip.pip[count.index].id
   }
 
   tags = {
-    App = var.app_name
+    App = var.app_tag
   }
 }
 
 resource "azurerm_network_interface_security_group_association" "nic_nsg_assoc" {
-  network_interface_id      = azurerm_network_interface.nic.id
+  count                     = var.node_count
+  network_interface_id      = azurerm_network_interface.nic[count.index].id
   network_security_group_id = var.nsg_id
 }
 
 data "cloudinit_config" "user_data" {
+  count         = var.node_count
   gzip          = false
   base64_encode = false
 
@@ -41,31 +52,32 @@ data "cloudinit_config" "user_data" {
     filename     = "cloud-config.yaml"
     content_type = "text/cloud-config"
 
-    content = templatefile("${path.module}/../../cloud-init/init-vm.yml", {
+    content = templatefile("${path.module}/cloud-init/init-vm.yml", {
       username : var.username,
       region : var.location,
       zone : var.location,
-      bacalhau_startup_service_file : filebase64("${path.module}/../../scripts/bacalhau-startup.service"),
-      bacalhau_startup_script_file : filebase64("${path.module}/../../scripts/startup.sh"),
-      bacalhau_config_file : filebase64(var.orchestrator_config_path),
-      bacalhau_docker_compose_file : filebase64("${path.module}/../../config/docker-compose.yml"),
+      bacalhau_startup_service_file : filebase64("${path.module}/scripts/bacalhau-startup.service"),
+      bacalhau_startup_script_file : filebase64("${path.module}/scripts/startup.sh"),
+      bacalhau_config_file : var.bacalhau_config_file,
+      bacalhau_docker_compose_file : filebase64("${path.module}/config/docker-compose.yml"),
       bacalhau_data_dir : "/bacalhau_data",
       bacalhau_node_dir : "/bacalhau_node",
       ssh_key : compact(split("\n", file(var.public_key)))[0],
-      healthz_web_server_script_file : filebase64("${path.module}/../../scripts/healthz-web-server.py"),
-      healthz_service_file : filebase64("${path.module}/../../scripts/healthz-web.service"),
+      healthz_web_server_script_file : filebase64("${path.module}/scripts/healthz-web-server.py"),
+      healthz_service_file : filebase64("${path.module}/scripts/healthz-web.service"),
     })
   }
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                = "${var.app_name}-vm"
+  count               = var.node_count
+  name                = "${random_string.prefix[count.index].result}-vm"
   resource_group_name = var.resource_group_name
   location            = var.location
   size                = var.vm_size
   admin_username      = var.username
   network_interface_ids = [
-    azurerm_network_interface.nic.id,
+    azurerm_network_interface.nic[count.index].id,
   ]
 
   admin_ssh_key {
@@ -85,51 +97,33 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  custom_data = base64encode(data.cloudinit_config.user_data.rendered)
+  custom_data = base64encode(data.cloudinit_config.user_data[count.index].rendered)
 
   tags = {
-    App = var.app_name
+    App = var.app_tag
   }
 }
 
-resource "azurerm_storage_account" "storage" {
-  name                     = lower(replace("${var.app_name}${var.location}sa", "/[^a-z0-9]/", ""))
-  resource_group_name      = var.resource_group_name
-  location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
 
-  tags = {
-    App = var.app_name
+data "http" "healthcheck" {
+  for_each = azurerm_linux_virtual_machine.vm
+
+  url = "http://${azurerm_linux_virtual_machine.vm[each.key].network_interface[0].private_ip_address}/healthz"
+
+  retry {
+    attempts     = 35
+    min_delay_ms = 10000 # 10 seconds
+    max_delay_ms = 10000 # 10 seconds
   }
 }
 
-resource "azurerm_storage_container" "container" {
-  name                  = "${var.app_name}-${var.location}-container"
-  storage_account_name  = azurerm_storage_account.storage.name
-  container_access_type = "private"
-}
-
-resource "null_resource" "configure_instance" {
-  depends_on = [azurerm_linux_virtual_machine.vm]
-
-  connection {
-    host = azurerm_public_ip.pip.ip_address
-    port = 22
-    user = var.username
-  }
-
-  provisioner "file" {
-    source      = var.orchestrator_config_path
-    destination = "/home/${var.username}/orchestrator-config.yaml"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo mkdir -p /etc/bacalhau",
-      "sudo mv /home/${var.username}/orchestrator-config.yaml /etc/bacalhau/orchestrator-config.yaml",
-      "sudo systemctl daemon-reload",
-      "sudo systemctl restart bacalhau.service"
-    ]
+output "deployment_status" {
+  description = "Deployment status including health checks"
+  value = {
+    for k, v in azurerm_linux_virtual_machine.vm : k => {
+      name         = v.name
+      private_ip   = v.network_interface[0].private_ip_address
+      health_check = try(data.http.healthcheck[k].status_code == 200, false) ? "healthy" : "failed"
+    }
   }
 }

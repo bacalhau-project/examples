@@ -1,0 +1,28 @@
+Hello from Bacalhau! 🐟🐠🐡
+
+This message shows that your job is running correctly on your Bacalhau environment.
+
+To generate this output, Bacalhau took the following steps:
+ 1. The Bacalhau client received your job request and sent it to the orchestrator.
+ 2. The orchestrator selected an appropriate compute node from the network.
+ 3. The compute node pulled the Docker image from the specified registry.
+ 4. The container was launched in a secure, isolated environment.
+ 5. The job executed and gathered system information about its runtime environment.
+ 6. The results were captured and returned through the Bacalhau network.
+
+To try something more ambitious, you can:
+ - Process large datasets (https://bac.al/data-engineering)
+ - Run AI/ML training (https://bac.al/model-training) or inference (https://bac.al/model-inference)
+ - Run GPU-enabled workloads (https://bac.al/using-gpus-on-bacalhau)
+ - Mount your own S3 bucket (https://bac.al/running-with-s3)
+ - Use IPFS to store your data (https://bac.al/using-ipfs)
+
+Learn more about Bacalhau:
+ - Documentation: https://bac.al/docs
+ - Getting Started: https://bac.al/getting-started
+ - Examples: https://bac.al/examples
+ - Slack: https://bac.al/slack
+ - BlueSky: https://bac.al/bsky
+
+Below is the detailed system information from your compute environment:
+-------------------------------------------------------------------
