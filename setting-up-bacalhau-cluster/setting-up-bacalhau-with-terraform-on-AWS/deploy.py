@@ -299,11 +299,10 @@ async def main() -> None:
             box=box.DOUBLE,  # Use double-line box style for better visibility
         )
 
-        # Fixed column widths
+        # Fixed column widths with better alignment
         table.add_column("Region", style="cyan", width=15, justify="left", no_wrap=True)
-        table.add_column(
-            "Instance", style="green", width=45, justify="left", no_wrap=True
-        )
+        table.add_column("Status", style="magenta", width=10, justify="center", no_wrap=True)
+        table.add_column("Instance", style="green", width=30, justify="left", no_wrap=True)
         table.add_column("IP", style="blue", width=20, justify="left", no_wrap=True)
 
         # Create a live display
@@ -360,14 +359,21 @@ async def main() -> None:
                             )
                             truncated_ip = (ip[:17] + "...") if len(ip) > 17 else ip
 
+                            status_icon = "✓" if command == "create" else "✗"
+                            status_style = "green" if command == "create" else "red"
+                            
                             if i == 0:
                                 table.add_row(
-                                    region, f"✓ {truncated_name}", truncated_ip
+                                    region,
+                                    f"[{status_style}]{status_icon}[/{status_style}]",
+                                    f"{truncated_name}",
+                                    truncated_ip
                                 )
                             else:
                                 table.add_row(
-                                    "└─",  # Visual indicator for additional instances
-                                    f"✓ {truncated_name}",
+                                    "",
+                                    "",
+                                    f"└─ {truncated_name}",
                                     truncated_ip,
                                 )
 
