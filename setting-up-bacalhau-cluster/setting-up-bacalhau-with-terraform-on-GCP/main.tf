@@ -29,16 +29,13 @@ locals {
 terraform {
   required_providers {
     google = {
-      source  = "hashicorp/google"
-      version = "~> 6.14.0"
+      source = "hashicorp/google"
     }
     random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
+      source = "hashicorp/random"
     }
     http = {
-      source  = "hashicorp/http"
-      version = "~> 3.4.0"
+      source = "hashicorp/http"
     }
   }
 
@@ -204,15 +201,8 @@ resource "google_compute_instance" "gcp_instance" {
   labels = local.common_tags
 }
 
-# Health check for each instance
-resource "time_sleep" "wait_for_startup" {
-  depends_on      = [google_compute_instance.gcp_instance]
-  create_duration = "5m"
-}
-
 data "http" "healthcheck" {
-  for_each   = var.locations
-  depends_on = [time_sleep.wait_for_startup]
+  for_each = var.locations
 
   url = "http://${google_compute_instance.gcp_instance[each.key].network_interface[0].access_config[0].nat_ip}/healthz"
 

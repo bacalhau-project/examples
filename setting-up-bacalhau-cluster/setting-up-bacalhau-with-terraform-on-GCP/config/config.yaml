@@ -4,9 +4,9 @@ API:
 Compute:
   Enabled: true
   Orchestrators:
-    - nats://f9b4b6a6-55c7-4b58-80ad-e0a66c63a958.us1.dev-cloud.expanso.dev:4222
+    - nats://ffdc442f-7a02-4083-bf08-bcc2f5fbc025.us1.dev-cloud.expanso.dev:4222
   Auth:
-    Token: "nY6nXgfnDRSvXQ4LmJivhMBMQF6FsUpWp6Z6hiBMWaT5V37pcS9akPQjPLqrsywA"    
+    Token: "uSEbUjS7aEEFukWVffnf5jb9QkpNnwfiBWEk3475csM7ysudpbFTzYBap5c7sWr6"
   TLS:
     RequireTLS: true
   AllowListedLocalPaths:

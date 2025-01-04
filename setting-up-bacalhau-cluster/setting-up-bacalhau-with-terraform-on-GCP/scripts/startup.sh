@@ -6,8 +6,10 @@ BACALHAU_NODE_DIR="${BACALHAU_NODE_DIR:-/bacalhau_node}"
 
 # Function to detect cloud provider and get metadata
 get_cloud_metadata() {
+    cloud=$(cloud-init query cloud-name)
+
     # Try GCP
-    if curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/" > /dev/null; then
+    if [ "${cloud}" = "gce" ]; then
         echo "Detected GCP environment"
         CLOUD_PROVIDER="GCP"
         REGION=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/zone" | cut -d'/' -f4)
@@ -18,10 +20,7 @@ get_cloud_metadata() {
         INSTANCE_TYPE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/machine-type" | cut -d'/' -f4)
         PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
         return 0
-    fi
-
-    # Try AWS
-    if curl -s --connect-timeout 1 http://169.254.169.254/latest/meta-data/ > /dev/null; then
+    elif [ "${cloud}" = "aws" ]; then
         echo "Detected AWS environment"
         CLOUD_PROVIDER="AWS"
         TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
@@ -32,10 +31,7 @@ get_cloud_metadata() {
         INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
         INSTANCE_TYPE=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type)
         return 0
-    fi
-
-    # Try Azure
-    if curl -s -H "Metadata:true" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" > /dev/null; then
+    elif [ "${cloud}" = "azure" ]; then
         echo "Detected Azure environment"
         CLOUD_PROVIDER="AZURE"
         METADATA=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/instance?api-version=2021-02-01")
@@ -46,17 +42,13 @@ get_cloud_metadata() {
         INSTANCE_ID=$(echo "$METADATA" | jq -r .compute.vmId)
         INSTANCE_TYPE=$(echo "$METADATA" | jq -r .compute.vmSize)
         return 0
+    else
+        echo "Could not detect cloud provider - no node info will be set"
+        return 0
     fi
-
-    echo "Could not detect cloud provider"
-    return 1
 }
 
-# Get cloud metadata
-if ! get_cloud_metadata; then
-    echo "Failed to get cloud metadata"
-    exit 1
-fi
+get_cloud_metadata
 
 # Create metadata file
 cat > "${BACALHAU_NODE_DIR}/node-info" << EOF
@@ -111,32 +103,11 @@ if [ -f "${BACALHAU_NODE_DIR}/docker-compose.yaml" ]; then
     echo "Starting services..."
     docker-compose up -d
     
-    # Wait for container to be healthy
-    echo "Waiting for container to be healthy..."
-    RETRIES=30
-    DELAY=10
-    for i in $(seq 1 $RETRIES); do
-        if docker-compose ps | grep -q "healthy"; then
-            echo "Container is healthy"
-            break
-        fi  
-        if [ "$i" -eq "$RETRIES" ]; then
-            echo "Container failed to become healthy after $RETRIES attempts"
-            exit 1
-        fi
-        echo "Waiting for container to become healthy (attempt $i/$RETRIES)..."
-        sleep $DELAY
-    done
-    
-    echo "Docker Compose services started successfully"
+    echo "Docker Compose started."
 else
     echo "Error: docker-compose.yaml not found at ${BACALHAU_NODE_DIR}/docker-compose.yaml"
     exit 1
 fi
-
-# Wait for services to be ready
-echo "Waiting for services to be ready..."
-sleep 10
 
 echo "Bacalhau node setup complete in ${CLOUD_PROVIDER} region ${REGION}"
 echo "Public IP: ${PUBLIC_IP}"
