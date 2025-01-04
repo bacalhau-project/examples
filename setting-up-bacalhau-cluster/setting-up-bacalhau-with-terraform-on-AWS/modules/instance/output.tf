@@ -12,5 +12,5 @@ output "instance_id" {
 
 output "instance_name" {
   description = "The generated name of the instance"
-  value       = local.vm_name
+  value       = local.vm_names
 }
