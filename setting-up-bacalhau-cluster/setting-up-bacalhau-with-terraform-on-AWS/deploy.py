@@ -71,12 +71,36 @@ def run_command(
 ) -> subprocess.CompletedProcess:
     """Run a command with proper error handling"""
     try:
+        # Get current environment and add AWS credentials
+        env = os.environ.copy()
+        if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
+            # Try to get credentials from AWS CLI config
+            try:
+                aws_creds = subprocess.run(
+                    ["aws", "configure", "get", "aws_access_key_id"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                aws_secret = subprocess.run(
+                    ["aws", "configure", "get", "aws_secret_access_key"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                if aws_creds and aws_secret:
+                    env["AWS_ACCESS_KEY_ID"] = aws_creds
+                    env["AWS_SECRET_ACCESS_KEY"] = aws_secret
+            except Exception:
+                pass
+
         result = subprocess.run(
             cmd,
             check=True,
             cwd=cwd,
             capture_output=True,
             text=True,
+            env=env,
         )
         return result
     except subprocess.CalledProcessError as e:
