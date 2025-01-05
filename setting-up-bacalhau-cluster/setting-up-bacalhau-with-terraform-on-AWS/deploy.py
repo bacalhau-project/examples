@@ -232,14 +232,14 @@ async def run_terraform_command(
                         cwd=workdir
                     )
 
-            if result.stdout:
-                logging.debug(f"Command output for {region}:\n{result.stdout}")
+                    if result.stdout:
+                        logging.debug(f"Command output for {region}:\n{result.stdout}")
 
-            progress.update(
-                task_id,
-                advance=1,
-                description=f"[cyan]{region}[/cyan] - ✓ Complete",
-            )
+                    progress.update(
+                        task_id,
+                        advance=1,
+                        description=f"[cyan]{region}[/cyan] - ✓ Complete",
+                    )
 
                 except Exception as e:
                     error_msg = f"Failed to {command} in {region}: {str(e)}"
