@@ -145,6 +145,31 @@ async def run_terraform_command(
             description=f"[cyan]{region}[/cyan] - Initializing",
         )
 
+        # Initialize Terraform first
+        try:
+            run_command(["terraform", "init", "-upgrade"])
+            logging.debug(f"Initialized Terraform with upgrade for region: {region}")
+        except Exception as e:
+            error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
+            if "InvalidClientTokenId" in str(e):
+                error_msg = (
+                    f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
+                    "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
+                )
+                progress.update(
+                    task_id,
+                    description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
+                )
+            else:
+                error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
+                progress.update(
+                    task_id,
+                    description=f"[red]{region} - ✗ Init Failed[/red]",
+                )
+            console.print(error_msg)
+            logging.error(error_msg)
+            return
+
         # Workspace management
         try:
             run_command(["terraform", "workspace", "select", "-or-create", region])
@@ -156,10 +181,6 @@ async def run_terraform_command(
                 description=f"[red]{region} - ✗ Workspace Error[/red]",
             )
             return
-
-        # Initialize Terraform
-        try:
-            run_command(["terraform", "init", "-upgrade"])
         except Exception as e:
             error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
             if "InvalidClientTokenId" in str(e):
