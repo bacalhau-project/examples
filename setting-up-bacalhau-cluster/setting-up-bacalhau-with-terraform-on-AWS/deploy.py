@@ -381,12 +381,18 @@ async def main() -> None:
                         )
 
                         # Get all outputs
-                        result = run_command(["terraform", "output", "-json"])
-                        outputs = json.loads(result.stdout)
-
-                        if not outputs:
-                            table.add_row(region, "No resources deployed", "")
-                            continue
+                        try:
+                            result = run_command(["terraform", "output", "-json"])
+                            outputs = json.loads(result.stdout)
+            
+                            if not outputs:
+                                table.add_row(region, "No resources deployed", "", "")
+                                continue
+                        except subprocess.CalledProcessError as e:
+                            if "Empty or non-existent state" in (e.stderr or ""):
+                                table.add_row(region, "No state found", "", "")
+                                continue
+                            raise
 
                         # Get instance details
                         public_ips = outputs.get("public_ip", {}).get("value", [])
