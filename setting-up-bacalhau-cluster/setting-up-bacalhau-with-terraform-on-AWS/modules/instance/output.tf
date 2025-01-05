@@ -1,13 +1,13 @@
 output "public_ip" {
-  value = aws_eip.instanceeip[*].public_ip
+  value = [for eip in aws_eip.instanceeip : eip.public_ip]
 }
 
 output "private_ip" {
-  value = aws_eip.instanceeip[*].private_ip
+  value = [for eip in aws_eip.instanceeip : eip.private_ip]
 }
 
 output "instance_id" {
-  value = aws_instance.instance[*].id
+  value = [for instance in aws_instance.instance : instance.id]
 }
 
 output "instance_name" {
