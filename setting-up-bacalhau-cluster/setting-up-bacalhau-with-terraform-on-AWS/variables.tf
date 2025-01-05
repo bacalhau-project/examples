@@ -54,3 +54,6 @@ variable "bacalhau_config_file_path" {
   type = string
 }
 
+variable "shared_credentials_file" {
+  type = string
+}

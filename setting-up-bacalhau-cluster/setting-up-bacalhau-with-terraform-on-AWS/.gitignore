@@ -1,0 +1,13 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+
+# Environment
+env.json
+
+# SSH Keys
+*.pem
+id_rsa* 

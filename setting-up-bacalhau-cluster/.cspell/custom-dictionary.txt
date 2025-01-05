@@ -1,0 +1,9 @@
+bacalhau
+boto
+hostnames
+jsonencode
+NOPASSWD
+oneshot
+runcmd
+templatefile
+usermod

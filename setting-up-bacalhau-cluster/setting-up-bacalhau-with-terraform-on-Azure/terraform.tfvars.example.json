@@ -1,0 +1,176 @@
+{
+    "subscription_id": "f67231aa-8387-498b-9ca3-EXAMPLE",
+    "app_tag": "bacalhau-cluster",
+    "resource_group_region": "eastus",
+    "username": "bacalhau-runner",
+    "public_key": "~/.ssh/id_rsa.pub",
+    "bacalhau_data_dir": "/bacalhau_data",
+    "bacalhau_node_dir": "/bacalhau_node",
+    "bacalhau_config_file_path": "./config/config.yaml",
+    "locations": {
+        "eastus": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "eastus2": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "australiaeast": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "southeastasia": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "swedencentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "uksouth": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "westeurope": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "centralindia": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "eastasia": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "japaneast": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "francecentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "germanywestcentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "italynorth": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "polandcentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "switzerlandnorth": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "eastus2euap": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "centralusstage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "northcentralusstage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "southcentralusstage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "westusstage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "westus2stage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "brazil": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "europe": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "france": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "germany": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "india": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "japan": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "norway": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "singapore": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "southafrica": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "unitedstates": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "unitedstateseuap": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "eastasiastage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "southeastasiastage": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "brazilus": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "east": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "northcentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "westcentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "southcentral": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "westus": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        },
+        "jioindiawest": {
+            "machine_type": "Standard_D4_v4",
+            "node_count": 1
+        }
+    }
+}

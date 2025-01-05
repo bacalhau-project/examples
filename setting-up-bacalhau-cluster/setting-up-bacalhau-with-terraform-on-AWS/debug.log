@@ -1,0 +1,366 @@
+2025-01-04 17:07:42,051 - DEBUG - Using selector: KqueueSelector
+2025-01-04 17:07:42,054 - INFO - Starting deployment for region: us-west-2
+2025-01-04 17:07:42,056 - DEBUG - Running command: terraform init -upgrade
+2025-01-04 17:07:42,085 - ERROR - Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,087 - ERROR - [red]Failed to initialize Terraform in us-west-2: Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+[/red]
+2025-01-04 17:07:42,088 - INFO - Starting deployment for region: us-east-1
+2025-01-04 17:07:42,089 - DEBUG - Running command: terraform init -upgrade
+2025-01-04 17:07:42,118 - ERROR - Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,120 - ERROR - [red]Failed to initialize Terraform in us-east-1: Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+[/red]
+2025-01-04 17:07:42,121 - INFO - Starting deployment for region: ap-northeast-1
+2025-01-04 17:07:42,122 - DEBUG - Running command: terraform init -upgrade
+2025-01-04 17:07:42,151 - ERROR - Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,153 - ERROR - [red]Failed to initialize Terraform in ap-northeast-1: Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+[/red]
+2025-01-04 17:07:42,154 - INFO - Starting deployment for region: eu-north-1
+2025-01-04 17:07:42,155 - DEBUG - Running command: terraform init -upgrade
+2025-01-04 17:07:42,184 - ERROR - Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,186 - ERROR - [red]Failed to initialize Terraform in eu-north-1: Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+[/red]
+2025-01-04 17:07:42,187 - INFO - Starting deployment for region: me-central-1
+2025-01-04 17:07:42,188 - DEBUG - Running command: terraform init -upgrade
+2025-01-04 17:07:42,216 - ERROR - Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,218 - ERROR - [red]Failed to initialize Terraform in me-central-1: Command failed: terraform init -upgrade
+Exit code: 1
+stdout:
+[0m[1mInitializing the backend...[0m
+[0m[1mUpgrading modules...[0m
+- region in
+
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mUnable to evaluate directory symlink: lstat modules: no such file or
+[31m│[0m [0mdirectory
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mUnreadable module directory[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mThe directory  could not be read for module "region" at main.tf:9.
+[31m╵[0m[0m
+
+[/red]
+2025-01-04 17:07:42,221 - DEBUG - Running command: terraform workspace select -or-create us-west-2
+2025-01-04 17:07:42,250 - DEBUG - Command succeeded with output:
+[0m[32m[1mCreated and switched to workspace "us-west-2"![0m[32m
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.[0m
+
+2025-01-04 17:07:42,250 - DEBUG - Running command: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+2025-01-04 17:07:42,278 - ERROR - Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,278 - ERROR - Failed to get output for region us-west-2: Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,280 - DEBUG - Running command: terraform workspace select -or-create us-east-1
+2025-01-04 17:07:42,306 - DEBUG - Command succeeded with output:
+[0m[32m[1mCreated and switched to workspace "us-east-1"![0m[32m
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.[0m
+
+2025-01-04 17:07:42,306 - DEBUG - Running command: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+2025-01-04 17:07:42,333 - ERROR - Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,333 - ERROR - Failed to get output for region us-east-1: Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,335 - DEBUG - Running command: terraform workspace select -or-create ap-northeast-1
+2025-01-04 17:07:42,362 - DEBUG - Command succeeded with output:
+[0m[32m[1mCreated and switched to workspace "ap-northeast-1"![0m[32m
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.[0m
+
+2025-01-04 17:07:42,362 - DEBUG - Running command: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+2025-01-04 17:07:42,389 - ERROR - Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,389 - ERROR - Failed to get output for region ap-northeast-1: Command failed: terraform refresh -var=instance_type=t3.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,391 - DEBUG - Running command: terraform workspace select -or-create eu-north-1
+2025-01-04 17:07:42,418 - DEBUG - Command succeeded with output:
+[0m[32m[1mCreated and switched to workspace "eu-north-1"![0m[32m
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.[0m
+
+2025-01-04 17:07:42,418 - DEBUG - Running command: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+2025-01-04 17:07:42,446 - ERROR - Command failed: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,446 - ERROR - Failed to get output for region eu-north-1: Command failed: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,447 - DEBUG - Running command: terraform workspace select -or-create me-central-1
+2025-01-04 17:07:42,475 - DEBUG - Command succeeded with output:
+[0m[32m[1mCreated and switched to workspace "me-central-1"![0m[32m
+
+You're now on a new, empty workspace. Workspaces isolate their state,
+so if you run "terraform plan" Terraform will not see any existing state
+for this configuration.[0m
+
+2025-01-04 17:07:42,475 - DEBUG - Running command: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+2025-01-04 17:07:42,501 - ERROR - Command failed: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+
+2025-01-04 17:07:42,502 - ERROR - Failed to get output for region me-central-1: Command failed: terraform refresh -var=instance_type=t2.medium -var-file=env.tfvars.json
+Exit code: 1
+stderr:
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to read variables file[0m
+[31m│[0m [0m
+[31m│[0m [0m[0mGiven variables file env.tfvars.json does not exist.
+[31m╵[0m[0m
+
+

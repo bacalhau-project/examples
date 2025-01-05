@@ -1,0 +1,15 @@
+NameProvider: puuid
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://ffdc442f-7a02-4083-bf08-bcc2f5fbc025.us1.dev-cloud.expanso.dev:4222
+  Auth:
+    Token: "uSEbUjS7aEEFukWVffnf5jb9QkpNnwfiBWEk3475csM7ysudpbFTzYBap5c7sWr6"
+  TLS:
+    RequireTLS: true
+  AllowListedLocalPaths:
+    - /bacalhau_data:rw
+JobAdmissionControl:
+  AcceptNetworkedJobs: true

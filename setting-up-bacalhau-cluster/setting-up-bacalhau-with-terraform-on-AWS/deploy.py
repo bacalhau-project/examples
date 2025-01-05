@@ -12,10 +12,10 @@ import datetime
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import shutil
 from typing import Any, Dict, Optional
 
 import yaml
@@ -95,7 +95,7 @@ def run_command(
             error_msg += f"stdout:\n{e.stdout}\n"
         if e.stderr:
             error_msg += f"stderr:\n{e.stderr}\n"
-        
+
         # Check for common AWS errors
         if "InvalidClientTokenId" in (e.stderr or ""):
             error_msg += "AWS credentials appear to be invalid or expired\n"
@@ -105,7 +105,7 @@ def run_command(
             error_msg += "Insufficient AWS permissions for this operation\n"
         elif "InvalidAMIID" in (e.stderr or ""):
             error_msg += "Invalid AMI ID specified for this region\n"
-            
+
         logging.error(error_msg)
         raise RuntimeError(error_msg) from e
 
@@ -153,11 +153,13 @@ async def run_terraform_command(
                 for tf_file in os.listdir("."):
                     if tf_file.endswith(".tf") or tf_file in ["versions.tf", "main.tf"]:
                         shutil.copy(tf_file, workdir)
-                
+
                 # Initialize Terraform in the working directory
                 try:
                     run_command(["terraform", "init", "-upgrade"], cwd=workdir)
-                    logging.debug(f"Initialized Terraform with upgrade for region: {region}")
+                    logging.debug(
+                        f"Initialized Terraform with upgrade for region: {region}"
+                    )
                 except Exception as e:
                     error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
                     if "InvalidClientTokenId" in str(e):
@@ -181,10 +183,15 @@ async def run_terraform_command(
 
                 # Workspace management
                 try:
-                    run_command(["terraform", "workspace", "select", "-or-create", region], cwd=workdir)
+                    run_command(
+                        ["terraform", "workspace", "select", "-or-create", region],
+                        cwd=workdir,
+                    )
                     logging.debug(f"Selected workspace for region: {region}")
                 except Exception as e:
-                    logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
+                    logging.error(
+                        f"Failed to select/create workspace for {region}: {str(e)}"
+                    )
                     progress.update(
                         task_id,
                         description=f"[red]{region} - ✗ Workspace Error[/red]",
@@ -211,55 +218,55 @@ async def run_terraform_command(
                 logging.error(error_msg)
                 return
 
-        progress.update(
-            task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
-        )
+            progress.update(
+                task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
+            )
 
-                # Apply/Destroy
-                try:
-                    result = run_command(
-                        [
-                            "terraform",
-                            command,
-                            "-auto-approve",
-                            f"-var=region={region}",
-                            f"-var=zone={region_config['zone']}",
-                            f"-var=instance_ami={region_config['instance_ami']}",
-                            f"-var=node_count={region_config['node_count']}",
-                            f"-var=instance_type={region_config['instance_type']}",
-                            "-var-file=env.tfvars.json",
-                        ],
-                        cwd=workdir
+            # Apply/Destroy
+            try:
+                result = run_command(
+                    [
+                        "terraform",
+                        command,
+                        "-auto-approve",
+                        f"-var=region={region}",
+                        f"-var=zone={region_config['zone']}",
+                        f"-var=instance_ami={region_config['instance_ami']}",
+                        f"-var=node_count={region_config['node_count']}",
+                        f"-var=instance_type={region_config['instance_type']}",
+                        "-var-file=env.tfvars.json",
+                    ],
+                    cwd=workdir,
+                )
+
+                if result.stdout:
+                    logging.debug(f"Command output for {region}:\n{result.stdout}")
+
+                progress.update(
+                    task_id,
+                    advance=1,
+                    description=f"[cyan]{region}[/cyan] - ✓ Complete",
+                )
+
+            except Exception as e:
+                error_msg = f"Failed to {command} in {region}: {str(e)}"
+                if "InvalidClientTokenId" in str(e):
+                    error_msg = (
+                        f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
+                        "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
                     )
-
-                    if result.stdout:
-                        logging.debug(f"Command output for {region}:\n{result.stdout}")
-
                     progress.update(
                         task_id,
-                        advance=1,
-                        description=f"[cyan]{region}[/cyan] - ✓ Complete",
+                        description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
                     )
-
-                except Exception as e:
-                    error_msg = f"Failed to {command} in {region}: {str(e)}"
-                    if "InvalidClientTokenId" in str(e):
-                        error_msg = (
-                            f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
-                            "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
-                        )
-                        progress.update(
-                            task_id,
-                            description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
-                        )
-                    else:
-                        error_msg = f"[red]Failed to {command} in {region}: {str(e)}[/red]"
-                        progress.update(
-                            task_id,
-                            description=f"[red]{region} - ✗ {command.capitalize()} Failed[/red]",
-                        )
-                    console.print(error_msg)
-                    logging.error(error_msg)
+                else:
+                    error_msg = f"[red]Failed to {command} in {region}: {str(e)}[/red]"
+                    progress.update(
+                        task_id,
+                        description=f"[red]{region} - ✗ {command.capitalize()} Failed[/red]",
+                    )
+                console.print(error_msg)
+                logging.error(error_msg)
 
     except Exception as e:
         if not str(e).startswith(
@@ -358,8 +365,12 @@ async def main() -> None:
 
         # Fixed column widths with better alignment
         table.add_column("Region", style="cyan", width=15, justify="left", no_wrap=True)
-        table.add_column("Status", style="magenta", width=10, justify="center", no_wrap=True)
-        table.add_column("Instance", style="green", width=30, justify="left", no_wrap=True)
+        table.add_column(
+            "Status", style="magenta", width=10, justify="center", no_wrap=True
+        )
+        table.add_column(
+            "Instance", style="green", width=30, justify="left", no_wrap=True
+        )
         table.add_column("IP", style="blue", width=20, justify="left", no_wrap=True)
 
         # Create a live display
@@ -371,97 +382,104 @@ async def main() -> None:
                     region_config = config[region]
 
                     # Create a temporary working directory for this region
-                    with tempfile.TemporaryDirectory(prefix=f"terraform-{region}-") as workdir:
+                    with tempfile.TemporaryDirectory(
+                        prefix=f"terraform-{region}-"
+                    ) as workdir:
                         # Copy all Terraform files to the working directory
                         for tf_file in os.listdir("."):
-                            if tf_file.endswith(".tf") or tf_file in ["versions.tf", "main.tf"]:
+                            if tf_file.endswith(".tf") or tf_file in [
+                                "versions.tf",
+                                "main.tf",
+                            ]:
                                 shutil.copy(tf_file, workdir)
-            
+
                         # Select the workspace for this region
                         run_command(
                             ["terraform", "workspace", "select", "-or-create", region],
-                            cwd=workdir
+                            cwd=workdir,
                         )
 
-                    try:
-                        # Refresh the state
-                        run_command(
-                            [
-                                "terraform",
-                                "refresh",
-                                f"-var=region={region}",
-                                f"-var=zone={region_config['zone']}",
-                                f"-var=instance_ami={region_config['instance_ami']}",
-                                f"-var=node_count={region_config['node_count']}",
-                                f"-var=instance_type={region_config['instance_type']}",
-                                "-var-file=env.tfvars.json",
-                            ],
-                            cwd=workdir
-                        )
-
-                        # Get all outputs
                         try:
-                            result = run_command(["terraform", "output", "-json"], cwd=workdir)
-                            outputs = json.loads(result.stdout)
-            
-                            if not outputs:
-                                table.add_row(region, "No resources deployed", "", "")
+                            # Refresh the state
+                            run_command(
+                                [
+                                    "terraform",
+                                    "refresh",
+                                    f"-var=instance_type={region_config['instance_type']}",
+                                    "-var-file=env.tfvars.json",
+                                ],
+                                cwd=workdir,
+                            )
+
+                            # Get all outputs
+                            try:
+                                result = run_command(
+                                    ["terraform", "output", "-json"], cwd=workdir
+                                )
+                                outputs = json.loads(result.stdout)
+
+                                if not outputs:
+                                    table.add_row(
+                                        region, "No resources deployed", "", ""
+                                    )
+                                    continue
+                            except subprocess.CalledProcessError as e:
+                                if "Empty or non-existent state" in (e.stderr or ""):
+                                    table.add_row(region, "No state found", "", "")
+                                    continue
+                                raise
+
+                            # Get instance details
+                            public_ips = outputs.get("public_ip", {}).get("value", [])
+                            instance_names = outputs.get("instance_name", {}).get(
+                                "value", []
+                            )
+
+                            if not public_ips or not instance_names:
+                                table.add_row(region, "No instances found", "")
                                 continue
+
+                            # Add a row for each instance
+                            for i, (name, ip) in enumerate(
+                                zip(instance_names, public_ips)
+                            ):
+                                # Truncate long values to fit columns
+                                truncated_name = (
+                                    (name[:42] + "...") if len(name) > 42 else name
+                                )
+                                truncated_ip = (ip[:17] + "...") if len(ip) > 17 else ip
+
+                                status_icon = "✓" if command == "create" else "✗"
+                                status_style = "green" if command == "create" else "red"
+
+                                if i == 0:
+                                    table.add_row(
+                                        region,
+                                        f"[{status_style}]{status_icon}[/{status_style}]",
+                                        f"{truncated_name}",
+                                        truncated_ip,
+                                    )
+                                else:
+                                    table.add_row(
+                                        "",
+                                        "",
+                                        f"└─ {truncated_name}",
+                                        truncated_ip,
+                                    )
+
                         except subprocess.CalledProcessError as e:
-                            if "Empty or non-existent state" in (e.stderr or ""):
-                                table.add_row(region, "No state found", "", "")
-                                continue
-                            raise
-
-                        # Get instance details
-                        public_ips = outputs.get("public_ip", {}).get("value", [])
-                        instance_names = outputs.get("instance_name", {}).get(
-                            "value", []
-                        )
-
-                        if not public_ips or not instance_names:
-                            table.add_row(region, "No instances found", "")
-                            continue
-
-                        # Add a row for each instance
-                        for i, (name, ip) in enumerate(zip(instance_names, public_ips)):
-                            # Truncate long values to fit columns
-                            truncated_name = (
-                                (name[:42] + "...") if len(name) > 42 else name
-                            )
-                            truncated_ip = (ip[:17] + "...") if len(ip) > 17 else ip
-
-                            status_icon = "✓" if command == "create" else "✗"
-                            status_style = "green" if command == "create" else "red"
-                            
-                            if i == 0:
+                            if (
+                                "InvalidClientTokenId" in e.stderr
+                                or "security token included in the request is invalid"
+                                in e.stderr
+                            ):
                                 table.add_row(
-                                    region,
-                                    f"[{status_style}]{status_icon}[/{status_style}]",
-                                    f"{truncated_name}",
-                                    truncated_ip
+                                    region, "⚠ Region Disabled", "", style="yellow"
                                 )
+                            elif "Empty or non-existent state" in e.stderr:
+                                table.add_row(region, "No resources deployed", "")
                             else:
-                                table.add_row(
-                                    "",
-                                    "",
-                                    f"└─ {truncated_name}",
-                                    truncated_ip,
-                                )
-
-                    except subprocess.CalledProcessError as e:
-                        if (
-                            "InvalidClientTokenId" in e.stderr
-                            or "security token included in the request is invalid"
-                            in e.stderr
-                        ):
-                            table.add_row(
-                                region, "⚠ Region Disabled", "", style="yellow"
-                            )
-                        elif "Empty or non-existent state" in e.stderr:
-                            table.add_row(region, "No resources deployed", "")
-                        else:
-                            raise
+                                raise
 
                 except Exception as e:
                     if "Region Disabled" not in str(e):
