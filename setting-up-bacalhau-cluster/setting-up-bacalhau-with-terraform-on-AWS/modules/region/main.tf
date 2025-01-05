@@ -49,7 +49,3 @@ module "instanceModule" {
   }
 }
 
-output "public_ips" {
-  value = module.instanceModule.public_ip
-}
-

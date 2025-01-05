@@ -1,0 +1,32 @@
+# Because of the way AWS works, we cannot
+# deploy to all regions at once. Use the below list to name the
+# regions you want to deploy to.
+
+- us-west-2:
+    region: us-west-2
+    zone: us-west-2a
+    instance_type: t3.medium
+    instance_ami: ami-0c0ba4e76e4392ce9
+    node_count: 3
+- us-east-1:
+    region: us-east-1
+    zone: us-east-1a
+    instance_type: t3.medium
+    instance_ami: ami-027a754129abb5386
+    node_count: 2
+- ap-northeast-1:
+    region: ap-northeast-1
+    zone: ap-northeast-1a
+    instance_type: t3.medium
+    instance_ami: ami-07a48f4a2abe3a5fc
+    node_count: 1
+- eu-north-1:
+    region: eu-north-1
+    zone: eu-north-1a
+    instance_ami: ami-00b2e78eedce5d673
+    node_count: 1
+- me-central-1:
+    region: me-central-1
+    zone: me-central-1a
+    instance_ami: ami-0f3d65a62cc909161
+    node_count: 3
