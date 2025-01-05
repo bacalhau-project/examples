@@ -6,40 +6,24 @@ users:
     shell: /bin/bash
     ssh_authorized_keys:
       - ${ssh_key}
+    groups: docker
 
 package_update: true
 package_upgrade: true
 
 packages:
-  - apt-transport-https
   - ca-certificates
   - curl
-  - gnupg
-  - lsb-release
+  - gnupg2
   - jq
+  - yum-utils
 
 runcmd:
-  # Install docker and docker-compose - from their repos
-  - sudo apt-get update
-  - sudo apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
-  - sudo mkdir -p /etc/apt/keyrings
-  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-    | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  - echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-    https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" \
-    | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  - sudo apt-get update
-  - sudo apt-get install -y \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io \
-    docker-compose-plugin
+  # Install Docker on Amazon Linux
+  - sudo yum install -y docker
+  - sudo systemctl enable docker
+  - sudo systemctl start docker
+  - sudo usermod -aG docker ${username}
 
   # Create necessary directories first
   - mkdir -p ${bacalhau_data_dir}
