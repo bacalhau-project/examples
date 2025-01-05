@@ -76,24 +76,37 @@ def run_command(
     cmd: list[str], cwd: Optional[str] = None
 ) -> subprocess.CompletedProcess:
     """Run a command with proper error handling"""
+    logging.debug(f"Running command: {' '.join(cmd)}")
     try:
-        return subprocess.run(
+        result = subprocess.run(
             cmd,
             check=True,
             cwd=cwd,
             capture_output=True,
             text=True,
         )
+        logging.debug(f"Command succeeded with output:\n{result.stdout}")
+        return result
     except subprocess.CalledProcessError as e:
-        print(f"Error running command {' '.join(cmd)}:")
-        print(f"Exit code: {e.returncode}")
+        error_msg = f"Command failed: {' '.join(cmd)}\n"
+        error_msg += f"Exit code: {e.returncode}\n"
         if e.stdout:
-            print("stdout:")
-            print(e.stdout)
+            error_msg += f"stdout:\n{e.stdout}\n"
         if e.stderr:
-            print("stderr:")
-            print(e.stderr)
-        raise
+            error_msg += f"stderr:\n{e.stderr}\n"
+        
+        # Check for common AWS errors
+        if "InvalidClientTokenId" in (e.stderr or ""):
+            error_msg += "AWS credentials appear to be invalid or expired\n"
+        elif "RequestLimitExceeded" in (e.stderr or ""):
+            error_msg += "AWS API request limit exceeded - try again later\n"
+        elif "UnauthorizedOperation" in (e.stderr or ""):
+            error_msg += "Insufficient AWS permissions for this operation\n"
+        elif "InvalidAMIID" in (e.stderr or ""):
+            error_msg += "Invalid AMI ID specified for this region\n"
+            
+        logging.error(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def expand_home_vars(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,29 +146,40 @@ async def run_terraform_command(
         )
 
         # Workspace management
-        run_command(["terraform", "workspace", "select", "-or-create", region])
-        logging.debug(f"Selected workspace for region: {region}")
+        try:
+            run_command(["terraform", "workspace", "select", "-or-create", region])
+            logging.debug(f"Selected workspace for region: {region}")
+        except Exception as e:
+            logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
+            progress.update(
+                task_id,
+                description=f"[red]{region} - ✗ Workspace Error[/red]",
+            )
+            return
 
         # Initialize Terraform
         try:
             run_command(["terraform", "init", "-upgrade"])
-        except subprocess.CalledProcessError as e:
-            if (
-                "InvalidClientTokenId" in e.stderr
-                or "security token included in the request is invalid" in e.stderr
-            ):
+        except Exception as e:
+            error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
+            if "InvalidClientTokenId" in str(e):
                 error_msg = (
                     f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
                     "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
                 )
-                console.print(error_msg)
-                logging.warning(f"Region {region} appears to be disabled: {e.stderr}")
                 progress.update(
                     task_id,
                     description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
                 )
-                return
-            raise
+            else:
+                error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
+                progress.update(
+                    task_id,
+                    description=f"[red]{region} - ✗ Init Failed[/red]",
+                )
+            console.print(error_msg)
+            logging.error(error_msg)
+            return
 
         progress.update(
             task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
@@ -186,23 +210,25 @@ async def run_terraform_command(
                 description=f"[cyan]{region}[/cyan] - ✓ Complete",
             )
 
-        except subprocess.CalledProcessError as e:
-            if (
-                "InvalidClientTokenId" in e.stderr
-                or "security token included in the request is invalid" in e.stderr
-            ):
+        except Exception as e:
+            error_msg = f"Failed to {command} in {region}: {str(e)}"
+            if "InvalidClientTokenId" in str(e):
                 error_msg = (
                     f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
                     "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
                 )
-                console.print(error_msg)
-                logging.warning(f"Region {region} appears to be disabled: {e.stderr}")
                 progress.update(
                     task_id,
                     description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
                 )
-                return
-            raise
+            else:
+                error_msg = f"[red]Failed to {command} in {region}: {str(e)}[/red]"
+                progress.update(
+                    task_id,
+                    description=f"[red]{region} - ✗ {command.capitalize()} Failed[/red]",
+                )
+            console.print(error_msg)
+            logging.error(error_msg)
 
     except Exception as e:
         if not str(e).startswith(
