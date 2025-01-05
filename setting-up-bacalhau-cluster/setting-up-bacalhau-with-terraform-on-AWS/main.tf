@@ -1,6 +1,9 @@
-# Check if AWS credentials are properly configured
-data "aws_caller_identity" "current" {
-  provider = aws.us_east_1 # Use a default provider for the check
+# Configure the AWS Provider for the current workspace/region
+provider "aws" {
+  region                   = var.region
+  shared_config_files      = ["~/.aws/config"]
+  shared_credentials_files = ["~/.aws/credentials"]
+  profile                  = "default"
 }
 
 module "region" {
@@ -24,8 +27,4 @@ module "region" {
   providers = {
     aws = aws
   }
-}
-
-output "instance_public_ips" {
-  value = module.region.public_ips
 }
