@@ -190,26 +190,26 @@ async def run_terraform_command(
                         description=f"[red]{region} - ✗ Workspace Error[/red]",
                     )
                     return
-        except Exception as e:
-            error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
-            if "InvalidClientTokenId" in str(e):
-                error_msg = (
-                    f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
-                    "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
-                )
-                progress.update(
-                    task_id,
-                    description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
-                )
-            else:
-                error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
-                progress.update(
-                    task_id,
-                    description=f"[red]{region} - ✗ Init Failed[/red]",
-                )
-            console.print(error_msg)
-            logging.error(error_msg)
-            return
+            except Exception as e:
+                error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
+                if "InvalidClientTokenId" in str(e):
+                    error_msg = (
+                        f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
+                        "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
+                    )
+                    progress.update(
+                        task_id,
+                        description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
+                    )
+                else:
+                    error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
+                    progress.update(
+                        task_id,
+                        description=f"[red]{region} - ✗ Init Failed[/red]",
+                    )
+                console.print(error_msg)
+                logging.error(error_msg)
+                return
 
         progress.update(
             task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
@@ -241,25 +241,25 @@ async def run_terraform_command(
                 description=f"[cyan]{region}[/cyan] - ✓ Complete",
             )
 
-            except Exception as e:
-                error_msg = f"Failed to {command} in {region}: {str(e)}"
-            if "InvalidClientTokenId" in str(e):
-                error_msg = (
-                    f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
-                    "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
-                )
-                progress.update(
-                    task_id,
-                    description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
-                )
-            else:
-                error_msg = f"[red]Failed to {command} in {region}: {str(e)}[/red]"
-                progress.update(
-                    task_id,
-                    description=f"[red]{region} - ✗ {command.capitalize()} Failed[/red]",
-                )
-            console.print(error_msg)
-            logging.error(error_msg)
+                except Exception as e:
+                    error_msg = f"Failed to {command} in {region}: {str(e)}"
+                    if "InvalidClientTokenId" in str(e):
+                        error_msg = (
+                            f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
+                            "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
+                        )
+                        progress.update(
+                            task_id,
+                            description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
+                        )
+                    else:
+                        error_msg = f"[red]Failed to {command} in {region}: {str(e)}[/red]"
+                        progress.update(
+                            task_id,
+                            description=f"[red]{region} - ✗ {command.capitalize()} Failed[/red]",
+                        )
+                    console.print(error_msg)
+                    logging.error(error_msg)
 
     except Exception as e:
         if not str(e).startswith(
