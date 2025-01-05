@@ -179,17 +179,17 @@ async def run_terraform_command(
                     logging.error(error_msg)
                     return
 
-            # Workspace management
-            try:
-                run_command(["terraform", "workspace", "select", "-or-create", region], cwd=workdir)
-                logging.debug(f"Selected workspace for region: {region}")
-            except Exception as e:
-                logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
-                progress.update(
-                    task_id,
-                    description=f"[red]{region} - ✗ Workspace Error[/red]",
-                )
-                return
+                # Workspace management
+                try:
+                    run_command(["terraform", "workspace", "select", "-or-create", region], cwd=workdir)
+                    logging.debug(f"Selected workspace for region: {region}")
+                except Exception as e:
+                    logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
+                    progress.update(
+                        task_id,
+                        description=f"[red]{region} - ✗ Workspace Error[/red]",
+                    )
+                    return
         except Exception as e:
             error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
             if "InvalidClientTokenId" in str(e):
@@ -215,22 +215,22 @@ async def run_terraform_command(
             task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
         )
 
-            # Apply/Destroy
-            try:
-                result = run_command(
-                    [
-                        "terraform",
-                        command,
-                        "-auto-approve",
-                        f"-var=region={region}",
-                        f"-var=zone={region_config['zone']}",
-                        f"-var=instance_ami={region_config['instance_ami']}",
-                        f"-var=node_count={region_config['node_count']}",
-                        f"-var=instance_type={region_config['instance_type']}",
-                        "-var-file=env.tfvars.json",
-                    ],
-                    cwd=workdir
-                )
+                # Apply/Destroy
+                try:
+                    result = run_command(
+                        [
+                            "terraform",
+                            command,
+                            "-auto-approve",
+                            f"-var=region={region}",
+                            f"-var=zone={region_config['zone']}",
+                            f"-var=instance_ami={region_config['instance_ami']}",
+                            f"-var=node_count={region_config['node_count']}",
+                            f"-var=instance_type={region_config['instance_type']}",
+                            "-var-file=env.tfvars.json",
+                        ],
+                        cwd=workdir
+                    )
 
             if result.stdout:
                 logging.debug(f"Command output for {region}:\n{result.stdout}")
@@ -241,8 +241,8 @@ async def run_terraform_command(
                 description=f"[cyan]{region}[/cyan] - ✓ Complete",
             )
 
-        except Exception as e:
-            error_msg = f"Failed to {command} in {region}: {str(e)}"
+            except Exception as e:
+                error_msg = f"Failed to {command} in {region}: {str(e)}"
             if "InvalidClientTokenId" in str(e):
                 error_msg = (
                     f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
