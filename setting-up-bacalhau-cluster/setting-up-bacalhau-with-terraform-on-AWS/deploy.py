@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import shutil
 from typing import Any, Dict, Optional
 
 import yaml
@@ -145,42 +146,50 @@ async def run_terraform_command(
             description=f"[cyan]{region}[/cyan] - Initializing",
         )
 
-        # Initialize Terraform first
-        try:
-            run_command(["terraform", "init", "-upgrade"])
-            logging.debug(f"Initialized Terraform with upgrade for region: {region}")
-        except Exception as e:
-            error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
-            if "InvalidClientTokenId" in str(e):
-                error_msg = (
-                    f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
-                    "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
-                )
-                progress.update(
-                    task_id,
-                    description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
-                )
-            else:
-                error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
-                progress.update(
-                    task_id,
-                    description=f"[red]{region} - ✗ Init Failed[/red]",
-                )
-            console.print(error_msg)
-            logging.error(error_msg)
-            return
+        # Create a temporary working directory for this region
+        with tempfile.TemporaryDirectory(prefix=f"terraform-{region}-") as workdir:
+            try:
+                # Copy all Terraform files to the working directory
+                for tf_file in os.listdir("."):
+                    if tf_file.endswith(".tf") or tf_file in ["versions.tf", "main.tf"]:
+                        shutil.copy(tf_file, workdir)
+                
+                # Initialize Terraform in the working directory
+                try:
+                    run_command(["terraform", "init", "-upgrade"], cwd=workdir)
+                    logging.debug(f"Initialized Terraform with upgrade for region: {region}")
+                except Exception as e:
+                    error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
+                    if "InvalidClientTokenId" in str(e):
+                        error_msg = (
+                            f"[yellow]Warning: Region {region} appears to be disabled for your AWS account. "
+                            "Please verify that you have enabled this region in your AWS account settings.[/yellow]"
+                        )
+                        progress.update(
+                            task_id,
+                            description=f"[yellow]{region} - ⚠ Region Disabled[/yellow]",
+                        )
+                    else:
+                        error_msg = f"[red]Failed to initialize Terraform in {region}: {str(e)}[/red]"
+                        progress.update(
+                            task_id,
+                            description=f"[red]{region} - ✗ Init Failed[/red]",
+                        )
+                    console.print(error_msg)
+                    logging.error(error_msg)
+                    return
 
-        # Workspace management
-        try:
-            run_command(["terraform", "workspace", "select", "-or-create", region])
-            logging.debug(f"Selected workspace for region: {region}")
-        except Exception as e:
-            logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
-            progress.update(
-                task_id,
-                description=f"[red]{region} - ✗ Workspace Error[/red]",
-            )
-            return
+            # Workspace management
+            try:
+                run_command(["terraform", "workspace", "select", "-or-create", region], cwd=workdir)
+                logging.debug(f"Selected workspace for region: {region}")
+            except Exception as e:
+                logging.error(f"Failed to select/create workspace for {region}: {str(e)}")
+                progress.update(
+                    task_id,
+                    description=f"[red]{region} - ✗ Workspace Error[/red]",
+                )
+                return
         except Exception as e:
             error_msg = f"Failed to initialize Terraform in {region}: {str(e)}"
             if "InvalidClientTokenId" in str(e):
@@ -206,21 +215,22 @@ async def run_terraform_command(
             task_id, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
         )
 
-        # Apply/Destroy
-        try:
-            result = run_command(
-                [
-                    "terraform",
-                    command,
-                    "-auto-approve",
-                    f"-var=region={region}",
-                    f"-var=zone={region_config['zone']}",
-                    f"-var=instance_ami={region_config['instance_ami']}",
-                    f"-var=node_count={region_config['node_count']}",
-                    f"-var=instance_type={region_config['instance_type']}",
-                    "-var-file=env.tfvars.json",
-                ]
-            )
+            # Apply/Destroy
+            try:
+                result = run_command(
+                    [
+                        "terraform",
+                        command,
+                        "-auto-approve",
+                        f"-var=region={region}",
+                        f"-var=zone={region_config['zone']}",
+                        f"-var=instance_ami={region_config['instance_ami']}",
+                        f"-var=node_count={region_config['node_count']}",
+                        f"-var=instance_type={region_config['instance_type']}",
+                        "-var-file=env.tfvars.json",
+                    ],
+                    cwd=workdir
+                )
 
             if result.stdout:
                 logging.debug(f"Command output for {region}:\n{result.stdout}")
@@ -360,10 +370,18 @@ async def main() -> None:
                 try:
                     region_config = config[region]
 
-                    # Select the workspace for this region
-                    run_command(
-                        ["terraform", "workspace", "select", "-or-create", region]
-                    )
+                    # Create a temporary working directory for this region
+                    with tempfile.TemporaryDirectory(prefix=f"terraform-{region}-") as workdir:
+                        # Copy all Terraform files to the working directory
+                        for tf_file in os.listdir("."):
+                            if tf_file.endswith(".tf") or tf_file in ["versions.tf", "main.tf"]:
+                                shutil.copy(tf_file, workdir)
+            
+                        # Select the workspace for this region
+                        run_command(
+                            ["terraform", "workspace", "select", "-or-create", region],
+                            cwd=workdir
+                        )
 
                     try:
                         # Refresh the state
@@ -377,12 +395,13 @@ async def main() -> None:
                                 f"-var=node_count={region_config['node_count']}",
                                 f"-var=instance_type={region_config['instance_type']}",
                                 "-var-file=env.tfvars.json",
-                            ]
+                            ],
+                            cwd=workdir
                         )
 
                         # Get all outputs
                         try:
-                            result = run_command(["terraform", "output", "-json"])
+                            result = run_command(["terraform", "output", "-json"], cwd=workdir)
                             outputs = json.loads(result.stdout)
             
                             if not outputs:
