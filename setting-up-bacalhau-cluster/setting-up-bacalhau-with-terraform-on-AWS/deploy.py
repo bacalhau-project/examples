@@ -278,10 +278,19 @@ def main():
                 except subprocess.CalledProcessError as e:
                     if (
                         "InvalidClientTokenId" in e.stderr
-                        or "security token included in the request is invalid"
-                        in e.stderr
+                        or "security token included in the request is invalid" in e.stderr
+                        or "no valid credential sources" in e.stderr
                     ):
-                        table.add_row(region, "⚠ Region Disabled", "", style="yellow")
+                        console.print("\n[red]Error: AWS credentials not configured[/red]")
+                        console.print("Please authenticate with AWS using one of these methods:")
+                        console.print("1. Run [bold]aws configure[/bold] to set up credentials")
+                        console.print("2. Set AWS environment variables:")
+                        console.print("   export AWS_ACCESS_KEY_ID='your-access-key'")
+                        console.print("   export AWS_SECRET_ACCESS_KEY='your-secret-key'")
+                        console.print("3. Test your credentials with:")
+                        console.print("   [bold]aws sts get-caller-identity[/bold]")
+                        console.print("\nFor more details see: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html")
+                        sys.exit(1)
                     elif "Empty or non-existent state" in e.stderr:
                         table.add_row(region, "No resources deployed", "")
                     else:
