@@ -1,0 +1,176 @@
+# Auto-generated locations configuration
+# Using Amazon Linux 2023 AMIs
+- ap-south-2:
+    region: ap-south-2
+    zone: ap-south-2a
+    instance_type: t3.medium
+    instance_ami: ami-0d1fc426c1b23bce0
+    node_count: 1
+- ap-south-1:
+    region: ap-south-1
+    zone: ap-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-0fd05997b4dff7aac
+    node_count: 1
+- eu-south-1:
+    region: eu-south-1
+    zone: eu-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-0f529654669a607d1
+    node_count: 1
+- eu-south-2:
+    region: eu-south-2
+    zone: eu-south-2a
+    instance_type: t3.medium
+    instance_ami: ami-0d27757cc8327f88f
+    node_count: 1
+- me-central-1:
+    region: me-central-1
+    zone: me-central-1a
+    instance_type: t3.medium
+    instance_ami: ami-0f334de647da2fc7d
+    node_count: 1
+- ca-central-1:
+    region: ca-central-1
+    zone: ca-central-1a
+    instance_type: t3.medium
+    instance_ami: ami-0a590ca28046d073e
+    node_count: 1
+- eu-central-1:
+    region: eu-central-1
+    zone: eu-central-1a
+    instance_type: t3.medium
+    instance_ami: ami-0e54671bdf3c8ed8d
+    node_count: 1
+- eu-central-2:
+    region: eu-central-2
+    zone: eu-central-2a
+    instance_type: t3.medium
+    instance_ami: ami-001ae26aa9fa6e1e0
+    node_count: 1
+- us-west-1:
+    region: us-west-1
+    zone: us-west-1b
+    instance_type: t3.medium
+    instance_ami: ami-0aa117785d1c1bfe5
+    node_count: 1
+- us-west-2:
+    region: us-west-2
+    zone: us-west-2a
+    instance_type: t3.medium
+    instance_ami: ami-07d9cf938edb0739b
+    node_count: 1
+- af-south-1:
+    region: af-south-1
+    zone: af-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-09bb68fb3b90fe9f5
+    node_count: 1
+- eu-north-1:
+    region: eu-north-1
+    zone: eu-north-1a
+    instance_type: t3.medium
+    instance_ami: ami-02df5cb5ad97983ba
+    node_count: 1
+- eu-west-3:
+    region: eu-west-3
+    zone: eu-west-3a
+    instance_type: t3.medium
+    instance_ami: ami-07dc1ccdcec3b4eab
+    node_count: 1
+- eu-west-2:
+    region: eu-west-2
+    zone: eu-west-2a
+    instance_type: t3.medium
+    instance_ami: ami-019374baf467d6601
+    node_count: 1
+- eu-west-1:
+    region: eu-west-1
+    zone: eu-west-1a
+    instance_type: t3.medium
+    instance_ami: ami-0a094c309b87cc107
+    node_count: 1
+- ap-northeast-3:
+    region: ap-northeast-3
+    zone: ap-northeast-3a
+    instance_type: t3.medium
+    instance_ami: ami-0c8df088bd68958ff
+    node_count: 1
+- ap-northeast-2:
+    region: ap-northeast-2
+    zone: ap-northeast-2a
+    instance_type: t3.medium
+    instance_ami: ami-049788618f07e189d
+    node_count: 1
+- me-south-1:
+    region: me-south-1
+    zone: me-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-064ca081dffe98dc2
+    node_count: 1
+- ap-northeast-1:
+    region: ap-northeast-1
+    zone: ap-northeast-1a
+    instance_type: t3.medium
+    instance_ami: ami-0ab02459752898a60
+    node_count: 1
+- sa-east-1:
+    region: sa-east-1
+    zone: sa-east-1a
+    instance_type: t3.medium
+    instance_ami: ami-03c4a8310002221c7
+    node_count: 1
+- ap-east-1:
+    region: ap-east-1
+    zone: ap-east-1a
+    instance_type: t3.medium
+    instance_ami: ami-0a7ea1800b4d7a034
+    node_count: 1
+- ca-west-1:
+    region: ca-west-1
+    zone: ca-west-1a
+    instance_type: t3.medium
+    instance_ami: ami-0ba32fa0d87c5d193
+    node_count: 1
+- ap-southeast-1:
+    region: ap-southeast-1
+    zone: ap-southeast-1a
+    instance_type: t3.medium
+    instance_ami: ami-0995922d49dc9a17d
+    node_count: 1
+- ap-southeast-2:
+    region: ap-southeast-2
+    zone: ap-southeast-2a
+    instance_type: t3.medium
+    instance_ami: ami-0d6560f3176dc9ec0
+    node_count: 1
+- ap-southeast-3:
+    region: ap-southeast-3
+    zone: ap-southeast-3a
+    instance_type: t3.medium
+    instance_ami: ami-01ca3951ed2aa735e
+    node_count: 1
+- ap-southeast-4:
+    region: ap-southeast-4
+    zone: ap-southeast-4a
+    instance_type: t3.medium
+    instance_ami: ami-069ddd2a970d5e293
+    node_count: 1
+- us-east-1:
+    region: us-east-1
+    zone: us-east-1a
+    instance_type: t3.medium
+    instance_ami: ami-01816d07b1128cd2d
+    node_count: 1
+- ap-southeast-5:
+    region: ap-southeast-5
+    zone: ap-southeast-5a
+    instance_type: t3.medium
+    instance_ami: ami-0c4a807cb1a258810
+    node_count: 1
+- us-east-2:
+    region: us-east-2
+    zone: us-east-2a
+    instance_type: t3.medium
+    instance_ami: ami-0b4624933067d393a
+    node_count: 1

@@ -1,0 +1,37 @@
+# Auto-generated locations configuration
+- ap-south-2:
+    region: ap-south-2
+    zone: ap-south-2a
+    instance_type: t3.medium
+    instance_ami: ami-00a1eadb2f89ed527
+    node_count: 1
+- ap-south-1:
+    region: ap-south-1
+    zone: ap-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-00de85d5db74f5b55
+    node_count: 1
+- eu-south-1:
+    region: eu-south-1
+    zone: eu-south-1a
+    instance_type: t3.medium
+    instance_ami: ami-0cadabc8d6733ff95
+    node_count: 1
+- eu-south-2:
+    region: eu-south-2
+    zone: eu-south-2a
+    instance_type: t3.medium
+    instance_ami: ami-0db1867caef67a4a3
+    node_count: 1
+- me-central-1:
+    region: me-central-1
+    zone: me-central-1a
+    instance_type: t3.medium
+    instance_ami: ami-03cf4817f9044cd69
+    node_count: 3
+- ca-central-1:
+    region: ca-central-1
+    zone: ca-central-1a
+    instance_type: t3.medium
+    instance_ami: ami-035c442a4bb290d3d
+    node_count: 1
