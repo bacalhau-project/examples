@@ -155,15 +155,19 @@ def load_config() -> Dict[str, Any]:
 def deploy(command, region, region_config):
     """Deploys or destroys resources in a single region."""
     terraform_command = "apply" if command == "create" else "destroy"
+    logging.debug(f"Starting {command} operation for region {region}")
 
     # Get absolute path to env.tfvars.json
     workspace_dir = os.path.dirname(os.path.abspath(__file__))
     env_vars_file = os.path.join(workspace_dir, "env.tfvars.json")
+    logging.debug(f"Using env vars file: {env_vars_file}")
 
     # Check if env.tfvars.json exists
     if not os.path.exists(env_vars_file):
         raise FileNotFoundError(f"Required file not found: {env_vars_file}")
 
+    logging.debug(f"Region config: {json.dumps(region_config, indent=2)}")
+    
     with Progress(
         "[progress.description]{task.description}",
         BarColumn(),
@@ -176,29 +180,43 @@ def deploy(command, region, region_config):
         )
 
         # Select workspace for this region
+        logging.debug(f"Selecting/creating workspace for region {region}")
         run_command(["terraform", "workspace", "select", "-or-create", region])
 
         progress.update(
             task, advance=1, description=f"[cyan]{region}[/cyan] - Initializing"
         )
+        logging.debug(f"Running terraform init for region {region}")
         run_command(["terraform", "init", "-upgrade"])
 
         progress.update(
             task, advance=1, description=f"[cyan]{region}[/cyan] - Applying"
         )
-        run_command(
-            [
-                "terraform",
-                terraform_command,
-                "-auto-approve",
-                f"-var=region={region}",
-                f"-var=zone={region_config['zone']}",
-                f"-var=instance_ami={region_config['instance_ami']}",
-                f"-var=node_count={region_config['node_count']}",
-                f"-var=instance_type={region_config['instance_type']}",
-                f"-var-file={env_vars_file}",
-            ]
-        )
+        logging.debug(f"Running terraform {terraform_command} for region {region}")
+        logging.debug(f"Command variables: region={region}, zone={region_config['zone']}, "
+                     f"instance_ami={region_config['instance_ami']}, "
+                     f"node_count={region_config['node_count']}, "
+                     f"instance_type={region_config['instance_type']}")
+        try:
+            result = run_command(
+                [
+                    "terraform",
+                    terraform_command,
+                    "-auto-approve",
+                    f"-var=region={region}",
+                    f"-var=zone={region_config['zone']}",
+                    f"-var=instance_ami={region_config['instance_ami']}",
+                    f"-var=node_count={region_config['node_count']}",
+                    f"-var=instance_type={region_config['instance_type']}",
+                    f"-var-file={env_vars_file}",
+                ]
+            )
+            logging.debug(f"Terraform {terraform_command} output:\n{result.stdout}")
+            if result.stderr:
+                logging.debug(f"Terraform {terraform_command} errors:\n{result.stderr}")
+        except Exception as e:
+            logging.error(f"Error during {terraform_command} for region {region}: {str(e)}")
+            raise
 
         progress.update(
             task, advance=1, description=f"[cyan]{region}[/cyan] - ✓ Complete"
