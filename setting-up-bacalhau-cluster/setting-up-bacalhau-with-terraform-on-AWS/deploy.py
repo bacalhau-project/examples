@@ -12,6 +12,7 @@ import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
@@ -155,6 +156,14 @@ def deploy(command, region, region_config):
     """Deploys or destroys resources in a single region."""
     terraform_command = "apply" if command == "create" else "destroy"
 
+    # Get absolute path to env.tfvars.json
+    workspace_dir = os.path.dirname(os.path.abspath(__file__))
+    env_vars_file = os.path.join(workspace_dir, "env.tfvars.json")
+
+    # Check if env.tfvars.json exists
+    if not os.path.exists(env_vars_file):
+        raise FileNotFoundError(f"Required file not found: {env_vars_file}")
+
     with Progress(
         "[progress.description]{task.description}",
         BarColumn(),
@@ -187,7 +196,7 @@ def deploy(command, region, region_config):
                 f"-var=instance_ami={region_config['instance_ami']}",
                 f"-var=node_count={region_config['node_count']}",
                 f"-var=instance_type={region_config['instance_type']}",
-                "-var-file=env.tfvars.json",
+                f"-var-file={env_vars_file}",
             ]
         )
 
@@ -205,6 +214,20 @@ def main():
             sys.exit(1)
 
         command = sys.argv[1]
+
+        # Get absolute path to env.tfvars.json
+        workspace_dir = os.path.dirname(os.path.abspath(__file__))
+        env_vars_file = os.path.join(workspace_dir, "env.tfvars.json")
+
+        # Check if env.tfvars.json exists before starting
+        if not os.path.exists(env_vars_file):
+            console.print(
+                f"\n[red]Error: Required file not found: {env_vars_file}[/red]"
+            )
+            console.print(
+                "Please ensure env.tfvars.json exists in the same directory as deploy.py"
+            )
+            sys.exit(1)
 
         # Load and validate configuration
         config = load_config()
@@ -255,7 +278,7 @@ def main():
                             f"-var=instance_ami={region_config['instance_ami']}",
                             f"-var=node_count={region_config['node_count']}",
                             f"-var=instance_type={region_config['instance_type']}",
-                            "-var-file=env.tfvars.json",
+                            f"-var-file={env_vars_file}",
                         ]
                     )
 
@@ -264,56 +287,101 @@ def main():
                     outputs = json.loads(result.stdout)
 
                     if not outputs:
-                        table.add_row(region, "No resources deployed", "", "")
+                        table.add_row(region, "No resources", "", "", style="yellow")
                         continue
 
-                    # Get instance details
-                    public_ips = outputs.get("public_ip", {}).get("value", [])
-                    instance_names = outputs.get("instance_name", {}).get("value", [])
+                    # Get instance details - handle list values correctly
+                    try:
+                        public_ips = outputs.get("public_ip", {}).get("value", [])
+                        private_ips = outputs.get("private_ip", {}).get("value", [])
+                        instance_ids = outputs.get("instance_id", {}).get("value", [])
+                        instance_names = outputs.get("instance_name", {}).get(
+                            "value", []
+                        )
 
-                    if not public_ips or not instance_names:
-                        table.add_row(region, "No instances found", "")
-                        continue
+                        if not instance_names:  # No instances found
+                            if command == "destroy":
+                                table.add_row(
+                                    region,
+                                    "[red]Deleted[/red]",
+                                    "[dim]Resources removed[/dim]",
+                                    "",
+                                    style="dim",
+                                )
+                            else:
+                                table.add_row(
+                                    region,
+                                    "[yellow]Empty[/yellow]",
+                                    "[dim]No instances[/dim]",
+                                    "",
+                                    style="dim",
+                                )
+                            continue
 
-                    # Add a row for each instance
-                    for i, (name, ip) in enumerate(zip(instance_names, public_ips)):
-                        # Truncate long values to fit columns
-                        truncated_name = (name[:27] + "...") if len(name) > 27 else name
-                        truncated_ip = (ip[:17] + "...") if len(ip) > 17 else ip
-
-                        status_icon = "✓" if command == "create" else "✗"
-                        status_style = "green" if command == "create" else "red"
-
-                        if i == 0:
-                            table.add_row(
-                                region,
-                                f"[{status_style}]{status_icon}[/{status_style}]",
-                                f"{truncated_name}",
-                                truncated_ip,
+                        # Add a row for each instance
+                        for i, (name, ip) in enumerate(zip(instance_names, public_ips)):
+                            # Truncate long values to fit columns
+                            truncated_name = (
+                                (name[:27] + "...") if len(name) > 27 else name
                             )
-                        else:
-                            table.add_row(
-                                "",
-                                "",
-                                f"└─ {truncated_name}",
-                                truncated_ip,
-                            )
+                            truncated_ip = (ip[:17] + "...") if len(ip) > 17 else ip
+
+                            if command == "destroy":
+                                status_icon = "[red]✗[/red]"
+                                name_style = "[dim strike]"
+                                ip_style = "[dim strike]"
+                            else:
+                                status_icon = "[green]✓[/green]"
+                                name_style = ""
+                                ip_style = ""
+
+                            if i == 0:  # First instance in region
+                                table.add_row(
+                                    region,
+                                    status_icon,
+                                    f"{name_style}{truncated_name}[/]",
+                                    f"{ip_style}{truncated_ip}[/]",
+                                )
+                            else:  # Additional instances in same region
+                                table.add_row(
+                                    "",
+                                    "",
+                                    f"└─ {name_style}{truncated_name}[/]",
+                                    f"{ip_style}{truncated_ip}[/]",
+                                )
+
+                    except (KeyError, TypeError) as e:
+                        logging.warning(
+                            f"Error parsing outputs for region {region}: {e}"
+                        )
+                        table.add_row(region, "Parse Error", "", "", style="yellow")
 
                 except subprocess.CalledProcessError as e:
                     if (
                         "InvalidClientTokenId" in e.stderr
-                        or "security token included in the request is invalid" in e.stderr
+                        or "security token included in the request is invalid"
+                        in e.stderr
                         or "no valid credential sources" in e.stderr
                     ):
-                        console.print("\n[red]Error: AWS credentials not configured[/red]")
-                        console.print("Please authenticate with AWS using one of these methods:")
-                        console.print("1. Run [bold]aws configure[/bold] to set up credentials")
+                        console.print(
+                            "\n[red]Error: AWS credentials not configured[/red]"
+                        )
+                        console.print(
+                            "Please authenticate with AWS using one of these methods:"
+                        )
+                        console.print(
+                            "1. Run [bold]aws configure[/bold] to set up credentials"
+                        )
                         console.print("2. Set AWS environment variables:")
                         console.print("   export AWS_ACCESS_KEY_ID='your-access-key'")
-                        console.print("   export AWS_SECRET_ACCESS_KEY='your-secret-key'")
+                        console.print(
+                            "   export AWS_SECRET_ACCESS_KEY='your-secret-key'"
+                        )
                         console.print("3. Test your credentials with:")
                         console.print("   [bold]aws sts get-caller-identity[/bold]")
-                        console.print("\nFor more details see: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html")
+                        console.print(
+                            "\nFor more details see: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html"
+                        )
                         sys.exit(1)
                     elif "Empty or non-existent state" in e.stderr:
                         table.add_row(region, "No resources deployed", "")
