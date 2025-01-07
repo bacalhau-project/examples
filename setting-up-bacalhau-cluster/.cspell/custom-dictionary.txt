@@ -1,7 +1,10 @@
 allowerasing
 bacalhau
+bacalhauproject
 boto
 cloudinit
+dind
+healthcheck
 healthz
 hostnames
 instanceeip
@@ -11,3 +14,4 @@ oneshot
 runcmd
 templatefile
 usermod
+YYMMDDH

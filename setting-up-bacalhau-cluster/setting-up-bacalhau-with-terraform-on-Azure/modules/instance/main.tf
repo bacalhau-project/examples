@@ -59,12 +59,14 @@ data "cloudinit_config" "user_data" {
       bacalhau_startup_service_file : filebase64("${path.module}/scripts/bacalhau-startup.service"),
       bacalhau_startup_script_file : filebase64("${path.module}/scripts/startup.sh"),
       bacalhau_config_file : var.bacalhau_config_file,
-      bacalhau_docker_compose_file : filebase64("${path.module}/config/docker-compose.yml"),
+      docker_compose_file : filebase64("${path.module}/config/docker-compose.yml"),
+      docker_install_script_file : filebase64("${path.module}/scripts/install_docker.sh"),
       bacalhau_data_dir : "/bacalhau_data",
       bacalhau_node_dir : "/bacalhau_node",
-      ssh_key : compact(split("\n", file(var.public_key_path)))[0],
+      public_ssh_key : compact(split("\n", file(var.public_ssh_key_path)))[0],
       healthz_web_server_script_file : filebase64("${path.module}/scripts/healthz-web-server.py"),
       healthz_service_file : filebase64("${path.module}/scripts/healthz-web.service"),
+
     })
   }
 }
@@ -82,7 +84,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = var.username
-    public_key = file(var.public_key_path)
+    public_key = file(var.public_ssh_key_path)
   }
 
   os_disk {
