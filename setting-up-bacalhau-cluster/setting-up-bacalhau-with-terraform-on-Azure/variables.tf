@@ -8,7 +8,7 @@ variable "username" {
   description = "Username for login"
 }
 
-variable "public_key_path" {
+variable "public_ssh_key_path" {
   type        = string
   description = "Public key file that should appear in authorized_keys"
 }

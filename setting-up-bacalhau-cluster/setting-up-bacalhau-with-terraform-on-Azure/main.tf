@@ -50,7 +50,7 @@ module "instanceModule" {
   subnet_id            = module.networkModule[each.key].subnet_id
   nsg_id               = module.securityGroupModule[each.key].nsg_id
   username             = var.username
-  public_key_path      = var.public_key_path
+  public_ssh_key_path  = var.public_ssh_key_path
   node_count           = each.value.node_count
   bacalhau_config_file = filebase64("${path.module}/${var.bacalhau_config_file_path}")
 }
