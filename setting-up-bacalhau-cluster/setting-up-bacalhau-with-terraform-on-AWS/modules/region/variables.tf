@@ -36,12 +36,12 @@ variable "username" {
   description = "Username for SSH access to instances"
 }
 
-variable "public_key" {
+variable "public_key_path" {
   type        = string
   description = "Path to the public key file for SSH access"
 }
 
-variable "private_key" {
+variable "private_key_path" {
   type        = string
   description = "Path to the private key file for SSH access"
 }

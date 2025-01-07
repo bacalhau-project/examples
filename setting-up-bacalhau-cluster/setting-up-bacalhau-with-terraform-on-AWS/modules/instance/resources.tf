@@ -1,4 +1,4 @@
-resource "random_string" "suffix" {
+resource "random_string" "prefix" {
   count   = var.node_count
   length  = 8
   special = false
@@ -8,8 +8,12 @@ resource "random_string" "suffix" {
 }
 
 locals {
-  vm_names   = [for i in range(var.node_count) : "${var.app_tag}-${var.region}-${random_string.suffix[i].result}"]
-  role_names = [for i in range(var.node_count) : "vm-role-${random_string.suffix[i].result}"]
+  # Create a list of random prefixes, one for each instance
+  instance_prefixes = [for i in range(var.node_count) : random_string.prefix[i].result]
+
+  # Use the same prefix for both VM and role names for each instance
+  vm_names   = [for i in range(var.node_count) : "${local.instance_prefixes[i]}-${i}-vm"]
+  role_names = [for i in range(var.node_count) : "${local.instance_prefixes[i]}-${i}-role"]
 }
 
 resource "aws_iam_role" "vm_iam_role" {
@@ -81,11 +85,12 @@ data "cloudinit_config" "user_data" {
       docker_compose_file : base64encode(file("${path.module}/config/docker-compose.yml")),
       healthz_web_server_script_file : base64encode(file("${path.module}/scripts/healthz-web-server.py")),
       healthz_service_file : base64encode(file("${path.module}/scripts/healthz-web.service")),
-      node_name : local.vm_names[count.index]
-      username : var.username
-      ssh_key : var.public_key
-      region : var.region
-      zone : var.zone
+      docker_install_script_file : base64encode(file("${path.module}/scripts/install_docker.sh")),
+      node_name : local.vm_names[count.index],
+      username : var.username,
+      public_ssh_key : base64encode(file(var.public_key_path)),
+      region : var.region,
+      zone : var.zone,
       app_name : var.app_tag
     })
   }

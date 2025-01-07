@@ -1,9 +1,17 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "pyyaml",
+# ]
+# ///
+
 import argparse
+import concurrent.futures
 import json
 import os
 import subprocess
 import sys
-import concurrent.futures
 import threading
 
 import yaml
@@ -105,14 +113,16 @@ def main():
     print("\nDeleting nodes...")
     deleted_count = 0
     print_lock = threading.Lock()
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         # Create a list to store the futures
         future_to_node = {
-            executor.submit(delete_node, node["Info"]["NodeID"], args.api_host, print_lock): node 
+            executor.submit(
+                delete_node, node["Info"]["NodeID"], args.api_host, print_lock
+            ): node
             for node in disconnected_nodes
         }
-        
+
         # As each future completes, count the successful deletions
         for future in concurrent.futures.as_completed(future_to_node):
             if future.result():

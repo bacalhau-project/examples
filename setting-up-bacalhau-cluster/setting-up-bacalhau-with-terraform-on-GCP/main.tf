@@ -135,12 +135,14 @@ data "cloudinit_config" "user_data" {
       bacalhau_startup_service_file : filebase64("${path.root}/scripts/bacalhau-startup.service"),
       bacalhau_startup_script_file : filebase64("${path.root}/scripts/startup.sh"),
       bacalhau_config_file : filebase64("${path.root}/config/config.yaml"),
-      bacalhau_docker_compose_file : filebase64("${path.root}/config/docker-compose.yml"),
+      docker_compose_file : filebase64("${path.root}/config/docker-compose.yml"),
+      docker_install_script_file : filebase64("${path.root}/scripts/install_docker.sh"),
       bacalhau_data_dir : var.bacalhau_data_dir,
       bacalhau_node_dir : var.bacalhau_node_dir,
-      ssh_key : compact(split("\n", file(var.public_key)))[0],
+      public_ssh_key : compact(split("\n", file(var.public_ssh_key_path)))[0],
       healthz_web_server_script_file : filebase64("${path.root}/scripts/healthz-web-server.py"),
       healthz_service_file : filebase64("${path.root}/scripts/healthz-web.service"),
+      install_docker_script_file : filebase64("${path.root}/scripts/install_docker.sh"),
     })
   }
 }
@@ -195,7 +197,7 @@ resource "google_compute_instance" "gcp_instance" {
 
   metadata = {
     user-data = "${data.cloudinit_config.user_data[each.key].rendered}",
-    ssh-keys  = "${var.username}:${file(var.public_key)}",
+    ssh-keys  = "${var.username}:${file(var.public_ssh_key_path)}",
   }
 
   labels = local.common_tags

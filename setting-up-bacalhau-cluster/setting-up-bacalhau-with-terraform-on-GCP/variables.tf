@@ -30,7 +30,7 @@ variable "username" {
   type        = string
 }
 
-variable "public_key" {
+variable "public_ssh_key_path" {
   description = "Path to public SSH key"
   type        = string
 }

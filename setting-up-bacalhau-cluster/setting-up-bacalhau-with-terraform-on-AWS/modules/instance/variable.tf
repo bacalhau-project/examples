@@ -3,7 +3,6 @@
 variable "node_count" {
   description = "Number of nodes to create"
   type        = number
-  default     = 1
 }
 
 variable "vpc_id" {
@@ -24,12 +23,12 @@ variable "app_tag" {
   type        = string
 }
 
-variable "public_key" {
-  description = "OpenSSH public key"
+variable "public_key_path" {
+  description = "Path to the OpenSSH public key"
   type        = string
 }
 
-variable "private_key" {
+variable "private_key_path" {
   description = "OpenSSH private key"
   type        = string
 }

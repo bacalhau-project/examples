@@ -91,13 +91,19 @@ echo "Starting Docker Compose services..."
 if [ -f "${BACALHAU_NODE_DIR}/docker-compose.yaml" ]; then
     cd "${BACALHAU_NODE_DIR}" || exit
     
+    # Stop and remove any existing containers
+    echo "Stopping and removing any existing containers..."
+    docker compose down
+    
+    # Additional cleanup for any stray containers
+    if docker ps -a | grep -q "bacalhau_node-bacalhau-node"; then
+        echo "Found stray containers, removing them..."
+        docker ps -a | grep "bacalhau_node-bacalhau-node" | awk '{print $1}' | xargs -r docker rm -f
+    fi
+    
     # Pull latest images
     echo "Pulling latest images..."
     docker compose pull
-    
-    # Stop any existing containers
-    echo "Stopping any existing containers..."
-    docker compose down --remove-orphans
     
     # Start services
     echo "Starting services..."

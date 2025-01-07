@@ -8,7 +8,7 @@ variable "username" {
   description = "Username for login"
 }
 
-variable "public_key" {
+variable "public_key_path" {
   type        = string
   description = "Public key file that should appear in authorized_keys"
 }
@@ -48,4 +48,9 @@ variable "locations" {
     node_count   = number
   }))
   description = "Map of locations with their VM configurations"
+}
+
+variable "bacalhau_config_file_path" {
+  type        = string
+  description = "Path to the Bacalhau config file"
 }

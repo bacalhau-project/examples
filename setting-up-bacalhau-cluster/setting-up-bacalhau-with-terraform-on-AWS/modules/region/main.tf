@@ -33,12 +33,13 @@ module "instanceModule" {
   instance_ami              = var.instance_ami
   region                    = var.region
   zone                      = var.zone
+  node_count                = var.node_count
   vpc_id                    = module.networkModule.vpc_id
   subnet_public_id          = module.networkModule.public_subnets[0]
   security_group_ids        = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_4222]
   app_tag                   = var.app_tag
-  public_key                = var.public_key
-  private_key               = var.private_key
+  public_key_path           = var.public_key_path
+  private_key_path          = var.private_key_path
   bacalhau_data_dir         = var.bacalhau_data_dir
   bacalhau_node_dir         = var.bacalhau_node_dir
   bacalhau_config_file_path = var.bacalhau_config_file_path

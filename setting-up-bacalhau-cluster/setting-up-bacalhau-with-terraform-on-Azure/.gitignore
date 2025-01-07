@@ -1,3 +1,4 @@
 .cspell/*
 env.json
 terraform.tfvars.json
+env.tfvars.json

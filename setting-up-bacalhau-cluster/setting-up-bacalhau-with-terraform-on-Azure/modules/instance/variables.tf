@@ -33,7 +33,7 @@ variable "username" {
   description = "Username for login"
 }
 
-variable "public_key" {
+variable "public_key_path" {
   type        = string
   description = "Public key file path"
 }
