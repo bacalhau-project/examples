@@ -1,16 +1,19 @@
-output "public_ip" {
-  value = [for eip in aws_eip.instanceeip : eip.public_ip]
+output "public_ips" {
+  description = "Public IPs of the instances"
+  value       = aws_eip.instanceeip[*].public_ip
 }
 
-output "private_ip" {
-  value = [for eip in aws_eip.instanceeip : eip.private_ip]
+output "private_ips" {
+  description = "Private IPs of the instances"
+  value       = aws_eip.instanceeip[*].private_ip
 }
 
-output "instance_id" {
-  value = [for instance in aws_instance.instance : instance.id]
+output "instance_ids" {
+  description = "IDs of the created instances"
+  value       = aws_instance.instance[*].id
 }
 
-output "instance_name" {
+output "instance_names" {
   description = "The generated names of the instances"
   value       = local.vm_names
 }

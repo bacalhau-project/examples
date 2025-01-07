@@ -6,11 +6,11 @@ variable "instance_type" {
   type = string
 }
 
-variable "public_key" {
+variable "public_key_path" {
   type = string
 }
 
-variable "private_key" {
+variable "private_key_path" {
   type = string
 }
 
@@ -51,9 +51,5 @@ variable "node_count" {
 }
 
 variable "bacalhau_config_file_path" {
-  type = string
-}
-
-variable "shared_credentials_file" {
   type = string
 }
