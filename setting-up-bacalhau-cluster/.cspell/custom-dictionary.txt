@@ -1,6 +1,10 @@
+allowerasing
 bacalhau
 boto
+cloudinit
+healthz
 hostnames
+instanceeip
 jsonencode
 NOPASSWD
 oneshot

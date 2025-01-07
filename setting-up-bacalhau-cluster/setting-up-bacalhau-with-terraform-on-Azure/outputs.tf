@@ -9,3 +9,10 @@ output "vm_public_ips" {
     }
   }
 }
+
+output "cluster_health" {
+  description = "Health status of all nodes in the cluster"
+  value = {
+    for location, instance in module.instanceModule : location => instance.health_status
+  }
+}

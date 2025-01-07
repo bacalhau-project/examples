@@ -4,11 +4,12 @@ After=docker.service network-online.target
 Wants=network-online.target
 
 [Service]
-Type=oneshot
+Type=simple
 Environment=BACALHAU_DATA_DIR=/bacalhau_data
 Environment=BACALHAU_NODE_DIR=/bacalhau_node
 ExecStart=/usr/local/bin/startup.sh
-RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
 

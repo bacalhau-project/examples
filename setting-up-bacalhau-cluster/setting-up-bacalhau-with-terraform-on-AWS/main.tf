@@ -15,8 +15,8 @@ module "region" {
   node_count                = var.node_count
   app_tag                   = var.app_tag
   aws_instance_type         = var.instance_type
-  public_key                = var.public_key
-  private_key               = var.private_key
+  public_key_path           = var.public_key_path
+  private_key_path          = var.private_key_path
   app_name                  = var.app_name
   bacalhau_installation_id  = var.bacalhau_installation_id
   bacalhau_data_dir         = var.bacalhau_data_dir

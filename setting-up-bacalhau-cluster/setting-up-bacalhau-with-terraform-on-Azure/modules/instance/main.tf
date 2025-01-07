@@ -62,7 +62,7 @@ data "cloudinit_config" "user_data" {
       bacalhau_docker_compose_file : filebase64("${path.module}/config/docker-compose.yml"),
       bacalhau_data_dir : "/bacalhau_data",
       bacalhau_node_dir : "/bacalhau_node",
-      ssh_key : compact(split("\n", file(var.public_key)))[0],
+      ssh_key : compact(split("\n", file(var.public_key_path)))[0],
       healthz_web_server_script_file : filebase64("${path.module}/scripts/healthz-web-server.py"),
       healthz_service_file : filebase64("${path.module}/scripts/healthz-web.service"),
     })
@@ -82,7 +82,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = var.username
-    public_key = file(var.public_key)
+    public_key = file(var.public_key_path)
   }
 
   os_disk {
@@ -106,24 +106,15 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
 
 data "http" "healthcheck" {
-  for_each = azurerm_linux_virtual_machine.vm
+  count = var.node_count
 
-  url = "http://${azurerm_linux_virtual_machine.vm[each.key].network_interface[0].private_ip_address}/healthz"
+  url = "http://${azurerm_linux_virtual_machine.vm[count.index].public_ip_address}/healthz"
 
   retry {
     attempts     = 35
     min_delay_ms = 10000 # 10 seconds
     max_delay_ms = 10000 # 10 seconds
   }
-}
 
-output "deployment_status" {
-  description = "Deployment status including health checks"
-  value = {
-    for k, v in azurerm_linux_virtual_machine.vm : k => {
-      name         = v.name
-      private_ip   = v.network_interface[0].private_ip_address
-      health_check = try(data.http.healthcheck[k].status_code == 200, false) ? "healthy" : "failed"
-    }
-  }
+  depends_on = [azurerm_linux_virtual_machine.vm]
 }
