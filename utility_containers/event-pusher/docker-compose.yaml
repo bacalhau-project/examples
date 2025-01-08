@@ -1,17 +1,16 @@
 version: "3.8"
 services:
   event-publisher:
-    image: ghcr.io/bacalhau-project/event-pusher:202503251123
+    image: docker.io/bacalhauproject/event-pusher:202412231206
     # Mount the .env file into the container for credentials
     environment:
       - ENV_FILE=/config/.env
     volumes:
-      - ./config.yaml:/config.yaml:ro
-
-    # Run the entrypoint script
-    command: ["/bin/sh", "/entrypoint.sh"]
+      - ./config:/config:rw
+    # Run the compiled binary
+    command: ["/app"]
     # Always restart to keep the containers running until shutdown
     restart: always
     deploy:
       mode: replicated
-      replicas: 5
+      replicas: 1

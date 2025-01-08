@@ -181,22 +181,6 @@
             will-change: transform;
         }
 
-        .vm-region {
-            font-size: 10px;
-            font-weight: 500;
-            text-align: center;
-            word-break: break-all;
-            padding: 0 4px;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            line-height: 1.2;
-            transform: translateZ(0);
-            backface-visibility: hidden;
-            will-change: transform;
-        }
-
         .vm-box.new {
             animation: fade 500ms ease-out;
         }
@@ -281,11 +265,9 @@
                     existingBox.style.borderColor = update.color;
                     const iconDiv = existingBox.querySelector('.vm-icon');
                     const nameDiv = existingBox.querySelector('.vm-name');
-                    const regionDiv = existingBox.querySelector('.vm-region');
                     iconDiv.textContent = update.iconName;
                     iconDiv.style.color = update.color;
                     nameDiv.style.color = update.color;
-                    regionDiv.style.color = update.color;
                     existingBox.classList.remove('new');
                     void existingBox.offsetWidth; // Force reflow
                     existingBox.classList.add('new');
@@ -298,7 +280,6 @@
                     box.innerHTML = `
                         <div class="vm-icon" style="color: ${update.color}">${update.iconName}</div>
                         <div class="vm-name" style="color: ${update.color}">${vmName}</div>
-                        <div class="vm-region" style="color: ${update.color}">${update.region}</div>
                     `;
                     fragment.appendChild(box);
                     vmStates.set(vmName, true);
@@ -355,7 +336,7 @@
             const lastPoll = document.getElementById('lastPoll');
             const queueSize = document.getElementById('queueSize');
 
-            ws = new WebSocket(`ws://localhost:8080/ws`);
+            ws = new WebSocket(`ws://${window.location.hostname}:8080/ws`);
 
             ws.onopen = () => {
                 connectionStatus.textContent = 'Connected';

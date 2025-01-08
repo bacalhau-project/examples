@@ -21,7 +21,7 @@ for url in "${urls[@]}"; do
     echo "Processing URL: $url"
     
     # Run the bacalhau job with the URL as template variable
-    bacalhau job run download_data_job.yaml --template-vars="url_to_download=$url" --template-vars="filename=$(basename $url)"
+    bacalhau job run download_data_job.yaml --template-vars="url_to_download=$url"
     
     # Add a small delay between job submissions
     sleep 1

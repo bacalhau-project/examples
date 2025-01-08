@@ -8,7 +8,7 @@ Tasks:
         Parameters:
           - wget
           - -O
-          - /bacalhau_data/{{ .filename }}
+          - /bacalhau_data/$(basename "{{ .url_to_download }}")
           - "{{ .url_to_download }}"
       Type: docker
     Name: download-data-job
@@ -29,6 +29,5 @@ Tasks:
       CPU: 250m
       Memory: 250m
     Timeouts: {}
-    Constraits:
-      - INSTANCE_ID=7362301696299350469
-Type: daemon
+Type: batch
+Count: 4
