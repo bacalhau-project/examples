@@ -1,0 +1,2865 @@
+2024/12/22 14:48:05 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 14:48:10 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 14:48:11 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 14:48:12 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 14:48:13 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 14:48:14 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 14:48:15 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:10 Queue counts - Visible: 9, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:10 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:10 Received 1 messages
+2024/12/22 15:02:10 Received 1 messages
+2024/12/22 15:02:10 Processing batch of 1 messages
+2024/12/22 15:02:10 Processing batch of 1 messages
+2024/12/22 15:02:10 Received 1 messages
+2024/12/22 15:02:10 Received 6 messages
+2024/12/22 15:02:10 Processing batch of 1 messages
+2024/12/22 15:02:10 Processing batch of 6 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:10 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 1 messages
+2024/12/22 15:02:11 Processing batch of 1 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:11 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:12 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 1 messages
+2024/12/22 15:02:13 Processing batch of 1 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:13 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Queue counts - Visible: 9, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:14 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 1 messages
+2024/12/22 15:02:15 Processing batch of 1 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:15 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Queue counts - Visible: 9, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:16 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:17 Received 0 messages
+2024/12/22 15:02:27 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 15:02:28 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:28 Starting message processor (deleteMessages=true)
+2024/12/22 15:02:29 Received 1 messages
+2024/12/22 15:02:29 Received 1 messages
+2024/12/22 15:02:29 Processing batch of 1 messages
+2024/12/22 15:02:29 Processing batch of 1 messages
+2024/12/22 15:02:29 Received 2 messages
+2024/12/22 15:02:29 Received 2 messages
+2024/12/22 15:02:29 Processing batch of 2 messages
+2024/12/22 15:02:29 Processing batch of 2 messages
+2024/12/22 15:02:29 Received 1 messages
+2024/12/22 15:02:29 Processing batch of 1 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:29 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Queue counts - Visible: 6, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:30 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:31 Received 1 messages
+2024/12/22 15:02:31 Processing batch of 1 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:31 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 1 messages
+2024/12/22 15:02:32 Processing batch of 1 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:32 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:33 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:34 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 1 messages
+2024/12/22 15:02:35 Processing batch of 1 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:35 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:36 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:02:37 Received 0 messages
+2024/12/22 15:12:51 Starting SQS Queue Tool
+2024/12/22 15:12:51 Region: us-west-2
+2024/12/22 15:12:51 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:12:51 Access Key ID: AKIA****...
+2024/12/22 15:22:43 Starting SQS Queue Tool
+2024/12/22 15:22:43 Region: us-west-2
+2024/12/22 15:22:43 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 15:22:43 Access Key ID: AKIA****...
+2024/12/22 16:15:58 Starting SQS Queue Tool
+2024/12/22 16:15:58 Region: us-west-2
+2024/12/22 16:15:58 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:15:58 Access Key ID: AKIA****...
+2024/12/22 16:15:58 Queue counts - Visible: 1919, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:00 Queue counts - Visible: 1896, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:03 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Starting message processor (deleteMessages=true)
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Received 10 messages
+2024/12/22 16:16:03 Processing batch of 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:03 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Queue counts - Visible: 843, NotVisible: 460, Delayed: 0
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Received 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Processing batch of 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:04 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 1 messages
+2024/12/22 16:16:05 Processing batch of 1 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 2 messages
+2024/12/22 16:16:05 Processing batch of 2 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Queue counts - Visible: 1915, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:05 Received 8 messages
+2024/12/22 16:16:05 Processing batch of 8 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 2 messages
+2024/12/22 16:16:05 Processing batch of 2 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 5 messages
+2024/12/22 16:16:05 Processing batch of 5 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 1 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Received 10 messages
+2024/12/22 16:16:05 Processing batch of 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Received 5 messages
+2024/12/22 16:16:05 Processing batch of 5 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 2 messages
+2024/12/22 16:16:05 Successfully deleted 8 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 2 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 5 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:05 Successfully deleted 10 messages
+2024/12/22 16:16:06 Successfully deleted 10 messages
+2024/12/22 16:16:06 Successfully deleted 10 messages
+2024/12/22 16:16:06 Successfully deleted 10 messages
+2024/12/22 16:16:06 Successfully deleted 5 messages
+2024/12/22 16:16:06 Queue counts - Visible: 182, NotVisible: 451, Delayed: 0
+2024/12/22 16:16:07 Queue counts - Visible: 843, NotVisible: 460, Delayed: 0
+2024/12/22 16:16:07 Received 1 messages
+2024/12/22 16:16:07 Processing batch of 1 messages
+2024/12/22 16:16:07 Successfully deleted 1 messages
+2024/12/22 16:16:08 Queue counts - Visible: 843, NotVisible: 460, Delayed: 0
+2024/12/22 16:16:09 Queue counts - Visible: 182, NotVisible: 451, Delayed: 0
+2024/12/22 16:16:10 Queue counts - Visible: 182, NotVisible: 451, Delayed: 0
+2024/12/22 16:16:10 Received 1 messages
+2024/12/22 16:16:10 Processing batch of 1 messages
+2024/12/22 16:16:10 Successfully deleted 1 messages
+2024/12/22 16:16:11 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:12 Queue counts - Visible: 1921, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:12 Received 1 messages
+2024/12/22 16:16:12 Processing batch of 1 messages
+2024/12/22 16:16:13 Successfully deleted 1 messages
+2024/12/22 16:16:13 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:13 Received 1 messages
+2024/12/22 16:16:13 Processing batch of 1 messages
+2024/12/22 16:16:14 Successfully deleted 1 messages
+2024/12/22 16:16:14 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:14 Received 1 messages
+2024/12/22 16:16:14 Processing batch of 1 messages
+2024/12/22 16:16:14 Successfully deleted 1 messages
+2024/12/22 16:16:15 Queue counts - Visible: 182, NotVisible: 451, Delayed: 0
+2024/12/22 16:16:16 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:17 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:18 Queue counts - Visible: 0, NotVisible: 0, Delayed: 0
+2024/12/22 16:16:18 Received 1 messages
+2024/12/22 16:16:18 Processing batch of 1 messages
+2024/12/22 16:17:11 Starting SQS Queue Tool
+2024/12/22 16:17:11 Region: us-west-2
+2024/12/22 16:17:11 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:11 Access Key ID: AKIA****...
+2024/12/22 16:17:11 Queue counts - Visible: 27, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:14 Queue counts - Visible: 28, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:16 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:16 Starting message processor (deleteMessages=true)
+2024/12/22 16:17:17 Received 3 messages
+2024/12/22 16:17:17 Processing batch of 3 messages
+2024/12/22 16:17:17 Received 3 messages
+2024/12/22 16:17:17 Processing batch of 3 messages
+2024/12/22 16:17:17 Received 4 messages
+2024/12/22 16:17:17 Processing batch of 4 messages
+2024/12/22 16:17:17 Received 5 messages
+2024/12/22 16:17:17 Processing batch of 5 messages
+2024/12/22 16:17:17 Received 1 messages
+2024/12/22 16:17:17 Received 3 messages
+2024/12/22 16:17:17 Processing batch of 1 messages
+2024/12/22 16:17:17 Processing batch of 3 messages
+2024/12/22 16:17:17 Received 10 messages
+2024/12/22 16:17:17 Processing batch of 10 messages
+2024/12/22 16:17:17 Received 1 messages
+2024/12/22 16:17:17 Processing batch of 1 messages
+2024/12/22 16:17:17 Successfully deleted 5 messages
+2024/12/22 16:17:17 Successfully deleted 3 messages
+2024/12/22 16:17:17 Successfully deleted 4 messages
+2024/12/22 16:17:17 Successfully deleted 10 messages
+2024/12/22 16:17:17 Successfully deleted 3 messages
+2024/12/22 16:17:17 Successfully deleted 1 messages
+2024/12/22 16:17:17 Successfully deleted 3 messages
+2024/12/22 16:17:17 Successfully deleted 1 messages
+2024/12/22 16:17:18 Queue counts - Visible: 27, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:18 Received 1 messages
+2024/12/22 16:17:18 Processing batch of 1 messages
+2024/12/22 16:17:18 Successfully deleted 1 messages
+2024/12/22 16:17:19 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:19 Received 1 messages
+2024/12/22 16:17:19 Processing batch of 1 messages
+2024/12/22 16:17:19 Successfully deleted 1 messages
+2024/12/22 16:17:20 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:21 Queue counts - Visible: 28, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:21 Received 1 messages
+2024/12/22 16:17:21 Processing batch of 1 messages
+2024/12/22 16:17:21 Successfully deleted 1 messages
+2024/12/22 16:17:22 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:23 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:24 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:25 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:25 Received 1 messages
+2024/12/22 16:17:25 Processing batch of 1 messages
+2024/12/22 16:17:25 Successfully deleted 1 messages
+2024/12/22 16:17:25 Received 1 messages
+2024/12/22 16:17:25 Processing batch of 1 messages
+2024/12/22 16:17:25 Successfully deleted 1 messages
+2024/12/22 16:17:26 Queue counts - Visible: 28, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:27 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:27 Received 1 messages
+2024/12/22 16:17:27 Processing batch of 1 messages
+2024/12/22 16:17:28 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:28 Successfully deleted 1 messages
+2024/12/22 16:17:29 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:30 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:30 Received 1 messages
+2024/12/22 16:17:30 Processing batch of 1 messages
+2024/12/22 16:17:31 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:31 Successfully deleted 1 messages
+2024/12/22 16:17:32 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:33 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:34 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:34 Received 1 messages
+2024/12/22 16:17:34 Processing batch of 1 messages
+2024/12/22 16:17:34 Successfully deleted 1 messages
+2024/12/22 16:17:34 Received 1 messages
+2024/12/22 16:17:34 Processing batch of 1 messages
+2024/12/22 16:17:34 Successfully deleted 1 messages
+2024/12/22 16:17:35 Queue counts - Visible: 29, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:36 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:36 Received 1 messages
+2024/12/22 16:17:36 Processing batch of 1 messages
+2024/12/22 16:17:36 Successfully deleted 1 messages
+2024/12/22 16:17:37 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:38 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:38 Received 1 messages
+2024/12/22 16:17:38 Processing batch of 1 messages
+2024/12/22 16:17:38 Successfully deleted 1 messages
+2024/12/22 16:17:39 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:40 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:41 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:41 Received 1 messages
+2024/12/22 16:17:41 Processing batch of 1 messages
+2024/12/22 16:17:42 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:42 Successfully deleted 1 messages
+2024/12/22 16:17:43 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:44 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:44 Received 1 messages
+2024/12/22 16:17:44 Processing batch of 1 messages
+2024/12/22 16:17:44 Successfully deleted 1 messages
+2024/12/22 16:17:45 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:45 Received 1 messages
+2024/12/22 16:17:45 Processing batch of 1 messages
+2024/12/22 16:17:45 Successfully deleted 1 messages
+2024/12/22 16:17:46 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:47 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:47 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:49 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:49 Received 1 messages
+2024/12/22 16:17:49 Processing batch of 1 messages
+2024/12/22 16:17:49 Successfully deleted 1 messages
+2024/12/22 16:17:50 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:51 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:51 Received 1 messages
+2024/12/22 16:17:51 Processing batch of 1 messages
+2024/12/22 16:17:51 Successfully deleted 1 messages
+2024/12/22 16:17:52 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:52 Received 1 messages
+2024/12/22 16:17:52 Processing batch of 1 messages
+2024/12/22 16:17:53 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:53 Successfully deleted 1 messages
+2024/12/22 16:17:54 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:55 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:56 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:56 Received 1 messages
+2024/12/22 16:17:56 Processing batch of 1 messages
+2024/12/22 16:17:56 Successfully deleted 1 messages
+2024/12/22 16:17:57 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:17:58 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:17:58 Received 1 messages
+2024/12/22 16:17:58 Processing batch of 1 messages
+2024/12/22 16:17:58 Successfully deleted 1 messages
+2024/12/22 16:17:59 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:00 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:00 Received 1 messages
+2024/12/22 16:18:00 Processing batch of 1 messages
+2024/12/22 16:18:00 Successfully deleted 1 messages
+2024/12/22 16:18:01 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:02 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:02 Received 1 messages
+2024/12/22 16:18:02 Processing batch of 1 messages
+2024/12/22 16:18:02 Successfully deleted 1 messages
+2024/12/22 16:18:03 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:03 Received 2 messages
+2024/12/22 16:18:03 Processing batch of 2 messages
+2024/12/22 16:18:04 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:04 Successfully deleted 2 messages
+2024/12/22 16:18:05 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:06 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:06 Received 1 messages
+2024/12/22 16:18:06 Processing batch of 1 messages
+2024/12/22 16:18:07 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:07 Successfully deleted 1 messages
+2024/12/22 16:18:08 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:08 Received 1 messages
+2024/12/22 16:18:08 Processing batch of 1 messages
+2024/12/22 16:18:08 Successfully deleted 1 messages
+2024/12/22 16:18:09 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:09 Received 1 messages
+2024/12/22 16:18:09 Processing batch of 1 messages
+2024/12/22 16:18:09 Successfully deleted 1 messages
+2024/12/22 16:18:10 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:10 Received 1 messages
+2024/12/22 16:18:10 Processing batch of 1 messages
+2024/12/22 16:18:10 Successfully deleted 1 messages
+2024/12/22 16:18:11 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:12 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:13 Queue counts - Visible: 0, NotVisible: 3, Delayed: 0
+2024/12/22 16:18:13 Received 1 messages
+2024/12/22 16:18:13 Processing batch of 1 messages
+2024/12/22 16:18:13 Successfully deleted 1 messages
+2024/12/22 16:18:14 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:14 Received 1 messages
+2024/12/22 16:18:14 Processing batch of 1 messages
+2024/12/22 16:18:15 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:15 Successfully deleted 1 messages
+2024/12/22 16:18:15 Received 1 messages
+2024/12/22 16:18:15 Processing batch of 1 messages
+2024/12/22 16:18:15 Successfully deleted 1 messages
+2024/12/22 16:18:16 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:16 Received 1 messages
+2024/12/22 16:18:16 Processing batch of 1 messages
+2024/12/22 16:18:16 Successfully deleted 1 messages
+2024/12/22 16:18:17 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:18 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:18 Received 1 messages
+2024/12/22 16:18:18 Processing batch of 1 messages
+2024/12/22 16:18:18 Received 1 messages
+2024/12/22 16:18:18 Processing batch of 1 messages
+2024/12/22 16:18:18 Successfully deleted 1 messages
+2024/12/22 16:18:18 Successfully deleted 1 messages
+2024/12/22 16:18:19 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:20 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:21 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:21 Received 1 messages
+2024/12/22 16:18:21 Processing batch of 1 messages
+2024/12/22 16:18:21 Successfully deleted 1 messages
+2024/12/22 16:18:22 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:22 Received 1 messages
+2024/12/22 16:18:22 Processing batch of 1 messages
+2024/12/22 16:18:22 Successfully deleted 1 messages
+2024/12/22 16:18:23 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:24 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:24 Received 1 messages
+2024/12/22 16:18:24 Processing batch of 1 messages
+2024/12/22 16:18:25 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:25 Successfully deleted 1 messages
+2024/12/22 16:18:26 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:27 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:28 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:28 Received 1 messages
+2024/12/22 16:18:28 Processing batch of 1 messages
+2024/12/22 16:18:28 Successfully deleted 1 messages
+2024/12/22 16:18:28 Received 1 messages
+2024/12/22 16:18:28 Processing batch of 1 messages
+2024/12/22 16:18:29 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:29 Successfully deleted 1 messages
+2024/12/22 16:18:30 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:30 Received 1 messages
+2024/12/22 16:18:30 Processing batch of 1 messages
+2024/12/22 16:18:30 Successfully deleted 1 messages
+2024/12/22 16:18:31 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:32 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:18:33 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:18:34 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:34 Received 2 messages
+2024/12/22 16:18:34 Processing batch of 2 messages
+2024/12/22 16:18:34 Received 1 messages
+2024/12/22 16:18:34 Processing batch of 1 messages
+2024/12/22 16:18:35 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:18:35 Successfully deleted 2 messages
+2024/12/22 16:18:35 Successfully deleted 1 messages
+2024/12/22 16:18:36 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:36 Received 1 messages
+2024/12/22 16:18:36 Processing batch of 1 messages
+2024/12/22 16:18:36 Successfully deleted 1 messages
+2024/12/22 16:18:37 Queue counts - Visible: 2, NotVisible: 1, Delayed: 0
+2024/12/22 16:18:37 Received 1 messages
+2024/12/22 16:18:37 Processing batch of 1 messages
+2024/12/22 16:18:38 Successfully deleted 1 messages
+2024/12/22 16:18:38 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:19:31 Starting SQS Queue Tool
+2024/12/22 16:19:31 Region: us-west-2
+2024/12/22 16:19:31 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:19:31 Access Key ID: AKIA****...
+2024/12/22 16:19:32 Queue counts - Visible: 23, NotVisible: 1, Delayed: 0
+2024/12/22 16:19:34 Queue counts - Visible: 0, NotVisible: 4, Delayed: 0
+2024/12/22 16:34:25 Starting SQS Queue Tool
+2024/12/22 16:34:25 Region: us-west-2
+2024/12/22 16:34:25 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:25 Access Key ID: AKIA****...
+2024/12/22 16:34:26 Queue counts - Visible: 520, NotVisible: 1, Delayed: 0
+2024/12/22 16:34:28 Queue counts - Visible: 516, NotVisible: 1, Delayed: 0
+2024/12/22 16:34:28 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting poller for queue: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:28 Starting message processor (deleteMessages=true)
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Queue counts - Visible: 511, NotVisible: 1, Delayed: 0
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Successfully deleted 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:29 Received 10 messages
+2024/12/22 16:34:29 Processing batch of 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Queue counts - Visible: 200, NotVisible: 27, Delayed: 0
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 2 messages
+2024/12/22 16:34:30 Processing batch of 2 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 6 messages
+2024/12/22 16:34:30 Processing batch of 6 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 6 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 2 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Successfully deleted 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 6 messages
+2024/12/22 16:34:30 Processing batch of 6 messages
+2024/12/22 16:34:30 Received 6 messages
+2024/12/22 16:34:30 Processing batch of 6 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:30 Received 10 messages
+2024/12/22 16:34:30 Processing batch of 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 6 messages
+2024/12/22 16:34:31 Successfully deleted 6 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Queue counts - Visible: 322, NotVisible: 101, Delayed: 0
+2024/12/22 16:34:31 Received 4 messages
+2024/12/22 16:34:31 Processing batch of 4 messages
+2024/12/22 16:34:31 Received 8 messages
+2024/12/22 16:34:31 Processing batch of 8 messages
+2024/12/22 16:34:31 Received 10 messages
+2024/12/22 16:34:31 Processing batch of 10 messages
+2024/12/22 16:34:31 Received 3 messages
+2024/12/22 16:34:31 Processing batch of 3 messages
+2024/12/22 16:34:31 Received 9 messages
+2024/12/22 16:34:31 Processing batch of 9 messages
+2024/12/22 16:34:31 Received 10 messages
+2024/12/22 16:34:31 Processing batch of 10 messages
+2024/12/22 16:34:31 Successfully deleted 4 messages
+2024/12/22 16:34:31 Successfully deleted 8 messages
+2024/12/22 16:34:31 Successfully deleted 3 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 10 messages
+2024/12/22 16:34:31 Successfully deleted 9 messages
+2024/12/22 16:34:32 Queue counts - Visible: 322, NotVisible: 101, Delayed: 0
+2024/12/22 16:42:05 Starting SQS Queue Tool
+2024/12/22 16:42:05 Region: us-west-2
+2024/12/22 16:42:05 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:42:05 Access Key ID: AKIA****...
+2024/12/22 16:42:06 Queue counts - Visible: 252, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:08 Queue counts - Visible: 253, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:10 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:10 Starting message processor (deleteMessages=true)
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Received 9 messages
+2024/12/22 16:42:11 Processing batch of 9 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Successfully deleted 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:11 Received 10 messages
+2024/12/22 16:42:11 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Queue counts - Visible: 223, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:12 Poll 1: Queue size: 224, Last batch: 0, Total processed: 100
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 9 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Received 1 messages
+2024/12/22 16:42:12 Processing batch of 1 messages
+2024/12/22 16:42:12 Received 6 messages
+2024/12/22 16:42:12 Processing batch of 6 messages
+2024/12/22 16:42:12 Received 2 messages
+2024/12/22 16:42:12 Processing batch of 2 messages
+2024/12/22 16:42:12 Received 5 messages
+2024/12/22 16:42:12 Processing batch of 5 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 1 messages
+2024/12/22 16:42:12 Processing batch of 1 messages
+2024/12/22 16:42:12 Received 7 messages
+2024/12/22 16:42:12 Processing batch of 7 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Received 4 messages
+2024/12/22 16:42:12 Processing batch of 4 messages
+2024/12/22 16:42:12 Received 10 messages
+2024/12/22 16:42:12 Processing batch of 10 messages
+2024/12/22 16:42:12 Successfully deleted 5 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 1 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Successfully deleted 2 messages
+2024/12/22 16:42:12 Successfully deleted 1 messages
+2024/12/22 16:42:12 Successfully deleted 4 messages
+2024/12/22 16:42:12 Successfully deleted 7 messages
+2024/12/22 16:42:12 Successfully deleted 6 messages
+2024/12/22 16:42:12 Successfully deleted 10 messages
+2024/12/22 16:42:12 Queue counts - Visible: 250, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:12 Poll 1: Queue size: 251, Last batch: 0, Total processed: 255
+2024/12/22 16:42:13 Received 1 messages
+2024/12/22 16:42:13 Processing batch of 1 messages
+2024/12/22 16:42:13 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:13 Poll 1: Queue size: 1, Last batch: 0, Total processed: 255
+2024/12/22 16:42:14 Successfully deleted 1 messages
+2024/12/22 16:42:14 Received 1 messages
+2024/12/22 16:42:14 Processing batch of 1 messages
+2024/12/22 16:42:14 Successfully deleted 1 messages
+2024/12/22 16:42:14 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:14 Poll 1: Queue size: 1, Last batch: 0, Total processed: 257
+2024/12/22 16:42:15 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:15 Poll 1: Queue size: 1, Last batch: 0, Total processed: 257
+2024/12/22 16:42:16 Received 1 messages
+2024/12/22 16:42:16 Processing batch of 1 messages
+2024/12/22 16:42:16 Successfully deleted 1 messages
+2024/12/22 16:42:16 Queue counts - Visible: 252, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:16 Poll 1: Queue size: 253, Last batch: 0, Total processed: 258
+2024/12/22 16:42:17 Queue counts - Visible: 56, NotVisible: 100, Delayed: 0
+2024/12/22 16:42:17 Poll 1: Queue size: 156, Last batch: 0, Total processed: 258
+2024/12/22 16:42:18 Queue counts - Visible: 56, NotVisible: 100, Delayed: 0
+2024/12/22 16:42:18 Poll 1: Queue size: 156, Last batch: 0, Total processed: 258
+2024/12/22 16:42:18 Received 1 messages
+2024/12/22 16:42:18 Processing batch of 1 messages
+2024/12/22 16:42:19 Successfully deleted 1 messages
+2024/12/22 16:42:19 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:19 Poll 1: Queue size: 2, Last batch: 0, Total processed: 259
+2024/12/22 16:42:20 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:20 Poll 1: Queue size: 1, Last batch: 0, Total processed: 259
+2024/12/22 16:42:21 Received 1 messages
+2024/12/22 16:42:21 Processing batch of 1 messages
+2024/12/22 16:42:21 Successfully deleted 1 messages
+2024/12/22 16:42:21 Queue counts - Visible: 253, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:21 Poll 1: Queue size: 254, Last batch: 0, Total processed: 260
+2024/12/22 16:42:22 Received 1 messages
+2024/12/22 16:42:22 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:22 Processing batch of 1 messages
+2024/12/22 16:42:22 Poll 1: Queue size: 1, Last batch: 0, Total processed: 260
+2024/12/22 16:42:23 Successfully deleted 1 messages
+2024/12/22 16:42:24 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:24 Poll 1: Queue size: 1, Last batch: 0, Total processed: 261
+2024/12/22 16:42:24 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:24 Poll 1: Queue size: 1, Last batch: 0, Total processed: 261
+2024/12/22 16:42:25 Received 1 messages
+2024/12/22 16:42:25 Processing batch of 1 messages
+2024/12/22 16:42:25 Successfully deleted 1 messages
+2024/12/22 16:42:25 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:25 Poll 1: Queue size: 1, Last batch: 0, Total processed: 262
+2024/12/22 16:42:26 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:26 Poll 1: Queue size: 1, Last batch: 0, Total processed: 262
+2024/12/22 16:42:27 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:27 Poll 1: Queue size: 1, Last batch: 0, Total processed: 262
+2024/12/22 16:42:28 Received 1 messages
+2024/12/22 16:42:28 Processing batch of 1 messages
+2024/12/22 16:42:28 Successfully deleted 1 messages
+2024/12/22 16:42:28 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:28 Poll 1: Queue size: 1, Last batch: 0, Total processed: 263
+2024/12/22 16:42:29 Received 1 messages
+2024/12/22 16:42:29 Processing batch of 1 messages
+2024/12/22 16:42:29 Successfully deleted 1 messages
+2024/12/22 16:42:29 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:29 Poll 1: Queue size: 1, Last batch: 0, Total processed: 264
+2024/12/22 16:42:30 Received 1 messages
+2024/12/22 16:42:30 Processing batch of 1 messages
+2024/12/22 16:42:30 Successfully deleted 1 messages
+2024/12/22 16:42:30 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:30 Poll 1: Queue size: 1, Last batch: 0, Total processed: 265
+2024/12/22 16:42:31 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:31 Received 1 messages
+2024/12/22 16:42:31 Processing batch of 1 messages
+2024/12/22 16:42:31 Poll 1: Queue size: 1, Last batch: 0, Total processed: 265
+2024/12/22 16:42:32 Successfully deleted 1 messages
+2024/12/22 16:42:32 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:32 Poll 1: Queue size: 2, Last batch: 0, Total processed: 266
+2024/12/22 16:42:33 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:33 Poll 1: Queue size: 1, Last batch: 0, Total processed: 266
+2024/12/22 16:42:33 Received 1 messages
+2024/12/22 16:42:33 Processing batch of 1 messages
+2024/12/22 16:42:34 Successfully deleted 1 messages
+2024/12/22 16:42:34 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:34 Poll 1: Queue size: 2, Last batch: 0, Total processed: 267
+2024/12/22 16:42:34 Received 1 messages
+2024/12/22 16:42:34 Processing batch of 1 messages
+2024/12/22 16:42:35 Successfully deleted 1 messages
+2024/12/22 16:42:35 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:35 Poll 1: Queue size: 1, Last batch: 0, Total processed: 268
+2024/12/22 16:42:36 Received 1 messages
+2024/12/22 16:42:36 Processing batch of 1 messages
+2024/12/22 16:42:36 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:36 Poll 1: Queue size: 1, Last batch: 0, Total processed: 268
+2024/12/22 16:42:37 Successfully deleted 1 messages
+2024/12/22 16:42:37 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:37 Poll 1: Queue size: 2, Last batch: 0, Total processed: 269
+2024/12/22 16:42:38 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:38 Poll 1: Queue size: 1, Last batch: 0, Total processed: 269
+2024/12/22 16:42:39 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:39 Poll 1: Queue size: 1, Last batch: 0, Total processed: 269
+2024/12/22 16:42:40 Received 1 messages
+2024/12/22 16:42:40 Processing batch of 1 messages
+2024/12/22 16:42:40 Successfully deleted 1 messages
+2024/12/22 16:42:40 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:40 Poll 1: Queue size: 2, Last batch: 0, Total processed: 270
+2024/12/22 16:42:41 Received 1 messages
+2024/12/22 16:42:41 Processing batch of 1 messages
+2024/12/22 16:42:41 Successfully deleted 1 messages
+2024/12/22 16:42:41 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:41 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:43 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:43 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:43 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:43 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:44 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:44 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:45 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:45 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:46 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:46 Poll 1: Queue size: 1, Last batch: 0, Total processed: 271
+2024/12/22 16:42:47 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:47 Poll 1: Queue size: 2, Last batch: 0, Total processed: 271
+2024/12/22 16:42:48 Received 2 messages
+2024/12/22 16:42:48 Processing batch of 2 messages
+2024/12/22 16:42:48 Successfully deleted 2 messages
+2024/12/22 16:42:48 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:48 Poll 1: Queue size: 1, Last batch: 0, Total processed: 273
+2024/12/22 16:42:49 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:49 Poll 1: Queue size: 1, Last batch: 0, Total processed: 273
+2024/12/22 16:42:50 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:42:50 Poll 1: Queue size: 2, Last batch: 0, Total processed: 273
+2024/12/22 16:42:51 Received 2 messages
+2024/12/22 16:42:51 Processing batch of 2 messages
+2024/12/22 16:42:51 Successfully deleted 2 messages
+2024/12/22 16:42:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:51 Poll 1: Queue size: 1, Last batch: 0, Total processed: 275
+2024/12/22 16:42:52 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:52 Poll 1: Queue size: 2, Last batch: 0, Total processed: 275
+2024/12/22 16:42:53 Received 1 messages
+2024/12/22 16:42:53 Processing batch of 1 messages
+2024/12/22 16:42:53 Successfully deleted 1 messages
+2024/12/22 16:42:53 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:53 Poll 1: Queue size: 1, Last batch: 0, Total processed: 276
+2024/12/22 16:42:54 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:54 Poll 1: Queue size: 2, Last batch: 0, Total processed: 276
+2024/12/22 16:42:55 Received 1 messages
+2024/12/22 16:42:55 Processing batch of 1 messages
+2024/12/22 16:42:55 Successfully deleted 1 messages
+2024/12/22 16:42:55 Queue counts - Visible: 1, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:55 Poll 1: Queue size: 2, Last batch: 0, Total processed: 277
+2024/12/22 16:42:56 Received 1 messages
+2024/12/22 16:42:56 Processing batch of 1 messages
+2024/12/22 16:42:56 Queue counts - Visible: 2, NotVisible: 1, Delayed: 0
+2024/12/22 16:42:56 Poll 1: Queue size: 3, Last batch: 0, Total processed: 277
+2024/12/22 16:42:57 Successfully deleted 1 messages
+2024/12/22 16:42:57 Queue counts - Visible: 0, NotVisible: 2, Delayed: 0
+2024/12/22 16:42:57 Poll 1: Queue size: 2, Last batch: 0, Total processed: 278
+2024/12/22 16:44:39 Starting SQS Queue Tool
+2024/12/22 16:44:39 Region: us-west-2
+2024/12/22 16:44:39 Queue URL: https://sqs.us-west-2.amazonaws.com/767397752906/Event-Queue
+2024/12/22 16:44:39 Access Key ID: AKIA****...
+2024/12/22 16:44:39 Queue counts - Visible: 34, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:41 Queue counts - Visible: 58, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Starting workers (deleteMessages=true, batchSize=10)
+2024/12/22 16:44:45 Queue counts - Visible: 39, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 58, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 58, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Received 5 messages
+2024/12/22 16:44:45 Received 5 messages
+2024/12/22 16:44:45 Received 7 messages
+2024/12/22 16:44:45 Received 9 messages
+2024/12/22 16:44:45 Received 10 messages
+2024/12/22 16:44:45 Received 3 messages
+2024/12/22 16:44:45 Received 3 messages
+2024/12/22 16:44:45 Received 4 messages
+2024/12/22 16:44:45 Received 10 messages
+2024/12/22 16:44:45 Received 3 messages
+2024/12/22 16:44:45 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:45 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:45 Successfully deleted 10 messages
+2024/12/22 16:44:45 Successfully deleted 5 messages
+2024/12/22 16:44:45 Successfully deleted 9 messages
+2024/12/22 16:44:46 Successfully deleted 3 messages
+2024/12/22 16:44:46 Successfully deleted 4 messages
+2024/12/22 16:44:46 Successfully deleted 3 messages
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Successfully deleted 10 messages
+2024/12/22 16:44:46 Successfully deleted 5 messages
+2024/12/22 16:44:46 Successfully deleted 7 messages
+2024/12/22 16:44:46 Successfully deleted 3 messages
+2024/12/22 16:44:46 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Received 1 messages
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Queue counts - Visible: 58, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:46 Successfully deleted 1 messages
+2024/12/22 16:44:46 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 58, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:47 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:48 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:49 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:50 Received 1 messages
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:50 Received 1 messages
+2024/12/22 16:44:50 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Successfully deleted 1 messages
+2024/12/22 16:44:50 Successfully deleted 1 messages
+2024/12/22 16:44:50 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:50 Queue counts - Visible: 0, NotVisible: 60, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:51 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Received 1 messages
+2024/12/22 16:44:52 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Successfully deleted 1 messages
+2024/12/22 16:44:52 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Queue counts - Visible: 59, NotVisible: 1, Delayed: 0
+2024/12/22 16:44:52 Queue counts - Visible: 0, NotVisible: 1, Delayed: 0

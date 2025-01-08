@@ -1,0 +1,13 @@
+Bacalhau
+bacalhauproject
+buildx
+datacatering
+duckdb
+DUCKDB
+INSTANCEID
+mwendler
+noninteractive
+tonistiigi
+tpep
+tripdata
+TRUNC

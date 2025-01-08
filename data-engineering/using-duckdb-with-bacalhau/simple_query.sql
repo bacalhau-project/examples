@@ -1,0 +1,1 @@
+SELECT COUNT(*) AS row_count FROM yellow_taxi_trips;
