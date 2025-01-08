@@ -11,3 +11,4 @@ env.json
 # SSH Keys
 *.pem
 id_rsa* 
+config.yaml
