@@ -1,0 +1,1 @@
+SELECT DATE_TRUNC('hour', tpep_pickup_datetime) + INTERVAL (FLOOR(EXTRACT(MINUTE FROM tpep_pickup_datetime) / 5) * 5) MINUTE AS interval_start, COUNT(*) AS ride_count FROM yellow_taxi_trips GROUP BY interval_start ORDER BY interval_start;

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VM Status Monitor</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            margin: 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            height: 40px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .button-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .button-danger:hover {
+            background-color: #c82333;
+        }
+
+        .button-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .button-cancel:hover {
+            background-color: #5a6268;
+        }
+
+        .confirm-dialog {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .confirm-dialog.show {
+            display: block;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .connection-status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        .connected {
+            background-color: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .disconnected {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+
+        #vmGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .vm-box {
+            position: relative;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            padding: 4px;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+            will-change: transform;
+            background-color: white;
+            border: 3px solid transparent;
+        }
+
+        .vm-box:hover {
+            transform: translateY(-2px) translateZ(0);
+        }
+
+        .vm-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: transform;
+        }
+
+        .vm-name {
+            font-size: 10px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-all;
+            padding: 0 4px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.2;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: transform;
+        }
+
+        .vm-box.new {
+            animation: fade 500ms ease-out;
+        }
+
+        @keyframes fade {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1 class="header-title">VM Status Monitor</h1>
+        <div class="controls">
+            <div id="connectionStatus" class="connection-status disconnected">Disconnected</div>
+            <button id="clearQueueBtn" class="button button-danger">Clear Queue</button>
+        </div>
+    </div>
+
+    <div id="confirmDialog" class="confirm-dialog">
+        <p>⚠️ Are you sure you want to clear the queue? This cannot be undone.</p>
+        <button id="confirmClearBtn" class="button button-danger">Yes, Clear Queue</button>
+        <button id="cancelClearBtn" class="button button-cancel">Cancel</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-label">Active VMs</div>
+            <div id="vmCount" class="stat-value">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Queue Size</div>
+            <div id="queueSize" class="stat-value">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Messages Processed</div>
+            <div id="messagesProcessed" class="stat-value">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Last Update</div>
+            <div id="lastPoll" class="stat-value">-</div>
+        </div>
+    </div>
+
+    <div id="vmGrid"></div>
+
+    <script>
+        let messageCount = 0;
+        let ws = null;
+        const vmStates = new Map();
+        const updateQueue = [];
+        let animationFrameRequested = false;
+
+        function processUpdateQueue() {
+            const grid = document.getElementById('vmGrid');
+            const fragment = document.createDocumentFragment();
+            const updates = new Map();
+
+            // Process all queued updates
+            while (updateQueue.length > 0) {
+                const update = updateQueue.shift();
+                // Normalize color
+                update.color = update.color === '#FF0321' ? '#000000' : update.color;
+                updates.set(update.vmName, update);
+            }
+
+            // Apply updates
+            for (const [vmName, update] of updates) {
+                const existingBox = document.getElementById(`vm-${vmName}`);
+                if (existingBox) {
+                    // Update existing box
+                    existingBox.style.borderColor = update.color;
+                    const iconDiv = existingBox.querySelector('.vm-icon');
+                    const nameDiv = existingBox.querySelector('.vm-name');
+                    iconDiv.textContent = update.iconName;
+                    iconDiv.style.color = update.color;
+                    nameDiv.style.color = update.color;
+                    existingBox.classList.remove('new');
+                    void existingBox.offsetWidth; // Force reflow
+                    existingBox.classList.add('new');
+                } else {
+                    // Create new box
+                    const box = document.createElement('div');
+                    box.id = `vm-${vmName}`;
+                    box.className = 'vm-box new';
+                    box.style.borderColor = update.color;
+                    box.innerHTML = `
+                        <div class="vm-icon" style="color: ${update.color}">${update.iconName}</div>
+                        <div class="vm-name" style="color: ${update.color}">${vmName}</div>
+                    `;
+                    fragment.appendChild(box);
+                    vmStates.set(vmName, true);
+                }
+            }
+
+            // Batch DOM updates
+            if (fragment.children.length > 0) {
+                grid.appendChild(fragment);
+                updateVMCount();
+            }
+
+            animationFrameRequested = false;
+        }
+
+        function updateVMBox(vmName, iconName, color) {
+            updateQueue.push({ vmName, iconName, color });
+
+            if (!animationFrameRequested) {
+                animationFrameRequested = true;
+                requestAnimationFrame(processUpdateQueue);
+            }
+        }
+
+        function updateVMCount() {
+            document.getElementById('vmCount').textContent = vmStates.size;
+        }
+
+        function setupQueueControls() {
+            const clearQueueBtn = document.getElementById('clearQueueBtn');
+            const confirmDialog = document.getElementById('confirmDialog');
+            const confirmClearBtn = document.getElementById('confirmClearBtn');
+            const cancelClearBtn = document.getElementById('cancelClearBtn');
+
+            clearQueueBtn.addEventListener('click', () => {
+                confirmDialog.classList.add('show');
+            });
+
+            confirmClearBtn.addEventListener('click', () => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ action: 'clearQueue' }));
+                }
+                confirmDialog.classList.remove('show');
+            });
+
+            cancelClearBtn.addEventListener('click', () => {
+                confirmDialog.classList.remove('show');
+            });
+        }
+
+        function connectWebSocket() {
+            const connectionStatus = document.getElementById('connectionStatus');
+            const messagesProcessed = document.getElementById('messagesProcessed');
+            const lastPoll = document.getElementById('lastPoll');
+            const queueSize = document.getElementById('queueSize');
+
+            ws = new WebSocket(`ws://${window.location.hostname}:8080/ws`);
+
+            ws.onopen = () => {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.classList.remove('disconnected');
+                connectionStatus.classList.add('connected');
+            };
+
+            ws.onclose = () => {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.classList.remove('connected');
+                connectionStatus.classList.add('disconnected');
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket Error:', error);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    lastPoll.textContent = data.last_poll;
+                    messageCount += data.messages.length;
+                    messagesProcessed.textContent = messageCount;
+                    queueSize.textContent = data.queue_size;
+
+                    // Queue updates for batch processing
+                    data.messages.forEach(msg => {
+                        updateVMBox(msg.container_id, msg.icon_name, msg.color);
+                    });
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+        }
+
+        // Initial setup
+        setupQueueControls();
+        connectWebSocket();
+    </script>
+</body>
+
+</html>
