@@ -1,0 +1,33 @@
+Tasks:
+  - Engine:
+      Params:
+        Entrypoint: null
+        EnvironmentVariables: null
+        Image: 31099/wget
+        WorkingDirectory: ""
+        Parameters:
+          - wget
+          - -O
+          - /bacalhau_data/$(basename "{{ .url_to_download }}")
+          - "{{ .url_to_download }}"
+      Type: docker
+    Name: download-data-job
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/bacalhau_data"
+    Publisher:
+      Type: "local"
+      Params:
+        TargetPath: "/bacalhau_data"
+    Network:
+      Type: Full
+    Resources:
+      CPU: 250m
+      Memory: 250m
+    Timeouts: {}
+Type: batch
+Count: 4

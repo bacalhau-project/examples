@@ -62,3 +62,4 @@ queuing/job/.flox
 
 event-puller/*.json
 event-pusher/*.json
+**/vendor/**
