@@ -3,19 +3,9 @@ locals {
   timestamp  = formatdate("YYMMDDHHmm", timestamp())
   project_id = "${var.base_project_name}-${local.timestamp}"
 
-  # Function to sanitize label values
-  sanitize_label = replace(
-    lower(
-      replace(
-        replace(var.gcp_user_email, "@", "_at_"),
-        ".", "_"
-      )
-    ),
-    "/[^a-z0-9_-]/",
-    "_"
-  )
-
-  sanitize_tag = replace(lower(var.app_tag), "/[^a-z0-9_-]/", "_")
+  # Simplified sanitize label function - just replace non-compliant chars with "-"
+  sanitize_label = replace(lower(var.gcp_user_email), "/[^a-z0-9-]/", "-")
+  sanitize_tag   = replace(lower(var.app_tag), "/[^a-z0-9-]/", "-")
 
   # Define common tags with sanitized values
   common_tags = {
@@ -23,6 +13,24 @@ locals {
     created_at = local.timestamp
     managed_by = "terraform"
     custom_tag = local.sanitize_tag
+  }
+
+  # Flatten the VM instances based on count per zone from locations variable
+  vm_instances = flatten([
+    for zone_key, config in var.locations : [
+      for i in range(lookup(config, "node_count", 1)) : {
+        zone_key     = zone_key
+        index        = i
+        zone         = config.zone
+        machine_type = config.machine_type
+      }
+    ]
+  ])
+
+  # Convert to map with unique keys
+  vm_instances_map = {
+    for instance in local.vm_instances :
+    "${instance.zone_key}-${instance.index}" => instance
   }
 }
 
@@ -67,6 +75,12 @@ resource "google_project" "bacalhau_project" {
   }
 }
 
+# Link billing account to project
+resource "google_billing_project_info" "billing_info" {
+  project         = google_project.bacalhau_project.project_id
+  billing_account = var.gcp_billing_account_id
+}
+
 # Enable required APIs in new project
 resource "google_project_service" "project_apis" {
   provider = google.bacalhau_cluster_project
@@ -78,11 +92,25 @@ resource "google_project_service" "project_apis" {
     "billingbudgets.googleapis.com"
   ])
 
-  project = google_project.bacalhau_project.project_id
-  service = each.value
-
+  project                    = google_project.bacalhau_project.project_id
+  service                    = each.value
   disable_dependent_services = true
   disable_on_destroy         = false
+  depends_on                 = [google_billing_project_info.billing_info]
+
+  # Add timeouts to give more time for API enablement
+  timeouts {
+    create = "30m"
+    update = "40m"
+  }
+}
+
+# Add explicit dependency on compute API
+resource "time_sleep" "wait_for_apis" {
+  depends_on = [google_project_service.project_apis]
+
+  # Wait for 2 minutes after enabling APIs
+  create_duration = "120s"
 }
 
 # Update the project_owner IAM binding to depend on APIs being enabled
@@ -115,9 +143,17 @@ resource "google_project_iam_member" "member_role" {
   project = google_project.bacalhau_project.project_id
 }
 
-data "cloudinit_config" "user_data" {
+# Update random string to use the new map
+resource "random_string" "vm_name" {
+  for_each = local.vm_instances_map
+  length   = 8
+  special  = false
+  upper    = false
+}
 
-  for_each = var.locations
+# Update the instance and cloud-init resources to use the new map
+data "cloudinit_config" "user_data" {
+  for_each = local.vm_instances_map
 
   gzip          = false
   base64_encode = false
@@ -127,9 +163,9 @@ data "cloudinit_config" "user_data" {
     content_type = "text/cloud-config"
 
     content = templatefile("${path.root}/cloud-init/init-vm.yml", {
-      node_name : "${local.project_id}-${each.key}-vm",
+      node_name : "${replace(lower(each.value.zone), "/[^a-z0-9-]/", "-")}-${random_string.vm_name[each.key].result}-vm",
       username : var.username,
-      region : each.key,
+      region : each.value.zone_key,
       zone : each.value.zone,
       project_id : google_project.bacalhau_project.project_id,
       bacalhau_startup_service_file : filebase64("${path.root}/scripts/bacalhau-startup.service"),
@@ -161,7 +197,7 @@ resource "google_compute_firewall" "allow_ssh_nats" {
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["${local.project_id}-instance"]
 
-  depends_on = [google_project_service.project_apis]
+  depends_on = [time_sleep.wait_for_apis] # Wait for APIs to be fully enabled
 }
 
 resource "google_compute_instance" "gcp_instance" {
@@ -169,9 +205,9 @@ resource "google_compute_instance" "gcp_instance" {
   project    = google_project.bacalhau_project.project_id
   depends_on = [google_project_iam_member.member_role]
 
-  for_each = var.locations
+  for_each = local.vm_instances_map
 
-  name         = "${local.project_id}-${each.key}-vm"
+  name         = "${replace(lower(each.value.zone), "/[^a-z0-9-]/", "-")}-${random_string.vm_name[each.key].result}-vm"
   machine_type = each.value.machine_type
   zone         = each.value.zone
   tags         = ["${local.project_id}-instance"]
@@ -201,34 +237,4 @@ resource "google_compute_instance" "gcp_instance" {
   }
 
   labels = local.common_tags
-}
-
-data "http" "healthcheck" {
-  for_each = var.locations
-
-  url = "http://${google_compute_instance.gcp_instance[each.key].network_interface[0].access_config[0].nat_ip}/healthz"
-
-  retry {
-    attempts     = 35
-    min_delay_ms = 10000 # 10 seconds
-    max_delay_ms = 10000 # 10 seconds
-  }
-}
-
-output "deployment_status" {
-  description = "Deployment status including health checks"
-  value = {
-    for k, v in google_compute_instance.gcp_instance : k => {
-      name         = v.name
-      external_ip  = v.network_interface[0].access_config[0].nat_ip
-      health_check = try(data.http.healthcheck[k].status_code == 200, false) ? "healthy" : "failed"
-    }
-  }
-}
-
-# Add random string resource at the top level
-resource "random_string" "suffix" {
-  length  = 4
-  special = false
-  upper   = false
 }

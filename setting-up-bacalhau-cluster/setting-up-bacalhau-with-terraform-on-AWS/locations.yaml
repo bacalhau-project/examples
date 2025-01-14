@@ -1,39 +1,57 @@
 # Because of the way AWS works, we cannot
 # deploy to all regions at once. Use the below list to name the
 # regions you want to deploy to.
-- ap-south-1:
-    region: ap-south-1
-    zone: ap-south-1a
+- ap-south-2a:
+    instance_ami: ami-0a94a70b8a1454a4b
     instance_type: t3.medium
-    instance_ami: ami-0fd05997b4dff7aac
     node_count: 1
-- eu-south-1:
-    region: eu-south-1
-    zone: eu-south-1a
+    region: ap-south-2
+    zone: ap-south-2a
+- ca-central-1d:
+    instance_ami: ami-0a474b3a85d51a5e5
     instance_type: t3.medium
-    instance_ami: ami-0f529654669a607d1
-    node_count: 2
-- eu-south-2:
-    region: eu-south-2
-    zone: eu-south-2a
-    instance_type: t3.medium
-    instance_ami: ami-0d27757cc8327f88f
-    node_count: 3
-- me-central-1:
-    region: me-central-1
-    zone: me-central-1a
-    instance_type: t3.medium
-    instance_ami: ami-0f334de647da2fc7d
     node_count: 1
-- ca-central-1:
     region: ca-central-1
-    zone: ca-central-1a
+    zone: ca-central-1d
+- eu-west-1c:
+    instance_ami: ami-032a56ad5e480189c
     instance_type: t3.medium
-    instance_ami: ami-0a590ca28046d073e
     node_count: 1
-- eu-central-1:
-    region: eu-central-1
-    zone: eu-central-1a
+    region: eu-west-1
+    zone: eu-west-1c
+- eu-west-3b:
+    instance_ami: ami-04a4acda26ca36de0
     instance_type: t3.medium
-    instance_ami: ami-0e54671bdf3c8ed8d
     node_count: 1
+    region: eu-west-3
+    zone: eu-west-3b
+- me-central-1b:
+    instance_ami: ami-07a33155d2d5abff0
+    instance_type: t3.medium
+    node_count: 1
+    region: me-central-1
+    zone: me-central-1b
+- me-central-1c:
+    instance_ami: ami-07a33155d2d5abff0
+    instance_type: t3.medium
+    node_count: 1
+    region: me-central-1
+    zone: me-central-1c
+- sa-east-1b:
+    instance_ami: ami-0780816dd7ce942fd
+    instance_type: t3.medium
+    node_count: 1
+    region: sa-east-1
+    zone: sa-east-1b
+- us-east-2a:
+    instance_ami: ami-0884d2865dbe9de4b
+    instance_type: t3.medium
+    node_count: 1
+    region: us-east-2
+    zone: us-east-2a
+- us-east-2b:
+    instance_ami: ami-0884d2865dbe9de4b
+    instance_type: t3.medium
+    node_count: 1
+    region: us-east-2
+    zone: us-east-2b

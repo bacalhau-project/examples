@@ -1,0 +1,28 @@
+Tasks:
+  - Engine:
+      Params:
+        Image: docker.io/bacalhauproject/duckdb:latest
+        WorkingDirectory: ""
+        EnvironmentVariables:
+          - QUERY=WITH yellow_taxi_trips AS (SELECT * FROM read_parquet('{{ .filename }}')) {{ .query }}
+      Type: docker
+    Name: duckdb-query-job
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/bacalhau_data"
+    Publisher:
+      Type: "local"
+      Params:
+        TargetPath: "/bacalhau_data"
+    Network:
+      Type: Full
+    Resources:
+      CPU: 2000m
+      Memory: 2048Mi
+    Timeouts: {}
+Type: batch
+Count: 1

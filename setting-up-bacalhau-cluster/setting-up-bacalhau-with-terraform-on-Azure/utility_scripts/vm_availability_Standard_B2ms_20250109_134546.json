@@ -1,0 +1,176 @@
+{
+    "locations": {
+        "northeurope": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westus2": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westeurope": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westus3": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "australiaeast": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "eastus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "southeastasia": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "southcentralus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "uksouth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "swedencentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "centralus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "eastasia": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "centralindia": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "canadacentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "southafricanorth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "koreacentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "francecentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "japaneast": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "germanywestcentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "newzealandnorth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "italynorth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "spaincentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "norwayeast": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "brazilsouth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "switzerlandnorth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "mexicocentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "qatarcentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "polandcentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "uaenorth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "israelcentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "eastus2": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westcentralus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "northcentralus": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "jioindiawest": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "japanwest": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "australiacentral": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "koreasouth": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "australiasoutheast": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "westindia": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "canadaeast": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "ukwest": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        },
+        "southindia": {
+            "machine_type": "Standard_B2ms",
+            "node_count": 1
+        }
+    }
+}

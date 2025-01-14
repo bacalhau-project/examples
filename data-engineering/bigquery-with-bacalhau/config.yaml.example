@@ -1,0 +1,13 @@
+# BigQuery Configuration
+project:
+  id: "bacalhau-and-bigquery"  # Required: Your Google Cloud project ID
+  region: "US"           # Optional: Default region for resources
+  create_if_missing: true # Whether to create the project if it doesn't exist
+
+credentials:
+  path: "credentials.json"  # Path to service account credentials
+
+bigquery:
+  dataset_name: "log_analytics"     # Name of the BigQuery dataset
+  table_name: "log_results"         # Name of the results table
+  location: "US"                    # Dataset location 

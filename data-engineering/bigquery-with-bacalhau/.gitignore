@@ -1,0 +1,40 @@
+# Credentials and configuration
+.env
+config.yaml
+credentials.json
+log_uploader_credentials.json
+bg_reader_credentials.json
+bq_reader_credentials.json
+**/MACHINES.json
+
+# Logs
+aperitivo_logs.log.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo 
