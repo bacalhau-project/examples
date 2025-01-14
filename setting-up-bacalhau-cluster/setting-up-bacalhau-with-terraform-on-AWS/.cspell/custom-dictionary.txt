@@ -16,6 +16,7 @@ keypair
 levelname
 NOPASSWD
 oneshot
+puuid
 runcmd
 templatefile
 tfvars

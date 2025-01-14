@@ -5,9 +5,9 @@ module "networkModule" {
   region  = var.region
   zone    = var.zone
 
-  cidr_block_range         = "10.0.0.0/16"
-  subnet1_cidr_block_range = "10.0.1.0/24"
-  subnet2_cidr_block_range = "10.0.2.0/24"
+  cidr_block_range         = "10.${index(data.aws_availability_zones.available.names, var.zone)}.0.0/16"
+  subnet1_cidr_block_range = "10.${index(data.aws_availability_zones.available.names, var.zone)}.1.0/24"
+  subnet2_cidr_block_range = "10.${index(data.aws_availability_zones.available.names, var.zone)}.2.0/24"
 
   providers = {
     aws = aws
@@ -48,5 +48,10 @@ module "instanceModule" {
   providers = {
     aws = aws
   }
+}
+
+# Get list of availability zones for CIDR block calculation
+data "aws_availability_zones" "available" {
+  state = "available"
 }
 

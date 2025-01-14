@@ -13,8 +13,7 @@ import logging
 import os
 import subprocess
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import yaml
 from rich import box
@@ -154,20 +153,32 @@ def load_config() -> Dict[str, Any]:
         with open("locations.yaml", "r") as f:
             yaml_data = yaml.safe_load(f)
             if not isinstance(yaml_data, list):
-                raise ValueError("Expected a list of region configurations")
+                raise ValueError("Expected a list of zone configurations")
 
-            # Convert list of single-key dictionaries into a single dictionary
+            # Convert list of zone configurations into a dictionary
             config = {}
-            for region_dict in yaml_data:
-                if not isinstance(region_dict, dict):
-                    raise ValueError("Each region configuration must be a dictionary")
-                if len(region_dict) != 1:
+            for zone_dict in yaml_data:
+                if not isinstance(zone_dict, dict):
+                    raise ValueError("Each zone configuration must be a dictionary")
+                if len(zone_dict) != 1:
                     raise ValueError(
-                        "Each region configuration must have exactly one key"
+                        "Each zone configuration must have exactly one key"
                     )
 
-                region = list(region_dict.keys())[0]
-                config[region] = region_dict[region]
+                zone_name = list(zone_dict.keys())[0]
+                zone_config = zone_dict[zone_name]
+
+                # Create a unique key for this zone
+                zone_key = zone_name
+
+                # Validate and set required fields
+                config[zone_key] = {
+                    "instance_type": zone_config.get("instance_type"),
+                    "instance_ami": zone_config.get("instance_ami"),
+                    "node_count": zone_config.get("node_count", 1),
+                    "region": zone_config.get("region"),
+                    "zone": zone_config.get("zone", zone_name),
+                }
 
             # Validate the configuration
             validate_config(config)
@@ -175,7 +186,7 @@ def load_config() -> Dict[str, Any]:
 
     except FileNotFoundError:
         print("Error: locations.yaml file not found")
-        print("Please create a locations.yaml file with your region configurations")
+        print("Please create a locations.yaml file with your zone configurations")
         sys.exit(1)
     except yaml.YAMLError as e:
         print(f"Error parsing locations.yaml: {e}")
@@ -186,8 +197,8 @@ def load_config() -> Dict[str, Any]:
         sys.exit(1)
 
 
-def update_machines_file(region: str, outputs: Dict[str, Any]) -> None:
-    """Update MACHINES.json with outputs from a region"""
+def update_machines_file(region: str, zone: str, outputs: Dict[str, Any]) -> None:
+    """Update MACHINES.json with outputs from a region/zone"""
     machines_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "MACHINES.json"
     )
@@ -205,7 +216,7 @@ def update_machines_file(region: str, outputs: Dict[str, Any]) -> None:
         instance_ids = outputs.get("instance_ids", {}).get("value", [])
 
         # Log the raw values for debugging
-        logging.debug(f"Raw outputs for region {region}:")
+        logging.debug(f"Raw outputs for {region}/{zone}:")
         logging.debug(f"Public IPs: {public_ips}")
         logging.debug(f"Private IPs: {private_ips}")
         logging.debug(f"Instance IDs: {instance_ids}")
@@ -253,7 +264,7 @@ def update_machines_file(region: str, outputs: Dict[str, Any]) -> None:
             else []
         )
 
-        # Create instances list for this region
+        # Create instances list for this zone
         instances = []
         max_length = max(len(instance_ids), len(public_ips), len(private_ips))
 
@@ -263,18 +274,23 @@ def update_machines_file(region: str, outputs: Dict[str, Any]) -> None:
                     "instance_id": instance_ids[i],
                     "public_ip": public_ips[i] if i < len(public_ips) else None,
                     "private_ip": private_ips[i] if i < len(private_ips) else None,
+                    "zone": zone,
                 }
                 instances.append(instance)
 
-        # Update the region's data with the new structure
-        machines_data[region] = {"name": region, "instances": instances}
+        # Initialize region if it doesn't exist
+        if region not in machines_data:
+            machines_data[region] = {"name": region, "zones": {}}
+
+        # Update the zone's data
+        machines_data[region]["zones"][zone] = {"name": zone, "instances": instances}
 
         # Write updated data back to file
         with open(machines_file, "w") as f:
             json.dump(machines_data, f, indent=2)
 
         logging.info(
-            f"Updated MACHINES.json with {len(instances)} instances for region {region}"
+            f"Updated MACHINES.json with {len(instances)} instances for {region}/{zone}"
         )
     except Exception as e:
         logging.error(f"Error updating MACHINES.json: {str(e)}")
@@ -303,10 +319,10 @@ def delete_machines_file() -> None:
         raise
 
 
-def deploy(command, region, region_config):
-    """Deploys or destroys resources in a single region."""
+def deploy(command, zone, zone_config):
+    """Deploys or destroys resources in a single zone."""
     terraform_command = "apply" if command == "create" else "destroy"
-    logging.info(f"Starting {command} operation for region {region}")
+    logging.info(f"Starting {command} operation for zone {zone}")
 
     # Get absolute path to env.tfvars.json
     workspace_dir = os.path.dirname(os.path.abspath(__file__))
@@ -318,23 +334,23 @@ def deploy(command, region, region_config):
         logging.error(f"Required file not found: {env_vars_file}")
         raise FileNotFoundError(f"Required file not found: {env_vars_file}")
 
-    logging.info(f"Region config: {json.dumps(region_config, indent=2)}")
+    logging.info(f"Zone config: {json.dumps(zone_config, indent=2)}")
 
     # For destroy command, get the current state before destroying
     destroyed_resources = {}
     if command == "destroy":
         try:
-            run_command(["terraform", "workspace", "select", "-or-create", region])
+            run_command(["terraform", "workspace", "select", "-or-create", zone])
             result = run_command(["terraform", "output", "-json"])
             try:
                 destroyed_resources = (
                     json.loads(result.stdout) if result.stdout.strip() else {}
                 )
             except json.JSONDecodeError:
-                logging.warning(f"Could not parse terraform output for region {region}")
+                logging.warning(f"Could not parse terraform output for zone {zone}")
                 destroyed_resources = {}
         except Exception as e:
-            logging.warning(f"Could not get current state for region {region}: {e}")
+            logging.warning(f"Could not get current state for zone {zone}: {e}")
             # Even if we can't get the current state, we should still show what was in MACHINES.json
             destroyed_resources = {}
 
@@ -346,30 +362,30 @@ def deploy(command, region, region_config):
         console=console,
     ) as progress:
         task = progress.add_task(
-            f"[cyan]{region}[/cyan] - {command.capitalize()}", total=3
+            f"[cyan]{zone}[/cyan] - {command.capitalize()}", total=3
         )
 
-        # Select workspace for this region
-        logging.info(f"Selecting/creating workspace for region {region}")
-        run_command(["terraform", "workspace", "select", "-or-create", region])
+        # Select workspace for this zone
+        logging.info(f"Selecting/creating workspace for zone {zone}")
+        run_command(["terraform", "workspace", "select", "-or-create", zone])
 
         progress.update(
-            task, advance=1, description=f"[cyan]{region}[/cyan] - Initializing"
+            task, advance=1, description=f"[cyan]{zone}[/cyan] - Initializing"
         )
-        logging.info(f"Running terraform init for region {region}")
+        logging.info(f"Running terraform init for zone {zone}")
         run_command(["terraform", "init", "-upgrade"])
 
         progress.update(
             task,
             advance=1,
-            description=f"[cyan]{region}[/cyan] - {command.capitalize()}",
+            description=f"[cyan]{zone}[/cyan] - {command.capitalize()}",
         )
-        logging.info(f"Running terraform {terraform_command} for region {region}")
+        logging.info(f"Running terraform {terraform_command} for zone {zone}")
         logging.info(
-            f"Command variables: region={region}, zone={region_config['zone']}, "
-            f"instance_ami={region_config['instance_ami']}, "
-            f"node_count={region_config['node_count']}, "
-            f"instance_type={region_config['instance_type']}"
+            f"Command variables: region={zone_config['region']}, zone={zone_config['zone']}, "
+            f"instance_ami={zone_config['instance_ami']}, "
+            f"node_count={zone_config['node_count']}, "
+            f"instance_type={zone_config['instance_type']}"
         )
         try:
             logging.debug(f"Starting terraform {terraform_command}")
@@ -378,11 +394,11 @@ def deploy(command, region, region_config):
                     "terraform",
                     terraform_command,
                     "-auto-approve",
-                    f"-var=region={region}",
-                    f"-var=zone={region_config['zone']}",
-                    f"-var=instance_ami={region_config['instance_ami']}",
-                    f"-var=node_count={region_config['node_count']}",
-                    f"-var=instance_type={region_config['instance_type']}",
+                    f"-var=region={zone_config['region']}",
+                    f"-var=zone={zone_config['zone']}",
+                    f"-var=instance_ami={zone_config['instance_ami']}",
+                    f"-var=node_count={zone_config['node_count']}",
+                    f"-var=instance_type={zone_config['instance_type']}",
                     f"-var-file={env_vars_file}",
                 ]
             )
@@ -392,21 +408,19 @@ def deploy(command, region, region_config):
             if command == "create":
                 outputs_result = run_command(["terraform", "output", "-json"])
                 outputs = json.loads(outputs_result.stdout)
-                update_machines_file(region, outputs)
+                update_machines_file(zone_config["region"], zone, outputs)
 
             logging.debug(f"Terraform {terraform_command} output:\n{result.stdout}")
             if result.stderr:
                 logging.debug(f"Terraform {terraform_command} stderr:\n{result.stderr}")
         except Exception as e:
-            logging.error(
-                f"Error during {terraform_command} for region {region}: {str(e)}"
-            )
+            logging.error(f"Error during {terraform_command} for zone {zone}: {str(e)}")
             raise
 
         progress.update(
-            task, advance=1, description=f"[cyan]{region}[/cyan] - ✓ Complete"
+            task, advance=1, description=f"[cyan]{zone}[/cyan] - ✓ Complete"
         )
-        logging.info(f"Completed {command} operation for region {region}")
+        logging.info(f"Completed {command} operation for zone {zone}")
 
     return destroyed_resources if command == "destroy" else None
 
@@ -512,11 +526,11 @@ def main():
 
         console.print(f"\n[bold blue]Starting {command} operation...[/bold blue]\n")
 
-        # Deploy/destroy resources in each region sequentially
-        for region, region_config in config.items():
-            result = deploy(command, region, region_config)
+        # Deploy/destroy resources in each zone sequentially
+        for zone, zone_config in config.items():
+            result = deploy(command, zone, zone_config)
             if command == "destroy" and result:
-                destroyed_resources[region] = result
+                destroyed_resources[zone] = result
 
         # Display final summary
         console.clear()
@@ -527,12 +541,15 @@ def main():
             # and the actual destroyed resources
             console.print("[bold red]Resources Destroyed:[/bold red]\n")
 
-            for region in config.keys():
-                console.print(f"[bold cyan]Region: {region}[/bold cyan]")
+            for zone in config.keys():
+                region = config[zone]["region"]
+                console.print(f"[bold cyan]Zone: {zone} (Region: {region})[/bold cyan]")
 
                 # Get data from both sources
-                saved_data = machines_data.get(region, {})
-                destroyed_data = destroyed_resources.get(region, {})
+                saved_data = (
+                    machines_data.get(region, {}).get("zones", {}).get(zone, {})
+                )
+                destroyed_data = destroyed_resources.get(zone, {})
 
                 # Display destroyed instances from MACHINES.json
                 instances = saved_data.get("instances", [])
@@ -585,9 +602,7 @@ def main():
 
                 # Only show "No resources" message if both sources are empty
                 if not instances and not destroyed_data:
-                    console.print(
-                        "  [dim]No resources were active in this region[/dim]"
-                    )
+                    console.print("  [dim]No resources were active in this zone[/dim]")
 
                 console.print()
 
@@ -608,6 +623,9 @@ def main():
                 "Region", style="cyan", width=15, justify="left", no_wrap=True
             )
             table.add_column(
+                "Zone", style="green", width=15, justify="left", no_wrap=True
+            )
+            table.add_column(
                 "Instance ID", style="yellow", width=25, justify="left", no_wrap=True
             )
             table.add_column(
@@ -618,16 +636,35 @@ def main():
             )
 
             # Add rows for each active instance from MACHINES.json
-            for region_data in machines_data.values():
-                for instance in region_data["instances"]:
-                    table.add_row(
-                        region_data["name"],
-                        instance["instance_id"],
-                        instance["public_ip"] or "",
-                        instance["private_ip"] or "",
-                    )
+            for region_name, region_data in machines_data.items():
+                for zone_name, zone_data in region_data.get("zones", {}).items():
+                    for instance in zone_data.get("instances", []):
+                        table.add_row(
+                            region_name,
+                            zone_name,
+                            instance["instance_id"],
+                            instance["public_ip"] or "",
+                            instance["private_ip"] or "",
+                        )
 
             console.print(table)
+
+            # Print summary counts
+            total_instances = sum(
+                len(zone_data.get("instances", []))
+                for region_data in machines_data.values()
+                for zone_data in region_data.get("zones", {}).values()
+            )
+            total_regions = len(machines_data)
+            total_zones = sum(
+                len(region_data.get("zones", {}))
+                for region_data in machines_data.values()
+            )
+
+            console.print("\n[bold cyan]Summary:[/bold cyan]")
+            console.print(f"Total Regions: {total_regions}")
+            console.print(f"Total Zones: {total_zones}")
+            console.print(f"Total Instances: {total_instances}")
 
         console.print("\n[bold green]Operation complete![/bold green]\n")
 

@@ -1,0 +1,624 @@
+{
+  "locations": {
+    "us_east1_b": {
+      "zone": "us-east1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east1_c": {
+      "zone": "us-east1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east1_d": {
+      "zone": "us-east1-d",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east4_c": {
+      "zone": "us-east4-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east4_b": {
+      "zone": "us-east4-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east4_a": {
+      "zone": "us-east4-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_central1_c": {
+      "zone": "us-central1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_central1_a": {
+      "zone": "us-central1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_central1_f": {
+      "zone": "us-central1-f",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_central1_b": {
+      "zone": "us-central1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west1_b": {
+      "zone": "us-west1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west1_c": {
+      "zone": "us-west1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west1_a": {
+      "zone": "us-west1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west4_a": {
+      "zone": "europe-west4-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west4_b": {
+      "zone": "europe-west4-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west4_c": {
+      "zone": "europe-west4-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west1_b": {
+      "zone": "europe-west1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west1_d": {
+      "zone": "europe-west1-d",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west1_c": {
+      "zone": "europe-west1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west3_c": {
+      "zone": "europe-west3-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west3_a": {
+      "zone": "europe-west3-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west3_b": {
+      "zone": "europe-west3-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west2_c": {
+      "zone": "europe-west2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west2_b": {
+      "zone": "europe-west2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west2_a": {
+      "zone": "europe-west2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east1_b": {
+      "zone": "asia-east1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east1_a": {
+      "zone": "asia-east1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east1_c": {
+      "zone": "asia-east1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast1_b": {
+      "zone": "asia-southeast1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast1_a": {
+      "zone": "asia-southeast1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast1_c": {
+      "zone": "asia-southeast1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast1_b": {
+      "zone": "asia-northeast1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast1_c": {
+      "zone": "asia-northeast1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast1_a": {
+      "zone": "asia-northeast1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south1_c": {
+      "zone": "asia-south1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south1_b": {
+      "zone": "asia-south1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south1_a": {
+      "zone": "asia-south1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast1_b": {
+      "zone": "australia-southeast1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast1_c": {
+      "zone": "australia-southeast1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast1_a": {
+      "zone": "australia-southeast1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_east1_b": {
+      "zone": "southamerica-east1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_east1_c": {
+      "zone": "southamerica-east1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_east1_a": {
+      "zone": "southamerica-east1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "africa_south1_a": {
+      "zone": "africa-south1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "africa_south1_b": {
+      "zone": "africa-south1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "africa_south1_c": {
+      "zone": "africa-south1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east2_a": {
+      "zone": "asia-east2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east2_b": {
+      "zone": "asia-east2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_east2_c": {
+      "zone": "asia-east2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast2_a": {
+      "zone": "asia-northeast2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast2_b": {
+      "zone": "asia-northeast2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast2_c": {
+      "zone": "asia-northeast2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast3_a": {
+      "zone": "asia-northeast3-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast3_b": {
+      "zone": "asia-northeast3-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_northeast3_c": {
+      "zone": "asia-northeast3-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south2_a": {
+      "zone": "asia-south2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south2_b": {
+      "zone": "asia-south2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_south2_c": {
+      "zone": "asia-south2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast2_a": {
+      "zone": "asia-southeast2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast2_b": {
+      "zone": "asia-southeast2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "asia_southeast2_c": {
+      "zone": "asia-southeast2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast2_a": {
+      "zone": "australia-southeast2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast2_b": {
+      "zone": "australia-southeast2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "australia_southeast2_c": {
+      "zone": "australia-southeast2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_central2_a": {
+      "zone": "europe-central2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_central2_b": {
+      "zone": "europe-central2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_central2_c": {
+      "zone": "europe-central2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_north1_a": {
+      "zone": "europe-north1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_north1_b": {
+      "zone": "europe-north1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_north1_c": {
+      "zone": "europe-north1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_southwest1_a": {
+      "zone": "europe-southwest1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_southwest1_b": {
+      "zone": "europe-southwest1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_southwest1_c": {
+      "zone": "europe-southwest1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west10_a": {
+      "zone": "europe-west10-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west10_b": {
+      "zone": "europe-west10-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west10_c": {
+      "zone": "europe-west10-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west12_a": {
+      "zone": "europe-west12-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west12_b": {
+      "zone": "europe-west12-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west12_c": {
+      "zone": "europe-west12-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west6_a": {
+      "zone": "europe-west6-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west6_b": {
+      "zone": "europe-west6-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west6_c": {
+      "zone": "europe-west6-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west8_a": {
+      "zone": "europe-west8-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west8_b": {
+      "zone": "europe-west8-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west8_c": {
+      "zone": "europe-west8-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west9_a": {
+      "zone": "europe-west9-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west9_b": {
+      "zone": "europe-west9-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "europe_west9_c": {
+      "zone": "europe-west9-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central1_a": {
+      "zone": "me-central1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central1_b": {
+      "zone": "me-central1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central1_c": {
+      "zone": "me-central1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central2_a": {
+      "zone": "me-central2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central2_b": {
+      "zone": "me-central2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_central2_c": {
+      "zone": "me-central2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_west1_a": {
+      "zone": "me-west1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_west1_b": {
+      "zone": "me-west1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "me_west1_c": {
+      "zone": "me-west1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast1_a": {
+      "zone": "northamerica-northeast1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast1_b": {
+      "zone": "northamerica-northeast1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast1_c": {
+      "zone": "northamerica-northeast1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast2_a": {
+      "zone": "northamerica-northeast2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast2_b": {
+      "zone": "northamerica-northeast2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_northeast2_c": {
+      "zone": "northamerica-northeast2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_south1_a": {
+      "zone": "northamerica-south1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_south1_b": {
+      "zone": "northamerica-south1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "northamerica_south1_c": {
+      "zone": "northamerica-south1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_west1_a": {
+      "zone": "southamerica-west1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_west1_b": {
+      "zone": "southamerica-west1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "southamerica_west1_c": {
+      "zone": "southamerica-west1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east5_a": {
+      "zone": "us-east5-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east5_b": {
+      "zone": "us-east5-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_east5_c": {
+      "zone": "us-east5-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_south1_a": {
+      "zone": "us-south1-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_south1_b": {
+      "zone": "us-south1-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_south1_c": {
+      "zone": "us-south1-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west2_a": {
+      "zone": "us-west2-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west2_b": {
+      "zone": "us-west2-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west2_c": {
+      "zone": "us-west2-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west3_a": {
+      "zone": "us-west3-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west3_b": {
+      "zone": "us-west3-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west3_c": {
+      "zone": "us-west3-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west4_a": {
+      "zone": "us-west4-a",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west4_b": {
+      "zone": "us-west4-b",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    },
+    "us_west4_c": {
+      "zone": "us-west4-c",
+      "machine_type": "e2-standard-4",
+      "node_count": 1
+    }
+  }
+}

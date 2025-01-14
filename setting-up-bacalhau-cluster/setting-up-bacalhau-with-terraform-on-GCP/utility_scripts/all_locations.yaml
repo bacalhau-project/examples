@@ -1,0 +1,497 @@
+locations:
+  africa_south1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: africa-south1-a
+  africa_south1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: africa-south1-b
+  africa_south1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: africa-south1-c
+  asia_east1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east1-a
+  asia_east1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east1-b
+  asia_east1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east1-c
+  asia_east2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east2-a
+  asia_east2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east2-b
+  asia_east2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-east2-c
+  asia_northeast1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast1-a
+  asia_northeast1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast1-b
+  asia_northeast1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast1-c
+  asia_northeast2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast2-a
+  asia_northeast2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast2-b
+  asia_northeast2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast2-c
+  asia_northeast3_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast3-a
+  asia_northeast3_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast3-b
+  asia_northeast3_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-northeast3-c
+  asia_south1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south1-a
+  asia_south1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south1-b
+  asia_south1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south1-c
+  asia_south2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south2-a
+  asia_south2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south2-b
+  asia_south2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-south2-c
+  asia_southeast1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast1-a
+  asia_southeast1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast1-b
+  asia_southeast1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast1-c
+  asia_southeast2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast2-a
+  asia_southeast2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast2-b
+  asia_southeast2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: asia-southeast2-c
+  australia_southeast1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast1-a
+  australia_southeast1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast1-b
+  australia_southeast1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast1-c
+  australia_southeast2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast2-a
+  australia_southeast2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast2-b
+  australia_southeast2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: australia-southeast2-c
+  europe_central2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-central2-a
+  europe_central2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-central2-b
+  europe_central2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-central2-c
+  europe_north1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-north1-a
+  europe_north1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-north1-b
+  europe_north1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-north1-c
+  europe_southwest1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-southwest1-a
+  europe_southwest1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-southwest1-b
+  europe_southwest1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-southwest1-c
+  europe_west10_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west10-a
+  europe_west10_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west10-b
+  europe_west10_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west10-c
+  europe_west12_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west12-a
+  europe_west12_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west12-b
+  europe_west12_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west12-c
+  europe_west1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west1-b
+  europe_west1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west1-c
+  europe_west1_d:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west1-d
+  europe_west2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west2-a
+  europe_west2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west2-b
+  europe_west2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west2-c
+  europe_west3_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west3-a
+  europe_west3_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west3-b
+  europe_west3_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west3-c
+  europe_west4_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west4-a
+  europe_west4_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west4-b
+  europe_west4_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west4-c
+  europe_west6_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west6-a
+  europe_west6_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west6-b
+  europe_west6_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west6-c
+  europe_west8_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west8-a
+  europe_west8_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west8-b
+  europe_west8_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west8-c
+  europe_west9_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west9-a
+  europe_west9_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west9-b
+  europe_west9_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: europe-west9-c
+  me_central1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central1-a
+  me_central1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central1-b
+  me_central1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central1-c
+  me_central2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central2-a
+  me_central2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central2-b
+  me_central2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-central2-c
+  me_west1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-west1-a
+  me_west1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-west1-b
+  me_west1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: me-west1-c
+  northamerica_northeast1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast1-a
+  northamerica_northeast1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast1-b
+  northamerica_northeast1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast1-c
+  northamerica_northeast2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast2-a
+  northamerica_northeast2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast2-b
+  northamerica_northeast2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-northeast2-c
+  northamerica_south1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-south1-a
+  northamerica_south1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-south1-b
+  northamerica_south1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: northamerica-south1-c
+  southamerica_east1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-east1-a
+  southamerica_east1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-east1-b
+  southamerica_east1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-east1-c
+  southamerica_west1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-west1-a
+  southamerica_west1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-west1-b
+  southamerica_west1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: southamerica-west1-c
+  us_central1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-central1-a
+  us_central1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-central1-b
+  us_central1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-central1-c
+  us_central1_f:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-central1-f
+  us_east1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east1-b
+  us_east1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east1-c
+  us_east1_d:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east1-d
+  us_east4_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east4-a
+  us_east4_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east4-b
+  us_east4_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east4-c
+  us_east5_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east5-a
+  us_east5_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east5-b
+  us_east5_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-east5-c
+  us_south1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-south1-a
+  us_south1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-south1-b
+  us_south1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-south1-c
+  us_west1_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west1-a
+  us_west1_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west1-b
+  us_west1_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west1-c
+  us_west2_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west2-a
+  us_west2_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west2-b
+  us_west2_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west2-c
+  us_west3_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west3-a
+  us_west3_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west3-b
+  us_west3_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west3-c
+  us_west4_a:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west4-a
+  us_west4_b:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west4-b
+  us_west4_c:
+    machine_type: e2-standard-4
+    node_count: 1
+    zone: us-west4-c

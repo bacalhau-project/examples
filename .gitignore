@@ -28,6 +28,9 @@ ansible.cfg
 *.pem
 .env.json
 
+**/MACHINES.json
+
+
 .terraform/
 terraform.tfstate.d/
 .terraform.lock.hcl
