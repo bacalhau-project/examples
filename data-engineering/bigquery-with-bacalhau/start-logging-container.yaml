@@ -1,0 +1,30 @@
+Tasks:
+  - Engine:
+      Params:
+        Entrypoint: null
+        EnvironmentVariables: null
+        Image: docker.io/bacalhauproject/log-generator:2412171646
+        Parameters:
+          - -d
+          - /var/log/app
+          - -n
+          - aperitivo
+        WorkingDirectory: ""
+      Type: docker
+    Name: sample-job
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/var/log/logs_to_process"
+    Network:
+      Type: None
+    Publisher:
+      Type: ""
+    Resources:
+      CPU: 250m
+      Memory: 250m
+    Timeouts: {}
+Type: daemon

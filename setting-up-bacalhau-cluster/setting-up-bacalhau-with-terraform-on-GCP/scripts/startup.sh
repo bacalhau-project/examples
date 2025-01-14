@@ -37,7 +37,7 @@ get_cloud_metadata() {
         METADATA=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/instance?api-version=2021-02-01")
         REGION=$(echo "$METADATA" | jq -r .compute.location)
         ZONE=$(echo "$METADATA" | jq -r .compute.zone)
-        PUBLIC_IP=$(curl -s -H "Metadata:true" "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/publicIpAddress?api-version=2021-02-01&format=text")
+        PUBLIC_IP=$(curl -s ip.me)
         PRIVATE_IP=$(echo "$METADATA" | jq -r .network.interface[0].ipv4.ipAddress[0].privateIpAddress)
         INSTANCE_ID=$(echo "$METADATA" | jq -r .compute.vmId)
         INSTANCE_TYPE=$(echo "$METADATA" | jq -r .compute.vmSize)

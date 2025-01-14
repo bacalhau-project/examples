@@ -1,6 +1,6 @@
 [Unit]
 Description=Bacalhau Startup Script
-After=docker.service network-online.target
+After=network-online.target
 Wants=network-online.target
 
 [Service]
