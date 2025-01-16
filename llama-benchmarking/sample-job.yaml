@@ -17,7 +17,7 @@ Tasks:
     Publisher:
       Type: s3
       Params:
-        Bucket: bacalhau-nvidia-job-results
+        Bucket: {{.bucket}}
         Key: "llama3-training/{date}/{jobID}"
         Region: us-east-1
     ResultPaths:

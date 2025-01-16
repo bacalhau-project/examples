@@ -56,7 +56,7 @@ Environment variables for customization:
 ## Output
 
 Training results and logs are saved to the `/results` directory which gets:
-1. Published to S3 (bacalhau-nvidia-job-results bucket)
+1. Published to S3
 2. Available in the job outputs
 
 The results include:
