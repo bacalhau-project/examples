@@ -13,6 +13,7 @@ bacalhau
 **/Dockerfile
 !tools/**/Dockerfile
 !scale-tester/**/Dockerfile
+!llama-benchmarking/**/Dockerfile
 **/.py
 .vscode
 js-helloworld/outputs/*
