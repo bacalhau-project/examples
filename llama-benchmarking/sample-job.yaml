@@ -1,0 +1,32 @@
+Name: llama3-training-{{.steps}}
+Type: ops
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/llama3-benchmark:latest
+        EnvironmentVariables:
+          - MAX_STEPS={{.steps}}
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - |
+            ./run_training.sh
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: bacalhau-nvidia-job-results
+        Key: "llama3-training/{date}/{jobID}"
+        Region: us-east-1
+    ResultPaths:
+      - Name: results
+        Path: /results
+    Resources:
+      CPU: "32"
+      Memory: "640G"
+      GPU: "8"
+    Timeouts:
+      ExecutionTimeout: 3600
+      QueueTimeout: 3600
