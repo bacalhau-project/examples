@@ -3,7 +3,7 @@
 A smart, configurable tool that generates realistic web server access logs. Perfect for testing log analysis tools, developing monitoring systems, or learning about web traffic patterns.
 
 ## Backstory
-This container/project was born out of a need to create realistic, high-quality web server access logs for testing and development purposes. As we were trying to stress test [Bacalhau](https://bacalhau.org) and [Expanso](https://expanso.io), we needed high volumes of realistic access logs so that we could show how flexible and scalable they were. I looked around for something really simple, but configurable, to generate this data couldn't find anything.  Thus, this container was born.
+This container/project was born out of a need to create realistic, high-quality web server access logs for testing and development purposes. As we were trying to stress test [Bacalhau](https://bacalhau.org) and [Expanso](https://expanso.io), we needed high volumes of realistic access logs so that we could show how flexible and scalable they were. I looked around for something simple, but configurable, to generate this data couldn't find anything.  Thus, this container/project was born.
 
 ## 🚀 Quick Start
 
@@ -70,29 +70,11 @@ Example access log entry:
 180.24.130.185 - - [20/Jan/2025:10:55:04] "GET /products HTTP/1.1" 200 352 "/search" "Mozilla/5.0"
 ```
 
-## 🛠 Features
-
-- Realistic user behavior simulation
-- Time-based traffic patterns
-- Automatic log rotation
-- Error scenario injection
-- Session tracking
-- Configurable rates and patterns
-
 ## 🔧 Advanced Usage
 
 Override the log directory:
 ```bash
 python access-log-generator.py config.yaml --log-dir-override ./logs
-```
-
-Common configurations:
-```bash
-# High traffic simulation
-docker run -v ./logs:/var/log/app -e RATE=100 access-log-generator
-
-# Development testing
-docker run -v ./logs:/var/log/app -e DEBUG=true access-log-generator
 ```
 
 ## 📈 Analyzing Logs
@@ -102,9 +84,6 @@ The generated logs work great with standard analysis tools:
 ```bash
 # Quick stats with DuckDB
 python logs/test_duckdb_queries.py
-
-# Or use with any log analyzer
-tail -f logs/access.log | goaccess
 ```
 
 ## 🤝 Contributing
