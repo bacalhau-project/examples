@@ -2,6 +2,9 @@
 
 A smart, configurable tool that generates realistic web server access logs. Perfect for testing log analysis tools, developing monitoring systems, or learning about web traffic patterns.
 
+## Backstory
+This container/project was born out of a need to create realistic, high-quality web server access logs for testing and development purposes. As we were trying to stress test [Bacalhau](https://bacalhau.org) and [Expanso](https://expanso.io), we needed high volumes of realistic access logs so that we could show how flexible and scalable they were. I looked around for something really simple, but configurable, to generate this data couldn't find anything.  Thus, this container was born.
+
 ## 🚀 Quick Start
 
 1. Run with Docker (recommended):
