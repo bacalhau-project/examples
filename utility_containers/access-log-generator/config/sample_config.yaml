@@ -1,0 +1,160 @@
+# Access Log Generator Configuration
+# All values are required except where noted
+
+# URL Configuration
+urls:
+  "/":
+    success: 0.98  # Probability of successful response
+    not_found: 0.01  # Probability of 404
+    system_error: 0.01  # Probability of 500
+    next_pages:  # Relative weights for next pages
+      "/about": 3
+      "/products": 5
+      "/search": 2
+      "/login": 1
+
+  "/about":
+    success: 0.99
+    not_found: 0.005
+    system_error: 0.005
+    next_pages:
+      "/": 4
+      "/products": 3
+      "/contact": 2
+
+  "/products":
+    success: 0.97
+    not_found: 0.02
+    system_error: 0.01
+    next_pages:
+      "/": 2
+      "/products/*": 5  # Specific product pages
+      "/cart": 3
+      "/search": 2
+
+  "/products/*":  # Wildcard for specific product pages
+    success: 0.95
+    not_found: 0.03
+    system_error: 0.02
+    next_pages:
+      "/products": 3
+      "/cart": 4
+      "/": 2
+
+  "/search":
+    success: 0.98
+    not_found: 0.01
+    system_error: 0.01
+    next_pages:
+      "/products": 4
+      "/": 2
+      "/search": 3  # Allow searching again
+
+  "/login":
+    success: 0.95
+    not_found: 0.01
+    system_error: 0.04
+    next_pages:
+      "/profile": 5  # Successful login
+      "/login": 2  # Failed login
+      "/": 1
+
+  "/profile":
+    success: 0.97
+    not_found: 0.01
+    system_error: 0.02
+    next_pages:
+      "/": 3
+      "/profile/*": 4  # Profile subpages
+      "/logout": 2
+
+  "/cart":
+    success: 0.96
+    not_found: 0.02
+    system_error: 0.02
+    next_pages:
+      "/checkout": 5
+      "/products": 3
+      "/": 2
+
+  "/checkout":
+    success: 0.94
+    not_found: 0.02
+    system_error: 0.04
+    next_pages:
+      "/thank-you": 5  # Successful checkout
+      "/cart": 3  # Failed checkout
+      "/": 1
+
+# Global settings
+output:
+  directory: ./logs  # Where to store generated logs
+  debug: false       # Enable debug output
+  pre_warm: true     # Simulate 24 hours of traffic before starting
+  rate: 5            # Logs per second (base rate before traffic patterns)
+
+# Session parameters
+session:
+  min_browsing_duration: 60  # Minimum session duration in seconds
+  max_browsing_duration: 600  # Maximum session duration in seconds
+  page_view_interval: 5  # Average time between page views in seconds
+
+# Traffic patterns by time of day (Eastern Time)
+traffic_patterns:
+  - time: 2-6
+    multiplier: 0.1  # Late night traffic multiplier
+  - time: 6-9
+    multiplier: 0.3  # Early morning traffic multiplier
+  - time: 9-12
+    multiplier: 0.7  # Late morning traffic multiplier
+  - time: 12-15
+    multiplier: 1.0  # Afternoon peak traffic multiplier
+  - time: 15-18
+    multiplier: 0.8  # Early evening traffic multiplier
+  - time: 18-21
+    multiplier: 0.5  # Dinner time traffic multiplier
+  - time: 21-2
+    multiplier: 0.2  # Night time traffic multiplier
+
+# Optional configurations
+user_agents:
+  desktop:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15"
+  mobile:
+    - "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+    - "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+ip_ranges:
+  - "192.168.1.0/24"
+  - "10.0.0.0/8"
+  - "172.16.0.0/12"
+
+search_terms:
+  - "shoes"
+  - "laptop"
+  - "phone"
+  - "jacket"
+  - "watch"
+  - "headphones"
+  - "camera"
+  - "gaming"
+  - "fitness"
+
+product_categories:
+  - "electronics"
+  - "clothing"
+  - "home"
+  - "sports"
+  - "books"
+  - "toys"
+  - "beauty"
+  - "jewelry"
+  - "furniture"
+
+profile_tabs:
+  - "orders"
+  - "settings"
+  - "payment"
+  - "addresses"
+  - "wishlist"
