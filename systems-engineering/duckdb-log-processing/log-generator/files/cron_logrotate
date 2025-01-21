@@ -1,2 +1,0 @@
-#!/bin/sh
-/usr/sbin/logrotate --state /var/lib/logrotate/logrotate.hourly.status /etc/logrotate.conf 

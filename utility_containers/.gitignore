@@ -1,0 +1,5 @@
+.aider*
+.env
+vendor/
+.flox
+

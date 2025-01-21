@@ -1,0 +1,3 @@
+**/*.log
+**/*.gz
+config/config.yaml

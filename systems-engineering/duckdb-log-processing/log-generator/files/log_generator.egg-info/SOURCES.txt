@@ -1,7 +1,0 @@
-log_generator.py
-pyproject.toml
-log_generator.egg-info/PKG-INFO
-log_generator.egg-info/SOURCES.txt
-log_generator.egg-info/dependency_links.txt
-log_generator.egg-info/requires.txt
-log_generator.egg-info/top_level.txt
