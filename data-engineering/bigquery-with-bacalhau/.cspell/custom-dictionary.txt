@@ -1,3 +1,4 @@
+aperitivo
 Bacalhau
 bacalhauproject
 buildx
@@ -9,6 +10,7 @@ DUCKDB
 INPUTFILE
 INSTANCEID
 IRUSR
+isin
 IWUSR
 listdir
 makedirs
