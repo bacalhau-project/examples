@@ -1,4 +1,5 @@
 bacalhau
+goaccess
 ipfs
 levelname
 mult

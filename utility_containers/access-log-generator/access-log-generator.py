@@ -1,4 +1,5 @@
 import argparse
+import base64
 import gzip
 import logging
 import logging.handlers
@@ -93,52 +94,105 @@ def validate_config(config: dict) -> bool:
 
 
 def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
-    """Load and validate configuration from YAML file"""
-    if not config_path.exists():
-        print(f"❌ Configuration file not found: {config_path}")
-        sys.exit(1)
+    """Load and validate configuration from environment variables or file"""
+    config = None
 
-    try:
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-            print(f"✅ Loaded configuration from {config_path}")
+    # Try base64 encoded config first
+    env_config_b64 = os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64")
+    if env_config_b64:
+        try:
+            decoded_config = base64.b64decode(env_config_b64).decode("utf-8")
+            config = yaml.safe_load(decoded_config)
+            print(
+                "✅ Loaded configuration from LOG_GENERATOR_CONFIG_YAML_B64 environment variable"
+            )
+        except base64.binascii.Error as e:
+            print(f"❌ Failed to decode base64 configuration: {e}")
+            sys.exit(1)
+        except yaml.YAMLError as e:
+            print(f"❌ Failed to parse base64 decoded YAML: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Error processing base64 configuration: {e}")
+            sys.exit(1)
 
-            if not validate_config(config):
-                print("❌ Configuration validation failed")
+    # If no base64 config, try plain YAML env var
+    if config is None:
+        env_config = os.environ.get("LOG_GENERATOR_CONFIG_YAML")
+        if env_config:
+            try:
+                # Try parsing as direct YAML content first
+                try:
+                    config = yaml.safe_load(env_config)
+                    print(
+                        "✅ Loaded configuration from LOG_GENERATOR_CONFIG_YAML environment variable"
+                    )
+                except yaml.YAMLError:
+                    # If parsing fails, try treating it as a file path
+                    env_path = Path(env_config)
+                    if env_path.exists():
+                        with open(env_path) as f:
+                            config = yaml.safe_load(f)
+                        print(
+                            f"✅ Loaded configuration from environment-specified path: {env_path}"
+                        )
+                    else:
+                        print(
+                            "❌ LOG_GENERATOR_CONFIG_YAML contains invalid YAML and is not a valid file path"
+                        )
+                        sys.exit(1)
+            except Exception as e:
+                print(f"❌ Failed to load configuration from environment variable: {e}")
                 sys.exit(1)
 
-            # Print configuration summary
-            print("\n⚙️  Configuration Summary:")
-            print(f"  Output Directory: {config['output']['directory']}")
-            print(f"  Base Rate: {config['output']['rate']} logs/sec")
-            print(f"  Debug Mode: {config['output'].get('debug', False)}")
-            print(f"  Pre-warm: {config['output'].get('pre_warm', True)}")
-            print("\n  State Transitions:")
-            for state, transitions in config["state_transitions"].items():
-                print(f"    {state}:")
-                for action, prob in transitions.items():
-                    print(f"      {action}: {prob:.2f}")
-            print("\n  Traffic Patterns:")
-            for pattern in config["traffic_patterns"]:
-                print(f"    {pattern['time']}: {pattern['multiplier']}x")
-            print("\n✅ Configuration validated successfully\n")
+    # If no environment configs, use file config
+    if config is None:
+        if not config_path.exists():
+            print(f"❌ Configuration file not found: {config_path}")
+            sys.exit(1)
 
-            return config
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+                print(f"✅ Loaded configuration from {config_path}")
+        except yaml.YAMLError as e:
+            print(f"❌ YAML parsing error: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Failed to load configuration: {e}")
+            sys.exit(1)
 
-    except yaml.YAMLError as e:
-        print(f"❌ YAML parsing error: {e}")
+    # Validate configuration
+    if not validate_config(config):
+        print("❌ Configuration validation failed")
         sys.exit(1)
-    except Exception as e:
-        print(f"❌ Failed to load configuration: {e}")
-        sys.exit(1)
+
+    # Print configuration summary
+    print("\n⚙️  Configuration Summary:")
+    print(f"  Output Directory: {config['output']['directory']}")
+    print(f"  Base Rate: {config['output']['rate']} logs/sec")
+    print(f"  Debug Mode: {config['output'].get('debug', False)}")
+    print(f"  Pre-warm: {config['output'].get('pre_warm', True)}")
+    print("\n  State Transitions:")
+    for state, transitions in config["state_transitions"].items():
+        print(f"    {state}:")
+        for action, prob in transitions.items():
+            print(f"      {action}: {prob:.2f}")
+    print("\n  Traffic Patterns:")
+    for pattern in config["traffic_patterns"]:
+        print(f"    {pattern['time']}: {pattern['multiplier']}x")
+    print("\n✅ Configuration validated successfully\n")
+
+    return config
 
 
 # Configure separate logging streams
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Configure logging with separate streams for access and errors"""
     try:
-        # Create output directory with parents
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # Create output directory with parents, if it doesn't exist
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
 
         # Only check if we can write to the actual log directory
         if not os.access(output_dir, os.W_OK):
@@ -1013,7 +1067,8 @@ def main():
     parser.add_argument(
         "config",
         type=str,
-        help="Path to configuration file (required)",
+        nargs="?",  # Make config optional
+        help="Path to configuration file (optional if using environment variables)",
     )
     parser.add_argument(
         "--log-dir-override",
@@ -1023,8 +1078,21 @@ def main():
 
     args = parser.parse_args()
 
-    # Load config first
-    config_path = Path(args.config)
+    # Check if we have environment variables for config
+    if (
+        os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64") is None
+        and os.environ.get("LOG_GENERATOR_CONFIG_YAML") is None
+    ):
+        # If no environment variables, require config file
+        if args.config is None:
+            parser.error(
+                "Configuration file is required when not using environment variables"
+            )
+        config_path = Path(args.config)
+    else:
+        # Use dummy path when using environment variables
+        config_path = Path("dummy_path")
+
     config = load_config(config_path)
 
     # Override log directory if specified

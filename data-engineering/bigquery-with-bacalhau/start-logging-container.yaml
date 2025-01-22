@@ -2,13 +2,9 @@ Tasks:
   - Engine:
       Params:
         Entrypoint: null
-        EnvironmentVariables: null
-        Image: docker.io/bacalhauproject/log-generator:2412171646
-        Parameters:
-          - -d
-          - /var/log/app
-          - -n
-          - aperitivo
+        EnvironmentVariables:
+          - LOG_GENERATOR_CONFIG_YAML_B64={{ .config_b64 }}
+        Image: docker.io/bacalhauproject/access-log-generator:2501212219
         WorkingDirectory: ""
       Type: docker
     Name: sample-job
@@ -18,7 +14,7 @@ Tasks:
           Params:
             SourcePath: "/bacalhau_data"
             ReadWrite: true
-        Target: "/var/log/logs_to_process"
+        Target: "/var/log/app"
     Network:
       Type: None
     Publisher:
