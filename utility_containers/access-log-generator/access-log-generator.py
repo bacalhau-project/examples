@@ -190,32 +190,76 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Configure logging with separate streams for access and errors"""
     try:
-        # Create output directory with parents, if it doesn't exist
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure parent directories exist with correct permissions
+        parent_dir = output_dir.parent
+        if not parent_dir.exists():
+            try:
+                parent_dir.mkdir(parents=True, exist_ok=True)
+                # Make parent directory world-writable for container environments
+                os.chmod(parent_dir, 0o777)
+            except Exception as e:
+                print(f"❌ Failed to create parent directory {parent_dir}: {e}")
+                sys.exit(1)
 
-        # Only check if we can write to the actual log directory
+        # Create output directory with permissive permissions if it doesn't exist
+        if not output_dir.exists():
+            try:
+                output_dir.mkdir(parents=True, exist_ok=True)
+                os.chmod(output_dir, 0o777)  # Make world-writable
+                print(f"✅ Created output directory: {output_dir}")
+            except Exception as e:
+                print(f"❌ Failed to create output directory {output_dir}: {e}")
+                sys.exit(1)
+        else:
+            # If directory exists, ensure it's writable
+            try:
+                os.chmod(output_dir, 0o777)  # Make world-writable
+                print(f"✅ Updated permissions for existing directory: {output_dir}")
+            except Exception as e:
+                print(f"❌ Failed to update permissions for {output_dir}: {e}")
+                sys.exit(1)
+
+        # Verify write access
         if not os.access(output_dir, os.W_OK):
             print(f"❌ Log directory not writable: {output_dir}")
             try:
                 import subprocess
 
-                result = subprocess.run(
-                    ["ls", "-lat", str(output_dir)], capture_output=True, text=True
-                )
-                print("\nLog directory permissions:")
-                print(result.stdout)
+                # Show detailed directory information
+                print("\nDirectory Details:")
+                subprocess.run(["ls", "-la", str(output_dir)], check=True)
+                print("\nParent Directory Details:")
+                subprocess.run(["ls", "-la", str(output_dir.parent)], check=True)
+                print("\nCurrent Process User/Group:")
+                subprocess.run(["id"], check=True)
 
-                # Also show parent dir for context
-                parent_result = subprocess.run(
-                    ["ls", "-lat", str(output_dir.parent)],
-                    capture_output=True,
-                    text=True,
-                )
-                print("\nParent directory listing:")
-                print(parent_result.stdout)
+                # Try to detect if running in container
+                if os.path.exists("/.dockerenv"):
+                    print("\nRunning inside container")
+                    # Show mount information
+                    print("\nMount Information:")
+                    subprocess.run(["mount"], check=True)
+
+                # Show SELinux context if available
+                try:
+                    print("\nSELinux Context:")
+                    subprocess.run(["ls", "-Z", str(output_dir)], check=True)
+                except subprocess.CalledProcessError:
+                    print("SELinux information not available")
+
             except Exception as e:
-                print(f"Could not check permissions: {e}")
+                print(f"Could not check detailed permissions: {e}")
+            sys.exit(1)
+
+        # Test write access with a temporary file
+        test_file = output_dir / ".write_test"
+        try:
+            with open(test_file, "w") as f:
+                f.write("test")
+            os.remove(test_file)
+            print(f"✅ Successfully verified write access to {output_dir}")
+        except Exception as e:
+            print(f"❌ Failed write access test: {e}")
             sys.exit(1)
 
         # Main logger for system messages
@@ -312,41 +356,42 @@ class CustomRotatingHandler(TimedRotatingFileHandler):
         self.maxBytes = max_bytes
         self.compress = compress
 
-        # Set file permissions
+        # Ensure directory exists with correct permissions
+        log_dir = Path(filename).parent
+        if not log_dir.exists():
+            log_dir.mkdir(parents=True, exist_ok=True)
+            os.chmod(log_dir, 0o777)
+
+        # Set file permissions if file exists or after it's created
         if os.path.exists(filename):
-            os.chmod(filename, 0o644)
+            os.chmod(filename, 0o666)  # World readable/writable
+        else:
+            # Create file with correct permissions
+            Path(filename).touch(mode=0o666)
 
-    def shouldRollover(self, record):
-        """Check if rollover should occur based on both time and size"""
-        # Check time-based rotation first
-        time_to_rotate = super().shouldRollover(record)
-        if time_to_rotate:
-            return True
-
-        # Then check size-based rotation
-        if self.maxBytes > 0:
-            msg = "%s\n" % self.format(record)
-            self.stream.seek(0, 2)
-            if self.stream.tell() + len(msg) >= self.maxBytes:
-                return True
-        return False
+    def _open(self):
+        """Override _open to ensure correct permissions on new files"""
+        stream = super()._open()
+        try:
+            os.chmod(self.baseFilename, 0o666)  # World readable/writable
+        except Exception:
+            pass  # Don't fail if we can't set permissions
+        return stream
 
     def rotate(self, source, dest):
-        """Rotate the file and compress if needed"""
+        """Rotate the file and compress if needed with correct permissions"""
         if os.path.exists(source):
             if self.compress:
                 with open(source, "rb") as f_in:
                     with gzip.open(f"{dest}.gz", "wb") as f_out:
                         shutil.copyfileobj(f_in, f_out)
                 os.remove(source)
+                # Set permissions on compressed file
+                os.chmod(f"{dest}.gz", 0o666)
             else:
                 shutil.move(source, dest)
-
-            # Set permissions on rotated file
-            if os.path.exists(dest):
-                os.chmod(dest, 0o644)
-            if os.path.exists(f"{dest}.gz"):
-                os.chmod(f"{dest}.gz", 0o644)
+                # Set permissions on rotated file
+                os.chmod(dest, 0o666)
 
 
 class AccessLogGenerator:
