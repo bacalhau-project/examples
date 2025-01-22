@@ -56,6 +56,7 @@ runcmd:
   - chmod 0700 /usr/local/bin/startup.sh
   - chmod 0400 ${bacalhau_node_dir}/config.yaml
   - chmod 0400 ${bacalhau_node_dir}/docker-compose.yaml
+  - chmod 0777 ${bacalhau_data_dir}
 
   # Set ownership
   - chown -R ${username}:${username} ${bacalhau_data_dir}
