@@ -89,21 +89,20 @@ def sanitize_ip(ip_str):
         else:  # IPv6
             network = ipaddress.ip_network(f"{ip}/64", strict=False)
             return str(network.network_address)
-    except:
+    except Exception as e:
+        print(f"Error sanitizing IP address {ip_str}: {e}")
         return None
 
 
 def main(input_file):
-    config_path = os.environ.get("CONFIG_PATH", "config.yaml")
+    project_id = os.environ.get("PROJECT_ID", "")
+    if project_id == "":
+        raise ValueError("PROJECT_ID environment variable is not set")
 
-    # Load configuration
-    config = load_config(config_path)
-    bq_config = config["bigquery"]
+    dataset = os.environ.get("DATASET", "log_analytics")
+    table = os.environ.get("TABLE", "log_results")
 
     credentials_path = os.environ.get("CREDENTIALS_PATH", "credentials.json")
-    if not os.path.exists(credentials_path):
-        credentials_path = bq_config["credentials_path"]
-
     if not os.path.exists(credentials_path):
         raise FileNotFoundError(f"Credentials file not found at {credentials_path}")
 
@@ -157,7 +156,7 @@ def main(input_file):
     df["ip"] = df["ip"].apply(sanitize_ip)
 
     # Add metadata columns
-    df["project_id"] = bq_config["project_id"]
+    df["project_id"] = project_id
     df["region"] = metadata["region"]
     df["nodeName"] = metadata["node_name"]
     df["hostname"] = metadata["node_name"]
@@ -165,7 +164,7 @@ def main(input_file):
     df["sync_time"] = datetime.utcnow()
 
     # Upload to BigQuery
-    table_id = f"{bq_config['project_id']}.{bq_config['dataset']}.{bq_config['table']}"
+    table_id = f"{project_id}.{dataset}.{table}"
     job_config = bigquery.LoadJobConfig(
         schema=EXPECTED_SCHEMA,
         write_disposition="WRITE_APPEND",
