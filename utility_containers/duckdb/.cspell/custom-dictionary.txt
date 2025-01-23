@@ -1,3 +1,7 @@
+bacalhauproject
+binfmt
+buildx
 duckdb
 DUCKDB
 noninteractive
+tonistiigi
