@@ -190,17 +190,6 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Configure logging with separate streams for access and errors"""
     try:
-        # Ensure parent directories exist with correct permissions
-        parent_dir = output_dir.parent
-        if not parent_dir.exists():
-            try:
-                parent_dir.mkdir(parents=True, exist_ok=True)
-                # Make parent directory world-writable for container environments
-                os.chmod(parent_dir, 0o777)
-            except Exception as e:
-                print(f"❌ Failed to create parent directory {parent_dir}: {e}")
-                sys.exit(1)
-
         # Create output directory with permissive permissions if it doesn't exist
         if not output_dir.exists():
             try:
@@ -209,14 +198,6 @@ def setup_logging(output_dir: Path) -> logging.Logger:
                 print(f"✅ Created output directory: {output_dir}")
             except Exception as e:
                 print(f"❌ Failed to create output directory {output_dir}: {e}")
-                sys.exit(1)
-        else:
-            # If directory exists, ensure it's writable
-            try:
-                os.chmod(output_dir, 0o777)  # Make world-writable
-                print(f"✅ Updated permissions for existing directory: {output_dir}")
-            except Exception as e:
-                print(f"❌ Failed to update permissions for {output_dir}: {e}")
                 sys.exit(1)
 
         # Verify write access
@@ -228,38 +209,10 @@ def setup_logging(output_dir: Path) -> logging.Logger:
                 # Show detailed directory information
                 print("\nDirectory Details:")
                 subprocess.run(["ls", "-la", str(output_dir)], check=True)
-                print("\nParent Directory Details:")
-                subprocess.run(["ls", "-la", str(output_dir.parent)], check=True)
                 print("\nCurrent Process User/Group:")
                 subprocess.run(["id"], check=True)
-
-                # Try to detect if running in container
-                if os.path.exists("/.dockerenv"):
-                    print("\nRunning inside container")
-                    # Show mount information
-                    print("\nMount Information:")
-                    subprocess.run(["mount"], check=True)
-
-                # Show SELinux context if available
-                try:
-                    print("\nSELinux Context:")
-                    subprocess.run(["ls", "-Z", str(output_dir)], check=True)
-                except subprocess.CalledProcessError:
-                    print("SELinux information not available")
-
             except Exception as e:
                 print(f"Could not check detailed permissions: {e}")
-            sys.exit(1)
-
-        # Test write access with a temporary file
-        test_file = output_dir / ".write_test"
-        try:
-            with open(test_file, "w") as f:
-                f.write("test")
-            os.remove(test_file)
-            print(f"✅ Successfully verified write access to {output_dir}")
-        except Exception as e:
-            print(f"❌ Failed write access test: {e}")
             sys.exit(1)
 
         # Main logger for system messages
