@@ -4,7 +4,7 @@ Tasks:
         Image: docker.io/bacalhauproject/duckdb:latest
         WorkingDirectory: ""
         EnvironmentVariables:
-          - QUERY=WITH yellow_taxi_trips AS (SELECT * FROM read_parquet('{{ .filename }}')) {{ .query }}
+          - QUERY_B64={{ .query_b64 }}
       Type: docker
     Name: duckdb-query-job
     InputSources:
@@ -13,7 +13,7 @@ Tasks:
           Params:
             SourcePath: "/bacalhau_data"
             ReadWrite: true
-        Target: "/bacalhau_data"
+        Target: "/var/log/app"
     Publisher:
       Type: "local"
       Params:

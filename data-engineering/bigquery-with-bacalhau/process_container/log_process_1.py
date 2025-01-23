@@ -28,20 +28,19 @@ EXPECTED_SCHEMA = [
     bigquery.SchemaField("region", "STRING"),
     bigquery.SchemaField("nodeName", "STRING"),
     bigquery.SchemaField("sync_time", "TIMESTAMP"),
-    bigquery.SchemaField("remote_log_id", "STRING"),
+    bigquery.SchemaField("ip", "STRING"),
+    bigquery.SchemaField("user_id", "STRING"),
     bigquery.SchemaField("timestamp", "TIMESTAMP"),
-    bigquery.SchemaField("version", "STRING"),
-    bigquery.SchemaField("message", "STRING"),
-    bigquery.SchemaField("alert_level", "STRING"),
+    bigquery.SchemaField("method", "STRING"),
+    bigquery.SchemaField("path", "STRING"),
+    bigquery.SchemaField("protocol", "STRING"),
+    bigquery.SchemaField("status", "INTEGER"),
+    bigquery.SchemaField("bytes", "INTEGER"),
+    bigquery.SchemaField("referer", "STRING"),
+    bigquery.SchemaField("user_agent", "STRING"),
     bigquery.SchemaField("hostname", "STRING"),
     bigquery.SchemaField("provider", "STRING"),
-    bigquery.SchemaField("ip", "STRING"),
 ]
-
-
-def generate_fake_ip():
-    """Generate a fake IP address."""
-    return fake.ipv4()
 
 
 def get_metadata():
@@ -54,30 +53,7 @@ def get_metadata():
     }
 
 
-def sanitize_ip(ip_str):
-    """
-    Sanitize IP address by masking the host portion while preserving network information.
-    For IPv4: Preserve the first three octets
-    For IPv6: Preserve the first four segments (network portion)
-    """
-    if not ip_str:
-        return None
-    try:
-        ip = ipaddress.ip_address(ip_str)
-        if isinstance(ip, ipaddress.IPv4Address):
-            network = ipaddress.ip_network(f"{ip}/24", strict=False)
-            return str(network.network_address)
-        else:  # IPv6
-            # Get the /64 network address
-            network = ipaddress.ip_network(f"{ip}/64", strict=False)
-            return str(network.network_address)
-    except:
-        return None
-
-
-def main(input_file, query):
-    print(f"Processing {input_file} with query: {query}")
-
+def main(input_file):
     # Load credentials and create BigQuery client
     credentials = service_account.Credentials.from_service_account_file(
         CREDENTIALS_PATH, scopes=["https://www.googleapis.com/auth/bigquery"]
@@ -87,52 +63,27 @@ def main(input_file, query):
     # Create DuckDB connection and load log file
     con = duckdb.connect()
 
-    # Register helper functions
-    con.create_function(
-        "extract_alert_level",
-        lambda msg: msg.split("]")[0].split("[")[-1].strip()
-        if "[" in msg and "]" in msg
-        else "INFO",
-        ["VARCHAR"],
-        "VARCHAR",
-        null_handling="SPECIAL",
-    )
-
-    # Register IP generation and sanitization functions
-    con.create_function(
-        "generate_fake_ip",
-        generate_fake_ip,
-        [],
-        "VARCHAR",
-        null_handling="SPECIAL",
-    )
-
-    con.create_function(
-        "sanitize_ip",
-        sanitize_ip,
-        ["VARCHAR"],
-        "VARCHAR",
-        null_handling="SPECIAL",
-    )
-
     # Load and preprocess the log data
     metadata = get_metadata()
-    con.execute(
+    df = con.execute(
         """
-        CREATE TABLE log_data AS 
-        SELECT 
-            ? || '.log_analytics.log_results' as remote_log_id,
-            CAST(REGEXP_REPLACE("@timestamp", 'Z$', '') AS TIMESTAMP) as timestamp,
-            "@version" as version,
-            message,
-            extract_alert_level(message) as alert_level
-        FROM read_json_auto(?)
-    """,
-        [metadata["project_id"], input_file],
-    )
-
-    # Execute the user's query
-    df = con.execute(query).df()
+            WITH logs as (
+                FROM read_csv_auto(?, delim=' ')
+                SELECT 
+                    column0 as ip,
+                    -- ignore column1, it's just a hyphen
+                    column2 as user,
+                    column3.replace('[','').replace(' ]','').strptime('%Y/%m/%d:%H:%M:%S') as ts,
+                    column4 as http_type,
+                    column5 as route,
+                    column6 as http_spec,
+                    column7 as http_status,
+                    column8 as value
+            )
+            SELECT * FROM logs
+            """,
+        [input_file],
+    ).df()
 
     # Add metadata columns
     df["project_id"] = metadata["project_id"]
@@ -141,9 +92,6 @@ def main(input_file, query):
     df["hostname"] = metadata["node_name"]
     df["provider"] = metadata["provider"]
     df["sync_time"] = datetime.utcnow()
-
-    # Generate and sanitize IPs for each row
-    df["ip"] = [generate_fake_ip() for _ in range(len(df))]
 
     # Upload to BigQuery
     table_id = f"{metadata['project_id']}.log_analytics.log_results"
@@ -157,14 +105,13 @@ def main(input_file, query):
     job.result()
     print(f"Uploaded {len(df)} rows to {table_id}")
 
-    # Print sample of processed data in debug mode
+    # Print sample of processed data
     print("\nSample of processed data:")
-    print(df.head().to_string())
+    print(df[["timestamp", "method", "path", "status", "bytes"]].head().to_string())
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process log data")
     parser.add_argument("input_file", help="Path to the input log file")
-    parser.add_argument("query", help="DuckDB query to execute")
     args = parser.parse_args()
-    main(args.input_file, args.query)
+    main(args.input_file)
