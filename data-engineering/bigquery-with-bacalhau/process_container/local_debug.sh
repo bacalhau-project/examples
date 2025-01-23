@@ -29,7 +29,7 @@ if [ $# -lt 1 ]; then
 fi
 
 VERSION=$1
-INPUT_FILE=${2:-"logs/aperitivo_logs.log.20250115-190502"}
+INPUT_FILE=${2:-"logs/access.log"}
 
 # Validate version number
 if [[ ! $VERSION =~ ^[1-4]$ ]]; then
