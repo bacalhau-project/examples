@@ -1,10 +1,15 @@
 Tasks:
   - Engine:
       Params:
-        Entrypoint: null
-        EnvironmentVariables:
-          - LOG_GENERATOR_CONFIG_YAML_B64={{ .config_b64 }}
-        Image: docker.io/bacalhauproject/access-log-generator:2501231014
+        Entrypoint:
+          - sh
+          - -c
+          - |
+            rm -f /var/log/app/access.log*
+            rm -f /var/log/app/aperitivo_logs.log.20250122-*
+            rm -f /var/log/app/error.log*
+            rm -f /var/log/app/system.log*
+        Image: alpine
         WorkingDirectory: ""
       Type: docker
     Name: sample-job
@@ -23,4 +28,5 @@ Tasks:
       CPU: 250m
       Memory: 250m
     Timeouts: {}
-Type: daemon
+Type: batch
+Count: 20

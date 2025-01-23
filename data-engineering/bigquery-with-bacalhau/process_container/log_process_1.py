@@ -2,10 +2,13 @@
 import argparse
 import ipaddress
 import os
+import re
 import warnings
 from datetime import datetime
 
 import duckdb
+import pandas as pd
+import yaml
 from faker import Faker
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -40,11 +43,19 @@ EXPECTED_SCHEMA = [
     bigquery.SchemaField("user_agent", "STRING"),
     bigquery.SchemaField("hostname", "STRING"),
     bigquery.SchemaField("provider", "STRING"),
+    bigquery.SchemaField("status_category", "STRING"),
 ]
 
 
+def load_config(config_path):
+    """Load configuration from config.yaml."""
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return config
+
+
 def get_metadata():
-    """Get or generate metadata about the current environment."""
+    """Get metadata about the current environment/node."""
     return {
         "project_id": os.environ.get("PROJECT_ID", "unknown"),
         "region": os.environ.get("REGION", "unknown"),
@@ -53,10 +64,45 @@ def get_metadata():
     }
 
 
+def get_status_category(status):
+    """Categorize HTTP status code."""
+    if 200 <= status <= 299:
+        return "OK"
+    elif 300 <= status <= 399:
+        return "Redirect"
+    elif 400 <= status <= 499:
+        return "Not Found"
+    elif 500 <= status <= 599:
+        return "SystemError"
+    return "Unknown"
+
+
+def parse_request(request):
+    """Parse HTTP request string into method, path, and protocol."""
+    parts = request.split()
+    if len(parts) >= 3:
+        return parts[0], parts[1], parts[2]
+    return "", "", ""
+
+
 def main(input_file):
+    if CREDENTIALS_PATH == "":
+        raise ValueError("CREDENTIALS_PATH environment variable is not set")
+
+    if not os.path.exists(CREDENTIALS_PATH):
+        raise FileNotFoundError(f"Credentials file not found at {CREDENTIALS_PATH}")
+
+    project_id = os.environ.get("PROJECT_ID", "")
+    if project_id == "":
+        raise ValueError("PROJECT_ID environment variable is not set")
+
+    dataset = os.environ.get("DATASET", "log_analytics")
+    table = os.environ.get("TABLE", "log_results")
+
     # Load credentials and create BigQuery client
     credentials = service_account.Credentials.from_service_account_file(
-        CREDENTIALS_PATH, scopes=["https://www.googleapis.com/auth/bigquery"]
+        CREDENTIALS_PATH,
+        scopes=["https://www.googleapis.com/auth/bigquery"],
     )
     bq_client = bigquery.Client(credentials=credentials)
 
@@ -72,18 +118,32 @@ def main(input_file):
                 SELECT 
                     column0 as ip,
                     -- ignore column1, it's just a hyphen
-                    column2 as user,
-                    column3.replace('[','').replace(' ]','').strptime('%Y/%m/%d:%H:%M:%S') as ts,
-                    column4 as http_type,
-                    column5 as route,
-                    column6 as http_spec,
-                    column7 as http_status,
-                    column8 as value
+                    column2 as user_id,
+                    column3.replace('[','').replace(']','').strptime('%Y-%m-%dT%H:%M:%S.%f%z') as ts,
+                    column4 as request,
+                    column5 as status,
+                    column6 as bytes,
+                    column7 as referer,
+                    column8 as user_agent,
             )
             SELECT * FROM logs
             """,
         [input_file],
     ).df()
+
+    # Parse timestamp
+    df["timestamp"] = pd.to_datetime(df["ts"], format="%Y-%m-%dT%H:%M:%S.%f%z")
+    df = df.drop(columns=["ts"])
+
+    # Parse request into method, path, protocol
+    request_parts = df["request"].apply(parse_request)
+    df["method"] = request_parts.str[0]
+    df["path"] = request_parts.str[1]
+    df["protocol"] = request_parts.str[2]
+    df = df.drop(columns=["request"])
+
+    # Add status category
+    df["status_category"] = df["status"].apply(get_status_category)
 
     # Add metadata columns
     df["project_id"] = metadata["project_id"]
@@ -94,7 +154,7 @@ def main(input_file):
     df["sync_time"] = datetime.utcnow()
 
     # Upload to BigQuery
-    table_id = f"{metadata['project_id']}.log_analytics.log_results"
+    table_id = f"{project_id}.{dataset}.{table}"
     job_config = bigquery.LoadJobConfig(
         schema=EXPECTED_SCHEMA,
         write_disposition="WRITE_APPEND",
@@ -107,7 +167,22 @@ def main(input_file):
 
     # Print sample of processed data
     print("\nSample of processed data:")
-    print(df[["timestamp", "method", "path", "status", "bytes"]].head().to_string())
+    print(
+        df[
+            [
+                "timestamp",
+                "method",
+                "path",
+                "status",
+                "status_category",
+                "bytes",
+                "referer",
+                "user_agent",
+            ]
+        ]
+        .head()
+        .to_string()
+    )
 
 
 if __name__ == "__main__":

@@ -16,6 +16,17 @@ else
     echo "Dataset already exists, skipping creation..."
 fi
 
+# Create raw_logs table first - this is our foundation
+echo "Dropping raw_logs table if exists..."
+bq rm -f -t "$PROJECT_ID:log_analytics.raw_logs"
+
+echo "Creating raw_logs table with basic schema..."
+bq query --use_legacy_sql=false \
+"CREATE TABLE \`$PROJECT_ID.log_analytics.raw_logs\` (
+    raw_line STRING,
+    upload_time TIMESTAMP
+)"
+
 # Drop and recreate log_results table to fix schema
 echo "Dropping log_results table to fix schema..."
 bq rm -f -t "$PROJECT_ID:log_analytics.log_results"
@@ -94,7 +105,10 @@ bq query --use_legacy_sql=false --format=pretty \
 "WITH required_columns AS (
   SELECT table_name, column_name, data_type
   FROM UNNEST([
-    STRUCT('log_results' as table_name, 'project_id' as column_name, 'STRING' as data_type),
+    STRUCT('raw_logs' as table_name, 'timestamp' as column_name, 'TIMESTAMP' as data_type),
+    ('raw_logs', 'raw_line', 'STRING'),
+    ('raw_logs', 'upload_time', 'TIMESTAMP'),
+    ('log_results', 'project_id', 'STRING'),
     ('log_results', 'region', 'STRING'),
     ('log_results', 'nodeName', 'STRING'),
     ('log_results', 'hostname', 'STRING'),
