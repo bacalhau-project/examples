@@ -1,0 +1,33 @@
+Tasks:
+  - Engine:
+      Params:
+        Image: docker.io/bacalhauproject/python-bigquery-executor:latest
+        WorkingDirectory: ""
+        EnvironmentVariables:
+          - PROJECT_ID=bq-2501151036
+          - REGION=us-central1
+          - CREDENTIALS_PATH=/var/log/app/log_uploader_credentials.json
+          - INPUT_FILE=/var/log/app/access.log
+          - CHUNK_SIZE=500000
+          - PYTHON_FILE_B64={{ .python_file_b64 }}
+      Type: docker
+    Name: duckdb-query-job
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/var/log/app"
+    Publisher:
+      Type: "local"
+      Params:
+        TargetPath: "/bacalhau_data"
+    Network:
+      Type: Full
+    Resources:
+      CPU: 500m
+      Memory: 1500Mi
+    Timeouts: {}
+Type: batch
+Count: 20
