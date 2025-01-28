@@ -1,411 +1,239 @@
 # Data Engineering with Bacalhau
 
-This repository demonstrates how to use Bacalhau for data engineering tasks, combining DuckDB for data processing and BigQuery for data storage.
+Welcome to an exciting journey into distributed data processing! This repository demonstrates how to leverage Bacalhau to transform your data engineering pipelines, showing you how to process logs across multiple clouds while maintaining data privacy and efficiency.
+
+## What You'll Learn
+
+Watch logs flow from 20+ nodes across multiple clouds (AWS, GCP, Azure) into BigQuery, while learning:
+1. How to process data where it lives (at the edge!)
+2. Progressive data handling techniques
+3. Privacy-preserving data processing
+4. Smart aggregation for efficient storage
+
+## Prerequisites
+
+1. [Bacalhau client](https://docs.bacalhau.org/getting-started/installation) installed
+2. A Google Cloud Project with BigQuery enabled
+3. Service account credentials with BigQuery access
+4. A running Bacalhau cluster with nodes across different cloud providers
+   - Follow the [standard Bacalhau network setup guide](https://docs.bacalhau.org/getting-started/create-private-network)
+   - Ensure nodes are properly configured across your cloud providers (AWS, GCP, Azure). You can see more about setting up your nodes [here](https://docs.bacalhau.org/getting-started/setting-up-nodes)
+   - If you're using the Expanso Cloud hosted orchestrator (Recommended!), you can look at your nodes on the [Expanso Cloud](https://cloud.expanso.io/networks/) dashboard in real-time.
 
 ## Components
 
 1. **DuckDB Processing**: Process and analyze data using DuckDB's SQL capabilities
 2. **BigQuery Integration**: Store processed results in Google BigQuery for further analysis
 
-## Prerequisites
+## Before You Start
 
-1. [Bacalhau client](https://docs.bacalhau.org/getting-started/installation) installed
-2. Python 3.10 or higher
-3. A Google Cloud Project with BigQuery enabled (or permissions to create one)
-4. Service account credentials with appropriate permissions
+0. Make sure you have configured your config file to have the correct BigQuery project and dataset. You can do this by copying the config.yaml.example file to config.yaml and editing the values to match your BigQuery project and dataset.
 
-## Setup
-
-### 1. Install Dependencies
-
-Install the required Python packages:
 ```bash
-pip install -r requirements.txt
+# BigQuery Configuration
+project:
+  id: "bacalhau-and-bigquery"  # Required: Your Google Cloud project ID
+  region: "US"           # Optional: Default region for resources
+  create_if_missing: true # Whether to create the project if it doesn't exist
+
+credentials:
+  path: "credentials.json"  # Path to service account credentials
+
+bigquery:
+  dataset_name: "log_analytics"     # Name of the BigQuery dataset
+  table_name: "log_results"         # Name of the results table
+  location: "US"                    # Dataset location 
 ```
 
-### 2. Interactive Setup
-
-Run the interactive setup script:
-```bash
-./setup.py -i
-```
-
-The script will guide you through:
-1. Project Configuration
-   - Enter existing project ID or create new
-   - Configure project settings
-
-2. Credentials Setup
-   - Create service account (browser will open)
-   - Download and configure credentials
-   - Set up necessary permissions
-
-3. BigQuery Configuration
-   - Configure dataset and table names
-   - Set up storage location
-
-The script will:
-- Create/configure your Google Cloud project
-- Set up service account credentials
-- Create BigQuery dataset and table
-- Save all settings to config.yaml
-
-### Manual Setup (Alternative)
-
-If you prefer manual setup:
-
-1. Create a service account in Google Cloud Console with these roles:
+1. Ensure your Google Cloud service account has these roles:
    - BigQuery Data Editor
    - BigQuery Job User
-   - Project Creator (if you want the script to create projects)
 
-2. Download the service account key file (JSON format)
+2. Have your service account key file (JSON format) ready
 
-3. Create `config.yaml`:
-   ```yaml
-   project:
-     id: "your-project-id"  # Your Google Cloud project ID
-     region: "US"           # Default region for resources
-     create_if_missing: true # Whether to create the project if it doesn't exist
+3. Configure your BigQuery settings:
+   - Create a dataset for log analytics
+   - Note your project ID and dataset name
 
-   credentials:
-     path: "credentials.json"  # Path to your service account key
-
-   bigquery:
-     dataset_name: "log_analytics"     # Name of the BigQuery dataset
-     table_name: "log_results"         # Name of the results table
-     location: "US"                    # Dataset location
-   ```
-
-4. Run the setup script:
-   ```bash
-   ./setup.py
-   ```
-
-### 3. Bacalhau Network Setup
-
-Follow the [standard Bacalhau network setup guide](https://docs.bacalhau.org/getting-started/create-private-network).
-
-## Usage
-
-### 1. Simple DuckDB Queries
-
-Run a simple DuckDB query:
+We have provided some utility scripts to help you set up your BigQuery project and tables. You can run the following commands to set up your project and tables:
 
 ```bash
-bacalhau docker run -e QUERY="select 1" docker.io/bacalhauproject/duckdb:latest
+./utility_scripts/setup.py -i # Interactive setup to set up your BigQuery project and tables. Will go through and create the necessary bigquery projects.
+
+./utility_scripts/confirm_tables.sh 
+# Confirms your BigQuery project and dataset, and creates the tables if they don't exist with the correct schema. This will also zero out the tables if they already exist, so be careful! (Useful for debugging)
+
+./utility_scripts/distribute_credentials.sh # Distributes the credentials to /bacalhau_data on all nodes in a Bacalhau network.
+
+./utility_scripts/setup_log_uploader.sh # Ensures the service account specified in log_uploader_credentials.json has the necessary permissions to write to BigQuery tables from the Bacalhau nodes.
+
+./utility_scripts/sample_tables.sh # Creates sample tables in BigQuery for testing.
+
+./utility_scripts/check_permissions.sh # Checks the permissions of the service account specified in log_uploader_credentials.json to ensure it has the necessary permissions to write to BigQuery tables from the Bacalhau nodes.
 ```
 
-### 2. Processing Logs with BigQuery Integration
-
-Process log files and store results in BigQuery:
+One more thing to set up is the log faker on the nodes. This will generate logs for you to work with. You can run the following command to start the log faker:
 
 ```bash
-bacalhau docker run \
-  --input /path/to/logs:/var/log/logs_to_process \
-  --volume /path/to/credentials.json:/bacalhau_node/credentials.json \
-  ghcr.io/bacalhau-project/examples/bigquery-processor:latest \
-  -- python process.py input.json "SELECT * FROM temp_log_data"
+bacalhau job run start-logging-container.yaml
 ```
 
-### 3. Using YAML Configuration
+Give it a couple of minutes to start up and then you can start processing the logs.
 
-For more complex setups, use the provided YAML configuration:
+## Demo Walkthrough
+
+Let's walk through each stage of the demo, seeing how we can progressively improve our data processing pipeline!
+
+### Stage 1: Raw Power - Basic Log Upload 🚀
+
+Let's start by uploading raw logs to BigQuery. This is the simplest approach - just get the data there:
 
 ```bash
-bacalhau job run duckdb_query_job.yaml \
-  --template-vars="filename=/bacalhau_data/data.parquet" \
-  --template-vars="QUERY=$(cat your_query.sql)"
+bacalhau job run bigquery_export_job.yaml --template-vars=python_file_b64=$(cat bigquery-exporter/log_process_0.py | base64)
 ```
 
-## Data Schema
+This will upload the python script to all the nodes which, in turn, will upload the raw logs from all nodes to BigQuery. When you check BigQuery, you'll see:
+- Over 27 million rows uploaded
+- Each log line as raw text
+- No structure or parsing
 
-### BigQuery Table Schema
+Now let's look at what we're processing. SSH into one of the nodes to see the log data we'll be working with:
 
-The `log_results` table in BigQuery has the following schema:
+```bash
+# The logs look something like this:
+192.168.1.1 - - [01/Jan/2024:00:00:00 +0000] "GET /api/v1/status HTTP/1.1" 200 123
+192.168.1.2 - - [01/Jan/2024:00:00:01 +0000] "POST /api/v1/data HTTP/1.1" 201 456
+```
 
-- `projectID`: STRING - Google Cloud project identifier
-- `region`: STRING - Deployment region
-- `nodeName`: STRING - Node name
-- `syncTime`: STRING - Synchronization timestamp
-- `remote_log_id`: STRING - Original log identifier
-- `timestamp`: STRING - Event timestamp
-- `version`: STRING - Log version
-- `message`: STRING - Log message content
-
-## Example Queries
-
-### 1. Basic DuckDB Query
+To query the logs, you can use the following SQL:
 
 ```sql
--- simple_query.sql
-SELECT COUNT(*) AS row_count FROM yellow_taxi_trips;
+PROJECT_ID=$(yq '.bigquery.project_id' config.yaml)
+bq query --use_legacy_sql=false "SELECT * FROM \`$PROJECT_ID.log_analytics.raw_logs\` LIMIT 5" 
 ```
 
-### 2. Time Window Analysis
+### Stage 2: Adding Structure - Making Sense of Chaos 📊
+
+Now let's do something more advanced, by parsing those logs into structured data before upload:
+
+```bash
+bacalhau job run bigquery_export_job.yaml --template-vars=python_file_b64=$(cat bigquery-exporter/log_process_1.py | base64)
+```
+
+Your logs are now parsed into fields like:
+- IP Address
+- Timestamp
+- HTTP Method
+- Endpoint
+- Status Code
+- Response Size
+
+To query the logs, you can use the following SQL:
 
 ```sql
--- window_query.sql
-SELECT
-    DATE_TRUNC('hour', tpep_pickup_datetime) + 
-    INTERVAL (FLOOR(EXTRACT(MINUTE FROM tpep_pickup_datetime) / 5) * 5) MINUTE AS interval_start,
-    COUNT(*) AS ride_count
-FROM
-    yellow_taxi_trips
-GROUP BY
-    interval_start
-ORDER BY
-    interval_start;
+bq query --use_legacy_sql=false "SELECT * FROM \`$PROJECT_ID.log_analytics.log_results\` LIMIT 5" 
 ```
 
-### 3. BigQuery Examples
+### Stage 3: Privacy First - Responsible Data Handling 🔒
 
-After setting up your BigQuery integration, you can run example queries using the provided script:
+Now let's handle the data responsibly by sanitizing PII (like IP addresses):
 
 ```bash
-./run_bigquery_query.py
+bacalhau job run bigquery_export_job.yaml --template-vars=python_file_b64=$(cat bigquery-exporter/log_process_2.py | base64)
 ```
 
-This will run several example queries and show their results:
+This:
+- Zeros out the last octet of IPv4 addresses
+- Zeros out the last 64 bits of IPv6 addresses
+- Maintains data utility while ensuring compliance
 
-1. Table Structure - Shows the schema of your log_results table
-2. Total Row Count - Counts the total number of log entries
-3. Recent Logs - Displays the 5 most recent log entries
-4. Logs per Node - Shows how many logs each node has generated
+Again, to query the logs, you can use the following SQL:
 
-Example output:
-```
-================================================================================
-
-Querying BigQuery table: your-project-id.log_analytics.log_results
-
-================================================================================
-
-Running query: Table Structure
-
-SQL:
-SELECT 
-    column_name,
-    data_type,
-    is_nullable
-FROM your-project-id.log_analytics.INFORMATION_SCHEMA.COLUMNS
-WHERE table_name = 'log_results'
-ORDER BY ordinal_position
-
-Results:
-------------------------------------------------------------
-column_name  | data_type | is_nullable
-------------------------------------------------------------
-projectID    | STRING    | YES
-region       | STRING    | YES
-nodeName     | STRING    | YES
-syncTime     | STRING    | YES
-remote_log_id| STRING    | YES
-timestamp    | STRING    | YES
-version      | STRING    | YES
-message      | STRING    | YES
-------------------------------------------------------------
-Total rows: 8
-
-... (more query results follow)
-```
-
-You can also run these queries directly in the BigQuery console:
-1. Go to https://console.cloud.google.com/bigquery
-2. Select your project
-3. Click "Compose New Query"
-4. Copy any of the SQL queries from the script output
-
-The script uses your config.yaml settings and service account credentials to connect to BigQuery.
-
-## Security Notes
-
-1. Credential Management:
-   - Never commit credentials to version control
-   - Mount credentials at runtime using Bacalhau volumes
-   - Use appropriate IAM roles and permissions
-   - Keep your config.yaml file secure and out of version control
-
-2. Data Access:
-   - Use principle of least privilege
-   - Regularly rotate service account keys
-   - Monitor BigQuery access logs
-
-## Environment Variables
-
-- `INPUTFILE`: Path to the input log file
-- `QUERY`: DuckDB query to transform the data before sending to BigQuery
-
-## Directory Structure
-
-```
-.
-├── container/
-│   ├── process.py      # Main processing script
-│   └── Dockerfile      # Container definition
-├── setup.py            # Infrastructure setup script
-├── requirements.txt    # Python dependencies
-├── config.yaml         # Your configuration (not in version control)
-├── .gitignore         # Git ignore rules
-└── README.md          # This file
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Demo Instructions
-
-### 1. Initial Setup
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run interactive setup
-./setup.py -i
-
-# Make utility scripts executable
-chmod +x utility_scripts/*.sh
-
-# Set up tables and service account
-./utility_scripts/confirm_table.sh
-./utility_scripts/setup_log_uploader.sh
-./utility_scripts/setup_aggregation_tables.sh
-```
-
-### 2. Basic Log Processing
-
-```bash
-# Process logs with basic configuration
-bacalhau docker run \
-  --input logs:/var/log/logs_to_process \
-  --volume log_uploader_credentials.json:/var/logs/logs_to_process/log_uploader_credentials.json \
-  ghcr.io/bacalhau-project/examples/bigquery-processor:latest \
-  -- python process.py /var/log/logs_to_process/input.json "SELECT * FROM temp_log_data"
-```
-
-### 3. Advanced Features
-
-#### Track Cloud Provider
-```bash
-# Process logs with provider tracking
-bacalhau docker run \
-  -e CLOUD_PROVIDER=aws \
-  --input logs:/var/log/logs_to_process \
-  --volume log_uploader_credentials.json:/var/logs/logs_to_process/log_uploader_credentials.json \
-  ghcr.io/bacalhau-project/examples/bigquery-processor:latest \
-  -- python process.py /var/log/logs_to_process/input.json "SELECT * FROM temp_log_data"
-```
-
-#### Enable Log Aggregation
-```bash
-# Process logs with 5-minute window aggregation
-bacalhau docker run \
-  -e AGGREGATE_LOGS=true \
-  --input logs:/var/log/logs_to_process \
-  --volume log_uploader_credentials.json:/var/logs/logs_to_process/log_uploader_credentials.json \
-  ghcr.io/bacalhau-project/examples/bigquery-processor:latest \
-  -- python process.py /var/log/logs_to_process/input.json "SELECT * FROM temp_log_data"
-```
-
-### 4. Verify Results
-
-Check the results in BigQuery tables:
-
-1. Regular Logs:
 ```sql
-SELECT *
-FROM `your-project-id.log_analytics.log_results`
-ORDER BY timestamp DESC
-LIMIT 5
+bq query --use_legacy_sql=false "SELECT * FROM \`$PROJECT_ID.log_analytics.log_results\` LIMIT 5" 
 ```
 
-2. Aggregated Logs (5-minute windows):
+Notice that the IP addresses are now sanitized.
+
+### Stage 4: Smart Aggregation - Efficiency at Scale 📈
+
+Finally, let's be smart about what we upload:
+
+```bash
+bacalhau job run bigquery_export_job.yaml --template-vars=python_file_b64=$(cat bigquery-exporter/log_process_3.py | base64)
+```
+
+This creates two streams:
+1. Aggregated normal logs:
+   - Grouped in 5-minute windows
+   - Counts by status code
+   - Average response sizes
+   - Total requests per endpoint
+
+2. Real-time emergency events:
+   - Critical errors
+   - Security alerts
+   - System failures
+
+To query  the logs, you can use the following SQL:
+
 ```sql
-SELECT *
-FROM `your-project-id.log_analytics.log_aggregates`
-ORDER BY time_window DESC
-LIMIT 5
+-- See your aggregated logs
+SELECT * FROM \`$PROJECT_ID.log_analytics.log_aggregates\`
+ORDER BY time_window DESC LIMIT 5;
+
+-- Check emergency events
+SELECT * FROM \`$PROJECT_ID.log_analytics.emergency_logs\`
+ORDER BY timestamp DESC LIMIT 5;
 ```
 
-3. Emergency Events:
-```sql
-SELECT *
-FROM `your-project-id.log_analytics.emergency_logs`
-ORDER BY timestamp DESC
-LIMIT 5
-```
+## What's Next?
 
-### Security Features
+Now that you've seen the power of distributed processing with Bacalhau:
+1. Try processing your own log files
+2. Experiment with different aggregation windows
+3. Add your own privacy-preserving transformations
+4. Scale to even more nodes!
 
-1. **Restricted Service Account**:
-   - Custom role with minimal permissions
-   - Can only write to specific BigQuery tables
-   - Cannot modify schema or read data
-
-2. **IP Address Sanitization**:
-   - IPv4: Last octet zeroed out
-   - IPv6: Last 64 bits zeroed out
-   - Automatic sanitization of public IPs
-
-3. **Secure Credential Handling**:
-   - Credentials mounted as volume
-   - Not exposed through environment variables
-   - Separate service account for log uploads
-
-### Environment Variables
-
-- `INPUTFILE`: Path to input log file (optional)
-- `QUERY`: DuckDB query for data transformation (optional)
-- `CLOUD_PROVIDER`: Cloud provider identifier (e.g., aws, gcp)
-- `AGGREGATE_LOGS`: Enable 5-minute window aggregation (true/false)
+Remember: The real power comes from processing data where it lives, rather than centralizing everything first. Happy distributed processing! 🚀
 
 ### Table Schemas
 
 1. **log_results** (Main Table):
-   - `project_id`: STRING
-   - `region`: STRING
-   - `nodeName`: STRING
-   - `timestamp`: TIMESTAMP
-   - `version`: STRING
-   - `message`: STRING
-   - `sync_time`: TIMESTAMP
-   - `remote_log_id`: STRING
-   - `hostname`: STRING
-   - `public_ip`: STRING
-   - `private_ip`: STRING
-   - `alert_level`: STRING
-   - `provider`: STRING
+   - `project_id`: STRING - Project identifier
+   - `region`: STRING - Deployment region
+   - `nodeName`: STRING - Node name
+   - `timestamp`: TIMESTAMP - Event time
+   - `version`: STRING - Log version
+   - `message`: STRING - Log content
+   - `sync_time`: TIMESTAMP - Upload time
+   - `remote_log_id`: STRING - Original log ID
+   - `hostname`: STRING - Source host
+   - `public_ip`: STRING - Sanitized public IP
+   - `private_ip`: STRING - Internal IP
+   - `alert_level`: STRING - Event severity
+   - `provider`: STRING - Cloud provider
 
 2. **log_aggregates** (5-minute windows):
-   - `project_id`: STRING
-   - `region`: STRING
-   - `nodeName`: STRING
-   - `provider`: STRING
-   - `hostname`: STRING
-   - `time_window`: TIMESTAMP
-   - `log_count`: INT64
-   - `messages`: ARRAY<STRING>
+   - `project_id`: STRING - Project identifier
+   - `region`: STRING - Deployment region
+   - `nodeName`: STRING - Node name
+   - `provider`: STRING - Cloud provider
+   - `hostname`: STRING - Source host
+   - `time_window`: TIMESTAMP - Aggregation window
+   - `log_count`: INT64 - Events in window
+   - `messages`: ARRAY<STRING> - Event details
 
 3. **emergency_logs** (Critical Events):
-   - `project_id`: STRING
-   - `region`: STRING
-   - `nodeName`: STRING
-   - `provider`: STRING
-   - `hostname`: STRING
-   - `timestamp`: TIMESTAMP
-   - `version`: STRING
-   - `message`: STRING
-   - `remote_log_id`: STRING
-   - `alert_level`: STRING
-   - `public_ip`: STRING
-   - `private_ip`: STRING
-```
-
-This provides a complete, accurate guide for demonstrating all features of the system, including setup, usage, and verification steps.
+   - `project_id`: STRING - Project identifier
+   - `region`: STRING - Deployment region
+   - `nodeName`: STRING - Node name
+   - `provider`: STRING - Cloud provider
+   - `hostname`: STRING - Source host
+   - `timestamp`: TIMESTAMP - Event time
+   - `version`: STRING - Log version
+   - `message`: STRING - Alert details
+   - `remote_log_id`: STRING - Original log ID
+   - `alert_level`: STRING - Always "EMERGENCY"
+   - `public_ip`: STRING - Sanitized public IP
+   - `private_ip`: STRING - Internal IP
