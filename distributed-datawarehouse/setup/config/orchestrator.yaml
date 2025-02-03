@@ -1,0 +1,9 @@
+Orchestrator:
+  Enabled: true
+WebUI:
+  Enabled: true
+Labels:
+  region: global
+  type: orchestrator
+UpdateConfig:
+  Interval: 0
