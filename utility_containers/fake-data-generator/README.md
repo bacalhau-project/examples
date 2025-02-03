@@ -274,14 +274,8 @@ The generator is configured via `config.json`. Key configuration sections includ
 ```bash
 # Generate sample data
 bacalhau docker run \
-    -i data-generator:latest \
+    data-generator:latest \
     -- generate --count 10000 --type all
-
-# Process with analysis job
-bacalhau docker run \
-    -i your-analysis-image:latest \
-    -i /data:/input \
-    -- python analyze.py
 ```
 
 ### Regional Data Generation
@@ -290,7 +284,7 @@ bacalhau docker run \
 # Generate data for specific regions
 for region in us-east us-west eu-west ap-south; do
     bacalhau docker run \
-        -i data-generator:latest \
+        data-generator:latest \
         -- generate \
         --count 5000 \
         --type transaction \
@@ -307,7 +301,7 @@ The project includes a Makefile to simplify building and pushing the image. The 
 Set required environment variables:
 ```bash
 export GITHUB_PAT=your_github_pat
-export GITHUB_USERNAME=bacalhau-infra-bot
+export GITHUB_USERNAME=your_github_username
 ```
 
 ### Basic Usage
