@@ -1,0 +1,101 @@
+{
+  "regions": [
+    {
+      "name": "us-east",
+      "country": "United States",
+      "timezone": "America/New_York",
+      "lat_range": [24.396308, 44.967243],
+      "lng_range": [-87.634643, -67.444574]
+    },
+    {
+      "name": "us-west",
+      "country": "United States",
+      "timezone": "America/Los_Angeles",
+      "lat_range": [32.528832, 49.002494],
+      "lng_range": [-124.848974, -116.915989]
+    },
+    {
+      "name": "eu-west",
+      "country": "Ireland",
+      "timezone": "Europe/Dublin",
+      "lat_range": [51.427364, 55.387398],
+      "lng_range": [-10.478487, -5.988639]
+    },
+    {
+      "name": "ap-south",
+      "country": "India",
+      "timezone": "Asia/Kolkata",
+      "lat_range": [8.065343, 35.674520],
+      "lng_range": [68.162355, 97.395561]
+    }
+  ],
+  "products": {
+    "num_products": 1000,
+    "categories": [
+      "Electronics",
+      "Clothing",
+      "Books",
+      "Home",
+      "Sports",
+      "Food",
+      "Beauty",
+      "Toys",
+      "Automotive",
+      "Garden"
+    ]
+  },
+  "event_settings": {
+    "transaction": {
+      "payment_methods": ["credit_card", "paypal", "bank_transfer", "crypto"],
+      "statuses": ["pending", "completed", "failed", "refunded"]
+    },
+    "security": {
+      "categories": [
+        "authentication",
+        "authorization",
+        "data_access",
+        "system_change",
+        "network_security",
+        "compliance"
+      ],
+      "severities": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "web_access": {
+      "endpoints": [
+        "/",
+        "/products",
+        "/cart",
+        "/checkout",
+        "/login",
+        "/register",
+        "/api/v1/products",
+        "/api/v1/orders"
+      ],
+      "status_weights": {
+        "200": 0.85,
+        "301": 0.02,
+        "400": 0.05,
+        "401": 0.03,
+        "403": 0.02,
+        "404": 0.02,
+        "500": 0.01
+      }
+    }
+  },
+  "time_patterns": {
+    "business_hours": {
+      "start": 9,
+      "end": 17,
+      "event_range": {
+        "min": 5,
+        "max": 10
+      }
+    },
+    "non_business_hours": {
+      "event_range": {
+        "min": 1,
+        "max": 3
+      }
+    }
+  }
+}
