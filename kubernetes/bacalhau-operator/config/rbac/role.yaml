@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - core.bacalhau.org
+  resources:
+  - bacalhaujobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.bacalhau.org
+  resources:
+  - bacalhaujobs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.bacalhau.org
+  resources:
+  - bacalhaujobs/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,0 +1,16 @@
+domain: bacalhau.org
+layout:
+- go.kubebuilder.io/v3
+projectName: bacalhau-operator
+repo: bacalhau
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: bacalhau.org
+  group: core
+  kind: Job
+  path: bacalhau/api/v1
+  version: v1
+version: "3"

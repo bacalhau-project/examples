@@ -1,0 +1,12 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: uname-on-three-nodes-1
+  namespace: bacalhau
+spec:
+  entrypoint: 
+    - "uname"
+    - "-a"
+  image: "alpine:latest"
+  count: 3
+  type: batch

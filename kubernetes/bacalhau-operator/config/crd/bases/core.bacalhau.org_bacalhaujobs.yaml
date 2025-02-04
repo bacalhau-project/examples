@@ -1,0 +1,131 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.0
+  name: bacalhaujobs.core.bacalhau.org
+spec:
+  group: core.bacalhau.org
+  names:
+    kind: BacalhauJob
+    listKind: BacalhauJobList
+    plural: bacalhaujobs
+    singular: bacalhaujob
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: ID of the BacalhauJob
+      jsonPath: .status.jobID
+      name: JobID
+      type: string
+    - description: Last time the status was checked
+      jsonPath: .status.lastPolled
+      name: LastPolled
+      type: string
+    - description: Latest status of the BacalhauJob
+      jsonPath: .status.jobState
+      name: JobState
+      type: string
+    - description: Is BacalhauJob in its terminated state
+      jsonPath: .status.terminated
+      name: Terminated
+      type: boolean
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: BacalhauJob is the Schema for the jobs API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          executions:
+            items:
+              properties:
+                id:
+                  type: string
+                logs:
+                  items:
+                    type: string
+                  type: array
+                stderror:
+                  type: string
+                stdoutput:
+                  type: string
+              type: object
+            type: array
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              constraints:
+                items:
+                  properties:
+                    key:
+                      type: string
+                    operator:
+                      type: string
+                    values:
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - key
+                  - operator
+                  type: object
+                type: array
+              count:
+                type: integer
+              entrypoint:
+                items:
+                  type: string
+                type: array
+              image:
+                type: string
+              type:
+                type: string
+            type: object
+          status:
+            description: BacalhauJobStatus defines the observed state of BacalhauJob
+            properties:
+              executions:
+                items:
+                  properties:
+                    id:
+                      type: string
+                    logs:
+                      items:
+                        type: string
+                      type: array
+                    stderror:
+                      type: string
+                    stdoutput:
+                      type: string
+                  type: object
+                type: array
+              jobID:
+                type: string
+              jobState:
+                type: string
+              lastPolled:
+                type: string
+              terminated:
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
