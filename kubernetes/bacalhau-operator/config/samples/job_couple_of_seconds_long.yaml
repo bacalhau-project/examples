@@ -1,0 +1,15 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: couple-of-seconds-long-1
+  namespace: bacalhau
+spec:
+  entrypoint:
+    - "sh"
+    - "-c"
+    - |
+      for i in $(seq 1 6); do
+        echo "."; 
+        sleep 5; 
+      done
+  image: "alpine:latest"
