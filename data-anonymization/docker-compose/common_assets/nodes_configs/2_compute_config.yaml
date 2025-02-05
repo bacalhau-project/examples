@@ -9,3 +9,5 @@ Compute:
     - nats://bacalhau-orchestrator-node:4222
   Auth:
     Token: "i_am_very_secret_token"
+JobAdmissionControl:
+  AcceptNetworkedJobs: true

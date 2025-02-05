@@ -157,7 +157,7 @@ Internal Extension: {random.randint(1000, 9999)}
 
 def main():
     generator = MemoGenerator()
-    num_memos = 100  # Change this to generate more or fewer memos
+    num_memos = 1000  # Change this to generate more or fewer memos
 
     for i in range(num_memos):
         # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
