@@ -1,0 +1,177 @@
+
+PRIORITY
+Legal MEMORANDUM
+Reference: 7e2f73bc-0196-4c39-9670-881a231a50bf
+
+Date: 2011-02-12
+Time: 12:45:58
+From: Laura Smith, IT sales professional
+Email: patrickkane@hicks.com
+To: Anne Herrera, Adult guidance worker
+CC: Katrina Davenport, Morgan Case
+Subject: System Access Report - Face-to-face impactful challenge
+
+Please review the following information regarding customer activity from IP 218.157.162.158.
+
+
+Page 1 of 5
+==================================================
+
+During routine compliance checking, the following irregularities were noted:
+1. Account GB11STIM78921067960922 showed unusual patterns
+2. User Nicole Leblanc accessed system from unregistered IP 175.29.93.107
+3. Credit card 4824931811485132586 triggered our fraud detection system
+
+
+Security Alert [1981-07-11]: Multiple failed authentication attempts detected
+Source IP: 188.249.98.184
+Target Account: Julie Wells
+Account Number: PNRD85417296545045
+Timestamp Range: 2021-07-20 10:44:07 to 1985-11-18 06:36:40
+
+
+Please update the following employee information in our secure database:
+- Name: Jose Turner
+- Employee ID: 623299
+- Department: HR
+- New Email: curtisandrew@lopez.com
+- Direct Deposit: GB86SVFL78577369646761
+- Office Location: Jillfort, Tennessee
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 2 of 5
+==================================================
+
+Security Alert [2010-04-24]: Multiple failed authentication attempts detected
+Source IP: 22.133.121.11
+Target Account: Eric Johnston
+Account Number: USYD52831484789128
+Timestamp Range: 1990-11-07 07:37:31 to 2020-07-02 19:54:39
+
+
+Security Alert [2008-11-25]: Multiple failed authentication attempts detected
+Source IP: 104.63.40.179
+Target Account: Monica Zimmerman
+Account Number: ERVU22694686090365
+Timestamp Range: 2023-03-16 14:28:46 to 2022-07-13 08:47:25
+
+
+During routine compliance checking, the following irregularities were noted:
+1. Account GB49ZAPY27188666970677 showed unusual patterns
+2. User Steven Miller accessed system from unregistered IP 148.0.3.2
+3. Credit card 213197050130332 triggered our fraud detection system
+
+
+Internal audit findings for 2018-10-16:
+Auditor: Robert Huffman
+Subject Account: GB34YGGO22653366935014
+Location: Port Kevin, Montana
+IP Range: 74.0.254.229 to 97.135.229.138
+Finding Level: Minor
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 3 of 5
+==================================================
+
+Our financial review identified unusual transactions for account holder Joshua Dorsey 
+(SSN: 886-08-1599). Multiple charges totaling $69530 were processed through 
+card 3586679354319938 between 2006-10-02 and 2013-01-06. The transactions 
+originated from IP address 32.134.56.139.
+
+
+Privacy Impact Assessment Results:
+Individual: Jennifer Ferrell
+Assessed Data: SSN (814-99-8122), Payment Methods (501814501620)
+Risk Level: Low
+Mitigation Status: Completed
+
+
+Please update the following employee information in our secure database:
+- Name: Jennifer Roberts
+- Employee ID: 597744
+- Department: Finance
+- New Email: csimmons@smith.net
+- Direct Deposit: GB53EMBT07434337942488
+- Office Location: Morganview, Hawaii
+
+
+During routine compliance checking, the following irregularities were noted:
+1. Account GB73LYEL74768846562653 showed unusual patterns
+2. User Anthony Bell accessed system from unregistered IP 207.32.9.166
+3. Credit card 3599848864347599 triggered our fraud detection system
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 4 of 5
+==================================================
+
+Our financial review identified unusual transactions for account holder April Kaufman 
+(SSN: 555-01-7490). Multiple charges totaling $30989 were processed through 
+card 4812428070863355 between 1984-04-12 and 1977-01-13. The transactions 
+originated from IP address 185.107.197.82.
+
+
+Please update the following employee information in our secure database:
+- Name: Kathy Williams
+- Employee ID: 54460
+- Department: HR
+- New Email: malonechristine@riley-dalton.com
+- Direct Deposit: GB55JMCJ07009309144610
+- Office Location: Marvinside, Maine
+
+
+Security Alert [1972-03-21]: Multiple failed authentication attempts detected
+Source IP: 7.38.184.151
+Target Account: Megan Fleming
+Account Number: VZMG13546484187079
+Timestamp Range: 2013-08-21 23:22:21 to 2014-07-25 00:37:33
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 5 of 5
+==================================================
+
+During routine compliance checking, the following irregularities were noted:
+1. Account GB53DGYK95521735695219 showed unusual patterns
+2. User Andrea Molina accessed system from unregistered IP 66.5.174.123
+3. Credit card 4436384088744145841 triggered our fraud detection system
+
+
+Internal audit findings for 1985-01-08:
+Auditor: Natalie Young
+Subject Account: GB39XORT39709726654405
+Location: Carterberg, Minnesota
+IP Range: 145.156.192.179 to 149.155.99.91
+Finding Level: Minor
+
+
+Privacy Impact Assessment Results:
+Individual: Ashley Lee
+Assessed Data: SSN (665-95-8393), Payment Methods (4909262117964397361)
+Risk Level: Medium
+Mitigation Status: In Progress
+
+
+
+==================================================
+RESTRICTED - HANDLE WITH CARE
+
+Distribution: Limited
+Generated: 2006-09-06 11:37:32
+Document ID: fce3582d-465c-4316-8042-3054873a8703
+
+For questions contact:
+Caleb Jennings
+Compliance Officer
+tiffanybrown@allen-neal.info
+Internal Extension: 1684
