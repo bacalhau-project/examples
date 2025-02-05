@@ -5,7 +5,7 @@ FROM docker:dind
 WORKDIR /app
 
 # Install curl and bash
-RUN apk update && apk add --no-cache curl bash
+RUN apk update && apk add --no-cache curl bash nano
 
 # Install the ca-certificates package
 RUN apk add --no-cache ca-certificates
@@ -19,6 +19,7 @@ RUN update-ca-certificates
 # Copy Assets
 RUN mkdir -p /bacalhau_demo_assets
 COPY ./common_assets/ /bacalhau_demo_assets
+COPY ./common_assets/job-specs/job_anonymize_data.yaml /app/job_anonymize_data.yaml
 
 # Download and execute the Bash script from the official URL
 RUN curl -sSL https://get.bacalhau.org/install.sh | bash

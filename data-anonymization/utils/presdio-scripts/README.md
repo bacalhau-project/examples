@@ -1,5 +1,17 @@
 # Microsoft Presidio Text Anonymization
 
+
+```shell
+pip install --only-binary :all: presidio_analyzer
+pip install --only-binary :all: presidio_anonymizer
+
+docker build -t presdio-bacalhau:1 -f Dockerfile-Presdio-Enabled .
+
+docker image tag presdio-bacalhau:1 bacalhau-container-img-registry-node:5000/presdio-bacalhau:1
+docker push bacalhau-container-img-registry-node:5000/presdio-bacalhau:1
+```
+
+
 This directory contains a Python script that implements batch text anonymization using Microsoft's Presidio privacy SDK. The script is designed to process multiple text files and automatically detect and anonymize sensitive information.
 
 ## Script Overview: presdio_anonymizer.py

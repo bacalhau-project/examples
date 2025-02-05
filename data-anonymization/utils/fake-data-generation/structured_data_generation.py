@@ -38,5 +38,5 @@ if __name__ == "__main__":
     filename = f"fake_sensitive_data_{timestamp}.csv"
 
     # Generate 1000 records (you can modify this number)
-    generate_fake_data(filename, num_records=1000)
+    generate_fake_data(filename, num_records=10)
     print(f"Generated fake data has been written to {filename}")

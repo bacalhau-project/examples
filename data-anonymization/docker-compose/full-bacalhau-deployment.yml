@@ -6,14 +6,29 @@ x-common-env-variables: &common-env-variables
   AWS_ACCESS_KEY_ID: "minioadmin"
   AWS_SECRET_ACCESS_KEY: "minioadminpass"
   BACALHAU_UPDATECONFIG_INTERVAL: "0"
-  BACALHAU_DISABLEANALYTICS: true
+  BACALHAU_DISABLEANALYTICS: false
+  BACALHAU_MINIO_NODE_HOST: 'minio-node-us1'
 
 networks:
   bacalhau-network:
     driver: bridge
 
 services:
-  bacalhau-minio-node:
+  minio-node-us1:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9001"
+    restart: always
+    networks:
+      - bacalhau-network
+    environment: *common-env-variables
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 2s
+
+  minio-node-eu1:
     image: quay.io/minio/minio
     command: server /data --console-address ":9001"
     restart: always
@@ -46,6 +61,57 @@ services:
       retries: 30
       start_period: 2s
 
+  demo-init:
+    build:
+      context: .
+      dockerfile: Dockerfile-JumpboxNode
+    privileged: true
+    depends_on:
+      minio-node-us1:
+        condition: service_healthy
+      minio-node-eu1:
+        condition: service_healthy
+      bacalhau-container-img-registry-node:
+        condition: service_healthy
+    environment: *common-env-variables
+    networks:
+      - bacalhau-network
+    entrypoint: |
+      /bin/sh -c "
+      # Wait for MinIO to be ready      
+      mc alias set minio-eu1 http://minio-node-eu1:9000 minioadmin minioadminpass
+      mc alias set minio-us1 http://minio-node-us1:9000 minioadmin minioadminpass
+      
+      # Create buckets
+      mc admin info minio-eu1
+      mc mb --ignore-existing minio-eu1/confidential-memos-bucket-eu
+      mc admin info minio-us1
+      mc mb --ignore-existing minio-us1/anonymized-memos-bucket-us
+      
+      # Copy initial data
+      mc cp --recursive /bacalhau_demo_assets/test-data/confidential-memos minio-eu1/confidential-memos-bucket-eu/
+      
+      # Starting Docker to build the job image
+      dockerd-entrypoint.sh &
+
+      # Wait for Docker daemon with timeout
+      timeout 30s sh -c 'until docker info > /dev/null 2>&1; do echo Waiting_for_Docker_daemon; sleep 1; done'
+      
+      if [ $? -ne 0 ]; then
+          echo 'Timed out waiting for Docker daemon'
+          exit 1
+      fi
+      
+      # Build container Image for bacalhau jobs
+      cd /bacalhau_demo_assets/job-dockerfiles
+      docker build -t presdio-bacalhau:1 -f Dockerfile-Presdio-Enabled . 
+      docker image tag presdio-bacalhau:1 bacalhau-container-img-registry-node:5000/presdio-bacalhau:1
+      docker push bacalhau-container-img-registry-node:5000/presdio-bacalhau:1
+      
+      echo "done pushing image"
+      exit 0
+      "
+
   bacalhau-orchestrator-node:
     build:
       context: .
@@ -54,14 +120,14 @@ services:
       - bacalhau-network
     environment: *common-env-variables
     depends_on:
-      bacalhau-minio-node:
+      minio-node-us1:
         condition: service_healthy
     privileged: true
     command:
       - /bin/bash
       - -c
       - |
-        ls -lr /bacalhau_demo_assets/ &&  bacalhau serve --config=/bacalhau_demo_assets/nodes_configs/1_orchestrator_config.yaml
+        bacalhau serve --config=/bacalhau_demo_assets/nodes_configs/1_orchestrator_config.yaml
     healthcheck:
       test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
       interval: 1s
@@ -75,12 +141,12 @@ services:
       dockerfile: Dockerfile-ComputeNode
     privileged: true
     deploy:
-      replicas: 3
+      replicas: 2
     command:
       - /bin/bash
       - -c
       - |
-        ls -lr /bacalhau_demo_assets/ && /bacalhau_demo_assets/compute_node_image_setup.sh -c "/bacalhau_demo_assets/nodes_configs/2_compute_config.yaml"
+        /bacalhau_demo_assets/compute_node_image_setup.sh -c "/bacalhau_demo_assets/nodes_configs/2_compute_config.yaml"
     networks:
       - bacalhau-network
     depends_on:
@@ -117,4 +183,3 @@ services:
       <<: *common-env-variables
       BACALHAU_API_HOST: 'bacalhau-orchestrator-node'
       BACALHAU_COMPUTE_NODE_HOST: 'bacalhau-compute-node'
-      BACALHAU_MINIO_NODE_HOST: 'bacalhau-minio-node'

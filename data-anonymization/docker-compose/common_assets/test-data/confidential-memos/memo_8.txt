@@ -1,0 +1,106 @@
+
+ROUTINE
+HR MEMORANDUM
+Reference: 8b9b89ba-fd81-4ef0-8059-f9b055c4e2c9
+
+Date: 1992-12-10
+Time: 16:40:12
+From: Patricia Guzman, Broadcast journalist
+Email: bryan29@sampson.net
+To: Sarah Jackson, Materials engineer
+CC: Brittany Berry, David Miller
+Subject: Customer Service Update - Self-enabling zero administration protocol
+
+This memo serves as a formal documentation of recent activities detected in our systems.
+
+
+Page 1 of 3
+==================================================
+
+Please update the following employee information in our secure database:
+- Name: Allison Perez
+- Employee ID: 319589
+- Department: IT
+- New Email: patricksantos@petty.net
+- Direct Deposit: GB62YBBJ72554368367534
+- Office Location: Mossville, Texas
+
+
+Security Alert [2004-06-05]: Multiple failed authentication attempts detected
+Source IP: 143.19.34.109
+Target Account: James Tucker
+Account Number: VSKR71684835150901
+Timestamp Range: 2008-07-26 00:13:36 to 1978-11-16 15:37:44
+
+
+Privacy Impact Assessment Results:
+Individual: Tammy Lambert
+Assessed Data: SSN (077-49-5661), Payment Methods (36418394212486)
+Risk Level: Low
+Mitigation Status: Completed
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 2 of 3
+==================================================
+
+Privacy Impact Assessment Results:
+Individual: Pamela Lee MD
+Assessed Data: SSN (436-28-5281), Payment Methods (060446075370)
+Risk Level: High
+Mitigation Status: Pending
+
+
+Please update the following employee information in our secure database:
+- Name: Brian Brown
+- Employee ID: 42636
+- Department: Sales
+- New Email: rnelson@perkins.info
+- Direct Deposit: GB74DYSX46225323031255
+- Office Location: Moraburgh, Colorado
+
+
+Please update the following employee information in our secure database:
+- Name: Ernest Castillo
+- Employee ID: 532914
+- Department: Finance
+- New Email: jade96@moreno.net
+- Direct Deposit: GB84CXAJ17447439555231
+- Office Location: West Parkerborough, North Carolina
+
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+Page 3 of 3
+==================================================
+
+Privacy Impact Assessment Results:
+Individual: Tiffany Kim
+Assessed Data: SSN (252-30-8012), Payment Methods (4527791389610)
+Risk Level: Medium
+Mitigation Status: Completed
+
+
+Security Alert [2011-06-20]: Multiple failed authentication attempts detected
+Source IP: 193.44.58.40
+Target Account: Erik Parker
+Account Number: CLUU19029139121895
+Timestamp Range: 1995-05-28 01:53:39 to 2018-02-12 23:55:12
+
+
+
+==================================================
+SENSITIVE INFORMATION ENCLOSED
+
+Distribution: Limited
+Generated: 1981-02-09 14:06:04
+Document ID: 389407ba-a11a-4845-a9a5-a601c45fb3d5
+
+For questions contact:
+Dakota Maldonado
+Compliance Officer
+amymcdonald@herman-jackson.com
+Internal Extension: 2033
