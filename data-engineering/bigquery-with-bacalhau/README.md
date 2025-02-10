@@ -86,24 +86,37 @@ Let's walk through each stage of the demo, seeing how we can progressively impro
 
 ### Stage 1: Raw Power - Basic Log Upload 🚀
 
-Let's start by uploading raw logs to BigQuery. This is the simplest approach - just get the data there:
+Let's start by looking at the raw logs.
+
+```bash
+# Let's look at the raw logs
+bacalhau docker run alpine cat /var/log/app/access.log
+```
+
+That will print out the logs to stdout, which we can then read from the job.
+
+After running the job, you will see a job id, something like this:
+
+```bash
+To get more details about the run, execute:
+        bacalhau job describe j-01480df3-476e-4fdd-a297-0fc41cb10710
+
+To get more details about the run executions, execute:
+        bacalhau job executions j-01480df3-476e-4fdd-a297-0fc41cb10710
+```
+
+When you run the `describe` command, you will see the details of the job, including the output of the log information.
+
+Now let's upload the raw logs to BigQuery. This is the simplest approach - just get the data there:
 
 ```bash
 bacalhau job run bigquery_export_job.yaml --template-vars=python_file_b64=$(cat bigquery-exporter/log_process_0.py | base64)
 ```
 
 This will upload the python script to all the nodes which, in turn, will upload the raw logs from all nodes to BigQuery. When you check BigQuery, you'll see:
-- Over 27 million rows uploaded
+- Millions of rows uploaded (depends on how many nodes you have and how long you let it run)
 - Each log line as raw text
 - No structure or parsing
-
-Now let's look at what we're processing. SSH into one of the nodes to see the log data we'll be working with:
-
-```bash
-# The logs look something like this:
-192.168.1.1 - - [01/Jan/2024:00:00:00 +0000] "GET /api/v1/status HTTP/1.1" 200 123
-192.168.1.2 - - [01/Jan/2024:00:00:01 +0000] "POST /api/v1/data HTTP/1.1" 201 456
-```
 
 To query the logs, you can use the following SQL:
 
