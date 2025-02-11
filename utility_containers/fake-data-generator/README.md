@@ -7,12 +7,11 @@ A flexible synthetic data generator Docker image designed for Bacalhau demos and
 - Multiple data types: transactions, security events, web access logs, and customer data
 - Time-series data generation with business hours patterns
 - Regional data distribution with geographic accuracy
-- Configurable output formats (JSON/CSV)
+- Configurable output formats (JSON, JSONL, CSV)
 - Consistent customer profiles across events
 - Product catalog with categorized items
 - Command-line interface
 - Docker-based deployment
-
 
 ## Quick Start
 
@@ -25,28 +24,42 @@ docker build -t data-generator .
 ### Basic Usage
 
 1. Generate batch data:
+
 ```bash
 # Generate 1000 transaction events
-docker run -v $(pwd)/data:/data data-generator generate \
-    --count 1000 \
-    --type transaction
+docker run -v $(pwd)/data:/data data-generator generate -n 1000 -t transaction
 
 # Generate all types of events
-docker run -v $(pwd)/data:/data data-generator generate \
-    --count 500 \
-    --type all
+docker run -v $(pwd)/data:/data data-generator generate -n 500
 ```
 
 2. Generate time-series data:
+
 ```bash
-# Generate events over the last 7 days
+# Generate events for last 7 days
+docker run -v $(pwd)/data:/data data-generator generate -d 7 -t transaction
+
+# Generate events for specific date range
 docker run -v $(pwd)/data:/data data-generator generate \
-    --type transaction \
-    --time-series \
-    --days 7
+    -t transaction \
+    --start-date 2024-01-01 \
+    --end-date 2024-01-31
+
+# Generate daily files for last week
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    -d 7 \
+    --rotate-interval day
+
+# Generate hourly files for last 2 days
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    -d 2 \
+    --rotate-interval hour
 ```
 
 3. Generate streaming data:
+
 ```bash
 # Generate continuous stream at 2 events per second
 docker run -v $(pwd)/data:/data data-generator stream \
@@ -59,6 +72,35 @@ docker run -v $(pwd)/data:/data data-generator stream \
     --duration 300 \
     --type all
 ```
+
+4. Generate events for specific regions:
+
+```bash
+# Generate events for a specific region
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    --region us-east
+
+# Generate events for all US regions (us-east and us-west)
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    --region us
+
+# Generate events for multiple regions
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    --region us-east --region eu-west
+
+# Generate events for all EU and US regions
+docker run -v $(pwd)/data:/data data-generator generate \
+    -t transaction \
+    --region eu --region us
+```
+
+Available regions:
+
+- Full names: us-east, us-west, eu-west, ap-south
+- Prefixes: us (all US regions), eu (all EU regions), ap (all Asia Pacific regions)
 
 ## Command Line Interface
 
@@ -73,13 +115,16 @@ docker run data-generator generate [OPTIONS]
 ```
 
 Options:
-- `--count, -n`: Number of events to generate (default: 100)
+
+- `--count, -n`: Number of events to generate (per interval when using --rotate-interval, total count otherwise, default: 100)
 - `--output, -o`: Output directory (default: /data)
-- `--type, -t`: Type of events to generate (transaction/security/web_access/customer/all)
-- `--format, -f`: Output format (json/csv)
-- `--region, -r`: Specific regions to generate data for (can be specified multiple times)
-- `--time-series`: Generate time series data
-- `--days`: Number of days for time series data (default: 1)
+- `--type, -t`: Event type (transaction/security/web_access/customer/all, default: all)
+- `--format, -f`: Output format (json/jsonl/csv, default: jsonl)
+- `--region, -r`: Specific regions to generate data for (can specify multiple, supports both full names like 'us-east' and prefixes like 'us' for all US regions)
+- `--days, -d`: Generate events for last N days
+- `--start-date`: Start date (YYYY-MM-DD or YYYY-MM-DDThh:mm:ss)
+- `--end-date`: End date (defaults to now)
+- `--rotate-interval`: Split output by interval (minute/hour/day/month)
 
 ### Stream Command
 
@@ -90,18 +135,57 @@ docker run data-generator stream [OPTIONS]
 ```
 
 Options:
+
 - `--rate, -r`: Events per second (default: 1.0)
+- `--type, -t`: Event type (transaction/security/web_access/customer/all, default: all)
 - `--duration, -d`: Duration in seconds, 0 for infinite (default: 0)
 - `--output, -o`: Output directory (default: /data)
-- `--type, -t`: Type of events to generate (transaction/security/web_access/customer/all)
-- `--format, -f`: Output format (json/csv)
-- `--region, -r`: Specific regions to generate data for (can be specified multiple times)
+- `--format, -f`: Output format (json/jsonl/csv, default: jsonl)
+- `--region, -r`: Specific regions to generate data for (can specify multiple)
+- `--rotate-interval`: Split output by interval (minute/hour/day/month)
+
+## Output Formats
+
+The generator supports three output formats:
+
+1. `json`: Pretty-printed JSON array format
+
+```json
+[
+  {
+    "event_id": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2024-02-02T10:30:00",
+    ...
+  },
+  {
+    "event_id": "661f9511-f3ac-52e5-b827-557766551111",
+    "timestamp": "2024-02-02T10:31:00",
+    ...
+  }
+]
+```
+
+2. `jsonl`: One JSON object per line (default)
+
+```jsonl
+{"event_id":"550e8400-e29b-41d4-a716-446655440000","timestamp":"2024-02-02T10:30:00",...}
+{"event_id":"661f9511-f3ac-52e5-b827-557766551111","timestamp":"2024-02-02T10:31:00",...}
+```
+
+3. `csv`: Comma-separated values with header
+
+```csv
+event_id,timestamp,region_name,region_country,...
+550e8400-e29b-41d4-a716-446655440000,2024-02-02T10:30:00,us-east,United States,...
+661f9511-f3ac-52e5-b827-557766551111,2024-02-02T10:31:00,us-east,United States,...
+```
 
 ## Data Types
 
 ### Transaction Events
 
 Sample transaction event:
+
 ```json
 {
   "event_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -120,7 +204,7 @@ Sample transaction event:
   "unit_price": 899.99,
   "subtotal": 1799.98,
   "tax_rate": 0.08,
-  "tax_amount": 144.00,
+  "tax_amount": 144.0,
   "total_amount": 1943.98,
   "payment_method": "credit_card",
   "payment_status": "completed",
@@ -133,6 +217,7 @@ Sample transaction event:
 ### Security Events
 
 Sample security event:
+
 ```json
 {
   "event_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -148,7 +233,7 @@ Sample security event:
   "source_city": "New York",
   "source_country": "United States",
   "source_latitude": 40.7128,
-  "source_longitude": -74.0060,
+  "source_longitude": -74.006,
   "source_device_os": "Windows",
   "source_device_browser": "Chrome",
   "source_device_type": "desktop",
@@ -164,6 +249,7 @@ Sample security event:
 ### Web Access Events
 
 Sample web access event:
+
 ```json
 {
   "event_id": "998fb12b-9282-4bd3-ac34-ee531539fee1",
@@ -197,6 +283,7 @@ Sample web access event:
 ### Customer Data
 
 Sample customer data:
+
 ```json
 {
   "event_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -249,21 +336,25 @@ Sample customer data:
 The generator is configured via `config.json`. Key configuration sections include:
 
 ### Regions
+
 - Detailed geographic boundaries for each region
 - Associated timezones and countries
 - Latitude/longitude ranges for realistic location generation
 
 ### Products
+
 - Number of products to generate
 - Available product categories
 - Price ranges and inventory settings
 
 ### Event Settings
+
 - Transaction settings (payment methods, statuses)
 - Security event parameters (categories, severities)
 - Web access patterns (endpoints, status code distributions)
 
 ### Time Patterns
+
 - Business hours definition
 - Event frequency patterns for business/non-business hours
 
@@ -299,6 +390,7 @@ The project includes a Makefile to simplify building and pushing the image. The 
 ### Environment Setup
 
 Set required environment variables:
+
 ```bash
 export GITHUB_PAT=your_github_pat
 export GITHUB_USERNAME=your_github_username
@@ -307,16 +399,19 @@ export GITHUB_USERNAME=your_github_username
 ### Basic Usage
 
 1. Login to GitHub Container Registry:
+
 ```bash
 make login
 ```
 
 2. Build multi-architecture image:
+
 ```bash
 make build
 ```
 
 3. Build and push image with tags:
+
 ```bash
 make push
 ```
@@ -329,7 +424,6 @@ make push
 - `make tag`: Create git tag for release
 - `make test`: Run basic test of the image
 - `make help`: Show all available commands
-
 
 ## Development
 
@@ -350,4 +444,3 @@ make push
 2. Create a new generator class in `data_generator.py`
 3. Add the new generator to the DataGenerator class initialization
 4. Update the CLI options in the generate and stream function
-
