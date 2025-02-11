@@ -1,0 +1,9 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+Labels:
+  region: us
+UpdateConfig:
+  Interval: 0 

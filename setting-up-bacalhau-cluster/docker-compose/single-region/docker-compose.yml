@@ -1,0 +1,84 @@
+name: bacalhau-single-region
+
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+
+services:
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    hostname: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    ports:
+      - "8438:8438"
+      - "1234:1234"
+      - "4222:4222"
+    networks:
+      - bacalhau-network
+    volumes:
+      - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 2s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+
+  compute:
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    command: serve -c /etc/bacalhau/config.yaml
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    deploy:
+      replicas: 30
+    privileged: true
+    networks:
+      - bacalhau-network
+    volumes:
+      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+
+  minio:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      bacalhau-network:
+        aliases:
+          - minio-local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    depends_on:
+      - orchestrator
+    networks:
+      - bacalhau-network
+
+networks:
+  bacalhau-network:
