@@ -1,14 +1,14 @@
-# Data Engineering with Bacalhau
+# Introduction
 
-Welcome to an exciting journey into distributed data processing! This repository demonstrates how to leverage Bacalhau to transform your data engineering pipelines, showing you how to process logs across multiple clouds while maintaining data privacy and efficiency.
+This example demonstrates how to build a sophisticated distributed log processing pipeline using [Bacalhau](https://bacalhau.org/), Google [BigQuery](https://cloud.google.com/bigquery), and [DuckDB](https://duckdb.org/). You'll learn how to process and analyze logs across distributed nodes, with progressively more advanced techniques for handling, sanitizing, and aggregating log data.
 
-## What You'll Learn
+The combination of Bacalhau and BigQuery offers several key advantages:
+- Process logs directly where they are generated, eliminating the need for centralized collection
+- Scale processing across multiple nodes in different cloud providers
+- Leverage BigQuery's powerful analytics capabilities for processed data
+- Implement privacy-conscious data handling and efficient aggregation strategies
 
-Watch logs flow from 20+ nodes across multiple clouds (AWS, GCP, Azure) into BigQuery, while learning:
-1. How to process data where it lives (at the edge!)
-2. Progressive data handling techniques
-3. Privacy-preserving data processing
-4. Smart aggregation for efficient storage
+Through this tutorial, you'll evolve from basic log collection to implementing a production-ready system with privacy protection and smart aggregation. Whether you're handling application logs, system metrics, or security events, this pipeline provides a robust foundation for distributed log analytics.
 
 ## Prerequisites
 
