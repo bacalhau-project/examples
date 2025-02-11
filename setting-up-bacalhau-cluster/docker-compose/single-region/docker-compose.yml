@@ -39,7 +39,7 @@ services:
       minio:
         condition: service_healthy
     deploy:
-      replicas: 30
+      replicas: 10
     privileged: true
     networks:
       - bacalhau-network
