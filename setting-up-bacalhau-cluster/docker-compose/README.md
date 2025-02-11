@@ -54,7 +54,7 @@ The multi-region configuration simulates a geographically distributed cluster wi
 - 1 global orchestrator
 - 3 compute nodes in US region
 - 3 compute nodes in EU region
-- Separate MinIO instances for each region
+- 3 MinIO instances (global, US region, EU region)
 - A client container for interacting with the cluster
 
 ### Usage
@@ -71,9 +71,9 @@ docker compose up -d
   - US Region: 3 nodes (compute-us-1, compute-us-2, compute-us-3)
   - EU Region: 3 nodes (compute-eu-1, compute-eu-2, compute-eu-3)
 - **MinIO Instances**:
-  - Global: Port 9000/9001
-  - US Region: Port 9002/9003
-  - EU Region: Port 9004/9005
+  - Global: Used by orchestrator for job results (Port 9000/9001)
+  - US Region: Used by US compute nodes (Port 9002/9003)
+  - EU Region: Used by EU compute nodes (Port 9004/9005)
 - **Client**: Interactive container for submitting jobs
 
 ### Networks
