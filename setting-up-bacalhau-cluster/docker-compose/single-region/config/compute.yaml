@@ -1,0 +1,7 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+UpdateConfig:
+  Interval: 0 
