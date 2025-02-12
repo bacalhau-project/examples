@@ -1,22 +1,22 @@
-#!/bin/sh
+#!/bin/bash
+set -eo pipefail  # Exit on error
 
-FINAL_QUERY=""
-
-# If QUERY_B64 is set, decode it and use as query
-if [ -n "$QUERY_B64" ]; then
-    FINAL_QUERY=$(echo "$QUERY_B64" | base64 -d)
-# Otherwise if QUERY is set, use it directly
-elif [ -n "$QUERY" ]; then
-    FINAL_QUERY="$QUERY"
-# If neither is set, show usage help
-else
-    echo "Error: Neither QUERY nor QUERY_B64 environment variable is set."
-    echo "Usage: docker run with either:"
-    echo "  -e QUERY='your SQL query here'"
-    echo "  -e QUERY_B64='your base64 encoded SQL query here'"
-    echo "[other options]"
+# Add error handling for invalid SQL
+if ! duckdb -c "SELECT 1;" > /dev/null 2>&1; then
+    echo "Error: DuckDB installation appears broken"
     exit 1
 fi
 
-echo "Running query: $FINAL_QUERY"
-./duckdb -c "$FINAL_QUERY"
+DUCKDB_FLAGS=()
+
+# If first argument doesn't start with -, treat it as a query and add -c
+if [[ $# -gt 0 && "$1" != -* ]]; then
+    DUCKDB_FLAGS+=("-c" "$1")
+    shift
+    DUCKDB_FLAGS+=("$@")
+else
+    DUCKDB_FLAGS+=("$@")
+fi
+
+# Execute duckdb with all flags
+exec duckdb "${DUCKDB_FLAGS[@]}"
