@@ -1,0 +1,158 @@
+name: bacalhau-multi-region
+
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+
+services:
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    hostname: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    ports:
+      - "8438:8438"
+      - "1234:1234"
+      - "4222:4222"
+    networks:
+      - bacalhau-network
+    volumes:
+      - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  compute-us-1:
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    hostname: compute-us-1
+    command: serve -c /etc/bacalhau/config.yaml
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      minio-us:
+        condition: service_healthy
+    privileged: true
+    networks:
+      - bacalhau-network
+      - us-region
+    volumes:
+      - ./config/compute-us.yaml:/etc/bacalhau/config.yaml
+
+  compute-us-2:
+    extends: compute-us-1
+    hostname: compute-us-2
+
+  compute-us-3:
+    extends: compute-us-1
+    hostname: compute-us-3
+
+  minio-us:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    networks:
+      us-region:
+        aliases:
+          - minio-local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  compute-eu-1:
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    hostname: compute-eu-1
+    command: serve -c /etc/bacalhau/config.yaml
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      minio-eu:
+        condition: service_healthy
+    privileged: true
+    networks:
+      - bacalhau-network
+      - eu-region
+    volumes:
+      - ./config/compute-eu.yaml:/etc/bacalhau/config.yaml
+
+  compute-eu-2:
+    extends: compute-eu-1
+    hostname: compute-eu-2
+
+  compute-eu-3:
+    extends: compute-eu-1
+    hostname: compute-eu-3
+
+  minio-eu:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9004:9000"
+      - "9005:9001"
+    networks:
+      eu-region:
+        aliases:
+          - minio-local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    depends_on:
+      - orchestrator
+    networks:
+      - bacalhau-network
+
+  minio-global:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      bacalhau-network:
+        aliases:
+          - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+networks:
+  bacalhau-network:
+  us-region:
+  eu-region:
