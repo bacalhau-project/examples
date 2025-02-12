@@ -120,5 +120,5 @@ bacalhau job run ...
 To stop and remove the cluster:
 
 ```bash
-docker compose down
+docker compose down -v
 ```

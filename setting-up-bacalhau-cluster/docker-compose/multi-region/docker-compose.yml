@@ -25,7 +25,7 @@ services:
       test: ["CMD", "bacalhau", "agent", "alive"]
       interval: 2s
       timeout: 2s
-      retries: 3
+      retries: 10
       start_period: 5s
 
   compute-us-1:
@@ -70,7 +70,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
       timeout: 2s
-      retries: 3
+      retries: 10
       start_period: 5s
 
   compute-eu-1:
@@ -115,7 +115,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
       timeout: 2s
-      retries: 3
+      retries: 10
       start_period: 5s
 
   client:
@@ -149,7 +149,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
       timeout: 2s
-      retries: 3
+      retries: 10
       start_period: 5s
 
 networks:
