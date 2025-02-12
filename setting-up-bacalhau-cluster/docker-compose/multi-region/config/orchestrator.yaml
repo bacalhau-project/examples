@@ -1,0 +1,28 @@
+Orchestrator:
+  Enabled: true
+WebUI:
+  Enabled: true
+Labels:
+  region: global
+  type: orchestrator
+UpdateConfig:
+  Interval: 0
+JobDefaults:
+  Batch:
+    Task:
+      Publisher:
+        Type: s3
+        Params:
+          Bucket: "my-bucket"
+          Key: jobs/{jobID}/{executionID}
+          Endpoint: "http://minio:9000"
+          Region: "minio-region"
+  Ops:
+    Task:
+      Publisher:
+        Type: s3
+        Params:
+          Bucket: "my-bucket"
+          Key: jobs/{jobID}/{executionID}
+          Endpoint: "http://minio:9000"
+          Region: "minio-region"
