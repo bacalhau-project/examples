@@ -19,23 +19,23 @@ Traditional data warehouses require moving all raw data to a central location, w
 ```mermaid
 flowchart TB
     User(("👤 User"))
-    Orchestrator["Global Orchestrator"]
-    GlobalStorage[("Global Results\nStorage")]
+    Orchestrator["Global\nOrchestrator"]
+    GlobalStorage[("Global\nResults Storage")]
     
     subgraph US["US Region"]
         direction TB
-        USCompute1["Compute Node 1"]
-        USCompute2["Compute Node 2"]
-        USCompute3["Compute Node 3"]
-        USStorage[("Regional Storage")]
+        USCompute1["Compute\nNode 1"]
+        USCompute2["Compute\nNode 2"]
+        USCompute3["Compute\nNode 3"]
+        USStorage[("Regional\nStorage")]
     end
 
     subgraph EU["EU Region"]
         direction TB
-        EUCompute1["Compute Node 1"]
-        EUCompute2["Compute Node 2"]
-        EUCompute3["Compute Node 3"]
-        EUStorage[("Regional Storage")]
+        EUCompute1["Compute\nNode 1"]
+        EUCompute2["Compute\nNode 2"]
+        EUCompute3["Compute\nNode 3"]
+        EUStorage[("Regional\nStorage")]
     end
 
     User --> Orchestrator
