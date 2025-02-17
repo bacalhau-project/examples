@@ -25,7 +25,7 @@ The single-region configuration provides a simple Bacalhau cluster with:
 
 - 1 orchestrator node
 - 10 compute nodes
-- MinIO object storage
+- Storage object storage
 - A client container for interacting with the cluster
 
 ### Usage
@@ -39,13 +39,13 @@ docker compose up -d
 
 - **Orchestrator**: Manages job scheduling and cluster coordination
 - **Compute Nodes**: Execute jobs (10 replicas)
-- **MinIO**: S3-compatible object storage for job results
+- **Storage**: S3-compatible object storage for job results (MinIO)
 - **Client**: Interactive container for submitting jobs
 
 ### Ports
 
 - Orchestrator: 8438 (API), 1234 (API), 4222 (NATS)
-- MinIO: 9000 (API), 9001 (Console)
+- Storage: 9000 (API), 9001 (Console)
 
 ## Multi-Region Setup
 
@@ -54,7 +54,7 @@ The multi-region configuration simulates a geographically distributed cluster wi
 - 1 global orchestrator
 - 3 compute nodes in US region
 - 3 compute nodes in EU region
-- 3 MinIO instances (global, US region, EU region)
+- 3 Storage instances (global, US region, EU region)
 - A client container for interacting with the cluster
 
 ### Usage
@@ -70,7 +70,7 @@ docker compose up -d
 - **Compute Nodes**:
   - US Region: 3 nodes (compute-us-1, compute-us-2, compute-us-3)
   - EU Region: 3 nodes (compute-eu-1, compute-eu-2, compute-eu-3)
-- **MinIO Instances**:
+- **Storage Instances**:
   - Global: Used by orchestrator for job results (Port 9000/9001)
   - US Region: Used by US compute nodes (Port 9002/9003)
   - EU Region: Used by EU compute nodes (Port 9004/9005)
@@ -85,9 +85,9 @@ docker compose up -d
 ### Ports
 
 - Orchestrator: 8438 (API), 1234 (API), 4222 (NATS)
-- MinIO Global: 9000 (API), 9001 (Console)
-- MinIO US: 9002 (API), 9003 (Console)
-- MinIO EU: 9004 (API), 9005 (Console)
+- Storage Global: 9000 (API), 9001 (Console)
+- Storage US: 9002 (API), 9003 (Console)
+- Storage EU: 9004 (API), 9005 (Console)
 
 ## Common Configuration
 
@@ -117,8 +117,16 @@ bacalhau job run ...
 
 ## Cleanup
 
-To stop and remove the cluster:
+To stop and remove the cluster, including all volumes and orphaned containers:
 
 ```bash
-docker compose down -v
+docker compose down -v --remove-orphans
 ```
+
+This will:
+
+- Stop all containers
+- Remove all containers
+- Remove all volumes 
+- Remove any orphaned containers
+- Remove all networks
