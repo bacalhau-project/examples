@@ -1,14 +1,12 @@
 # Dockerfile
 FROM ubuntu:24.04
 
-# Create non-root user
-RUN useradd -m -s /bin/bash duckdb
-
 # Install DuckDB CLI and other necessary utilities
 RUN apt-get update && apt-get install -y \
     unzip \
     wget \
     ca-certificates \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Place this after apt-get so it doesn't bust the cache
@@ -29,31 +27,27 @@ RUN case "$TARGETPLATFORM" in \
     && unzip duckdb_cli.zip -d /usr/local/bin \
     && rm duckdb_cli.zip
 
-# Install and load extensions
+# Install extensions
 RUN duckdb -c "\
-    INSTALL httpfs; LOAD httpfs; \
-    INSTALL aws; LOAD aws; \
-    INSTALL json; LOAD json; \
-    INSTALL parquet; LOAD parquet; \
+    INSTALL httpfs; \
+    INSTALL aws; \
     "
 
-# Copy runtime init SQL file to .duckdbrc
-COPY init.sql /home/duckdb/.duckdbrc
-RUN chown duckdb:duckdb /home/duckdb/.duckdbrc
+# Initialize DuckDB configuration
+# .duckdbrc will be executed whenever DuckDB starts
+COPY init.sql /root/.duckdbrc
 
-# Copy entrypoint script
+# Set up container entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-WORKDIR /data
-RUN chown duckdb:duckdb /data
-
-USER duckdb
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["SELECT 1;"]
 
-
-LABEL org.opencontainers.image.source="https://github.com/bacalhau-project/examples/utility_containers/duckdb"
-LABEL org.opencontainers.image.description="DuckDB container with partitioning support"
-LABEL org.opencontainers.image.version="${DUCKDB_VERSION}"
+# Container metadata following OCI (Open Container Initiative) spec
+LABEL org.opencontainers.image.source="https://github.com/bacalhau-project/examples/utility_containers/duckdb" \
+      org.opencontainers.image.description="DuckDB container with partitioning support" \
+      org.opencontainers.image.version="${DUCKDB_VERSION}" \
+      org.opencontainers.image.created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.documentation="https://github.com/bacalhau-project/examples/tree/main/utility_containers/duckdb"
