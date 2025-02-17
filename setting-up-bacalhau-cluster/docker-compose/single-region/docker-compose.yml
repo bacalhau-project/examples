@@ -7,9 +7,15 @@ x-common-env-variables: &common-env-variables
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
 
+x-orchestrator-image: &orchestrator-image
+  image: ghcr.io/bacalhau-project/bacalhau:${ORCHESTRATOR_IMAGE_TAG:-latest}
+
+x-compute-image: &compute-image
+  image: ghcr.io/bacalhau-project/bacalhau:${COMPUTE_IMAGE_TAG:-latest-dind}
+
 services:
   orchestrator:
-    image: ghcr.io/bacalhau-project/bacalhau:latest
+    <<: *orchestrator-image
     hostname: orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
@@ -29,24 +35,24 @@ services:
       start_period: 5s
 
   compute:
-    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    <<: *compute-image
     command: serve -c /etc/bacalhau/config.yaml
+    volumes:
+      - ./config/compute.yaml:/etc/bacalhau/config.yaml
     environment:
       <<: *common-env-variables
     depends_on:
       orchestrator:
         condition: service_healthy
-      minio:
+      storage:
         condition: service_healthy
     deploy:
       replicas: 10
     privileged: true
     networks:
       - bacalhau-network
-    volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
 
-  minio:
+  storage:
     image: quay.io/minio/minio
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -56,8 +62,6 @@ services:
       - "9001:9001"
     networks:
       bacalhau-network:
-        aliases:
-          - minio-local
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
