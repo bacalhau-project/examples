@@ -7,9 +7,15 @@ x-common-env-variables: &common-env-variables
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
 
+x-orchestrator-image: &orchestrator-image
+  image: ghcr.io/bacalhau-project/bacalhau:${ORCHESTRATOR_IMAGE_TAG:-latest}
+
+x-compute-image: &compute-image
+  image: ghcr.io/bacalhau-project/bacalhau:${COMPUTE_IMAGE_TAG:-latest-dind}
+
 services:
   orchestrator:
-    image: ghcr.io/bacalhau-project/bacalhau:latest
+    <<: *orchestrator-image
     hostname: orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
@@ -29,22 +35,23 @@ services:
       start_period: 5s
 
   compute-us-1:
-    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    <<: *compute-image
     hostname: compute-us-1
-    command: serve -c /etc/bacalhau/config.yaml
+    command: serve -c /etc/bacalhau/config.yaml  -c /etc/bacalhau/config-regional.yaml
+    volumes:
+      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./config/compute-us.yaml:/etc/bacalhau/config-regional.yaml
     environment:
       <<: *common-env-variables
     depends_on:
       orchestrator:
         condition: service_healthy
-      minio-us:
+      storage-us:
         condition: service_healthy
     privileged: true
     networks:
       - bacalhau-network
       - us-region
-    volumes:
-      - ./config/compute-us.yaml:/etc/bacalhau/config.yaml
 
   compute-us-2:
     extends: compute-us-1
@@ -54,7 +61,7 @@ services:
     extends: compute-us-1
     hostname: compute-us-3
 
-  minio-us:
+  storage-us:
     image: quay.io/minio/minio
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -65,7 +72,7 @@ services:
     networks:
       us-region:
         aliases:
-          - minio-local
+          - storage-local
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
@@ -74,22 +81,23 @@ services:
       start_period: 5s
 
   compute-eu-1:
-    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    <<: *compute-image
     hostname: compute-eu-1
-    command: serve -c /etc/bacalhau/config.yaml
+    command: serve -c /etc/bacalhau/config.yaml  -c /etc/bacalhau/config-regional.yaml
+    volumes:
+      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./config/compute-eu.yaml:/etc/bacalhau/config-regional.yaml
     environment:
       <<: *common-env-variables
     depends_on:
       orchestrator:
         condition: service_healthy
-      minio-eu:
+      storage-eu:
         condition: service_healthy
     privileged: true
     networks:
       - bacalhau-network
       - eu-region
-    volumes:
-      - ./config/compute-eu.yaml:/etc/bacalhau/config.yaml
 
   compute-eu-2:
     extends: compute-eu-1
@@ -99,7 +107,7 @@ services:
     extends: compute-eu-1
     hostname: compute-eu-3
 
-  minio-eu:
+  storage-eu:
     image: quay.io/minio/minio
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -110,7 +118,7 @@ services:
     networks:
       eu-region:
         aliases:
-          - minio-local
+          - storage-local
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
@@ -133,7 +141,7 @@ services:
     networks:
       - bacalhau-network
 
-  minio-global:
+  storage-global:
     image: quay.io/minio/minio
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -144,7 +152,7 @@ services:
     networks:
       bacalhau-network:
         aliases:
-          - minio
+          - storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s

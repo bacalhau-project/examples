@@ -1,0 +1,12 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+  Env:
+    AllowList:
+      - AWS_*
+UpdateConfig:
+  Interval: 0
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
