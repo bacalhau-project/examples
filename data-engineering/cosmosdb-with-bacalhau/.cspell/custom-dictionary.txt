@@ -1,0 +1,11 @@
+apprunner
+bacalhau
+buildx
+citus
+dotenv
+drltab
+duckdb
+levelname
+multiarch
+psql
+venv
