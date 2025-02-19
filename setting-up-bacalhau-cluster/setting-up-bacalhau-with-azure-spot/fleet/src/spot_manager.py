@@ -28,7 +28,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
-import boto3
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.network import NetworkManagementClient
+from azure.mgmt.resource import ResourceManagementClient
 import click
 from click import Context
 from pythonjsonlogger import jsonlogger
@@ -201,10 +204,15 @@ class SpotManager:
         # Initialize logging first
         self._setup_logging()
 
-        # Initialize AWS clients
-        self.region = os.getenv("AWS_REGION", "us-west-2")
-        self.ec2 = boto3.client("ec2", region_name=self.region)
-        self.ec2_resource = boto3.resource("ec2", region_name=self.region)
+        # Initialize Azure clients
+        self.subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+        self.resource_group = os.getenv("AZURE_RESOURCE_GROUP")
+        self.location = os.getenv("AZURE_LOCATION", "eastus")
+        
+        credential = DefaultAzureCredential()
+        self.compute_client = ComputeManagementClient(credential, self.subscription_id)
+        self.network_client = NetworkManagementClient(credential, self.subscription_id)
+        self.resource_client = ResourceManagementClient(credential, self.subscription_id)
         self._instance_type_cache = {}
 
         # Initialize rate limiter with conservative defaults

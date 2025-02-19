@@ -3,16 +3,9 @@
 
 # Function to get instance metadata using IMDSv2
 get_instance_metadata() {
-    # Get IMDSv2 token
-    TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-    if [ -z "$TOKEN" ]; then
-        echo "Error: Failed to get IMDSv2 token"
-        return 1
-    fi
-
-    # Get all instance metadata in one call
-    local metadata=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-        http://169.254.169.254/latest/dynamic/instance-identity/document)
+    # Get Azure instance metadata
+    local metadata=$(curl -s -H Metadata:true --noproxy "*" \
+        "http://169.254.169.254/metadata/instance?api-version=2021-02-01")
     
     if [ -z "$metadata" ]; then
         echo "Error: Failed to get instance metadata"
