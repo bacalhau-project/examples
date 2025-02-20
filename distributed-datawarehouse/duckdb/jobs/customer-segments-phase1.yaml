@@ -1,0 +1,66 @@
+# customer-segments-phase1.yaml
+# Purpose: Computes partial customer metrics from each node's data slice
+#
+# How it works:
+# 1. Each node processes its assigned monthly files
+# 2. Computes customer-level metrics for transactions it can see
+# 3. Writes results to local CSV file which gets published to S3
+# 4. Results are stored by node ID for phase 2 consolidation
+#
+# Run with: bacalhau job run -V Region=us customer-segments-phase1.yaml
+Name: Customer Segments Phase 1
+Type: batch
+Count: 3
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+            
+            SET VARIABLE node_files = (
+              SELECT LIST(file) 
+              FROM partition_by_hash('s3://my-bucket/transactions/**/*.jsonl')
+            );
+
+            COPY (
+              SELECT 
+                customer_id,
+                customer_type,
+                COUNT(*) as partial_transaction_count,
+                SUM(total_amount) as partial_total_spent,
+                MIN(timestamp) as first_seen,
+                MAX(timestamp) as last_seen,
+                AVG(total_amount) as avg_order_value,
+                STRING_AGG(DISTINCT product_category, ',') as seen_categories,
+                STRING_AGG(DISTINCT payment_method, ',') as used_payment_methods
+              FROM read_json_auto(getvariable('node_files'))
+              GROUP BY customer_id, customer_type
+            ) TO '/outputs/partial_metrics.csv' (HEADER, DELIMITER ',');
+    Env:
+      AWS_ACCESS_KEY_ID: 'env:AWS_ACCESS_KEY_ID'
+      AWS_SECRET_ACCESS_KEY: 'env:AWS_SECRET_ACCESS_KEY'
+      DUCKDB_S3_ENDPOINT: 'storage-local:9000'
+      DUCKDB_S3_USE_SSL: 'false'
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: my-bucket
+        Key: "results/customer-metrics/{jobID}/{executionID}/"
+        Endpoint: "http://storage-local:9000"
+        Region: storage-region
+        Encoding: plain
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    Network:
+      Type: Full

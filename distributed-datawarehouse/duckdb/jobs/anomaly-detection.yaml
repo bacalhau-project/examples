@@ -1,0 +1,88 @@
+# anomaly-detection.yaml
+# Purpose: Identifies unusual patterns in transaction data using statistical analysis
+#
+# Key Features:
+# - Real-time anomaly detection using rolling windows
+# - Statistical analysis using standard deviations
+# - Separate detection for transaction counts and revenue
+#
+# How it works:
+# 1. Aggregates data into hourly buckets
+# 2. Calculates rolling statistics (mean, stddev) over 7-day windows
+# 3. Flags values that deviate significantly from the norm
+# 4. Provides context about why each anomaly was flagged
+#
+# Run with: bacalhau job run -V Region=us anomaly-detection.yaml
+
+Name: Anomaly Detection
+Type: batch
+Count: 3
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+
+            SET VARIABLE my_files = (
+              SELECT LIST(file) 
+              FROM partition_by_hash('s3://my-bucket/transactions/**/*.jsonl')
+            );
+
+            WITH hourly_stats AS (
+              SELECT 
+                date_trunc('hour', CAST(timestamp AS TIMESTAMP)) as hour,
+                COUNT(*) as transaction_count,
+                SUM(total_amount) as total_amount,
+                AVG(total_amount) as avg_amount
+              FROM read_json_auto(getvariable('my_files'))
+              GROUP BY 1
+            ),
+            stats_with_bounds AS (
+              SELECT 
+                *,
+                AVG(transaction_count) OVER w as avg_transactions,
+                STDDEV(transaction_count) OVER w as stddev_transactions,
+                AVG(total_amount) OVER w as avg_total,
+                STDDEV(total_amount) OVER w as stddev_total
+              FROM hourly_stats
+              WINDOW w AS (
+                ORDER BY hour
+                ROWS BETWEEN 168 PRECEDING AND 1 PRECEDING
+              )
+            )
+            SELECT 
+              hour,
+              transaction_count,
+              total_amount,
+              CASE 
+                WHEN ABS(transaction_count - avg_transactions) > 3 * NULLIF(stddev_transactions, 0) 
+                THEN 'Transaction Count Anomaly'
+                WHEN ABS(total_amount - avg_total) > 3 * NULLIF(stddev_total, 0) 
+                THEN 'Revenue Anomaly'
+                ELSE 'Normal'
+              END as anomaly_status,
+              avg_transactions,
+              stddev_transactions,
+              avg_total,
+              stddev_total
+            FROM stats_with_bounds
+            WHERE anomaly_status != 'Normal'
+            ORDER BY hour DESC;
+    Env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      DUCKDB_S3_ENDPOINT: "storage-local:9000"
+      DUCKDB_S3_USE_SSL: "false"
+    Network:
+      Type: Full

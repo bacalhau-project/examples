@@ -1,0 +1,74 @@
+# search-transactions.yaml
+# Purpose: Simple grep-like search through transaction data
+#
+# Key Features:
+# - Full-text search across transaction fields
+# - Configurable search pattern
+# - Returns matching transactions with context
+#
+# Run with: bacalhau job run -V Region=us -V Pattern="search term" search-transactions.yaml
+
+Name: Transaction Search
+Type: batch
+Count: 3
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+
+            SET VARIABLE local_files = (
+              SELECT LIST(file) 
+              FROM partition_by_hash('s3://my-bucket/transactions/**/*.jsonl')
+            );
+
+            WITH search_results AS (
+              SELECT 
+                event_id,
+                timestamp,
+                customer_id,
+                product_id,
+                product_category,
+                total_amount,
+                payment_status,
+                payment_method,
+                CONCAT_WS(' ', 
+                  event_id,
+                  customer_id,
+                  product_id,
+                  product_category,
+                  payment_status,
+                  payment_method
+                ) as searchable_text
+              FROM read_json_auto(getvariable('local_files'))
+            )
+            SELECT 
+              event_id,
+              timestamp,
+              customer_id,
+              product_category,
+              total_amount,
+              payment_status,
+              payment_method
+            FROM search_results
+            WHERE searchable_text ILIKE '%{{.Pattern}}%'
+            ORDER BY timestamp DESC
+            LIMIT 100;
+    Env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      DUCKDB_S3_ENDPOINT: "storage-local:9000"
+      DUCKDB_S3_USE_SSL: "false"
+    Network:
+      Type: Full
