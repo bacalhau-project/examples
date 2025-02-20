@@ -73,6 +73,7 @@ services:
       us-region:
         aliases:
           - storage-local
+      bacalhau-network:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
@@ -119,6 +120,7 @@ services:
       eu-region:
         aliases:
           - storage-local
+      bacalhau-network:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 2s
