@@ -41,7 +41,7 @@ In the following sections, we'll detail the technical implementation of this sol
 
 Our solution implements a sophisticated multi-regional data processing architecture that strictly adheres to data sovereignty requirements while enabling efficient cross-border analytics. The architecture consists of three main components: an orchestration layer, regional compute resources, and distributed storage systems.
 
-![bacalhau-data-anonynization.png](images/bacalhau-data-anonynization.png)
+![bacalhau-data-anonynization.png](img/bacalhau-data-anonynization.png)
 
 ### Regional Data Sovereignty
 
@@ -77,85 +77,53 @@ Before starting, ensure your system meets the following minimum requirements:
 - 4 CPU cores
 - Docker and Docker Compose installed
 
-## Setup and Deployment
+## Quick Start
 
-### Step 1: Deploy the Stack
+### Prerequisites
+- Docker and Docker Compose
+- Access to example multi-region setup
 
-Start by deploying the full stack using Docker Compose:
+### Deploy Environment
+```bash
+# Clone and start the multi-region environment
+git clone https://github.com/bacalhau-project/examples.git
+cd examples/setting-up-bacalhau-cluster/docker-compose/multi-region
+docker compose up -d
+```
+
+### Get Into Jumpbox Container
+
+To easily interact with the Bacalhau deployment, get into jumpbox container:
+
+```shell
+docker exec -it bacalhau-multi-region-client-1 bash
+```
+
+### Generate Fake Sensitive Data
 
 ```bash
-docker compose -f full-bacalhau-deployment.yml up --build
+# Generate Data in EU region data
+bacalhau job run -V Region=eu data-generator.yaml
 ```
 
-This process will take a few minutes to complete. You can safely ignore the TLS handshake error messages from the registry (`http: TLS handshake error from [::1]:35061: EOF`).
+### Generate Fake Sensitive Data
 
-### Step 2: Access the Environment
-
-Once the stack is running, access the jumpbox container where you'll interact with both Bacalhau and MinIO:
+Here we generate fake sensitive data for that will be pushed to the EU storage bucket. It replicates the notion of having sensitive data in the EU jurisdiction.
 
 ```bash
-docker exec -it docker-compose-bacalhau-jumpbox-node-1 /bin/bash
+# Generate Data in EU region data
+bacalhau job run -V Region=eu data-generator.yaml
 ```
 
-### Step 3: Configure MinIO Access
+### Anonymize The Data and Publish to US
 
-Set up aliases for both EU and US MinIO instances:
+Here we run the data anonymization job utilizing the EU region compute nodes. The Bacalhau Job will pull down the data from the EU storage, anonymize it, and then publish it to the US based storage. 
+
+This utilizes bacalhau to maintain data protection laws across jurisdiction.
 
 ```bash
-mc alias set minio-eu1 http://minio-node-eu1:9000 minioadmin minioadminpass
-mc alias set minio-us1 http://minio-node-us1:9000 minioadmin minioadminpass
-```
-
-### Step 4: Verify Initial Data State
-
-Check the content of the EU bucket containing confidential data:
-
-```bash
-mc ls --recursive minio-eu1/confidential-memos-bucket-eu
-```
-
-Verify that the US bucket is empty (it will later contain anonymized data):
-
-```bash
-mc ls --recursive minio-us1
-```
-
-To examine a sample confidential memo:
-
-```bash
-mc cp minio-eu1/confidential-memos-bucket-eu/confidential-memos/memo_3.txt .
-```
-
-### Step 5: Review and Run the Anonymization Job
-
-Navigate to the `/app` directory and examine the job specification file `job_anonymize_data.yaml`. This file defines how the data will be processed:
-
-- **Input Sources**: Configures access to the confidential data in the EU MinIO bucket
-- **Publisher**: Specifies how the anonymized data will be stored in the US MinIO bucket
-- **Task Configuration**: Defines the Docker image containing Presidio and the processing script
-- **Resource Allocation**: Specifies CPU, memory, and disk requirements
-- **Partitioning**: Enables parallel processing across multiple compute nodes
-
-The job will be executed across two compute nodes, demonstrating Bacalhau's distributed processing capabilities.
-
-After job completion, verify the results in the US bucket:
-
-```bash
-mc ls --recursive minio-us1
-```
-
-You should see two tar balls containing the anonymized data. When extracted, the structure will look like this:
-
-```
-extracted-data/
-├── anonymized-memos
-│   ├── memo_11.txt
-│   ├── memo_13.txt
-│   ├── memo_15.txt
-│   └── [additional memos...]
-├── exitCode
-├── stderr
-└── stdout
+# Generate Data in EU region data
+bacalhau job run -V Region=eu anonymize-job.yaml
 ```
 
 Sample anonymized content will look like this:
@@ -174,7 +142,7 @@ When you're finished experimenting, clean up the environment:
 1. Exit the jumpbox container
 2. Stop the stack:
 ```bash
-docker compose down
+docker compose down -v
 ```
 
 3. Clean up volumes:
@@ -183,7 +151,6 @@ docker volume prune
 ```
 
 Feel free to run additional jobs and experiment with different configurations. The environment is designed to be easily reset and redeployed as needed.
-
 
 # Understanding Data Sources and Publishing Configuration
 
