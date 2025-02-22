@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "duckdb",
+#     "pandas",
+#     "psycopg2-binary",
+#     "pyyaml",
+#     "faker",
+#     "ipaddress",
+# ]
+# ///
+
 import argparse
 import ipaddress
 import logging
@@ -13,11 +25,10 @@ from typing import Any, Callable
 
 import duckdb
 import pandas as pd
+import psycopg2
 import yaml
 from faker import Faker
-from google.api_core import exceptions, retry
-from google.cloud import bigquery
-from google.oauth2 import service_account
+from psycopg2.extras import execute_values
 
 # Initialize Faker
 fake = Faker()
@@ -30,33 +41,6 @@ logger = logging.getLogger(__name__)
 
 # Suppress numpy deprecation warning from DuckDB
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="numpy.core")
-
-# Environment configuration
-LOGS_DIR = os.environ.get("LOGS_DIR", "/var/log/logs_to_process")
-CREDENTIALS_PATH = os.environ.get(
-    "CREDENTIALS_PATH", os.path.join(LOGS_DIR, "log_uploader_credentials.json")
-)
-
-# Expected schema for BigQuery table
-EXPECTED_SCHEMA = [
-    bigquery.SchemaField("project_id", "STRING"),
-    bigquery.SchemaField("region", "STRING"),
-    bigquery.SchemaField("nodeName", "STRING"),
-    bigquery.SchemaField("sync_time", "TIMESTAMP"),
-    bigquery.SchemaField("ip", "STRING"),
-    bigquery.SchemaField("user_id", "STRING"),
-    bigquery.SchemaField("timestamp", "TIMESTAMP"),
-    bigquery.SchemaField("method", "STRING"),
-    bigquery.SchemaField("path", "STRING"),
-    bigquery.SchemaField("protocol", "STRING"),
-    bigquery.SchemaField("status", "INTEGER"),
-    bigquery.SchemaField("bytes", "INTEGER"),
-    bigquery.SchemaField("referer", "STRING"),
-    bigquery.SchemaField("user_agent", "STRING"),
-    bigquery.SchemaField("hostname", "STRING"),
-    bigquery.SchemaField("provider", "STRING"),
-    bigquery.SchemaField("status_category", "STRING"),
-]
 
 # Retry configuration
 MAX_RETRIES = 20  # seconds
@@ -76,7 +60,7 @@ def with_retries(func: Callable[..., Any]) -> Callable[..., Any]:
         while True:
             try:
                 return func(*args, **kwargs)
-            except exceptions.TooManyRequests as e:
+            except psycopg2.OperationalError as e:
                 retry_count += 1
                 if retry_count > MAX_RETRIES:
                     logger.error(f"Max retries ({MAX_RETRIES}) exceeded: {str(e)}")
@@ -87,7 +71,7 @@ def with_retries(func: Callable[..., Any]) -> Callable[..., Any]:
                 sleep_time = delay + jitter
 
                 logger.warning(
-                    f"Rate limit exceeded. Retrying in {sleep_time:.2f} seconds "
+                    f"Database connection error. Retrying in {sleep_time:.2f} seconds "
                     f"(attempt {retry_count}/{MAX_RETRIES})"
                 )
 
@@ -101,22 +85,40 @@ def with_retries(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 @with_retries
-def upload_to_bigquery(
-    bq_client: bigquery.Client,
-    df: pd.DataFrame,
-    table_id: str,
-    job_config: bigquery.LoadJobConfig,
-) -> None:
-    """Upload dataframe to BigQuery with retry logic."""
-    job = bq_client.load_table_from_dataframe(df, table_id, job_config=job_config)
-    job.result()
+def upload_to_postgres(conn: psycopg2.extensions.connection, df: pd.DataFrame) -> None:
+    """Upload dataframe to PostgreSQL with retry logic."""
+    with conn.cursor() as cur:
+        # Convert DataFrame to list of tuples
+        values = [tuple(x) for x in df.to_numpy()]
+
+        # Generate the INSERT query
+        columns = df.columns.tolist()
+        query = f"""
+            INSERT INTO log_analytics.log_results (
+                {", ".join(columns)}
+            ) VALUES %s
+        """
+
+        # Execute the insert
+        execute_values(cur, query, values)
+        conn.commit()
 
 
-def load_config(config_path):
-    """Load configuration from config.yaml."""
-    with open(config_path, "r") as f:
+def read_config(config_path: str) -> dict:
+    """Read configuration from YAML file."""
+    with open(config_path) as f:
         config = yaml.safe_load(f)
-    return config
+
+    # Validate required fields
+    if "postgresql" not in config:
+        raise ValueError("Missing 'postgresql' section in config")
+
+    required_fields = ["host", "port", "user", "password", "database"]
+    missing = [f for f in required_fields if f not in config["postgresql"]]
+    if missing:
+        raise ValueError(f"Missing required PostgreSQL fields: {', '.join(missing)}")
+
+    return config["postgresql"]
 
 
 def get_metadata():
@@ -143,42 +145,24 @@ def get_status_category(status):
     return "Unknown"
 
 
-def parse_request(request):
-    """Parse HTTP request string into method, path, and protocol."""
-    parts = request.split()
-    if len(parts) >= 3:
-        return parts[0], parts[1], parts[2]
-    return "", "", ""
-
-
-def main(input_file: str) -> None:
+def main(config_path: str, input_file: str) -> None:
     node_id = os.environ.get("NODE_ID", "unknown")
     logger.info(f"Starting processing on node {node_id}")
 
     try:
-        if CREDENTIALS_PATH == "":
-            raise ValueError("CREDENTIALS_PATH environment variable is not set")
-
-        if not os.path.exists(CREDENTIALS_PATH):
-            raise FileNotFoundError(f"Credentials file not found at {CREDENTIALS_PATH}")
-
-        project_id = os.environ.get("PROJECT_ID", "")
-        if project_id == "":
-            raise ValueError("PROJECT_ID environment variable is not set")
-
-        dataset = os.environ.get("DATASET", "log_analytics")
-        table = os.environ.get("TABLE", "log_results")
+        # Read configuration
+        pg_config = read_config(config_path)
         chunk_size = int(os.environ.get("CHUNK_SIZE", "10000"))
 
-        # Define table_id early
-        table_id = f"{project_id}.{dataset}.{table}"
-
-        # Load credentials and create BigQuery client
-        credentials = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_PATH,
-            scopes=["https://www.googleapis.com/auth/bigquery"],
+        # Create PostgreSQL connection
+        conn = psycopg2.connect(
+            host=pg_config["host"],
+            port=pg_config["port"],
+            user=pg_config["user"],
+            password=pg_config["password"],
+            database=pg_config["database"],
+            sslmode="require",
         )
-        bq_client = bigquery.Client(credentials=credentials)
 
         # Create DuckDB connection
         con = duckdb.connect()
@@ -250,21 +234,15 @@ def main(input_file: str) -> None:
                     df.loc[mask, "status_category"] = category
 
                 # Add metadata columns (use categorical for repeated values)
-                df["project_id"] = project_id
+                df["project_id"] = metadata["project_id"]
                 df["region"] = pd.Categorical([metadata["region"]] * len(df))
                 df["nodeName"] = pd.Categorical([metadata["node_name"]] * len(df))
                 df["hostname"] = pd.Categorical([metadata["hostname"]] * len(df))
                 df["provider"] = pd.Categorical([metadata["provider"]] * len(df))
                 df["sync_time"] = datetime.now(UTC)
 
-                # Upload chunk to BigQuery
-                job_config = bigquery.LoadJobConfig(
-                    schema=EXPECTED_SCHEMA,
-                    write_disposition="WRITE_APPEND",
-                    create_disposition="CREATE_NEVER",
-                )
-
-                upload_to_bigquery(bq_client, df, table_id, job_config)
+                # Upload chunk to PostgreSQL
+                upload_to_postgres(conn, df)
 
                 total_rows += len(df)
                 logger.info(
@@ -284,7 +262,9 @@ def main(input_file: str) -> None:
 
         if failed_chunks:
             logger.warning(f"Failed chunks: {failed_chunks}")
-        logger.info(f"Node {node_id}: Uploaded {total_rows} rows to {table_id}")
+        logger.info(
+            f"Node {node_id}: Uploaded {total_rows} rows to log_analytics.log_results"
+        )
 
     except Exception as e:
         logger.error(f"Fatal error on node {node_id}: {str(e)}")
@@ -293,17 +273,26 @@ def main(input_file: str) -> None:
         # Clean up
         if "con" in locals():
             con.close()
-        if "bq_client" in locals():
-            bq_client.close()
+        if "conn" in locals():
+            conn.close()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process log data")
+    parser.add_argument("--config", help="Path to config.yaml file", required=True)
     parser.add_argument(
         "--input-file",
         help="Path to the input log file (can also be set via INPUT_FILE env var)",
     )
+    parser.add_argument(
+        "--exit",
+        help="Exit immediately (so dependencies are cached)",
+        action="store_true",
+    )
     args = parser.parse_args()
+
+    if args.exit:
+        exit(0)
 
     input_file = args.input_file or os.environ.get("INPUT_FILE")
     if not input_file:
@@ -311,4 +300,4 @@ if __name__ == "__main__":
             "Input file must be provided via --input-file argument or INPUT_FILE environment variable"
         )
 
-    main(input_file)
+    main(args.config, input_file)

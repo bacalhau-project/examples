@@ -5,6 +5,7 @@ citus
 dotenv
 drltab
 duckdb
+gethostname
 levelname
 multiarch
 psql
