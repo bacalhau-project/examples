@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "duckdb",
+#     "pandas",
+#     "psycopg2-binary",
+#     "pyyaml",
+#     "ipaddress",
+# ]
+# ///
+
 import argparse
 import ipaddress
 import logging
@@ -12,10 +23,9 @@ from typing import Any, Callable
 
 import duckdb
 import pandas as pd
+import psycopg2
 import yaml
-from google.api_core import exceptions, retry
-from google.cloud import bigquery
-from google.oauth2 import service_account
+from psycopg2.extras import execute_values
 
 # Configure logging
 logging.basicConfig(
@@ -26,38 +36,6 @@ logger = logging.getLogger(__name__)
 # Suppress numpy deprecation warning from DuckDB
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="numpy.core")
 
-# Expected schemas for BigQuery tables
-EMERGENCY_SCHEMA = [
-    bigquery.SchemaField("project_id", "STRING"),
-    bigquery.SchemaField("region", "STRING"),
-    bigquery.SchemaField("nodeName", "STRING"),
-    bigquery.SchemaField("provider", "STRING"),
-    bigquery.SchemaField("hostname", "STRING"),
-    bigquery.SchemaField("timestamp", "TIMESTAMP"),
-    bigquery.SchemaField("version", "STRING"),
-    bigquery.SchemaField("message", "STRING"),
-    bigquery.SchemaField("remote_log_id", "STRING"),
-    bigquery.SchemaField("alert_level", "STRING"),
-    bigquery.SchemaField("ip", "STRING"),
-    bigquery.SchemaField("sync_time", "TIMESTAMP"),
-]
-
-AGGREGATES_SCHEMA = [
-    bigquery.SchemaField("project_id", "STRING"),
-    bigquery.SchemaField("region", "STRING"),
-    bigquery.SchemaField("nodeName", "STRING"),
-    bigquery.SchemaField("provider", "STRING"),
-    bigquery.SchemaField("hostname", "STRING"),
-    bigquery.SchemaField("time_window", "TIMESTAMP"),
-    bigquery.SchemaField("ok_count", "INT64"),
-    bigquery.SchemaField("redirect_count", "INT64"),
-    bigquery.SchemaField("not_found_count", "INT64"),
-    bigquery.SchemaField("system_error_count", "INT64"),
-    bigquery.SchemaField("total_count", "INT64"),
-    bigquery.SchemaField("total_bytes", "INT64"),
-    bigquery.SchemaField("avg_bytes", "FLOAT64"),
-]
-
 # Retry configuration
 MAX_RETRIES = 20  # seconds
 INITIAL_RETRY_DELAY = 1  # seconds
@@ -66,12 +44,85 @@ RETRY_MULTIPLIER = 2
 JITTER_FACTOR = 0.1
 
 
+def with_retries(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to add retry logic with exponential backoff and jitter."""
+
+    def wrapper(*args, **kwargs):
+        retry_count = 0
+        delay = INITIAL_RETRY_DELAY
+
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except psycopg2.OperationalError as e:
+                retry_count += 1
+                if retry_count > MAX_RETRIES:
+                    logger.error(f"Max retries ({MAX_RETRIES}) exceeded: {str(e)}")
+                    raise
+
+                # Add jitter to avoid thundering herd
+                jitter = random.uniform(-JITTER_FACTOR * delay, JITTER_FACTOR * delay)
+                sleep_time = delay + jitter
+
+                logger.warning(
+                    f"Database connection error. Retrying in {sleep_time:.2f} seconds "
+                    f"(attempt {retry_count}/{MAX_RETRIES})"
+                )
+
+                time.sleep(sleep_time)
+                delay = min(delay * RETRY_MULTIPLIER, MAX_RETRY_DELAY)
+            except Exception as e:
+                logger.error(f"Unexpected error: {str(e)}")
+                raise
+
+    return wrapper
+
+
+@with_retries
+def upload_to_postgres(
+    conn: psycopg2.extensions.connection, df: pd.DataFrame, table_name: str
+) -> None:
+    """Upload dataframe to PostgreSQL with retry logic."""
+    with conn.cursor() as cur:
+        # Convert DataFrame to list of tuples
+        values = [tuple(x) for x in df.to_numpy()]
+
+        # Generate the INSERT query
+        columns = df.columns.tolist()
+        query = f"""
+            INSERT INTO log_analytics.{table_name} (
+                {", ".join(columns)}
+            ) VALUES %s
+        """
+
+        # Execute the insert
+        execute_values(cur, query, values)
+        conn.commit()
+
+
+def read_config(config_path: str) -> dict:
+    """Read configuration from YAML file."""
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    # Validate required fields
+    if "postgresql" not in config:
+        raise ValueError("Missing 'postgresql' section in config")
+
+    required_fields = ["host", "port", "user", "password", "database"]
+    missing = [f for f in required_fields if f not in config["postgresql"]]
+    if missing:
+        raise ValueError(f"Missing required PostgreSQL fields: {', '.join(missing)}")
+
+    return config["postgresql"]
+
+
 def get_metadata():
     """Get metadata about the current environment/node."""
     return {
         "project_id": os.environ.get("PROJECT_ID", "unknown"),
-        "region": os.environ.get("REGION", "unknown"),
         "node_name": os.environ.get("NODE_NAME", "unknown"),
+        "region": os.environ.get("REGION", "unknown"),
         "provider": os.environ.get("CLOUD_PROVIDER", "unknown"),
         "hostname": socket.gethostname(),
     }
@@ -90,77 +141,24 @@ def get_status_category(status):
     return "Unknown"
 
 
-def with_retries(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to add retry logic with exponential backoff and jitter."""
-
-    def wrapper(*args, **kwargs):
-        retry_count = 0
-        delay = INITIAL_RETRY_DELAY
-
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except exceptions.TooManyRequests as e:
-                retry_count += 1
-                if retry_count > MAX_RETRIES:
-                    logger.error(f"Max retries ({MAX_RETRIES}) exceeded: {str(e)}")
-                    raise
-
-                # Add jitter to avoid thundering herd
-                jitter = random.uniform(-JITTER_FACTOR * delay, JITTER_FACTOR * delay)
-                sleep_time = delay + jitter
-
-                logger.warning(
-                    f"Rate limit exceeded. Retrying in {sleep_time:.2f} seconds "
-                    f"(attempt {retry_count}/{MAX_RETRIES})"
-                )
-
-                time.sleep(sleep_time)
-                delay = min(delay * RETRY_MULTIPLIER, MAX_RETRY_DELAY)
-            except Exception as e:
-                logger.error(f"Unexpected error: {str(e)}")
-                raise
-
-    return wrapper
-
-
-@with_retries
-def upload_to_bigquery(
-    bq_client: bigquery.Client,
-    df: pd.DataFrame,
-    table_id: str,
-    job_config: bigquery.LoadJobConfig,
-) -> None:
-    """Upload dataframe to BigQuery with retry logic."""
-    job = bq_client.load_table_from_dataframe(df, table_id, job_config=job_config)
-    job.result()
-
-
-def main(input_file: str) -> None:
+def main(config_path: str, input_file: str) -> None:
     node_id = os.environ.get("NODE_ID", "unknown")
     logger.info(f"Starting processing on node {node_id}")
 
     try:
-        # Load configuration
-        project_id = os.environ.get("PROJECT_ID", "")
-        if project_id == "":
-            raise ValueError("PROJECT_ID environment variable is not set")
-
-        dataset = os.environ.get("DATASET", "log_analytics")
-        table = os.environ.get("TABLE", "log_results")
+        # Read configuration
+        pg_config = read_config(config_path)
         chunk_size = int(os.environ.get("CHUNK_SIZE", "10000"))
 
-        credentials_path = os.environ.get("CREDENTIALS_PATH", "credentials.json")
-
-        if not os.path.exists(credentials_path):
-            raise FileNotFoundError(f"Credentials file not found at {credentials_path}")
-
-        # Load credentials and create BigQuery client
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_path,
-            scopes=["https://www.googleapis.com/auth/bigquery"],
+        # Create PostgreSQL connection
+        conn = psycopg2.connect(
+            host=pg_config["host"],
+            port=pg_config["port"],
+            user=pg_config["user"],
+            password=pg_config["password"],
+            database=pg_config["database"],
+            sslmode="require",
         )
-        bq_client = bigquery.Client(credentials=credentials)
 
         # Create DuckDB connection
         con = duckdb.connect()
@@ -177,18 +175,18 @@ def main(input_file: str) -> None:
         # Pre-create categorical values for status
         status_categories = ["Unknown", "OK", "Redirect", "Not Found", "SystemError"]
 
-        # Initialize aggregation DataFrame with correct schema
+        # Initialize aggregation DataFrame with correct schema and data types
         agg_df = pd.DataFrame(
-            columns=[
-                "time_window",
-                "ok_count",
-                "redirect_count",
-                "not_found_count",
-                "system_error_count",
-                "total_count",
-                "total_bytes",
-                "avg_bytes",
-            ]
+            {
+                "time_window": pd.Series(dtype="datetime64[ns]"),
+                "ok_count": pd.Series(dtype="int64"),
+                "redirect_count": pd.Series(dtype="int64"),
+                "not_found_count": pd.Series(dtype="int64"),
+                "system_error_count": pd.Series(dtype="int64"),
+                "total_count": pd.Series(dtype="int64"),
+                "total_bytes": pd.Series(dtype="int64"),
+                "avg_bytes": pd.Series(dtype="float64"),
+            }
         )
 
         # Process in chunks
@@ -248,14 +246,6 @@ def main(input_file: str) -> None:
                     )
                     df.loc[mask, "status_category"] = category
 
-                # Add metadata columns (use categorical for repeated values)
-                df["project_id"] = project_id
-                df["region"] = pd.Categorical([metadata["region"]] * len(df))
-                df["nodeName"] = pd.Categorical([metadata["node_name"]] * len(df))
-                df["hostname"] = pd.Categorical([metadata["hostname"]] * len(df))
-                df["provider"] = pd.Categorical([metadata["provider"]] * len(df))
-                df["sync_time"] = datetime.now(UTC)
-
                 # Handle emergency logs (status 500+) without creating copy
                 emergency_mask = df["status"] >= 500
                 if emergency_mask.any():
@@ -269,35 +259,26 @@ def main(input_file: str) -> None:
                             + df["status"].astype(str)
                         )
 
-                        # Create emergency DataFrame with required columns
-                        emergency_df = pd.DataFrame()
-                        for field in EMERGENCY_SCHEMA:
-                            if field.name in df.columns:
-                                emergency_df[field.name] = df.loc[
-                                    emergency_mask, field.name
-                                ]
+                        # Create emergency DataFrame
+                        emergency_df = pd.DataFrame(
+                            {
+                                "project_id": metadata["project_id"],
+                                "region": metadata["region"],
+                                "nodeName": metadata["node_name"],
+                                "provider": metadata["provider"],
+                                "hostname": metadata["hostname"],
+                                "timestamp": df.loc[emergency_mask, "timestamp"],
+                                "version": "1.0",
+                                "message": message_components[emergency_mask],
+                                "remote_log_id": "emergency_logs",
+                                "alert_level": "ERROR",
+                                "ip": df.loc[emergency_mask, "ip"],
+                                "sync_time": datetime.now(UTC),
+                            }
+                        )
 
-                        # Add emergency-specific fields efficiently
-                        emergency_df["version"] = "1.0"
-                        emergency_df["message"] = message_components[emergency_mask]
-                        emergency_df["remote_log_id"] = (
-                            f"{project_id}.log_analytics.emergency_logs"
-                        )
-                        emergency_df["alert_level"] = "ERROR"
-
-                        # Upload emergency chunk to BigQuery
-                        emergency_table_id = f"{project_id}.{dataset}.emergency_logs"
-                        emergency_job_config = bigquery.LoadJobConfig(
-                            schema=EMERGENCY_SCHEMA,
-                            write_disposition="WRITE_APPEND",
-                            create_disposition="CREATE_NEVER",
-                        )
-                        upload_to_bigquery(
-                            bq_client,
-                            emergency_df,
-                            emergency_table_id,
-                            emergency_job_config,
-                        )
+                        # Upload emergency chunk to PostgreSQL
+                        upload_to_postgres(conn, emergency_df, "emergency_logs")
                         total_emergency += len(emergency_df)
                     except Exception as e:
                         logger.error(
@@ -310,37 +291,45 @@ def main(input_file: str) -> None:
                             del message_components
 
                 # Aggregate chunk data efficiently
-                df["time_window"] = df["timestamp"].dt.floor("h")
+                df["time_window"] = (
+                    df["timestamp"].dt.floor("h").dt.tz_localize(None)
+                )  # Remove timezone info
 
-                # Calculate status counts directly
+                # Calculate status counts directly with explicit types
                 status_counts = pd.DataFrame(
                     {
-                        "ok_count": [(df["status_category"] == "OK").sum()],
-                        "redirect_count": [(df["status_category"] == "Redirect").sum()],
-                        "not_found_count": [
-                            (df["status_category"] == "Not Found").sum()
-                        ],
-                        "system_error_count": [
-                            (df["status_category"] == "SystemError").sum()
-                        ],
-                        "total_count": [len(df)],
+                        "ok_count": pd.Series(
+                            [(df["status_category"] == "OK").sum()], dtype="int64"
+                        ),
+                        "redirect_count": pd.Series(
+                            [(df["status_category"] == "Redirect").sum()], dtype="int64"
+                        ),
+                        "not_found_count": pd.Series(
+                            [(df["status_category"] == "Not Found").sum()],
+                            dtype="int64",
+                        ),
+                        "system_error_count": pd.Series(
+                            [(df["status_category"] == "SystemError").sum()],
+                            dtype="int64",
+                        ),
+                        "total_count": pd.Series([len(df)], dtype="int64"),
                     }
                 )
 
-                # Calculate bytes statistics
+                # Calculate bytes statistics with explicit types
                 bytes_stats = pd.DataFrame(
                     {
-                        "total_bytes": [df["bytes"].sum()],
-                        "avg_bytes": [df["bytes"].mean()],
+                        "total_bytes": pd.Series([df["bytes"].sum()], dtype="int64"),
+                        "avg_bytes": pd.Series([df["bytes"].mean()], dtype="float64"),
                     }
                 )
 
-                # Combine all aggregations
+                # Combine all aggregations with explicit time_window type
                 chunk_agg = pd.DataFrame(
                     {
-                        "time_window": [
-                            df["time_window"].iloc[0]
-                        ],  # All rows in chunk have same window
+                        "time_window": pd.Series(
+                            [df["time_window"].iloc[0]], dtype="datetime64[ns]"
+                        ),
                         **status_counts,
                         **bytes_stats,
                     }
@@ -374,24 +363,14 @@ def main(input_file: str) -> None:
         if not agg_df.empty:
             try:
                 # Add metadata to aggregated data
-                agg_df["project_id"] = project_id
+                agg_df["project_id"] = metadata["project_id"]
                 agg_df["region"] = metadata["region"]
                 agg_df["nodeName"] = metadata["node_name"]
                 agg_df["hostname"] = metadata["hostname"]
                 agg_df["provider"] = metadata["provider"]
 
-                # Ensure correct columns and order for aggregates
-                agg_df = agg_df[[col.name for col in AGGREGATES_SCHEMA]]
-
-                # Upload aggregated data to BigQuery
-                agg_table_id = f"{project_id}.{dataset}.log_aggregates"
-                agg_job_config = bigquery.LoadJobConfig(
-                    schema=AGGREGATES_SCHEMA,
-                    write_disposition="WRITE_APPEND",
-                    create_disposition="CREATE_NEVER",
-                )
-
-                upload_to_bigquery(bq_client, agg_df, agg_table_id, agg_job_config)
+                # Upload aggregated data to PostgreSQL
+                upload_to_postgres(conn, agg_df, "log_aggregates")
                 logger.info(
                     f"Node {node_id}: Uploaded {len(agg_df)} aggregated log entries"
                 )
@@ -412,19 +391,28 @@ def main(input_file: str) -> None:
         # Clean up
         if "con" in locals():
             con.close()
-        if "bq_client" in locals():
-            bq_client.close()
+        if "conn" in locals():
+            conn.close()
         if "agg_df" in locals():
             del agg_df
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process and aggregate log data")
+    parser.add_argument("--config", help="Path to config.yaml file", required=True)
     parser.add_argument(
         "--input-file",
         help="Path to the input log file (can also be set via INPUT_FILE env var)",
     )
+    parser.add_argument(
+        "--exit",
+        help="Exit immediately (so dependencies are cached)",
+        action="store_true",
+    )
     args = parser.parse_args()
+
+    if args.exit:
+        exit(0)
 
     input_file = args.input_file or os.environ.get("INPUT_FILE")
     if not input_file:
@@ -432,4 +420,4 @@ if __name__ == "__main__":
             "Input file must be provided via --input-file argument or INPUT_FILE environment variable"
         )
 
-    main(input_file)
+    main(args.config, input_file)
