@@ -3,7 +3,8 @@ set -e
 
 # Default values
 DEFAULT_REGISTRY="ghcr.io"
-DEFAULT_REPOSITORY="bacalhau-project/duckdb-plus-cosmos"
+DEFAULT_ORG="bacalhau-project"
+DEFAULT_CONTAINER="duckdb-plus-cosmos"
 DEFAULT_PLATFORMS="linux/amd64,linux/arm64"
 DEFAULT_TAG="latest"
 
@@ -34,18 +35,20 @@ show_help() {
     echo
     echo "Options:"
     echo "  -r, --registry      Container registry (default: $DEFAULT_REGISTRY)"
-    echo "  -p, --repository    Repository name (default: $DEFAULT_REPOSITORY)"
+    echo "  -o, --org           Organization name (default: $DEFAULT_ORG)"
+    echo "  -c, --container     Container name (default: $DEFAULT_CONTAINER)"
     echo "  -t, --tag          Image tag (default: $DEFAULT_TAG)"
     echo "  -a, --platforms    Platforms to build for (default: $DEFAULT_PLATFORMS)"
     echo "  -h, --help         Show this help message"
     echo
     echo "Example:"
-    echo "  $0 --registry ghcr.io --repository bacalhau-project/duckdb-plus-cosmos --tag latest"
+    echo "  $0 --registry ghcr.io --org bacalhau-project --container duckdb-plus-cosmos --tag latest"
 }
 
 # Parse arguments
 REGISTRY=$DEFAULT_REGISTRY
-REPOSITORY=$DEFAULT_REPOSITORY
+ORG=$DEFAULT_ORG
+CONTAINER=$DEFAULT_CONTAINER
 TAG=$DEFAULT_TAG
 PLATFORMS=$DEFAULT_PLATFORMS
 
@@ -57,8 +60,13 @@ while [[ $# -gt 0 ]]; do
             shift
             shift
             ;;
-        -p|--repository)
-            REPOSITORY="$2"
+        -o|--org)
+            ORG="$2"
+            shift
+            shift
+            ;;
+        -c|--container)
+            CONTAINER="$2"
             shift
             shift
             ;;
@@ -102,8 +110,8 @@ fi
 docker buildx use $BUILDER_NAME
 
 # Full image name
-IMAGE_NAME="$REGISTRY/$REPOSITORY:$TAG"
-TIMESTAMP_TAG="$REGISTRY/$REPOSITORY:$(date +%Y%m%d%H%M)"
+IMAGE_NAME="$REGISTRY/$ORG/$CONTAINER:$TAG"
+TIMESTAMP_TAG="$REGISTRY/$ORG/$CONTAINER:$(date +%Y%m%d%H%M)"
 
 echo "Building image: $IMAGE_NAME"
 echo "Timestamp tag: $TIMESTAMP_TAG"
@@ -114,9 +122,12 @@ docker buildx build \
     --platform "$PLATFORMS" \
     --tag "$IMAGE_NAME" \
     --tag "$TIMESTAMP_TAG" \
+    --label "org.opencontainers.image.source=https://github.com/$USERNAME/bacalhau-examples" \
+    --label "org.opencontainers.image.description=DuckDB plus Cosmos image for log processing" \
+    --label "org.opencontainers.image.licenses=Apache-2.0" \
     --push \
     .
 
 echo "Build complete! Images pushed to:"
 echo "  $IMAGE_NAME"
-echo "  $TIMESTAMP_TAG" 
+echo "  $TIMESTAMP_TAG"

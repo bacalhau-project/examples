@@ -34,7 +34,7 @@ variable "subscription_id" {
 variable "instances_per_region" {
   type        = number
   description = "Number of compute instances to deploy per region"
-  default     = 5
+  default     = 1
 }
 
 variable "resource_group_region" {
@@ -53,4 +53,16 @@ variable "locations" {
 variable "bacalhau_config_file_path" {
   type        = string
   description = "Path to the Bacalhau config file"
+}
+
+variable "resource_group_name" {
+  description = "Optional override for the resource group name. If not provided, will be auto-generated using app_tag and timestamp"
+  type        = string
+  default     = null
+}
+
+variable "data_disk_size_gb" {
+  description = "Size of the data disk for Bacalhau in GB"
+  type        = number
+  default     = 100
 }

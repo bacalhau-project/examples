@@ -14,11 +14,16 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Install packages in the virtual environment
 RUN uv pip install --upgrade pip
 
-# Copy the initial log process script in so we can run and pre-cache the dependencies
-COPY log_process_0.py /log_process_0.py
-RUN uv run -s /log_process_0.py --exit
+COPY access-log-generator.py /tmp/access-log-generator.py
+COPY log_generator_config.yaml /tmp/default_config.yaml
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Set default configuration path
+ENV LOG_GENERATOR_CONFIG_PATH=/tmp/default_config.yaml
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Create logs directory
+RUN mkdir -p /logs
+VOLUME /logs
+
+RUN uv run -s /tmp/access-log-generator.py --exit
+
+CMD ["uv", "run", "-s", "/tmp/access-log-generator.py"]
