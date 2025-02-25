@@ -160,13 +160,34 @@ def sanitize_ip(ip_str):
         return None
 
 
-def main(config_path: str, input_file: str) -> None:
+def main(config_path: str = None, input_file: str = None) -> None:
+    """
+    Main processing function. Prefers environment variables over passed arguments.
+    """
+    # Get config path from environment or argument
+    config_path = (
+        os.environ.get("CONFIG_PATH", config_path) or "/var/log/app/config.yaml"
+    )
+    if not os.path.exists(config_path):
+        raise ValueError(f"Config file not found at {config_path}")
+
+    # Get input file from environment or argument
+    input_file = os.environ.get("INPUT_FILE", input_file)
+    if not input_file:
+        raise ValueError(
+            "Input file must be provided via INPUT_FILE environment variable or --input-file argument"
+        )
+
+    # Get node ID from environment
     node_id = os.environ.get("NODE_ID", "unknown")
     logger.info(f"Starting processing on node {node_id}")
 
     try:
         # Read configuration
-        pg_config = read_config(config_path)
+        config = read_config(config_path)
+        pg_config = config["postgresql"]
+
+        # Get chunk size from environment or use default
         chunk_size = int(os.environ.get("CHUNK_SIZE", "10000"))
 
         # Create PostgreSQL connection

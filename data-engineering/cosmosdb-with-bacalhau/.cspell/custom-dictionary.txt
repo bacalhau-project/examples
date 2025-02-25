@@ -6,7 +6,12 @@ dotenv
 drltab
 duckdb
 gethostname
+iloc
+IRUSR
+IWUSR
 levelname
+makedirs
 multiarch
 psql
+readwrite
 venv
