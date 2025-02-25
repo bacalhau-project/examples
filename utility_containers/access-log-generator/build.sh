@@ -33,15 +33,16 @@ success() {
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 BUILDER_NAME="${BUILDER_NAME:-multiarch-builder}"
-REGISTRY="${REGISTRY:-docker.io}"
+REGISTRY="${REGISTRY:-ghcr.io}"
 VERSION_TAG="${VERSION_TAG:-$(date +"%y%m%d%H%M")}"
 SKIP_PUSH="${SKIP_PUSH:-false}"
 BUILD_CACHE="${BUILD_CACHE:-true}"
-REQUIRE_LOGIN="${REQUIRE_LOGIN:-false}"
+REQUIRE_LOGIN="${REQUIRE_LOGIN:-true}"
+GITHUB_USER="${GITHUB_USER:-$(git config user.name || echo "GITHUB_USER_NOT_SET")}"
 
 # If IMAGE_NAME is not set, use the current directory name
 if [ -z "${IMAGE_NAME:-}" ]; then
-    IMAGE_NAME="bacalhauproject/$(basename "$(pwd)")"
+    IMAGE_NAME="bacalhau-project/$(basename "$(pwd)")"
     log "No IMAGE_NAME provided, using directory name: $IMAGE_NAME"
 fi
 
@@ -53,8 +54,19 @@ cleanup() {
 }
 
 check_docker_login() {
-    if [ "$REQUIRE_LOGIN" = "true" ] && ! docker system info | grep -q "Username"; then
-        error "Not logged into Docker registry. Please run 'docker login' first or set REQUIRE_LOGIN=false to skip this check."
+    log "Checking if GITHUB_TOKEN and GITHUB_USER are set"
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        error "GITHUB_TOKEN is not set"
+    fi
+    if [ -z "${GITHUB_USER:-}" ]; then
+        error "GITHUB_USER is not set"
+    fi
+
+    log "Logging in to Docker registry..."
+    if echo "$GITHUB_TOKEN" | docker login "$REGISTRY" --username "$GITHUB_USER" --password-stdin; then
+        log "Successfully logged in to Docker registry"
+    else
+        error "Failed to log in to Docker registry"
     fi
 }
 
@@ -119,7 +131,8 @@ generate_tags() {
     
     # If in git repo, add git commit hash tag
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        local git_hash=$(git rev-parse --short HEAD)
+        local git_hash
+        git_hash=$(git rev-parse --short HEAD)
         tags+=("$base_tag:$git_hash")
     fi
 
@@ -138,11 +151,16 @@ build_and_push_images() {
     
     log "Building for platforms: $platforms"
     
+    # Create the build_args array
     local build_args=(
         --platform "$platforms"
         --file "$DOCKERFILE"
-        $tag_args
     )
+
+    # Add tags to build_args (splitting the string into separate arguments)
+    for tag_arg in $tag_args; do
+        build_args+=("$tag_arg")
+    done
 
     # Add cache settings
     if [ "$BUILD_CACHE" = "true" ]; then
@@ -158,7 +176,7 @@ build_and_push_images() {
         build_args+=(--load)
     fi
 
-    # Execute build
+    # Execute build (add the path argument ".")
     if ! docker buildx build "${build_args[@]}" .; then
         error "Build failed for $platforms"
     fi

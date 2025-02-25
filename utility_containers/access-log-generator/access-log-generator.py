@@ -1,3 +1,18 @@
+#!/usr/bin/env uv run -s
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "faker==33.3.1",
+#     "python-dateutil==2.9.0.post0",
+#     "pytz==2024.2",
+#     "pyyaml==6.0.2",
+#     "setuptools==75.8.0",
+#     "six==1.17.0",
+#     "typing-extensions==4.12.2",
+#     "wheel==0.45.1",
+# ]
+# ///
+
 import argparse
 import base64
 import gzip
@@ -7,6 +22,7 @@ import os
 import random
 import shutil
 import sys
+import threading
 import time
 import uuid
 from datetime import datetime
@@ -1017,6 +1033,9 @@ class AccessLogGenerator:
                 f"Starting log generation. Logs will be written to: {self.log_file}"
             )
 
+            # Start disk space monitoring
+            monitor_disk_space(self.output_dir)
+
             if self.pre_warm:
                 self._pre_warm_traffic()
 
@@ -1062,6 +1081,83 @@ class AccessLogGenerator:
             sys.exit(1)
 
 
+def monitor_disk_space(
+    output_dir: Path, min_free_gb: float = 1.0, check_interval: int = 300
+):
+    """
+    Monitor disk space and delete oldest log files if free space falls below threshold.
+
+    Args:
+        output_dir: Directory containing log files
+        min_free_gb: Minimum free space in GB
+        check_interval: Check interval in seconds (default: 300 = 5 minutes)
+    """
+
+    def _check_disk_space():
+        while True:
+            try:
+                # Get disk usage statistics
+                disk_usage = shutil.disk_usage(output_dir)
+                free_gb = disk_usage.free / (1024 * 1024 * 1024)  # Convert bytes to GB
+
+                # Log current disk space
+                logger.info(f"Disk space monitor: {free_gb:.2f}GB free")
+
+                # If free space is below threshold, delete oldest log files
+                if free_gb < min_free_gb:
+                    logger.warning(
+                        f"Low disk space: {free_gb:.2f}GB free, need {min_free_gb}GB"
+                    )
+
+                    # Get all log files in the directory
+                    log_files = []
+                    for ext in [".log", ".log.*", ".gz"]:
+                        log_files.extend(output_dir.glob(f"*{ext}"))
+
+                    # Sort by modification time (oldest first)
+                    log_files.sort(key=lambda x: x.stat().st_mtime)
+
+                    # Delete oldest files until we have enough space or no more files
+                    for log_file in log_files:
+                        if free_gb >= min_free_gb:
+                            break
+
+                        file_size_gb = log_file.stat().st_size / (1024 * 1024 * 1024)
+                        logger.warning(
+                            f"Deleting old log file: {log_file} ({file_size_gb:.2f}GB)"
+                        )
+
+                        try:
+                            log_file.unlink()
+                            free_gb += file_size_gb
+                        except Exception as e:
+                            logger.error(f"Failed to delete {log_file}: {e}")
+
+                    # Check if we've freed up enough space
+                    disk_usage = shutil.disk_usage(output_dir)
+                    free_gb = disk_usage.free / (1024 * 1024 * 1024)
+                    logger.info(f"After cleanup: {free_gb:.2f}GB free")
+
+                    if free_gb < min_free_gb:
+                        logger.error(
+                            f"Still low on disk space after cleanup: {free_gb:.2f}GB free"
+                        )
+
+            except Exception as e:
+                logger.error(f"Error in disk space monitor: {e}")
+
+            # Sleep for the specified interval
+            time.sleep(check_interval)
+
+    # Start the monitoring thread
+    monitor_thread = threading.Thread(target=_check_disk_space, daemon=True)
+    monitor_thread.start()
+    logger.info(
+        f"Disk space monitor started (min: {min_free_gb}GB, interval: {check_interval}s)"
+    )
+    return monitor_thread
+
+
 def main():
     parser = argparse.ArgumentParser(description="Access Log Generator")
     parser.add_argument(
@@ -1076,21 +1172,36 @@ def main():
         help="Override the log directory specified in config",
     )
 
+    parser.add_argument(
+        "--exit",
+        action="store_true",
+        help="Exit immediately - used just for pre-caching dependencies",
+    )
+
     args = parser.parse_args()
+
+    if args.exit:
+        print("Exiting...")
+        return
 
     # Check if we have environment variables for config
     if (
         os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64") is None
         and os.environ.get("LOG_GENERATOR_CONFIG_YAML") is None
     ):
-        # If no environment variables, require config file
-        if args.config is None:
+        # If no environment variables with content, check for path environment variable
+        config_path_env = os.environ.get("LOG_GENERATOR_CONFIG_PATH")
+        if config_path_env:
+            config_path = Path(config_path_env)
+            print(f"Using configuration from LOG_GENERATOR_CONFIG_PATH: {config_path}")
+        elif args.config is None:
             parser.error(
                 "Configuration file is required when not using environment variables"
             )
-        config_path = Path(args.config)
+        else:
+            config_path = Path(args.config)
     else:
-        # Use dummy path when using environment variables
+        # Use dummy path when using environment variables with content
         config_path = Path("dummy_path")
 
     config = load_config(config_path)

@@ -106,7 +106,25 @@ def read_config(config_path: str) -> dict:
     return config
 
 
-def main(config_path: str, input_file: str) -> None:
+def main(config_path: str = None, input_file: str = None) -> None:
+    """
+    Main processing function. Prefers environment variables over passed arguments.
+    """
+    # Get config path from environment or argument
+    config_path = (
+        os.environ.get("CONFIG_PATH", config_path) or "/var/log/app/config.yaml"
+    )
+    if not os.path.exists(config_path):
+        raise ValueError(f"Config file not found at {config_path}")
+
+    # Get input file from environment or argument
+    input_file = os.environ.get("INPUT_FILE", input_file)
+    if not input_file:
+        raise ValueError(
+            "Input file must be provided via INPUT_FILE environment variable or --input-file argument"
+        )
+
+    # Get node ID from environment
     node_id = os.environ.get("NODE_ID", "unknown")
     logger.info(f"Starting processing on node {node_id}")
 
@@ -114,6 +132,9 @@ def main(config_path: str, input_file: str) -> None:
         # Read configuration
         config = read_config(config_path)
         pg_config = config["postgresql"]
+
+        # Get chunk size from environment or use default
+        chunk_size = int(os.environ.get("CHUNK_SIZE", "10000"))
 
         # Create PostgreSQL connection
         conn = psycopg2.connect(
@@ -128,7 +149,6 @@ def main(config_path: str, input_file: str) -> None:
         # Create DuckDB connection
         con = duckdb.connect()
 
-        chunk_size = int(os.environ.get("CHUNK_SIZE", "10000"))
         total_rows = 0
         chunk_num = 0
         failed_chunks = []
@@ -136,6 +156,7 @@ def main(config_path: str, input_file: str) -> None:
         # Process in chunks
         while True:
             try:
+                logger.info(f"Node {node_id}: Reading chunk {chunk_num}")
                 df = con.execute(
                     """
                     SELECT 
@@ -148,11 +169,17 @@ def main(config_path: str, input_file: str) -> None:
 
                 # Break if no more data
                 if len(df) == 0:
+                    logger.info(
+                        f"Node {node_id}: No more data found after {chunk_num} chunks"
+                    )
                     break
 
                 # Add upload timestamp (using timezone-aware datetime)
                 df["upload_time"] = datetime.now(UTC)
 
+                logger.info(
+                    f"Node {node_id}: Uploading chunk {chunk_num} ({len(df)} rows)"
+                )
                 # Upload chunk to PostgreSQL
                 upload_to_postgres(conn, df)
 
@@ -191,7 +218,10 @@ def main(config_path: str, input_file: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Upload raw logs to PostgreSQL")
-    parser.add_argument("--config", help="Path to config.yaml file", required=True)
+    parser.add_argument(
+        "--config",
+        help="Path to config.yaml file (can also be set via CONFIG_PATH env var, defaults to /var/log/app/config.yaml)",
+    )
     parser.add_argument(
         "--input-file",
         help="Path to the input log file (can also be set via INPUT_FILE env var)",
@@ -206,10 +236,7 @@ if __name__ == "__main__":
     if args.exit:
         exit(0)
 
-    input_file = args.input_file or os.environ.get("INPUT_FILE")
-    if not input_file:
-        raise ValueError(
-            "Input file must be provided via --input-file argument or INPUT_FILE environment variable"
-        )
-
-    main(args.config, input_file)
+    main(
+        config_path=args.config,
+        input_file=args.input_file,
+    )

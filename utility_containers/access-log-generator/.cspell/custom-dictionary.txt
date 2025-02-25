@@ -1,3 +1,9 @@
+bacalhau
 bacalhauproject
+buildcache
+buildx
 levelname
 mult
+multiarch
+venv
+YYMMDDHHMM
