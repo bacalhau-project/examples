@@ -211,8 +211,16 @@ main() {
     build_and_push_images "$PLATFORMS"
     
     success "Build completed successfully"
+    
+    # Pull the latest image after successful build
+    if [ "$SKIP_PUSH" = "false" ]; then
+        log "Pulling latest image..."
+        docker pull "$REGISTRY/$IMAGE_NAME:latest" || warn "Failed to pull latest image"
+    fi
+    
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
+    log "docker pull $REGISTRY/$IMAGE_NAME:latest"
 }
 
 # Execute main function
