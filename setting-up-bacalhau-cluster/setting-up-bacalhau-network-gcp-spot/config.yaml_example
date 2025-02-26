@@ -1,0 +1,15 @@
+max_instances: 20
+ssh_key_name: BacalhauSpotInstancesKey
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+  - europe-central2:
+      image: auto
+      machine_type: n1-standard-1
+      node_count: auto
+  - europe-north1:
+      image: projects/debian-cloud/global/images/family/debian-12
+      machine_type: n1-standard-1
+      node_count: auto

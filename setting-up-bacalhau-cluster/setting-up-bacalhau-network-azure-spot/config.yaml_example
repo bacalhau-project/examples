@@ -1,0 +1,47 @@
+max_instances: 1
+ssh_key_name: BacalhauSpotInstancesKey
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+  - westeurope:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - northeurope:
+      image: Canonical:ubuntu-24_04-lts:server:latest
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - eastus:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - eastus2:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - centralus:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - northcentralus:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - westus2:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - westcentralus:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - westus3:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
+  - polandcentral:
+      image: auto
+      machine_type: Standard_B2s_v2
+      node_count: auto
