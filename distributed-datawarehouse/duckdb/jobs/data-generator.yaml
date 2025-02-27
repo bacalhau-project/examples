@@ -1,0 +1,45 @@
+# Run with: bacalhau job run -V Region=us -V Events=3000 -V StartDate=2024-01-01 -V EndDate=2024-12-31 -V RotateInterval=month data-generator.yaml
+Name: Transaction Data Generator
+Type: ops
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Env:
+      PYTHONUNBUFFERED: "1"
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/data-generator:latest
+        Parameters:
+          - generate
+          - --type
+          - transaction
+          - --count
+          - "{{.Events}}"
+          - --region
+          - "{{.Region}}"
+          - --start-date
+          - "{{.StartDate}}"
+          - --end-date
+          - "{{.EndDate}}"
+          - --rotate-interval
+          - "{{.RotateInterval}}"
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: my-bucket
+        Key: "transactions/{nodeID}/"
+        Endpoint: "http://storage-local:9000"
+        Region: storage-region
+        Encoding: plain
+    ResultPaths:
+      - Name: data
+        Path: /data
+    Resources:
+      CPU: "1"
+      Memory: "1gb"

@@ -1,0 +1,54 @@
+# hourly-operations.yaml
+# Purpose: Monitors operational health and transaction patterns
+#
+# Key Features:
+# - Hourly transaction volumes
+# - Payment success/failure tracking
+# - Customer engagement metrics
+# - Operational efficiency indicators
+#
+# Run with: bacalhau job run -V Region=us hourly-operations.yaml
+
+Name: Regional Transaction Metrics
+Type: batch
+Count: 3
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+
+            SET VARIABLE local_files = (
+              SELECT LIST(file) 
+              FROM partition_by_hash('s3://my-bucket/transactions/**/*.jsonl')
+            );
+
+            SELECT 
+              DATE_PART('hour', timestamp::TIMESTAMP) as hour,
+              COUNT(*) as transaction_count,
+              SUM(total_amount) as total_volume,
+              AVG(total_amount) as avg_transaction_size,
+              COUNT(DISTINCT customer_id) as unique_customers,
+              SUM(CASE WHEN payment_status = 'completed' THEN 1 ELSE 0 END) as successful_txns,
+              SUM(CASE WHEN payment_status = 'failed' THEN 1 ELSE 0 END) as failed_txns
+            FROM read_json_auto(getvariable('local_files'))
+            GROUP BY DATE_PART('hour', timestamp::TIMESTAMP)
+            ORDER BY hour DESC;
+    Env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      DUCKDB_S3_ENDPOINT: "storage-local:9000"
+      DUCKDB_S3_USE_SSL: "false"
+    Network:
+      Type: Full

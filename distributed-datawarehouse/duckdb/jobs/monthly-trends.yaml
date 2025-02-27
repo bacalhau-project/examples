@@ -1,0 +1,56 @@
+# monthly-trends.yaml
+# Purpose: Analyzes monthly business trends and patterns
+#
+# How it works:
+# 1. Uses Bacalhau's S3 input to copy data locally
+# 2. Each node processes its local data partition
+# 3. Calculates comprehensive monthly metrics
+# 4. Shows business performance trends over time
+#
+# Run with: bacalhau job run -V Region=us monthly-trends.yaml
+
+Name: Monthly Transaction Trends
+Type: batch
+Count: 3
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            WITH monthly_data AS (
+              SELECT 
+                DATE_TRUNC('month', CAST(timestamp AS TIMESTAMP)) as month,
+                COUNT(*) as total_transactions,
+                SUM(total_amount) as total_revenue,
+                COUNT(DISTINCT customer_id) as unique_customers,
+                SUM(total_amount) / COUNT(DISTINCT customer_id) as revenue_per_customer,
+                AVG(total_amount) as avg_transaction_value,
+                COUNT(DISTINCT product_category) as active_categories,
+                MODE(payment_method) as top_payment_method
+              FROM read_json_auto('/inputs/**/*.jsonl')
+              GROUP BY DATE_TRUNC('month', CAST(timestamp AS TIMESTAMP))
+            )
+            SELECT *
+            FROM monthly_data
+            ORDER BY month DESC;
+    InputSources:
+      - Target: /inputs
+        Source:
+          Type: s3
+          Params:
+            Bucket: my-bucket
+            Key: "transactions/*"
+            Endpoint: "http://storage-local:9000"
+            Region: storage-region
+            Filter: ".*jsonl$"
+    Network:
+      Type: None # No network needed since data is local

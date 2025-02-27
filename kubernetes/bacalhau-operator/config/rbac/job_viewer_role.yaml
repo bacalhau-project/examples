@@ -1,0 +1,20 @@
+# permissions for end users to view jobs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: job-viewer-role
+rules:
+- apiGroups:
+  - core.bacalhau.org
+  resources:
+  - bacalhaujobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - core.bacalhau.org
+  resources:
+  - bacalhaujobs/status
+  verbs:
+  - get

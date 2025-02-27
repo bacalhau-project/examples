@@ -48,3 +48,8 @@ variable "bacalhau_config_file" {
   description = "Bacalhau config file"
   type        = string
 }
+
+variable "data_disk_size_gb" {
+  description = "Size of the data disk for Bacalhau in GB"
+  type        = number
+}

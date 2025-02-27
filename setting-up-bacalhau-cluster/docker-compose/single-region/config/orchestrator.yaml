@@ -1,0 +1,25 @@
+Orchestrator:
+  Enabled: true
+WebUI:
+  Enabled: true
+UpdateConfig:
+  Interval: 0
+JobDefaults:
+  Batch:
+    Task:
+      Publisher:
+        Type: s3
+        Params:
+          Bucket: "my-bucket"
+          Key: jobs/{jobID}/{executionID}
+          Endpoint: "http://storage:9000"
+          Region: "storage-region"
+  Ops:
+    Task:
+      Publisher:
+        Type: s3
+        Params:
+          Bucket: "my-bucket"
+          Key: jobs/{jobID}/{executionID}
+          Endpoint: "http://storage:9000"
+          Region: "storage-region"

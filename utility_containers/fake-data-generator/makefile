@@ -26,14 +26,11 @@ help: ## Display this help.
 ##@ Build
 
 .PHONY: build
-build: ## Build the Docker image
-	docker buildx build --platform linux/amd64,linux/arm64 -t ${IMG}:${VERSION} .
-
-.PHONY: build-local
-build-local: ## Build the Docker image for local architecture only
-	docker build -t ${IMG}:${VERSION} -t ${IMG}:latest .
-
-##@ Release
+build:  ## Build the Docker image for local architecture only
+	docker buildx build \
+		-t ${IMG}:${VERSION} \
+		-t ${IMG}:latest \
+		--load .
 
 .PHONY: push
 push: ## Push the Docker image
@@ -41,12 +38,6 @@ push: ## Push the Docker image
 		-t ${IMG}:${VERSION} \
 		-t ${IMG}:latest \
 		--push .
-
-.PHONY: push-local
-push-local: ## Push the Docker image for local architecture only
-	docker push ${IMG}:${VERSION}
-	docker tag ${IMG}:${VERSION} ${IMG}:latest
-	docker push ${IMG}:latest
 
 ##@ Development
 
@@ -85,6 +76,7 @@ test-generate: ## Test the generate command
 	@mkdir -p test/generate/csv
 	@mkdir -p test/generate/timeseries
 	@mkdir -p test/generate/all
+	@mkdir -p test/generate/rotation
 
 	@echo "Testing JSON generation..."
 	@docker run --rm -v $(PWD)/test/generate/json:/data ${IMG}:${VERSION} generate \
@@ -115,8 +107,38 @@ test-generate: ## Test the generate command
 	@echo "Testing time-series generation..."
 	@docker run --rm -v $(PWD)/test/generate/timeseries:/data ${IMG}:${VERSION} generate \
 		--type transaction \
-		--time-series \
 		--days 1
+
+	@echo "Testing rotation intervals..."
+	@docker run --rm -v $(PWD)/test/generate/rotation:/data ${IMG}:${VERSION} generate \
+		--type transaction \
+		--days 2 \
+		--count 100 \
+		--rotate-interval hour \
+		--format json
+	@echo "Verifying hourly rotation..."
+	@file_count=$$(ls test/generate/rotation/transaction_events_*.json 2>/dev/null | wc -l); \
+	if [ $$file_count -lt 24 ]; then \
+		echo "Error: Expected at least 24 hourly files, got $$file_count"; \
+		exit 1; \
+	fi
+	@# Skip first and last files when checking counts
+	@files=$$(ls test/generate/rotation/transaction_events_*.json | sort); \
+	first_file=$$(echo "$$files" | head -n1); \
+	last_file=$$(echo "$$files" | tail -n1); \
+	for file in $$files; do \
+		if [ "$$file" != "$$first_file" ] && [ "$$file" != "$$last_file" ]; then \
+			if ! jq . "$$file" >/dev/null 2>&1; then \
+				echo "Error: Invalid JSON in $$file"; \
+				exit 1; \
+			fi; \
+			events=$$(jq '. | length' "$$file"); \
+			if [ $$events -lt 85 ] || [ $$events -gt 115 ]; then \
+				echo "Error: Expected ~100 events per hour, got $$events in $$(basename $$file)"; \
+				exit 1; \
+			fi; \
+		fi; \
+	done
 
 	@echo "Testing all types generation..."
 	@docker run --rm -v $(PWD)/test/generate/all:/data ${IMG}:${VERSION} generate \
@@ -144,15 +166,16 @@ test-stream: ## Test the stream command
 	@mkdir -p test/stream/json
 	@mkdir -p test/stream/csv
 	@mkdir -p test/stream/all
+	@mkdir -p test/stream/rotation
 
-	@echo "Testing JSON streaming..."
+	@echo "Testing JSONL streaming..."
 	@docker run --rm -v $(PWD)/test/stream/json:/data ${IMG}:${VERSION} stream \
 		--rate 10 \
 		--type transaction \
 		--duration 2 \
-		--format json
+		--format jsonl
 	@echo "Verifying JSON stream..."
-	@if [ ! -f test/stream/json/transaction_stream.json ]; then \
+	@if [ ! -f test/stream/json/transaction_events.jsonl ]; then \
 		echo "Error: Transaction stream JSON file not found"; \
 		exit 1; \
 	fi
@@ -162,13 +185,44 @@ test-stream: ## Test the stream command
 			echo "Error: Invalid JSON line in stream"; \
 			exit 1; \
 		fi; \
-	done < test/stream/json/transaction_stream.json
+	done < test/stream/json/transaction_events.jsonl
 	@# Count lines to verify rate
-	@lines=$$(wc -l < test/stream/json/transaction_stream.json); \
+	@lines=$$(wc -l < test/stream/json/transaction_events.jsonl); \
 	if [ $$lines -lt 15 ]; then \
 		echo "Error: Expected at least 15 events (2 seconds at 10/sec), got $$lines"; \
 		exit 1; \
 	fi
+
+	@echo "Testing stream rotation..."
+	@docker run --rm -v $(PWD)/test/stream/rotation:/data ${IMG}:${VERSION} stream \
+		--rate 10 \
+		--type transaction \
+		--duration 180 \
+		--rotate-interval minute \
+		--format jsonl
+	@echo "Verifying minute rotation..."
+	@file_count=$$(ls test/stream/rotation/transaction_events_*.jsonl 2>/dev/null | wc -l); \
+	if [ $$file_count -lt 2 ]; then \
+		echo "Error: Expected at least 2 minute files, got $$file_count"; \
+		exit 1; \
+	fi
+	@# Skip first and last files when checking counts
+	@files=$$(ls test/stream/rotation/transaction_events_*.jsonl | sort); \
+	first_file=$$(echo "$$files" | head -n1); \
+	last_file=$$(echo "$$files" | tail -n1); \
+	for file in $$files; do \
+		if [ "$$file" != "$$first_file" ] && [ "$$file" != "$$last_file" ]; then \
+			if ! jq . "$$file" >/dev/null 2>&1; then \
+				echo "Error: Invalid JSON in $$file"; \
+				exit 1; \
+			fi; \
+			lines=$$(wc -l < "$$file"); \
+			if [ $$lines -lt 300 ]; then \
+				echo "Error: Expected at least 300 events per file (30s at 10/sec), got $$lines in $$(basename $$file)"; \
+				exit 1; \
+			fi; \
+		fi; \
+	done
 
 	@echo "Testing CSV streaming..."
 	@docker run --rm -v $(PWD)/test/stream/csv:/data ${IMG}:${VERSION} stream \
@@ -177,7 +231,7 @@ test-stream: ## Test the stream command
 		--duration 2 \
 		--format csv
 	@echo "Verifying CSV stream..."
-	@if [ ! -f test/stream/csv/transaction_stream.csv ]; then \
+	@if [ ! -f test/stream/csv/transaction_events.csv ]; then \
 		echo "Error: Transaction stream CSV file not found"; \
 		exit 1; \
 	fi
@@ -186,14 +240,15 @@ test-stream: ## Test the stream command
 	@docker run --rm -v $(PWD)/test/stream/all:/data ${IMG}:${VERSION} stream \
 		--rate 10 \
 		--type all \
-		--duration 2
+		--duration 2 \
+		--format jsonl
 	@echo "Verifying multi-type streams..."
 	@for type in transaction security web_access customer; do \
-		if [ ! -f test/stream/all/$${type}_stream.json ]; then \
+		if [ ! -f test/stream/all/$${type}_events.jsonl ]; then \
 			echo "Error: $$type stream file not found"; \
 			exit 1; \
 		fi; \
-		if ! jq . test/stream/all/$${type}_stream.json >/dev/null 2>&1; then \
+		if ! jq . test/stream/all/$${type}_events.jsonl >/dev/null 2>&1; then \
 			echo "Error: Invalid JSON in $$type stream"; \
 			exit 1; \
 		fi; \
@@ -201,7 +256,7 @@ test-stream: ## Test the stream command
 	@# Verify total events across all files matches expected rate
 	@total_events=0; \
 	for type in transaction security web_access customer; do \
-		events=$$(wc -l < test/stream/all/$${type}_stream.json); \
+		events=$$(wc -l < test/stream/all/$${type}_events.jsonl); \
 		total_events=$$((total_events + events)); \
 	done; \
 	if [ $$total_events -lt 15 ]; then \

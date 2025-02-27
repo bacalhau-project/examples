@@ -1,0 +1,61 @@
+# product-performance.yaml
+# Purpose: Analyzes product category performance and market share
+#
+# Key Features:
+# - Daily sales tracking by product category
+# - Market share analysis for each category
+# - Revenue and volume trends by category
+#
+# Run with: bacalhau job run -V Region=us product-performance.yaml
+
+Name: Regional Analysis
+Type: batch
+Count: 3
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+            
+            SET VARIABLE local_files = (
+              SELECT LIST(file) 
+              FROM partition_by_hash('s3://my-bucket/transactions/**/*.jsonl')
+            );
+
+            WITH regional_data AS (
+              SELECT 
+                date_trunc('day', CAST(timestamp AS TIMESTAMP)) as sale_date,
+                product_category,
+                COUNT(*) as sales_count,
+                SUM(total_amount) as revenue,
+                AVG(total_amount) as avg_sale_value
+              FROM read_json_auto(getvariable('local_files'))
+              GROUP BY 1, 2
+            )
+            SELECT 
+              sale_date,
+              product_category,
+              sales_count,
+              revenue,
+              avg_sale_value,
+              revenue / NULLIF(SUM(revenue) OVER (PARTITION BY sale_date), 0) as category_revenue_share
+            FROM regional_data
+            ORDER BY sale_date, revenue DESC;
+    Env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      DUCKDB_S3_ENDPOINT: "storage-local:9000"
+      DUCKDB_S3_USE_SSL: "false"
+    Network:
+      Type: Full

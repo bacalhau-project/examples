@@ -1,0 +1,78 @@
+# customer-segments-phase2.yaml
+# Purpose: Combines partial customer metrics into complete analysis
+#
+# How it works:
+# 1. Reads all partial metric files from phase 1
+# 2. Combines metrics per customer
+# 3. Generates final customer segmentation analysis
+# 4. Writes consolidated results back to S3
+#
+# Run with: bacalhau job run -V Region=us -V JobID=j-xxx customer-segments-phase2.yaml
+
+Name: Customer Segments Phase 2
+Type: batch
+Count: 1 # Only need one node for combination
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/duckdb:latest
+        Parameters:
+          - -c
+          - >
+            SET s3_url_style = 'path';
+
+            CREATE TABLE partial_metrics AS 
+            SELECT * FROM read_csv_auto('s3://my-bucket/results/customer-metrics/{{.JobID}}/**/*.csv');
+
+            COPY (
+              WITH combined_metrics AS (
+                SELECT 
+                  customer_id,
+                  customer_type,
+                  SUM(partial_transaction_count) as total_transactions,
+                  SUM(partial_total_spent) as total_spent,
+                  MIN(first_seen) as first_seen,
+                  MAX(last_seen) as last_seen,
+                  AVG(avg_order_value) as avg_order_value,
+                  LIST_DISTINCT(STRING_SPLIT(STRING_AGG(seen_categories, ','), ',')) as unique_categories,
+                  LIST_DISTINCT(STRING_SPLIT(STRING_AGG(used_payment_methods, ','), ',')) as unique_payment_methods
+                FROM partial_metrics
+                GROUP BY customer_id, customer_type
+              )
+              SELECT 
+                customer_type,
+                COUNT(*) as customer_count,
+                AVG(total_transactions) as avg_transactions_per_customer,
+                AVG(total_spent) as avg_customer_spend,
+                AVG(LENGTH(unique_categories)) as avg_categories_per_customer,
+                AVG(LENGTH(unique_payment_methods)) as avg_payment_methods_used,
+                AVG(EXTRACT(EPOCH FROM (last_seen - first_seen)))/86400 as avg_customer_lifetime_days,
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY total_spent) as median_customer_spend
+              FROM combined_metrics
+              GROUP BY customer_type
+              ORDER BY avg_customer_spend DESC
+            ) TO '/outputs/final_segments.csv' (HEADER, DELIMITER ',');
+    Env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      DUCKDB_S3_ENDPOINT: "storage-local:9000"
+      DUCKDB_S3_USE_SSL: "false"
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: my-bucket
+        Key: "results/customer-segments/{jobID}"
+        Endpoint: "http://storage:9000"
+        Region: storage-region
+    ResultPaths:
+      - Name: outputs
+        Path: /outputs
+    Network:
+      Type: Full
