@@ -382,13 +382,11 @@ class AccessLogGenerator:
             time_range = tuple(map(int, pattern["time"].split("-")))
             self.TRAFFIC_PATTERNS[time_range] = pattern.get("multiplier", 0.1)
 
-        self._log_configuration()
-
     def _log_configuration(self) -> None:
         """Log the configuration settings"""
-        logger = self.loggers["access"]
+        logger = self.loggers["system"]
         logger.info("Starting access log generator with configuration:")
-        logger.info(f"  Output directory: {self.output_dir}")
+        logger.info(f"  Output Directory: {self.output_dir}")
         logger.info(f"  Log file: {self.log_file}")
         logger.info(f"  Rate: {self.rate} logs/second")
         logger.info(f"  Debug mode: {'on' if self.debug else 'off'}")

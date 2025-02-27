@@ -13,5 +13,7 @@ levelname
 makedirs
 multiarch
 psql
+psycopg
+pyyaml
 readwrite
 venv
