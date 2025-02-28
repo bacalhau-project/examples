@@ -158,8 +158,8 @@ def main():
         f"az postgres server update "
         f"--name {server_name} "
         f"--resource-group {resource_group} "
-        f"--coordinator-public-network-access Enabled "  # Enable public access
-        f"--coordinator-allowed-ip-ranges {current_ip}"  # Add IP to allowed ranges
+        f"--public-network-access Enabled "  # Enable public access
+        f"--add-ip {current_ip}"  # Add IP to allowed ranges
     )
 
     print(f"\nSuccessfully added IP {current_ip} to firewall rules")
