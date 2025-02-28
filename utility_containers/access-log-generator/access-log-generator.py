@@ -26,7 +26,6 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -1398,30 +1397,8 @@ def main():
             log_dir_override_value = env_log_dir_override
             override_source = "environment variable LOG_DIR_OVERRIDE"
 
-    # Override log directory if specified by CLI or environment variable
-    if log_dir_override_value:
-        log_override_message = (
-            "info",
-            f"Overriding log directory with: {log_dir_override_value} (from {override_source})",
-        )
-        all_initial_messages.append(log_override_message)
-        # Ensure 'output' key exists, though load_config should have created it or errored.
-        if "output" not in config:
-            config["output"] = {}
-        config["output"]["directory"] = log_dir_override_value
-
     # Initialize logging with possibly overridden directory and rotation settings
     loggers = setup_logging(Path(config["output"]["directory"]), config)
-    system_logger = loggers["system"]
-
-    # Log all collected initial messages
-    for level, msg in all_initial_messages:
-        if level == "info":
-            system_logger.info(msg.strip("\n"))  # Strip newlines for cleaner log output
-        elif level == "error":
-            # Errors from load_config that didn't exit should be logged as errors.
-            # Fatal errors in load_config already printed to stderr and exited.
-            system_logger.error(msg.strip("\n"))
 
     # Pass loggers to the generator
     generator = AccessLogGenerator(config, loggers)
