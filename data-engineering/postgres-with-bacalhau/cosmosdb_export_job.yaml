@@ -17,7 +17,7 @@ Tasks:
           - CHUNK_SIZE=500000
           - PYTHON_FILE_B64={{ .python_file_b64 }}
       Type: docker
-    Name: pushing-logs-to-cosmos
+    Name: pushing-logs-to-postgres
     InputSources:
       - Source:
           Type: "localDirectory"
