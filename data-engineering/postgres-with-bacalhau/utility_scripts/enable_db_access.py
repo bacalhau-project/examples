@@ -111,16 +111,18 @@ def main():
     # Extract Azure resource details
     try:
         # Require all necessary configuration
-        if "postgresql" not in config:
-            print("Error: Missing 'postgresql' section in config.yaml")
+        if "postgresql" not in config and "postgres" not in config:
+            print("Error: Missing 'postgresql' or 'postgres' section in config.yaml")
             sys.exit(1)
+            
+        config_key = "postgresql" if "postgresql" in config else "postgres"
 
         if "azure" not in config:
             print("Error: Missing 'azure' section in config.yaml")
             sys.exit(1)
 
         required_pg_fields = ["host", "database", "user", "password", "port"]
-        missing_pg = [f for f in required_pg_fields if f not in config["postgresql"]]
+        missing_pg = [f for f in required_pg_fields if f not in config[config_key]]
         if missing_pg:
             print(
                 f"Error: Missing required PostgreSQL fields in config.yaml: {', '.join(missing_pg)}"
