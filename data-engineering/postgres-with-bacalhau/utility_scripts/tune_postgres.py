@@ -171,21 +171,17 @@ def check_postgres_settings(pg_config):
                 else:
                     logger.info("No indexes found on log_analytics.raw_logs")
 
-                # Check if table is distributed (Citus)
-                if is_citus:
-                    try:
-                        cur.execute("""
-                            SELECT logicalrelid, partmethod, partkey
-                            FROM pg_dist_partition
-                            WHERE logicalrelid = 'log_analytics.raw_logs'::regclass
-                        """)
-                        dist_info = cur.fetchone()
-                        if dist_info:
-                            logger.info(f"Table is distributed: {dist_info}")
-                        else:
-                            logger.info("Table is not distributed")
-                    except:
-                        logger.info("Could not check distribution info")
+                # Check table statistics
+                try:
+                    cur.execute("""
+                        SELECT pg_size_pretty(pg_total_relation_size('log_analytics.raw_logs')) as total_size,
+                               pg_size_pretty(pg_relation_size('log_analytics.raw_logs')) as table_size
+                    """)
+                    size_info = cur.fetchone()
+                    if size_info:
+                        logger.info(f"Table size: {size_info[1]}, Total size with indexes: {size_info[0]}")
+                except:
+                    logger.info("Could not check table size information")
             except Exception as e:
                 logger.warning(f"Could not check table structure: {str(e)}")
 
@@ -296,10 +292,10 @@ def test_copy_performance(pg_config, batch_sizes):
                 # Recommendations
                 if optimal_rate < 100:
                     logger.info("\nPerformance is very slow. Consider:")
-                    logger.info("1. Checking Azure PostgreSQL scaling limits")
+                    logger.info("1. Increasing PostgreSQL resources (CPU/memory)")
                     logger.info("2. Using unlogged tables")
                     logger.info("3. Dropping indexes during bulk loading")
-                    logger.info("4. Using alternative storage solutions for logs")
+                    logger.info("4. Using table partitioning for large datasets")
                 elif optimal_rate < 1000:
                     logger.info("\nPerformance is moderate. Consider:")
                     logger.info(
@@ -428,23 +424,13 @@ def optimize_table_structure(pg_config):
         logger.error(f"Error optimizing table structure: {str(e)}")
 
 
-# Function to optimize Citus distribution
-def optimize_citus_distribution(pg_config):
+# Function to optimize table partitioning
+def optimize_table_partitioning(pg_config):
     try:
         conn = get_db_connection(pg_config)
-        logger.info("Checking and optimizing Citus distribution")
+        logger.info("Checking and optimizing table partitioning")
 
         with conn.cursor() as cur:
-            # Check if Citus is installed
-            try:
-                cur.execute("SELECT citus_version()")
-                citus_version = cur.fetchone()[0]
-                logger.info(f"Citus version: {citus_version}")
-            except:
-                logger.info("Citus is not installed or not available")
-                logger.info("Skipping Citus optimization")
-                return
-
             # Check if table exists
             try:
                 cur.execute("SELECT COUNT(*) FROM log_analytics.raw_logs")
@@ -452,27 +438,10 @@ def optimize_citus_distribution(pg_config):
                 logger.info(f"log_analytics.raw_logs exists with {row_count} rows")
             except:
                 logger.info("log_analytics.raw_logs does not exist")
-                logger.info("Skipping Citus optimization")
+                logger.info("Skipping partitioning optimization")
                 return
 
-            # Check if table is distributed
-            try:
-                cur.execute("""
-                    SELECT logicalrelid, partmethod, partkey
-                    FROM pg_dist_partition
-                    WHERE logicalrelid = 'log_analytics.raw_logs'::regclass
-                """)
-                dist_info = cur.fetchone()
-                if dist_info:
-                    logger.info(f"Table is already distributed: {dist_info}")
-                    return
-                else:
-                    logger.info("Table is not distributed")
-            except Exception as e:
-                logger.warning(f"Could not check distribution info: {str(e)}")
-                return
-
-            # Check if table has a distribution column
+            # Check if table has a date column
             try:
                 cur.execute("""
                     SELECT column_name, data_type
@@ -483,7 +452,7 @@ def optimize_citus_distribution(pg_config):
                 column_names = [col[0] for col in columns]
 
                 if "log_date" in column_names:
-                    logger.info("Table has log_date column for distribution")
+                    logger.info("Table has log_date column for partitioning")
                 else:
                     logger.info("Table does not have a log_date column")
                     logger.info("Recommending to add a log_date column:")
@@ -492,13 +461,9 @@ def optimize_citus_distribution(pg_config):
                     )
                     return
 
-                # Recommend distribution
-                logger.info("\nCitus Distribution Recommendations:")
-                logger.info("1. Distribute table by log_date:")
-                logger.info(
-                    "   SELECT create_distributed_table('log_analytics.raw_logs', 'log_date');"
-                )
-                logger.info("2. For time-based partitioning, consider:")
+                # Recommend partitioning
+                logger.info("\nTable Partitioning Recommendations:")
+                logger.info("1. Create a partitioned table:")
                 logger.info("""
    CREATE TABLE log_analytics.raw_logs_partitioned (
        raw_line TEXT,
@@ -506,21 +471,21 @@ def optimize_citus_distribution(pg_config):
        log_date DATE GENERATED ALWAYS AS (upload_time::date) STORED
    ) PARTITION BY RANGE (log_date);
                 """)
-                logger.info("3. Create partitions for each month:")
+                logger.info("2. Create partitions for each month:")
                 logger.info(
                     "   CREATE TABLE log_analytics.raw_logs_y2023m01 PARTITION OF log_analytics.raw_logs_partitioned"
                 )
                 logger.info("       FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');")
-                logger.info("4. Distribute each partition:")
+                logger.info("3. Create indexes on each partition:")
                 logger.info(
-                    "   SELECT create_distributed_table('log_analytics.raw_logs_y2023m01', 'log_date');"
+                    "   CREATE INDEX ON log_analytics.raw_logs_y2023m01 (log_date);"
                 )
             except Exception as e:
                 logger.error(f"Error checking columns: {str(e)}")
 
         conn.close()
     except Exception as e:
-        logger.error(f"Error optimizing Citus distribution: {str(e)}")
+        logger.error(f"Error optimizing table partitioning: {str(e)}")
 
 
 # Function to apply recommended optimizations
@@ -617,7 +582,7 @@ def main():
         "--optimize-table", help="Optimize table structure", action="store_true"
     )
     parser.add_argument(
-        "--optimize-citus", help="Optimize Citus distribution", action="store_true"
+        "--optimize-partitioning", help="Optimize table partitioning", action="store_true"
     )
     parser.add_argument(
         "--check-settings",
@@ -664,8 +629,8 @@ def main():
     if run_all or args.optimize_table:
         optimize_table_structure(pg_config)
 
-    if run_all or args.optimize_citus:
-        optimize_citus_distribution(pg_config)
+    if run_all or args.optimize_partitioning:
+        optimize_table_partitioning(pg_config)
 
     if run_all or args.apply_optimizations:
         apply_recommended_optimizations(pg_config)
