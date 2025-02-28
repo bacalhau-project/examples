@@ -42,7 +42,7 @@ show_help() {
     echo "  -h, --help         Show this help message"
     echo
     echo "Example:"
-    echo "  $0 --registry ghcr.io --org bacalhau-project --container duckdb-plus-cosmos --tag latest"
+    echo "  $0 --registry ghcr.io --org bacalhau-project --container duckdb-plus-postgres --tag latest"
 }
 
 # Parse arguments
@@ -123,7 +123,7 @@ docker buildx build \
     --tag "$IMAGE_NAME" \
     --tag "$TIMESTAMP_TAG" \
     --label "org.opencontainers.image.source=https://github.com/$USERNAME/bacalhau-examples" \
-    --label "org.opencontainers.image.description=DuckDB plus Cosmos image for log processing" \
+    --label "org.opencontainers.image.description=DuckDB plus PostgreSQL image for log processing" \
     --label "org.opencontainers.image.licenses=Apache-2.0" \
     --push \
     .

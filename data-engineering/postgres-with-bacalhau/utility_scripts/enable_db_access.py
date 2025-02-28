@@ -22,7 +22,7 @@ def check_cosmosdb_extension() -> None:
     """Check if the cosmosdb-preview extension is installed."""
     try:
         result = subprocess.run(
-            "az extension show --name cosmosdb-preview",
+            "az extension show --name postgres",
             shell=True,
             check=True,
             capture_output=True,
@@ -30,20 +30,20 @@ def check_cosmosdb_extension() -> None:
         )
         return
     except subprocess.CalledProcessError:
-        print("\nWarning: The 'cosmosdb-preview' extension is not installed.")
-        print("Installing cosmosdb-preview extension...")
+        print("\nWarning: The 'postgres' extension is not installed.")
+        print("Installing postgres extension...")
         try:
             subprocess.run(
-                "az extension add --name cosmosdb-preview",
+                "az extension add --name postgres",
                 shell=True,
                 check=True,
                 capture_output=True,
             )
-            print("Successfully installed cosmosdb-preview extension.")
+            print("Successfully installed postgres extension.")
         except subprocess.CalledProcessError as e:
-            print("Failed to install cosmosdb-preview extension automatically.")
+            print("Failed to install postgres extension automatically.")
             print(
-                "Please install it manually with: az extension add --name cosmosdb-preview"
+                "Please install it manually with: az extension add --name postgres"
             )
             sys.exit(1)
 
@@ -103,7 +103,7 @@ def run_azure_command(command: str) -> Optional[Dict[str, Any]]:
 
 def main():
     # Check for required Azure CLI extension
-    check_cosmosdb_extension()
+    check_postgres_extension()
 
     # Read config
     config = read_config()
@@ -155,7 +155,7 @@ def main():
     print(f"Adding IP {current_ip} to firewall rules...")
 
     run_azure_command(
-        f"az cosmosdb postgres cluster update "
+        f"az postgres server update "
         f"--name {server_name} "
         f"--resource-group {resource_group} "
         f"--coordinator-public-network-access Enabled "  # Enable public access

@@ -296,7 +296,7 @@ def test_copy_performance(pg_config, batch_sizes):
                 # Recommendations
                 if optimal_rate < 100:
                     logger.info("\nPerformance is very slow. Consider:")
-                    logger.info("1. Checking Azure CosmosDB scaling limits")
+                    logger.info("1. Checking Azure PostgreSQL scaling limits")
                     logger.info("2. Using unlogged tables")
                     logger.info("3. Dropping indexes during bulk loading")
                     logger.info("4. Using alternative storage solutions for logs")
