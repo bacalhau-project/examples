@@ -26,10 +26,16 @@ def read_config(config_path):
     try:
         with open(config_path) as f:
             config = yaml.safe_load(f)
-        if "postgresql" not in config:
-            raise ValueError("Missing 'postgresql' section in config")
+        
+        # Check for either postgresql or postgres key
+        if "postgresql" not in config and "postgres" not in config:
+            raise ValueError("Missing 'postgresql' or 'postgres' section in config")
+            
+        # Determine which key to use
+        config_key = "postgresql" if "postgresql" in config else "postgres"
+            
         required_fields = ["host", "port", "user", "password", "database"]
-        missing = [f for f in required_fields if f not in config["postgresql"]]
+        missing = [f for f in required_fields if f not in config[config_key]]
         if missing:
             raise ValueError(
                 f"Missing required PostgreSQL fields: {', '.join(missing)}"
@@ -610,7 +616,8 @@ def main():
 
     # Read config
     config = read_config(args.config)
-    pg_config = config["postgresql"]
+    config_key = "postgresql" if "postgresql" in config else "postgres"
+    pg_config = config[config_key]
 
     logger.info(f"PostgreSQL host: {pg_config['host']}")
     logger.info(f"PostgreSQL database: {pg_config['database']}")
