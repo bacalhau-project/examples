@@ -16,4 +16,6 @@ psql
 psycopg
 pyyaml
 readwrite
+referer
+UNLOGGED
 venv
