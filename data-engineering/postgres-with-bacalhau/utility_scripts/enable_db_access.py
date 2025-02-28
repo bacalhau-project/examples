@@ -18,8 +18,8 @@ import requests
 import yaml
 
 
-def check_cosmosdb_extension() -> None:
-    """Check if the cosmosdb-preview extension is installed."""
+def check_postgres_extension() -> None:
+    """Check if the postgres extension is installed."""
     try:
         result = subprocess.run(
             "az extension show --name postgres",
@@ -87,9 +87,9 @@ def run_azure_command(command: str) -> Optional[Dict[str, Any]]:
             return result.stdout.strip()
         return None
     except subprocess.CalledProcessError as e:
-        if "az cosmosdb postgres cluster" in command and "not found" in str(e.stderr):
-            print("\nError: The 'cosmosdb-preview' extension is required.")
-            print("Install it with: az extension add --name cosmosdb-preview")
+        if "az postgres" in command and "not found" in str(e.stderr):
+            print("\nError: The 'postgres' extension is required.")
+            print("Install it with: az extension add --name postgres")
             sys.exit(1)
         print(f"Error running Azure command: {e}")
         if e.stderr:
