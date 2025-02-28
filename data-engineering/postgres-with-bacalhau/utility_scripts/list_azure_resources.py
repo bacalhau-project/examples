@@ -36,7 +36,7 @@ def check_cosmosdb_extension() -> None:
     """Check if the cosmosdb-preview extension is installed."""
     try:
         result = subprocess.run(
-            "az extension show --name cosmosdb-preview",
+            "az extension show --name postgres",
             shell=True,
             check=True,
             capture_output=True,
@@ -44,27 +44,27 @@ def check_cosmosdb_extension() -> None:
         )
         return
     except subprocess.CalledProcessError:
-        print("\nWarning: The 'cosmosdb-preview' extension is not installed.")
-        print("Installing cosmosdb-preview extension...")
+        print("\nWarning: The 'postgres' extension is not installed.")
+        print("Installing postgres extension...")
         try:
             subprocess.run(
-                "az extension add --name cosmosdb-preview",
+                "az extension add --name postgres",
                 shell=True,
                 check=True,
                 capture_output=True,
             )
-            print("Successfully installed cosmosdb-preview extension.")
+            print("Successfully installed postgres extension.")
         except subprocess.CalledProcessError as e:
-            print("Failed to install cosmosdb-preview extension automatically.")
+            print("Failed to install postgres extension automatically.")
             print(
-                "Please install it manually with: az extension add --name cosmosdb-preview"
+                "Please install it manually with: az extension add --name postgres"
             )
             sys.exit(1)
 
 
 def main():
     # Check for required Azure CLI extension
-    check_cosmosdb_extension()
+    check_postgres_extension()
 
     # Request config.yaml command line argument
     if len(sys.argv) != 2:
@@ -104,21 +104,21 @@ def main():
     print("=======================")
     run_azure_command("az group list --output table")
 
-    # If resource group is provided, list Cosmos DB instances in that group
+    # If resource group is provided, list PostgreSQL instances in that group
     if resource_group:
         print(
-            "\nListing Cosmos DB PostgreSQL clusters in resource group:",
+            "\nListing PostgreSQL servers in resource group:",
             resource_group,
         )
         print("=" * (len(resource_group) + 48))
         run_azure_command(
-            f"az cosmosdb postgres cluster list --resource-group {resource_group} --output table"
+            f"az postgres server list --resource-group {resource_group} --output table"
         )
     else:
         print("\nWarning: No resource group provided in config.yaml.")
-        print("Listing all Cosmos DB PostgreSQL clusters:")
+        print("Listing all PostgreSQL servers:")
         print("=========================================")
-        run_azure_command("az cosmosdb postgres cluster list --output table")
+        run_azure_command("az postgres server list --output table")
 
     print("\nTo switch subscriptions, use:")
     print("az account set --subscription <subscription-id-or-name>")
