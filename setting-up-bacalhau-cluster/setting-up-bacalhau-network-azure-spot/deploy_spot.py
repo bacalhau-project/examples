@@ -783,13 +783,9 @@ async def main():
 
     await initialize_clients()
 
-    orchestrators = config.get_orchestrators()
-    tls = config.get_tls()
-    token = config.get_token()
-
     async def perform_action():
         if args.action == "create":
-            await create_spot_instances(config, orchestrators, token, tls)
+            await create_spot_instances(config)
         elif args.action == "list":
             await list_spot_instances()
         elif args.action == "destroy":
