@@ -21,8 +21,8 @@ from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
 from azure.network_security_group_rules import network_security_group_rules
-from azure.startup_script import get_azure_startup_script
 from util.config import Config
+from util.scripts_provider import ScriptsProvider
 
 console = Console(width=200)
 SCRIPT_DIR = "spot_creation_scripts"
@@ -30,17 +30,15 @@ SCRIPT_DIR = "spot_creation_scripts"
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 
 config = Config('config.yaml')
+scripts_provider = ScriptsProvider(config)
+
 REGIONS = config.get_regions()
 TOTAL_INSTANCES = config.get_total_instances()
 global_node_count = 0
 
 INSTANCES_PER_REGION = (TOTAL_INSTANCES // len(REGIONS)) or TOTAL_INSTANCES
 
-KEY_PAIR_NAME = config.get_ssh_keypair()  # "BacalhauSpotInstancesKey"
 current_dir = os.path.dirname(__file__)
-
-with open(f"{current_dir}/keys/{KEY_PAIR_NAME}.pub", "r") as public_key_file:
-    public_key_material = public_key_file.read().strip()
 
 all_statuses = {}
 events_to_progress = []
@@ -282,10 +280,8 @@ async def create_network_security_group_if_not_exist(resource_group_name: str, n
     return await nsg.result()
 
 
-async def create_spot_instances_in_region(config, instances_to_create, region, orchestrators, token="", tls="false"):
+async def create_spot_instances_in_region(config, instances_to_create, region):
     global task_name, task_total, subscription_id, credential, all_statuses
-
-    startup_script = get_azure_startup_script(orchestrators, SCRIPT_DIR, token, tls)
 
     # Limit concurrent operations to avoid API throttling
     semaphore = asyncio.Semaphore(10)
@@ -393,17 +389,17 @@ async def create_spot_instances_in_region(config, instances_to_create, region, o
                     },
                     "os_profile": {
                         "computer_name": instance_name,
-                        "admin_username": "azureuser",
+                        "admin_username": config.get_username(),
                         "linux_configuration": {
                             "disable_password_authentication": True,
                             "ssh": {
                                 "public_keys": [{
-                                    "path": "/home/azureuser/.ssh/authorized_keys",
-                                    "key_data": public_key_material
+                                    "path": f"/home/{config.get_username()}/.ssh/authorized_keys",
+                                    "key_data": scripts_provider.get_ssh_public_key(config.get_public_ssh_key_path())
                                 }]
                             }
                         },
-                        "custom_data": base64.b64encode(startup_script.encode()).decode()
+                        "custom_data": base64.b64encode(scripts_provider.create_cloud_init_script().encode()).decode()
                     },
                     "network_profile": {
                         "network_interfaces": [{
@@ -504,20 +500,13 @@ async def create_spot_instances_in_region(config, instances_to_create, region, o
     return total_completed_instances
 
 
-async def create_spot_instances(config, orchestrators, token="", tls="false"):
+async def create_spot_instances(config):
     global global_node_count
-    if not orchestrators:
-        print("Error: No orchestrators specified.")
-        return []
 
     global task_name
     task_name = "Creating Spot Instances"
     global task_total
     task_total = TOTAL_INSTANCES
-
-    logging.debug(
-        f"Starting to create spot instances with orchestrators: {orchestrators}"
-    )
 
     async def create_in_region(region):
         global global_node_count
@@ -541,10 +530,7 @@ async def create_spot_instances(config, orchestrators, token="", tls="false"):
         instance_ids = await create_spot_instances_in_region(
             config,
             instances_to_create,
-            region,
-            orchestrators,
-            token,
-            tls
+            region
         )
         return instance_ids
 

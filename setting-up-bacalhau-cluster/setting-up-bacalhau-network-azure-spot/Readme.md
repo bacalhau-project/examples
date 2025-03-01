@@ -1,11 +1,7 @@
-## VM nodes SSH KEY
-
-You will need ssh key to be uploaded to VMs. Create one with script in keys (create_ssh_key.sh)
-
 ## To authenticate with Azure and create spot VMs using a script, you need credentials.
 
 ### **Step 1: Install Azure CLI (if not already installed)**
-If you haven’t installed the Azure CLI, download and install it from:  
+If you haven’t installed the Azure CLI, download and install it from:
 [https://learn.microsoft.com/en-us/cli/azure/install-azure-cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 
 ### **Step 2: Login to Azure**
@@ -50,12 +46,11 @@ Use auto for even spread of VMs across regions or us int to set how many machine
 
 Running deploy_spot.py requires config.yaml file and created SSH keys.
 
-
 It is best to create virtual env and install dependencies in it. 
 ```bash
 python -m venv .env
 source .env/bin/activate
 pip install -r requirements.txt
 
-python deploy_spot.py --action list [ create | destroy ]
+python deploy_spot.py --action [ list | create | destroy ]
 ```

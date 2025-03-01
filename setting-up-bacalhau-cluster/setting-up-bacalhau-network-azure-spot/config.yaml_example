@@ -1,5 +1,6 @@
 max_instances: 1
-ssh_key_name: BacalhauSpotInstancesKey
+username: bacalhau-runner
+public_ssh_key_path: ~/.ssh/id_rsa.pub
 orchestrators:
   - nats://<your_orchestrator_url>:4222
 token: <your_bacalhau_network_token>
