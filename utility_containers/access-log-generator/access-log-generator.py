@@ -26,7 +26,6 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -203,8 +202,8 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 
 
 # Configure separate logging streams
-def setup_logging(output_dir: Path) -> Dict[str, logging.Logger]:
-    """Configure logging with size-based rotation and limited backups"""
+def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Logger]:
+    """Configure logging with rotation based on configuration"""
     try:
         # Create output directory with permissive permissions if it doesn't exist
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -219,9 +218,20 @@ def setup_logging(output_dir: Path) -> Dict[str, logging.Logger]:
         # Clear root logger handlers
         logging.root.handlers = []
 
-        # Configure max_bytes and backup_count for all handlers
-        max_bytes = 100 * 1024 * 1024  # 100 MB
-        backup_count = 2
+        # Get rotation settings from config
+        rotation_config = {}
+        if config:
+            rotation_config = config.get("output", {}).get("log_rotation", {})
+
+        rotation_enabled = rotation_config.get("enabled", True)
+        max_size_mb = rotation_config.get("max_size_mb", 1000)  # Default to 1 GB
+        when = rotation_config.get("when", "h")  # Default to hourly
+        interval = rotation_config.get("interval", 1)
+        backup_count = rotation_config.get("backup_count", 5)
+        compress = rotation_config.get("compress", True)
+
+        # Convert max_size_mb to bytes
+        max_bytes = max_size_mb * 1024 * 1024 if max_size_mb > 0 else 0
 
         # Truncate log files on startup
         log_files = ["access.log", "error.log", "system.log"]
@@ -232,71 +242,107 @@ def setup_logging(output_dir: Path) -> Dict[str, logging.Logger]:
                 with open(file_path, "w") as f:
                     pass  # Just open and close to truncate
 
-        # 1. Set up access logger (for access logs only)
-        access_logger = logging.getLogger("access_log")
-        access_logger.setLevel(logging.INFO)
-        access_logger.propagate = False  # Don't propagate to root
+        # Set up loggers with appropriate handlers based on rotation settings
+        loggers = {}
+        for logger_name, file_name in [
+            ("access", "access.log"),
+            ("error", "error.log"),
+            ("system", "system.log"),
+        ]:
+            logger = logging.getLogger(f"{logger_name}_log")
+            logger.setLevel(logging.INFO if logger_name != "error" else logging.WARNING)
+            logger.propagate = False
 
-        access_handler = logging.handlers.RotatingFileHandler(
-            filename=output_dir / "access.log",
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8",
-            delay=False,
-        )
-        access_formatter = logging.Formatter("%(message)s")
-        access_handler.setFormatter(access_formatter)
-        access_logger.addHandler(access_handler)
+            # Choose handler based on rotation settings
+            if rotation_enabled:
+                if max_bytes > 0:
+                    # Use size-based rotation
+                    handler = logging.handlers.RotatingFileHandler(
+                        filename=output_dir / file_name,
+                        maxBytes=max_bytes,
+                        backupCount=backup_count,
+                        encoding="utf-8",
+                    )
+                elif when:
+                    # Use time-based rotation
+                    handler = logging.handlers.TimedRotatingFileHandler(
+                        filename=output_dir / file_name,
+                        when=when,
+                        interval=interval,
+                        backupCount=backup_count,
+                        encoding="utf-8",
+                    )
+                else:
+                    # Fallback to no rotation
+                    handler = logging.FileHandler(
+                        filename=output_dir / file_name,
+                        encoding="utf-8",
+                    )
+            else:
+                # No rotation
+                handler = logging.FileHandler(
+                    filename=output_dir / file_name,
+                    encoding="utf-8",
+                )
 
-        # 2. Set up error logger (for error logs only)
-        error_logger = logging.getLogger("error_log")
-        error_logger.setLevel(logging.WARNING)
-        error_logger.propagate = False  # Don't propagate to root
+            logger.addHandler(handler)
 
-        error_handler = logging.handlers.RotatingFileHandler(
-            filename=output_dir / "error.log",
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8",
-        )
-        error_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        error_handler.setFormatter(error_formatter)
-        error_logger.addHandler(error_handler)
+            # Set formatter
+            formatter = logging.Formatter(
+                "%(message)s"
+                if logger_name == "access"
+                else "%(asctime)s - %(levelname)s - %(message)s"
+            )
+            handler.setFormatter(formatter)
 
-        # 3. Set up system logger (for system messages only)
-        system_logger = logging.getLogger("system_log")
-        system_logger.setLevel(logging.INFO)
-        system_logger.propagate = False  # Don't propagate to root
+            # Add compression if enabled
+            if (
+                compress
+                and rotation_enabled
+                and isinstance(
+                    handler,
+                    (
+                        logging.handlers.RotatingFileHandler,
+                        logging.handlers.TimedRotatingFileHandler,
+                    ),
+                )
+            ):
+                # Add compression to rotated logs
+                def namer(name):
+                    return name + ".gz"
 
-        system_handler = logging.handlers.RotatingFileHandler(
-            filename=output_dir / "system.log",
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8",
-        )
-        system_handler.setFormatter(error_formatter)
-        system_logger.addHandler(system_handler)
+                def rotator(source, dest):
+                    with open(source, "rb") as f_in:
+                        with gzip.open(dest + ".gz", "wb") as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                    os.remove(source)
 
-        # Configure root logger to use system logger only
+                handler.namer = namer
+                handler.rotator = rotator
+
+            loggers[logger_name] = logger
+
+        # Configure root logger to use system logger
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.INFO)
         # Remove any existing handlers
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
-        # Add only system handler to root logger
-        root_logger.addHandler(system_handler)
+        # Add system logger handlers to root logger
+        for handler in loggers["system"].handlers:
+            root_logger.addHandler(handler)
 
         # Ensure immediate flushing for access log
-        if hasattr(access_handler, "stream"):
-            access_handler.stream.flush()
-            if hasattr(access_handler.stream, "reconfigure"):
-                access_handler.stream.reconfigure(write_through=True)
+        for handler in loggers["access"].handlers:
+            if hasattr(handler, "stream"):
+                handler.stream.flush()
+                if hasattr(handler.stream, "reconfigure"):
+                    handler.stream.reconfigure(write_through=True)
 
         # Log initial message to system log
-        system_logger.info("Logging initialized - all output directed to log files")
+        loggers["system"].info("Logging initialized - all output directed to log files")
 
-        # Return a dictionary of loggers
-        return {"access": access_logger, "error": error_logger, "system": system_logger}
+        return loggers
 
     except Exception as e:
         print(f"Failed to set up logging: {e}", file=sys.stderr)
@@ -1151,8 +1197,8 @@ def main():
         print(f"Overriding log directory with: {args.log_dir_override}")
         config["output"]["directory"] = args.log_dir_override
 
-    # Initialize logging with possibly overridden directory
-    loggers = setup_logging(Path(config["output"]["directory"]))
+    # Initialize logging with possibly overridden directory and rotation settings
+    loggers = setup_logging(Path(config["output"]["directory"]), config)
 
     # Pass loggers to the generator
     generator = AccessLogGenerator(config, loggers)
