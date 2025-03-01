@@ -2,18 +2,15 @@ import argparse
 import asyncio
 import base64
 import hashlib
-import io
 import json
 import logging
 import os
 import subprocess
-import tarfile
 import time
 from datetime import datetime, timezone
 
 import boto3
 import botocore
-import requests
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
@@ -21,31 +18,32 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
-# from aws.rate_limiter import RateLimiter
 from util.config import Config
+from util.scripts_provider import ScriptsProvider
 
-console = Console()
+# Tag to filter instances by
+FILTER_TAG_NAME = "ManagedBy"
+FILTER_TAG_VALUE = "SpotInstanceScript"
+
+console = Console(width=200)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 config = Config('config.yaml')
+scripts_provider = ScriptsProvider(config)
 
 AWS_REGIONS = config.get_regions()
-
 TOTAL_INSTANCES = config.get_total_instances()
+global_node_count = 0
 INSTANCES_PER_REGION = (TOTAL_INSTANCES // len(
     AWS_REGIONS)) or TOTAL_INSTANCES  # Evenly distribute instances if set to 'auto' in config
 
 MAX_NODES = config.get_total_instances()  # Global limit for total nodes across all regions
-KEY_PAIR_NAME = config.get_ssh_keypair()  # "BacalhauSpotInstancesKey"
 current_dir = os.path.dirname(__file__)
 
-with open(f"{current_dir}/keys/{KEY_PAIR_NAME}.pub", "r") as public_key_file:
-    public_key_material = public_key_file.read().strip()
-
-SCRIPT_DIR = "spot_creation_scripts"
+SCRIPT_DIR = "instance/scripts"
 
 all_statuses = {}  # Moved to global scope
 global_node_count = 0
@@ -67,25 +65,6 @@ def update_all_statuses(status):
             all_statuses[status.id] = status
 
     update_all_statuses_async(status)
-
-
-# Create a rate limiter for AWS API calls (adjust the rate as needed)
-# aws_rate_limiter = RateLimiter(10)  # 10 requests per second
-
-# async def aws_api_call(func, *args, **kwargs):
-#     max_retries = 5
-#     for attempt in range(max_retries):
-#         await aws_rate_limiter.wait()
-#         try:
-#             return await asyncio.to_thread(func, *args, **kwargs)
-#         except botocore.exceptions.ClientError as e:
-#             if e.response["Error"]["Code"] == "RequestLimitExceeded":
-#                 if attempt < max_retries - 1:
-#                     await asyncio.sleep(2 ** attempt)  # Exponential backoff
-#                 else:
-#                     raise
-#             else:
-#                 raise
 
 
 class InstanceStatus:
@@ -236,72 +215,8 @@ async def update_table(live):
         logging.debug("Table update finished.")
 
 
-# def get_instance_metadata(metadata_url):
-#     response = requests.get(metadata_url)
-#     return response.text.strip()
-
-#
-# def get_env_vars():
-#     # Get instance metadata
-#     instance_id = get_instance_metadata(
-#         "http://169.254.169.254/latest/meta-data/instance-id"
-#     )
-#     region = get_instance_metadata(
-#         "http://169.254.169.254/latest/meta-data/placement/region"
-#     )
-#
-#     # Create EC2 client
-#     ec2 = boto3.client("ec2", region_name=region)
-#
-#     # Get instance details
-#     response = ec2.describe_instances(InstanceIds=[instance_id])
-#     instance = response["Reservations"][0]["Instances"][0]
-#
-#     # Get instance type details
-#     instance_type = instance["InstanceType"]
-#     instance_type_info = ec2.describe_instance_types(InstanceTypes=[instance_type])[
-#         "InstanceTypes"
-#     ][0]
-#
-#     # Calculate disk size (assuming only one EBS volume)
-#     disk_size = sum(volume["Size"] for volume in instance["BlockDeviceMappings"])
-#
-#     # Prepare environment variables
-#     env_vars = [
-#         {"Name": "EC2_INSTANCE_FAMILY", "Value": instance_type.split(".")[0]},
-#         {
-#             "Name": "EC2_VCPU_COUNT",
-#             "Value": str(instance_type_info["VCpuInfo"]["DefaultVCpus"]),
-#         },
-#         {
-#             "Name": "EC2_MEMORY_GB",
-#             "Value": str(instance_type_info["MemoryInfo"]["SizeInMiB"] / 1024),
-#         },
-#         {"Name": "EC2_DISK_GB", "Value": str(disk_size)},
-#     ]
-#
-#     return env_vars
-#
-
 def get_ec2_client(region):
     return boto3.client("ec2", region_name=region)
-
-
-async def ensure_key_pair_exists(ec2):
-    try:
-        await asyncio.to_thread(ec2.describe_key_pairs, KeyNames=[KEY_PAIR_NAME])
-        logging.debug(f"Key pair '{KEY_PAIR_NAME}' already exists.")
-    except ec2.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "InvalidKeyPair.NotFound":
-            logging.debug(f"Key pair '{KEY_PAIR_NAME}' not found. Creating it...")
-            await asyncio.to_thread(
-                ec2.import_key_pair,
-                KeyName=KEY_PAIR_NAME,
-                PublicKeyMaterial=public_key_material,
-            )
-            logging.debug(f"Key pair '{KEY_PAIR_NAME}' created successfully.")
-        else:
-            raise
 
 
 async def get_availability_zones(ec2):
@@ -314,59 +229,14 @@ async def get_availability_zones(ec2):
            ]  # Get 1 AZ per region
 
 
-def tar_and_encode_scripts():
-    memory_file = io.BytesIO()
-    with tarfile.open(fileobj=memory_file, mode="w:gz") as tar:
-        for script_file in sorted(os.listdir(SCRIPT_DIR)):
-            if script_file.endswith(".sh"):
-                script_path = os.path.join(SCRIPT_DIR, script_file)
-                tar.add(script_path, arcname=script_file)
-
-    memory_file.seek(0)
-    return base64.b64encode(memory_file.getvalue()).decode()
-
-
-def get_user_data_script(orchestrators, encoded_tar, token="", tls="false"):
-    # If the orchestrators are empty, we are creating a new network
-    if not orchestrators:
-        # Orchestrators being empty means we need to stop creation and warn
-        logging.error("Orchestrators are empty. Stopping creation.")
-        return ""
-
-    return f"""#!/bin/bash
-
-# Export ORCHESTRATORS
-export ORCHESTRATORS="{','.join(orchestrators)}"
-export TOKEN="{token}"
-export REQUIRE_TLS="{tls}"
-
-# Decode and extract scripts
-SCRIPT_DIR="/tmp/spot_scripts"
-mkdir -p "$SCRIPT_DIR"
-echo "{encoded_tar}" | base64 -d | tar -xzv -C "$SCRIPT_DIR"
-
-# Run scripts in order
-for script in $(ls -1 "$SCRIPT_DIR"/*.sh | sort); do
-    echo "Running $script"
-    bash "$script"
-done
-
-# Clean up
-rm -rf "$SCRIPT_DIR"
-"""
-
-
-async def create_spot_instances_in_region(config: Config, instances_to_create, region, orchestrators, token="",
-                                          tls="false"):
+async def create_spot_instances_in_region(config: Config, instances_to_create, region):
     global all_statuses, events_to_progress
 
     ec2 = get_ec2_client(region)
     region_cfg = config.get_region_config(region)
 
     try:
-        await ensure_key_pair_exists(ec2)
-        encoded_tar = tar_and_encode_scripts()
-        user_data = get_user_data_script(orchestrators, encoded_tar, token, tls)
+        user_data = scripts_provider.create_cloud_init_script()
         if not user_data:
             logging.error("User data is empty. Stopping creation.")
             return [], {}
@@ -404,7 +274,6 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             launch_specification = {
                 "ImageId": config.get_image_for_region(region),
                 "InstanceType": region_cfg.get("machine_type", "t2.medium"),
-                "KeyName": KEY_PAIR_NAME,
                 "UserData": encoded_user_data,
                 "BlockDeviceMappings": [
                     {
@@ -439,7 +308,7 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                         "ResourceType": "spot-instances-request",
                         "Tags": [
                             {"Key": "Name", "Value": f"SpotInstance-{region}-{zone}"},
-                            {"Key": "ManagedBy", "Value": "SpotInstanceScript"},
+                            {"Key": FILTER_TAG_NAME, "Value": FILTER_TAG_VALUE},
                         ],
                     },
                 ],
@@ -512,7 +381,7 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                     ec2.create_tags,
                     Resources=zone_instance_ids,
                     Tags=[
-                        {"Key": "ManagedBy", "Value": "SpotInstanceScript"},
+                        {"Key": FILTER_TAG_NAME, "Value": FILTER_TAG_VALUE},
                         {"Key": "Name", "Value": f"SpotInstance-{region}-{zone}"},
                         {"Key": "AZ", "Value": zone},
                     ],
@@ -746,19 +615,10 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
         return security_group_id
 
 
-async def create_spot_instances(orchestrators, token="", tls="false"):
-    if not orchestrators:
-        print("Error: No orchestrators specified.")
-        return []
-
-    global task_name
+async def create_spot_instances():
+    global task_name, task_total
     task_name = "Creating Spot Instances"
-    global task_total
     task_total = MAX_NODES
-
-    logging.debug(
-        f"Starting to create spot instances with orchestrators: {orchestrators}"
-    )
 
     async def create_in_region(region):
         global global_node_count
@@ -778,16 +638,12 @@ async def create_spot_instances(orchestrators, token="", tls="false"):
         logging.debug(
             f"Creating {instances_to_create} spot instances in region: {region}"
         )
-
+        global_node_count += instances_to_create
         instance_ids = await create_spot_instances_in_region(
             config,
             instances_to_create,
-            region,
-            orchestrators,
-            token,
-            tls
+            region
         )
-        global_node_count += len(instance_ids)
         return instance_ids
 
     tasks = [create_in_region(region) for region in AWS_REGIONS]
@@ -862,7 +718,7 @@ async def list_spot_instances():
                             "Values": ["pending", "running", "stopped"],
                         },
                         {"Name": "availability-zone", "Values": [az]},
-                        {"Name": "key-name", "Values": [KEY_PAIR_NAME]},
+                        {"Name": f"tag:{FILTER_TAG_NAME}", "Values": [FILTER_TAG_VALUE]},
                     ],
                 )
 
@@ -919,7 +775,7 @@ async def destroy_instances():
                         "Name": "instance-state-name",
                         "Values": ["pending", "running", "stopping", "stopped"],
                     },
-                    {"Name": "key-name", "Values": [KEY_PAIR_NAME]},
+                    {"Name": f"tag:{FILTER_TAG_NAME}", "Values": [FILTER_TAG_VALUE]},
                 ],
             )
 
@@ -1168,11 +1024,9 @@ async def main():
     )
     args = parser.parse_args()
 
-    orchestrators = config.get_orchestrators()
-
     async def perform_action():
         if args.action == "create":
-            await create_spot_instances(orchestrators, config.get_token(), config.get_tls())
+            await create_spot_instances()
         elif args.action == "list":
             await list_spot_instances()
         elif args.action == "destroy":
@@ -1188,6 +1042,7 @@ async def main():
             update_task = asyncio.create_task(update_table(live))
             try:
                 await perform_action()
+                await asyncio.sleep(1)
             except Exception as e:
                 logging.error(f"Error in main: {str(e)}")
             finally:

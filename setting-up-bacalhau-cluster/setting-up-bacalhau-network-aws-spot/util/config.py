@@ -64,3 +64,12 @@ class Config(dict):
 
     def get_tls(self):
         return self.get("tls", False)
+
+    def get_tls(self):
+        return self.get("tls", False)
+
+    def get_public_ssh_key_path(self):
+        return self.get("public_ssh_key_path", "")
+
+    def get_username(self):
+        return self.get("username", "bacalhau-runner")
