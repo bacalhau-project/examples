@@ -20,6 +20,7 @@ from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
 from util.config import Config
+from util.scripts_provider import ScriptsProvider
 
 console = Console(width=200)
 SCRIPT_DIR = "spot_creation_scripts"
@@ -27,9 +28,12 @@ SCRIPT_DIR = "spot_creation_scripts"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 config = Config('config.yaml')
+scripts_provider = ScriptsProvider(config)
+
 REGIONS = config.get_regions()
 TOTAL_INSTANCES = config.get_total_instances()
-INSTANCES_PER_REGION = TOTAL_INSTANCES // len(REGIONS)
+INSTANCES_PER_REGION = TOTAL_INSTANCES // len(REGIONS) or TOTAL_INSTANCES
+global_node_count = 0
 
 PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 SERVICE_ACCOUNT = os.getenv('GCP_SERVICE_ACCOUNT')
@@ -156,12 +160,9 @@ def calculate_elapsed_time(operation: Operation):
 
 
 async def create_spot_instances(config, orchestrators, token="", tls="false"):
-    global task_name, task_total
+    global task_name, task_total, global_node_count
     task_name = "Creating Spot Instances"
     task_total = TOTAL_INSTANCES
-
-    encoded_tar = tar_and_encode_scripts()
-    startup_script = get_gcp_startup_script(orchestrators, encoded_tar, token, tls)
 
     semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent operations
 
@@ -196,7 +197,7 @@ async def create_spot_instances(config, orchestrators, token="", tls="false"):
 
                 # Define metadata (Startup script)
                 metadata = compute_v1.Metadata()
-                metadata.items = [{"key": "startup-script", "value": startup_script}]
+                metadata.items = [{"key": "user-data", "value": scripts_provider.create_cloud_init_script()}]
 
                 # Define instance properties
                 instance = compute_v1.Instance(
@@ -261,66 +262,23 @@ async def create_spot_instances(config, orchestrators, token="", tls="false"):
     instance_tasks = []
     for region in REGIONS:
         zones = await get_zones(region)
+
+        available_slots = TOTAL_INSTANCES - global_node_count
         region_cfg = config.get_region_config(region)
-        # TODO: limit nodes creation
-        for i in range(INSTANCES_PER_REGION):
-            zone = zones[i % len(zones)]
-            instance_tasks.append(handle_single_instance(region, zone, i))
+
+        instances_to_create = min(INSTANCES_PER_REGION, available_slots) if region_cfg.get(
+            "node_count") == "auto" else (
+            min(region_cfg.get("node_count"), available_slots))
+
+        if instances_to_create > 0:
+            global_node_count += instances_to_create
+            for i in range(instances_to_create):
+                zone = zones[i % len(zones)]
+                instance_tasks.append(handle_single_instance(region, zone, i))
 
     # Wait for all instances to complete
     completed_instances = await asyncio.gather(*instance_tasks)
     return completed_instances
-
-
-def tar_and_encode_scripts():
-    memory_file = io.BytesIO()
-    with tarfile.open(fileobj=memory_file, mode="w:gz") as tar:
-        for script_file in sorted(os.listdir(SCRIPT_DIR)):
-            if script_file.endswith(".sh"):
-                script_path = os.path.join(SCRIPT_DIR, script_file)
-                tar.add(script_path, arcname=script_file)
-
-    memory_file.seek(0)
-    return base64.b64encode(memory_file.getvalue()).decode()
-
-
-def get_gcp_startup_script(orchestrators, encoded_tar, token="", tls="false"):
-    # Check if orchestrators are provided
-    if not orchestrators:
-        logging.error("Orchestrators are empty. Stopping creation.")
-        return ""
-
-    return f"""#!/bin/bash
-
-# Export ORCHESTRATORS
-export ORCHESTRATORS="{','.join(orchestrators)}"
-export TOKEN="{token}"
-export REQUIRE_TLS="{tls}"
-
-# Decode and extract scripts
-SCRIPT_DIR="/tmp/spot_scripts"
-mkdir -p "$SCRIPT_DIR"
-echo "{encoded_tar}" | base64 -d | tar -xzv -C "$SCRIPT_DIR"
-
-# Set up metadata for GCP-specific features
-INSTANCE_ID=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/id)
-ZONE=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/zone | cut -d/ -f4)
-PROJECT_ID=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/project/project-id)
-
-# Export GCP-specific environment variables
-export INSTANCE_ID="$INSTANCE_ID"
-export ZONE="$ZONE"
-export PROJECT_ID="$PROJECT_ID"
-
-# Run scripts in order
-for script in $(ls -1 "$SCRIPT_DIR"/*.sh | sort); do
-    echo "Running $script"
-    bash "$script"
-done
-
-# Clean up
-rm -rf "$SCRIPT_DIR"
-"""
 
 
 async def list_spot_instances():

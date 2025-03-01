@@ -4,6 +4,8 @@
 export GCP_PROJECT_ID=expanso
 export GOOGLE_APPLICATION_CREDENTIALS=/some/path/to/auth//expanso-auth-json.json
 ```
+### Configure
+Just provide ssh key, Bacalhau orchestrator URL(s) and token, to config.yaml (copy from config.yaml_example).
 
 ### Run
 ```bash

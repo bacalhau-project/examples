@@ -35,7 +35,7 @@ class Config(dict):
         if image_value != "auto":
             return image_value
 
-        return 'projects/debian-cloud/global/images/family/debian-11'
+        return 'projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20250228'
 
     def get_orchestrators(self):
         return self.get("orchestrators", [])
@@ -45,3 +45,9 @@ class Config(dict):
 
     def get_tls(self):
         return self.get("tls", False)
+
+    def get_public_ssh_key_path(self):
+        return self.get("public_ssh_key_path", "")
+
+    def get_username(self):
+        return self.get("username", "bacalhau-runner")
