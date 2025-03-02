@@ -1,0 +1,11 @@
+asctime
+bacalhau
+bacalhauproject
+buildcache
+buildx
+levelname
+mult
+multiarch
+PYTHONUNBUFFERED
+venv
+YYMMDDHHMM

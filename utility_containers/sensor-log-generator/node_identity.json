@@ -1,0 +1,8 @@
+{
+    "id": "DEFAULT_SENSOR",
+    "type": "temperature_vibration",
+    "location": "Default Location",
+    "manufacturer": "SensorTech",
+    "model": "TempVibe-2000",
+    "firmware_version": "1.4"
+}
