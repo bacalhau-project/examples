@@ -1,0 +1,16 @@
+max_instances: 20
+username: bacalhau-runner
+public_ssh_key_path: ~/.ssh/id_rsa.pub
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+  - europe-central2:
+      image: auto
+      machine_type: n1-standard-1
+      node_count: auto
+  - europe-north1:
+      image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20250228
+      machine_type: n1-standard-1
+      node_count: auto
