@@ -1,0 +1,90 @@
+# Sensor Simulator Configuration Example
+# Copy this file to config.yaml and modify as needed
+# Note: Some values can be overridden with environment variables
+
+# Sensor details
+sensor:
+  id: "TEMP001" # Unique identifier for this sensor (can be overridden with SENSOR_ID env var)
+  type: "temperature_vibration" # Type of sensor
+  location: "Factory A - Machine 1" # Physical location (can be overridden with SENSOR_LOCATION env var)
+  manufacturer: "SensorTech Inc." # Optional: Manufacturer name
+  model: "TempVibe-2000" # Optional: Model number
+  firmware_version: "1.2.3" # Optional: Firmware version
+
+# Simulation parameters
+simulation:
+  readings_per_second: 1 # How many readings to generate per second
+  run_time_seconds: 3600 # How long to run the simulation (1 hour)
+  start_delay_seconds: 0 # Optional: Delay before starting simulation
+
+# Normal operating parameters
+normal_parameters:
+  temperature:
+    mean: 65.0 # Average temperature in Celsius
+    std_dev: 2.0 # Standard deviation
+    min: 50.0 # Minimum allowed value
+    max: 80.0 # Maximum allowed value
+    daily_pattern: true # Optional: Apply daily pattern variation
+  vibration:
+    mean: 2.5 # Average vibration in mm/s²
+    std_dev: 0.5 # Standard deviation
+    min: 0.1 # Minimum allowed value
+    max: 10.0 # Maximum allowed value
+    daily_pattern: false # Optional: Apply daily pattern variation
+  voltage:
+    mean: 12.0 # Average voltage in Volts
+    std_dev: 0.1 # Standard deviation
+    min: 11.5 # Minimum allowed value
+    max: 12.5 # Maximum allowed value
+    daily_pattern: false # Optional: Apply daily pattern variation
+
+# Anomaly configuration
+anomalies:
+  enabled: true # Master switch for anomaly generation
+  probability: 0.05 # Probability of starting a new anomaly per reading
+  types:
+    spike:
+      enabled: true # Enable spike anomalies
+      weight: 0.4 # Relative frequency (higher = more common)
+    trend:
+      enabled: true # Enable trend anomalies
+      weight: 0.2 # Relative frequency
+      duration_seconds: 300 # How long the anomaly lasts (5 minutes)
+    pattern:
+      enabled: true # Enable pattern anomalies
+      weight: 0.1 # Relative frequency
+      duration_seconds: 600 # How long the anomaly lasts (10 minutes)
+    missing_data:
+      enabled: true # Enable missing data anomalies
+      weight: 0.1 # Relative frequency
+      duration_seconds: 30 # How long the anomaly lasts (30 seconds)
+    noise:
+      enabled: true # Enable noise anomalies
+      weight: 0.2 # Relative frequency
+      duration_seconds: 180 # How long the anomaly lasts (3 minutes)
+
+# Database configuration
+database:
+  path: "sensor_data.db" # Path to SQLite database file
+  backup_enabled: false # Enable automatic backups
+  backup_interval_hours: 24 # How often to create backups
+  backup_path: "./backups/" # Where to store backups
+  max_size_mb: 1000 # Optional: Maximum database size in MB
+
+# Logging configuration
+logging:
+  level: "INFO" # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "sensor_simulator.log" # Log file path
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" # Log format
+  console_output: true # Whether to output logs to console
+  max_file_size_mb: 10 # Optional: Maximum log file size
+  backup_count: 5 # Optional: Number of log backups to keep
+
+# Output configuration
+output:
+  csv_export_enabled: false # Enable CSV export
+  csv_export_path: "./exports/" # Where to store CSV files
+  csv_export_interval_minutes: 60 # How often to export data
+  json_export_enabled: false # Enable JSON export
+  json_export_path: "./exports/" # Where to store JSON files
+  json_export_interval_minutes: 60 # How often to export data
