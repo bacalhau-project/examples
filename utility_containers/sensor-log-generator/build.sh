@@ -108,11 +108,22 @@ validate_requirements() {
 
 setup_builder() {
     log "Setting up buildx builder..."
+    
+    # Check if builder already exists
     if docker buildx inspect "$BUILDER_NAME" >/dev/null 2>&1; then
-        warn "Removing existing builder instance"
-        docker buildx rm "$BUILDER_NAME" >/dev/null 2>&1
+        # Check if the builder is working by listing the nodes
+        if docker buildx inspect --bootstrap "$BUILDER_NAME" | grep -q "Status: running"; then
+            log "Using existing builder instance '$BUILDER_NAME'"
+            docker buildx use "$BUILDER_NAME"
+            return 0
+        else
+            warn "Existing builder instance is not running properly, recreating it"
+            docker buildx rm "$BUILDER_NAME" >/dev/null 2>&1
+        fi
     fi
     
+    # Create new builder if needed
+    log "Creating new builder instance '$BUILDER_NAME'"
     docker buildx create --name "$BUILDER_NAME" \
         --driver docker-container \
         --bootstrap || error "Failed to create buildx builder"

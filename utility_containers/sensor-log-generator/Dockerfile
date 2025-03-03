@@ -24,8 +24,20 @@ RUN uv run -s main.py --exit
 # Create data directory with proper permissions
 RUN mkdir -p /app/data && chmod 777 /app/data
 
+# Create startup script to handle cleanup of old data
+RUN echo '#!/bin/sh\n\
+    # Clean up old database files if they exist\n\
+    if [ -f /app/data/sensor_data.db ]; then\n\
+    echo "Removing old database file"\n\
+    rm -f /app/data/sensor_data.db*\n\
+    fi\n\
+    \n\
+    # Run the application\n\
+    exec uv run -s main.py "$@"\n\
+    ' > /app/start.sh && chmod +x /app/start.sh
+
 # Volume for persistent data only
 VOLUME ["/app/data"]
 
-# Run the application using uv
-CMD ["uv", "run", "-s", "main.py"]
+# Run the application using the startup script
+CMD ["/app/start.sh"]
