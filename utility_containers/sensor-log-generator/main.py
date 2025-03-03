@@ -5,6 +5,7 @@
 #     "requests",
 #     "numpy",
 #     "pyyaml",
+#     "psutil",
 # ]
 # ///
 
