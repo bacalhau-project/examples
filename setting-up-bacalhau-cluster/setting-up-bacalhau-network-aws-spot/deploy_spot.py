@@ -36,20 +36,28 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
-from rich.table import Table
+from rich.table import Table, box
 
 from util.config import Config
 from util.scripts_provider import ScriptsProvider
 
-# Formatter for logs
+# Set up logging with a unified approach - everything will go to the console panel
+# and be written to the debug.log file as a backup
+
+# Set up logging with a unified stream approach
+# All logs will go to both debug.log and the Rich console panel
+
+# Formatter for logs - concise but informative
 log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
-# We'll configure the logger later after parsing command-line arguments
-# to respect the verbose flag
-file_handler = None
-logging.basicConfig(level=logging.INFO)  # Default to INFO level
-
+# Set up main logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Default level, will be updated based on args
+# Important: Prevent propagation to root logger to avoid stderr output
+logger.propagate = False
+
+# The file handler will be shared with the Rich console handler
+file_handler = None
 
 # Tag to filter instances by
 FILTER_TAG_NAME = "ManagedBy"
@@ -115,6 +123,8 @@ class InstanceStatus:
         self.public_ip = None
         self.private_ip = None
         self.vpc_id = None
+        self.spot_request_id = None  # Track the spot request ID for monitoring
+        self.fulfilled = False  # Track if the spot request was fulfilled
 
         if self.instance_id is not None:
             self.id = self.instance_id
@@ -233,42 +243,79 @@ def create_layout(progress, table):
 
 # Configure console handler to use rich console
 class RichConsoleHandler(logging.Handler):
-    def __init__(self, live, layout):
+    """Unified console handler that shows log messages from debug.log in the Rich UI.
+    
+    This handler streams the debug.log content to the console panel in the Rich UI.
+    It also forwards log records to the file handler, creating a single logging path.
+    """
+    def __init__(self, live, layout, file_handler=None):
         super().__init__()
         self.live = live
         self.layout = layout  # Store the layout directly
-        self.messages = ["Waiting for log messages..."]  # Start with a default message
-        self.setFormatter(logging.Formatter("%(message)s"))
-        self.setLevel(logging.INFO)
+        self.messages = ["Logs will appear here..."]  # Start with a simple message
+        
+        # Use the same formatter as the file handler for consistency
+        self.setFormatter(log_formatter)
+        
+        # Keep reference to file handler for forwarding
+        self.file_handler = file_handler
+        
+        # Set the level to match the file handler if provided
+        if file_handler:
+            self.setLevel(file_handler.level)
+        else:
+            self.setLevel(logging.INFO)
 
         # Initialize the console panel content right away
         console_panel = self.layout.children[-1].renderable
         console_panel.renderable = "\n".join(self.messages)
+        
+        # Read any existing content from debug.log to show history
+        self._load_existing_logs()
+        
+    def _load_existing_logs(self):
+        """Load the last few lines from debug.log to provide context"""
+        try:
+            if os.path.exists("debug.log"):
+                with open("debug.log", "r") as f:
+                    # Get the last 10 lines from the file
+                    lines = f.readlines()[-10:]
+                    if lines:
+                        # Replace our waiting message with actual log content
+                        self.messages = [line.strip() for line in lines]
+                        
+                        # Update the console panel right away
+                        console_panel = self.layout.children[-1].renderable
+                        console_panel.renderable = "\n".join(self.messages)
+        except Exception:
+            # If we can't read the log file, just continue with the default message
+            pass
 
     def emit(self, record):
+        """Process log records and update the console panel"""
         try:
+            # Format the message using our formatter
             msg = self.format(record)
-
+            
             # If we still have the default message, clear it first
-            if (
-                len(self.messages) == 1
-                and self.messages[0] == "Waiting for log messages..."
-            ):
+            if len(self.messages) == 1 and self.messages[0] == "Logs will appear here...":
                 self.messages = []
 
+            # Add the new message
             self.messages.append(msg)
 
-            # Keep only the last 10 messages
-            if len(self.messages) > 10:
-                self.messages = self.messages[-10:]
-
-            # If no messages (unlikely now), show the waiting message
-            if not self.messages:
-                self.messages = ["Waiting for log messages..."]
+            # Keep only the last 20 messages (increased from 10 for more context)
+            if len(self.messages) > 20:
+                self.messages = self.messages[-20:]
 
             # Update the console panel content
             console_panel = self.layout.children[-1].renderable
             console_panel.renderable = "\n".join(self.messages)
+            
+            # Forward to file handler if we have one and it's not already handling this record
+            if self.file_handler and record.levelno >= self.file_handler.level:
+                self.file_handler.emit(record)
+                
         except Exception:
             self.handleError(record)
 
@@ -295,21 +342,19 @@ async def update_display(live):
         logger.debug("Creating layout")
         layout = create_layout(progress, table)
 
-        # Add handler if needed
-        handlers = logger.handlers
+        # For display updates we don't need to create a new handler
+        # Just update the existing one with the new layout
         rich_handler = None
-        for h in handlers:
+        for h in logger.handlers:
             if isinstance(h, RichConsoleHandler):
                 rich_handler = h
                 break
-
+        
         if rich_handler is None:
-            logger.debug("Creating new RichConsoleHandler")
-            rich_handler = RichConsoleHandler(live, layout)
-            logger.addHandler(rich_handler)
+            logger.debug("No existing RichConsoleHandler found - display updates may not work")
         else:
             # Update the existing handler with the new layout
-            logger.debug("Updating existing RichConsoleHandler")
+            logger.debug("Updating existing RichConsoleHandler layout")
             rich_handler.layout = layout
 
         logger.debug("Starting update loop")
@@ -323,13 +368,17 @@ async def update_display(live):
             table = make_progress_table()
             layout = create_layout(progress, table)
 
-            # Update the handler's layout reference
-            rich_handler.layout = layout
-
+            # Find and update the RichConsoleHandler with the new layout
+            for h in logger.handlers:
+                if isinstance(h, RichConsoleHandler):
+                    h.layout = layout
+                    break
+            
             logger.debug("Updating live display")
             live.update(layout)
 
-            await asyncio.sleep(0.2)
+            # Slightly longer sleep to reduce log volume
+            await asyncio.sleep(0.5)
 
     except Exception as e:
         logger.error(f"Error updating display: {str(e)}", exc_info=True)
@@ -488,7 +537,11 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                 for request in response["SpotInstanceRequests"]
             ]
             logging.debug(f"Spot request IDs: {spot_request_ids}")
-
+            
+            # Store the spot request ID in the status object for tracking
+            if spot_request_ids:
+                thisInstanceStatusObject.spot_request_id = spot_request_ids[0]
+                
             thisInstanceStatusObject.status = "Waiting for fulfillment"
 
             # Wait for spot instances to be fulfilled
@@ -912,16 +965,33 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
 
 
 async def create_spot_instances():
+    """Create spot instances across all configured regions.
+    
+    This is the main function for instance creation that:
+    1. Distributes instances across regions based on configuration
+    2. Creates the instances in parallel
+    3. Waits for all instances to get their public IPs
+    4. Displays final node information and continues
+    
+    The function doesn't wait for SSH or Bacalhau services to be available.
+    It only ensures machines have IP addresses assigned.
+    
+    Returns:
+        bool: True if all instances were successfully created with IPs, False otherwise
+    """
     global task_name, task_total
     task_name = "Creating Spot Instances"
     task_total = MAX_NODES
+    
+    logger.info(f"Starting spot instance creation - target: {MAX_NODES} instances")
 
     async def create_in_region(region):
         global global_node_count
         available_slots = MAX_NODES - global_node_count
         region_cfg = config.get_region_config(region)
+        
         if available_slots <= 0:
-            logging.warning(f"Reached maximum nodes. Skipping region: {region}")
+            logger.warning(f"Reached maximum nodes. Skipping region: {region}")
             return [], {}
 
         instances_to_create = (
@@ -931,97 +1001,639 @@ async def create_spot_instances():
         )
 
         if instances_to_create == 0:
+            logger.info(f"No instances to create in region {region}")
             return [], {}
 
-        logging.debug(
-            f"Creating {instances_to_create} spot instances in region: {region}"
-        )
+        logger.info(f"Creating {instances_to_create} spot instances in region: {region}")
         global_node_count += instances_to_create
         instance_ids = await create_spot_instances_in_region(
             config, instances_to_create, region
         )
+        
+        # Log success or failure
+        if instance_ids:
+            logger.info(f"Successfully created {len(instance_ids)} instances in {region}")
+        else:
+            logger.warning(f"Failed to create any instances in {region}")
+            
         return instance_ids
 
-    tasks = [create_in_region(region) for region in AWS_REGIONS]
-    await asyncio.gather(*tasks)
+    # Process regions in batches to start machine creation sooner
+    # Choose a batch size that gives good parallelism without overwhelming the system
+    batch_size = 10  # Process 10 regions at a time
+    total_created = 0
+    logger.info(f"Creating instances in batches of {batch_size} regions")
+    
+    # Group regions into batches
+    region_batches = [AWS_REGIONS[i:i+batch_size] for i in range(0, len(AWS_REGIONS), batch_size)]
+    
+    for batch_num, region_batch in enumerate(region_batches, 1):
+        logger.info(f"Processing batch {batch_num}/{len(region_batches)} with {len(region_batch)} regions")
+        
+        # Create instances in this batch of regions in parallel
+        create_tasks = [create_in_region(region) for region in region_batch]
+        batch_results = await asyncio.gather(*create_tasks)
+        
+        # Count created instances in this batch
+        batch_created = sum(len(ids) for ids in batch_results if ids)
+        total_created += batch_created
+        logger.info(f"Batch {batch_num} created {batch_created} instances")
+        
+        # Wait for public IPs for instances in this batch only
+        # We'll do this processing in a background task so we can continue
+        if batch_created > 0:
+            # Start getting public IPs for this batch in the background
+            # We don't await this - just let it run
+            asyncio.create_task(wait_for_batch_public_ips())
+    
+    logger.info(f"All batches processed, created {total_created} instances across all regions")
+    
+    # Don't continue if no instances were created
+    if total_created == 0:
+        logger.warning("No instances were created - skipping IP address waiting")
+        return False
 
-    logging.debug("Waiting for public IP addresses...")
-    await wait_for_public_ips()
+    # Wait for any remaining IP address assignments to complete
+    logger.info("Ensuring all instances have received public IP addresses...")
+    all_ips_received = await wait_for_public_ips()
+    
+    if all_ips_received:
+        logger.info("All instances have been successfully created with public IPs")
+        
+        # Display final node information in a table - but don't wait for provisioning
+        print_node_table()
+    else:
+        logger.warning("Some instances did not receive public IPs within the timeout")
+    
+    return all_ips_received
 
-    logging.debug("Finished creating spot instances")
-    return
 
+def print_node_table():
+    """Display a table of all nodes showing hostname, region, zone, and IP addresses.
+    
+    This presents a clean summary of all nodes that were created during the operation,
+    making it easy for users to see what resources are available.
+    
+    This is a synchronous function to ensure it works outside of an async context.
+    """
+    # Get sorted list of statuses for consistent display
+    sorted_statuses = sorted(all_statuses.values(), key=lambda x: (x.region, x.zone))
+    
+    # Only include instances that have a public IP (successfully created)
+    nodes_with_ip = [s for s in sorted_statuses if s.public_ip]
+    
+    # Count pending spot requests that didn't get fulfilled
+    pending_spot_requests = [s for s in sorted_statuses if s.spot_request_id and not s.instance_id]
+    
+    # First create and show the successful nodes table
+    if nodes_with_ip:
+        # Create a new table specifically for the final display
+        table = Table(title="Bacalhau Cluster Nodes", box=box.ROUNDED, show_header=True, header_style="bold cyan")
+        
+        # Add columns with appropriate alignment and style
+        table.add_column("Node #", style="dim", justify="right")
+        table.add_column("Hostname", style="cyan")
+        table.add_column("Region", style="green")
+        table.add_column("Zone", style="blue")
+        table.add_column("Public IP", style="yellow")
+        table.add_column("Private IP", style="dim cyan")
+        
+        # Add rows for each node
+        for i, status in enumerate(nodes_with_ip, 1):
+            # Generate a hostname from region and zone
+            hostname = f"bacalhau-{status.region}-{status.zone.split('-')[-1]}"
+            
+            table.add_row(
+                str(i),
+                hostname,
+                status.region,
+                status.zone,
+                status.public_ip or "N/A",
+                status.private_ip or "N/A"
+            )
+        
+        # Log first for debug
+        logger.info(f"Displaying final table with {len(nodes_with_ip)} nodes")
+        
+        # Display the table outside of the Live context
+        console.print()  # Add some space
+        console.print(table)
+        console.print()  # Add some space after
+    else:
+        logger.warning("No nodes with IP addresses to display")
+        console.print("[bold yellow]No nodes received IP addresses![/bold yellow]")
+        console.print()
+    
+    # Show a summary of successful vs. pending spot requests
+    console.print(f"[bold]Spot Instance Summary:[/bold]")
+    console.print(f"- Successfully provisioned: [green]{len(nodes_with_ip)}[/green] nodes")
+    console.print(f"- Pending spot requests: [yellow]{len(pending_spot_requests)}[/yellow]")
+    console.print(f"- Total spot requests: [blue]{len(sorted_statuses)}[/blue]")
+    console.print()
+    
+    # Also print a helpful message about how to connect to nodes with proper key authentication
+    if nodes_with_ip:
+        console.print("[bold green]✓[/bold green] Your Bacalhau cluster is being provisioned!")
+        console.print("[yellow]Machines have IP addresses but may need a few minutes to complete setup[/yellow]")
+        
+        # Get the username and private key path from config
+        username = config.get_username()
+        private_key_path = config.get_private_ssh_key_path()
+        
+        # Create the SSH command with key file if available
+        if private_key_path:
+            ssh_cmd = f"ssh -i {private_key_path} {username}@<Public IP>"
+        else:
+            ssh_cmd = f"ssh {username}@<Public IP>"
+        
+        console.print(f"[dim]To connect to any node: {ssh_cmd}[/dim]")
+    else:
+        console.print("[bold red]⚠ No instances were successfully provisioned with IP addresses.[/bold red]")
+        console.print("[yellow]This could be due to spot capacity issues in the selected regions.[/yellow]")
+        console.print("[yellow]Consider trying again, selecting different instance types, or using different regions.[/yellow]")
+    
+    console.print()
 
-async def wait_for_public_ips():
+async def wait_for_provisioning():
+    """Wait for all instances to complete their provisioning process.
+    
+    This function checks SSH connectivity and whether the Bacalhau services
+    are running on each instance. It updates the statuses throughout the
+    provisioning process.
+    
+    Returns:
+        bool: True when all instances are fully provisioned
+    """
     global all_statuses
-    timeout = 300  # 5 minutes timeout
+    max_timeout = 600  # 10 minutes timeout
     start_time = time.time()
-    poll_interval = 5  # seconds between polls
-
-    # Group instances by region for parallel processing
-    def get_instances_by_region():
-        instances_by_region = {}
-        for status in all_statuses.values():
-            if not status.public_ip and status.instance_id and status.region:
-                if status.region not in instances_by_region:
-                    instances_by_region[status.region] = []
-                instances_by_region[status.region].append(status.instance_id)
-        return instances_by_region
-
+    poll_interval = 15  # seconds between polls
+    
+    logger.info(f"Monitoring provisioning status for all instances (timeout: {max_timeout}s)")
+    
+    # Count instances we're monitoring
+    instances_to_monitor = [s for s in all_statuses.values() if s.instance_id and s.public_ip]
+    
+    if not instances_to_monitor:
+        logger.warning("No instances to monitor for provisioning")
+        return False
+    
+    logger.info(f"Monitoring provisioning for {len(instances_to_monitor)} instances")
+    
+    # Initialize provisioning statuses
+    for status in instances_to_monitor:
+        status.detailed_status = "Waiting for provisioning"
+        # Make sure to signal for UI update
+        events_to_progress.append(status)
+    
+    # Track completion
     while True:
-        # Check if we're done or timed out
-        all_have_ips = all(
-            status.public_ip or not status.instance_id  # Either has IP or no instance
-            for status in all_statuses.values()
+        # Check timeout
+        elapsed_time = time.time() - start_time
+        if elapsed_time > max_timeout:
+            logger.warning(f"Timeout reached after {max_timeout}s waiting for provisioning")
+            # Update statuses for those that didn't complete
+            for status in instances_to_monitor:
+                if status.detailed_status != "Provisioning complete":
+                    status.detailed_status = "Provisioning timeout"
+                    events_to_progress.append(status)
+            return False
+        
+        # Check all instances in parallel
+        async def check_instance(status):
+            try:
+                # Skip already completed instances
+                if status.detailed_status == "Provisioning complete":
+                    return True
+                
+                # Update status to show we're checking
+                status.detailed_status = f"Checking provisioning ({int(elapsed_time)}s)"
+                events_to_progress.append(status)
+                
+                # Check SSH connectivity first
+                if not await check_ssh_connectivity(status.public_ip):
+                    status.detailed_status = "Waiting for SSH access"
+                    events_to_progress.append(status)
+                    return False
+                
+                # Then check if Docker is running
+                if not await check_docker_running(status.public_ip):
+                    status.detailed_status = "Waiting for Docker"
+                    events_to_progress.append(status)
+                    return False
+                
+                # Finally check if Bacalhau service is running
+                if not await check_bacalhau_service(status.public_ip):
+                    status.detailed_status = "Waiting for Bacalhau"
+                    events_to_progress.append(status)
+                    return False
+                
+                # All checks passed, provisioning is complete
+                status.detailed_status = "Provisioning complete"
+                events_to_progress.append(status)
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error checking instance {status.instance_id}: {str(e)}")
+                status.detailed_status = f"Check error: {str(e)[:20]}"
+                events_to_progress.append(status)
+                return False
+        
+        # Check all instances in parallel
+        check_tasks = [check_instance(status) for status in instances_to_monitor]
+        results = await asyncio.gather(*check_tasks)
+        
+        # Count how many are complete
+        complete_count = sum(1 for r in results if r)
+        logger.info(f"Provisioning progress: {complete_count}/{len(instances_to_monitor)} instances ready")
+        
+        # Check if all are complete
+        if all(results):
+            logger.info("All instances have completed provisioning")
+            
+            # Keep the display up for a few more seconds to show the final status
+            logger.info("Keeping display open for 5 more seconds to show provisioning complete")
+            await asyncio.sleep(5)
+            
+            return True
+        
+        # Wait before next check
+        await asyncio.sleep(poll_interval)
+
+async def check_ssh_connectivity(ip_address):
+    """Check if an instance is accessible via SSH.
+    
+    Args:
+        ip_address: The public IP address of the instance
+        
+    Returns:
+        bool: True if SSH connection succeeds, False otherwise
+    """
+    try:
+        # Use socket connection to check if port 22 is open
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(ip_address, 22),
+            timeout=5.0
         )
         
-        if all_have_ips or time.time() - start_time > timeout:
-            # If we timed out, update status for instances without IPs
-            if time.time() - start_time > timeout:
-                for status in all_statuses.values():
-                    if status.instance_id and not status.public_ip:
-                        status.detailed_status = "No public IP after timeout"
-                        events_to_progress.append(status)
-                logging.warning(f"Timed out after {timeout}s waiting for public IPs")
-            break
+        # Close the connection
+        writer.close()
+        await writer.wait_closed()
+        
+        return True
+    except Exception:
+        return False
 
-        # Get instances grouped by region
-        instances_by_region = get_instances_by_region()
-        if not instances_by_region:
-            # No instances need IPs, we're done
-            break
+async def check_docker_running(ip_address):
+    """Check if Docker is running on the instance.
+    
+    Args:
+        ip_address: The public IP address of the instance
+        
+    Returns:
+        bool: True if docker appears to be running, False otherwise
+    """
+    # For now, we'll just check SSH since we can't easily run commands remotely
+    # In a production version, this would use SSH to execute 'docker ps'
+    return await check_ssh_connectivity(ip_address)
+
+async def check_bacalhau_service(ip_address):
+    """Check if the Bacalhau service is running on the instance.
+    
+    Args:
+        ip_address: The public IP address of the instance
+        
+    Returns:
+        bool: True if Bacalhau service appears to be running, False otherwise
+    """
+    try:
+        # Try to connect to the bacalhau healthcheck port (assuming it's 1234)
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(ip_address, 1234),
+            timeout=5.0
+        )
+        
+        # Close the connection
+        writer.close()
+        await writer.wait_closed()
+        
+        return True
+    except Exception:
+        return False
+
+async def wait_for_batch_public_ips():
+    """Wait for public IPs for instances in the most recent batch.
+    
+    This is a non-blocking function that can be called as a background task.
+    It identifies instances without IPs that were created in recent batches
+    and polls for their IP addresses. 
+    
+    This allows us to start getting IPs while other machines are still creating.
+    """
+    # Find instances without public IPs among the most recently created ones
+    # These will be instances that have an instance_id but no public_ip
+    pending_instances = [status for status in all_statuses.values() 
+                        if status.instance_id and not status.public_ip]
+    
+    if not pending_instances:
+        logger.debug("No pending instances waiting for IPs in this batch")
+        return
+    
+    logger.info(f"Background task: Getting public IPs for {len(pending_instances)} new instances")
+    
+    # Group instances by region for efficient API calls
+    instances_by_region = {}
+    for status in pending_instances:
+        if status.region not in instances_by_region:
+            instances_by_region[status.region] = []
+        instances_by_region[status.region].append(status)
+    
+    # Set a reasonable timeout for this specific batch (shorter than the main wait)
+    timeout = 120  # 2 minutes timeout per batch
+    start_time = time.time()
+    poll_interval = 5  # seconds between polls
+    
+    # Poll for public IPs
+    while time.time() - start_time < timeout:
+        # Count how many still need IPs
+        still_pending = sum(1 for status in pending_instances if not status.public_ip)
+        
+        if still_pending == 0:
+            logger.info(f"Background task: All {len(pending_instances)} instances in batch received IPs")
+            return
+        
+        logger.debug(f"Background task: Still waiting for {still_pending} instances to get public IPs")
+        
+        # Update the IPs in parallel per region
+        async def update_region_ips(region, statuses):
+            # Skip if no instances still need IPs in this region
+            if all(status.public_ip for status in statuses):
+                return 0
             
-        # Create tasks to query each region in parallel
-        async def query_region_instances(region, instance_ids):
             try:
+                # Get EC2 client for this region
                 ec2 = get_ec2_client(region)
+                
+                # Get instance IDs that still need IPs
+                instance_ids = [status.instance_id for status in statuses if not status.public_ip]
+                
+                # Skip if no instances
+                if not instance_ids:
+                    return 0
+                
+                # Query AWS API for current instance information
                 response = await asyncio.to_thread(
-                    ec2.describe_instances, InstanceIds=instance_ids
+                    ec2.describe_instances, 
+                    InstanceIds=instance_ids
                 )
                 
                 # Process results and update statuses
-                updated_ips = {}
+                updated_count = 0
                 for reservation in response.get("Reservations", []):
                     for instance in reservation.get("Instances", []):
                         instance_id = instance["InstanceId"]
                         public_ip = instance.get("PublicIpAddress", "")
                         private_ip = instance.get("PrivateIpAddress", "")
                         
-                        if instance_id:
-                            updated_ips[instance_id] = {
-                                "public_ip": public_ip,
-                                "private_ip": private_ip
-                            }
+                        # Find the matching status
+                        for status in statuses:
+                            if status.instance_id == instance_id:
+                                if public_ip and not status.public_ip:
+                                    status.public_ip = public_ip
+                                    status.detailed_status = "Public IP assigned"
+                                    updated_count += 1
+                                if private_ip:
+                                    status.private_ip = private_ip
+                                # Signal for UI update
+                                events_to_progress.append(status)
                 
-                return updated_ips
+                return updated_count
+            
             except Exception as e:
-                logger.error(f"Error querying instances in {region}: {str(e)}")
-                return {}
+                logger.error(f"Error updating IPs for region {region}: {str(e)}")
+                return 0
+        
+        # Create tasks for each region
+        tasks = [update_region_ips(region, statuses) 
+                for region, statuses in instances_by_region.items()]
+        
+        # Run all tasks in parallel
+        results = await asyncio.gather(*tasks)
+        
+        # Sum up the total updated
+        updated_count = sum(results)
+        if updated_count > 0:
+            logger.info(f"Background task: Received {updated_count} new public IPs")
+            
+            # Save the updates to MACHINES.json
+            save_machines_to_json(operation="update")
+        
+        # Wait before next poll
+        await asyncio.sleep(poll_interval)
+    
+    # If we get here, we hit the timeout
+    logger.warning(f"Background task: Timeout waiting for IPs after {timeout}s")
+
+async def wait_for_public_ips():
+    """Wait for all instances to get their public IP addresses.
+    
+    This function monitors the instance statuses and waits until all have IP addresses
+    or until a timeout is reached. It updates the progress display throughout.
+    
+    Returns:
+        bool: True if all instances got IPs, False if any timed out
+    """
+    global all_statuses
+    timeout = 300  # 5 minutes timeout
+    start_time = time.time()
+    poll_interval = 5  # seconds between polls
+    
+    logger.info(f"Waiting for public IP addresses (timeout: {timeout}s)")
+
+    # Count all instances we're waiting for - both spot requests and instances without IPs
+    pending_spot_requests = sum(1 for status in all_statuses.values() 
+                               if status.spot_request_id and not status.instance_id)
+    pending_ips = sum(1 for status in all_statuses.values() 
+                     if status.instance_id and not status.public_ip)
+    
+    total_pending = pending_spot_requests + pending_ips
+    logger.info(f"Waiting for {total_pending} instances to complete ({pending_spot_requests} spot requests still pending, {pending_ips} awaiting IPs)")
+
+    # Group instances by region for parallel processing
+    def get_instances_by_region():
+        instances_by_region = {}
+        spot_requests_by_region = {}
+        
+        # First, organize by region
+        for status in all_statuses.values():
+            region = status.region
+            if not region:
+                continue
+                
+            # Handle instances waiting for IP addresses
+            if status.instance_id and not status.public_ip:
+                if region not in instances_by_region:
+                    instances_by_region[region] = []
+                instances_by_region[region].append(status)
+                
+            # Handle spot requests waiting for fulfillment
+            elif status.spot_request_id and not status.instance_id:
+                if region not in spot_requests_by_region:
+                    spot_requests_by_region[region] = []
+                spot_requests_by_region[region].append(status)
+                
+        # Combine both mappings for return
+        combined_by_region = {}
+        all_regions = set(instances_by_region.keys()) | set(spot_requests_by_region.keys())
+        
+        for region in all_regions:
+            combined_by_region[region] = {
+                "instances": instances_by_region.get(region, []),
+                "spot_requests": spot_requests_by_region.get(region, [])
+            }
+            
+        return combined_by_region
+
+    # Track completion status
+    all_ips_received = False
+    
+    while True:
+        # Count pending spot requests and instances waiting for IPs
+        pending_spot_requests = sum(1 for status in all_statuses.values() 
+                                if status.spot_request_id and not status.instance_id)
+        pending_ips = sum(1 for status in all_statuses.values() 
+                        if status.instance_id and not status.public_ip)
+        
+        total_pending = pending_spot_requests + pending_ips
+        
+        # Check if we're done with both spot requests and IP assignment
+        all_complete = total_pending == 0
+        
+        # Check for timeout
+        time_elapsed = time.time() - start_time
+        timed_out = time_elapsed > timeout
+        
+        # Exit conditions
+        if all_complete:
+            provisioned_count = sum(1 for status in all_statuses.values() if status.public_ip)
+            logger.info(f"All instances processed - {provisioned_count} successfully provisioned with public IPs")
+            all_ips_received = True
+            break
+            
+        if timed_out:
+            # Update status for all pending instances
+            for status in all_statuses.values():
+                if status.spot_request_id and not status.instance_id:
+                    status.detailed_status = "Spot request not fulfilled after timeout"
+                    events_to_progress.append(status)
+                elif status.instance_id and not status.public_ip:
+                    status.detailed_status = "No public IP after timeout"
+                    events_to_progress.append(status)
+            
+            provisioned_count = sum(1 for status in all_statuses.values() if status.public_ip)
+            logger.warning(f"Timed out after {timeout}s - {provisioned_count} instances provisioned, {pending_spot_requests} spot requests pending, {pending_ips} instances missing IPs")
+            break
+
+        # Get instances grouped by region
+        instances_by_region = get_instances_by_region()
+        if not instances_by_region:
+            # No instances need IPs, we're done
+            logger.info("No instances waiting for IPs")
+            all_ips_received = True
+            break
+        
+        # Log progress
+        pending_count = sum(len(ids) for ids in instances_by_region.values())
+        logger.info(f"Still waiting for {pending_count} instances to get public IPs ({int(time_elapsed)}s elapsed)")
+            
+        # Create tasks to query each region in parallel
+        async def query_region_instances(region, region_data):
+            try:
+                ec2 = get_ec2_client(region)
+                updated_count = 0
+                
+                # First check spot request status for any pending requests
+                spot_requests = region_data.get("spot_requests", [])
+                if spot_requests:
+                    # Get all the spot request IDs
+                    spot_request_ids = [sr.spot_request_id for sr in spot_requests if sr.spot_request_id]
+                    
+                    if spot_request_ids:
+                        logger.debug(f"Checking {len(spot_request_ids)} spot requests in {region}")
+                        try:
+                            spot_response = await asyncio.to_thread(
+                                ec2.describe_spot_instance_requests,
+                                SpotInstanceRequestIds=spot_request_ids
+                            )
+                            
+                            # Process spot request results
+                            for request in spot_response.get("SpotInstanceRequests", []):
+                                request_id = request.get("SpotInstanceRequestId")
+                                instance_id = request.get("InstanceId")
+                                status_code = request.get("Status", {}).get("Code", "")
+                                status_message = request.get("Status", {}).get("Message", "")
+                                
+                                # Find the matching status object
+                                for status in spot_requests:
+                                    if status.spot_request_id == request_id:
+                                        # Update status with details
+                                        status.detailed_status = f"{status_code}: {status_message}"
+                                        
+                                        # If the request has an instance ID, it's fulfilled
+                                        if instance_id:
+                                            status.instance_id = instance_id
+                                            status.fulfilled = True
+                                            updated_count += 1
+                                            
+                                        # Signal for UI update
+                                        events_to_progress.append(status)
+                        except Exception as e:
+                            logger.error(f"Error checking spot requests in {region}: {str(e)}")
+                
+                # Now check for IP addresses for instances
+                instances = region_data.get("instances", [])
+                if instances:
+                    # Get all instance IDs
+                    instance_ids = [i.instance_id for i in instances if i.instance_id]
+                    
+                    if instance_ids:
+                        logger.debug(f"Checking {len(instance_ids)} instances for IPs in {region}")
+                        try:
+                            instance_response = await asyncio.to_thread(
+                                ec2.describe_instances, InstanceIds=instance_ids
+                            )
+                            
+                            # Process results and update statuses
+                            for reservation in instance_response.get("Reservations", []):
+                                for instance in reservation.get("Instances", []):
+                                    instance_id = instance["InstanceId"]
+                                    public_ip = instance.get("PublicIpAddress", "")
+                                    private_ip = instance.get("PrivateIpAddress", "")
+                                    
+                                    # Find the matching status object
+                                    for status in instances:
+                                        if status.instance_id == instance_id:
+                                            if public_ip and not status.public_ip:
+                                                status.public_ip = public_ip
+                                                status.detailed_status = "Public IP assigned"
+                                                updated_count += 1
+                                            if private_ip:
+                                                status.private_ip = private_ip
+                                            # Signal for UI update
+                                            events_to_progress.append(status)
+                        except Exception as e:
+                            logger.error(f"Error checking instance IPs in {region}: {str(e)}")
+                
+                return updated_count
+            except Exception as e:
+                logger.error(f"Error querying region {region}: {str(e)}")
+                return 0
         
         # Create and run tasks for all regions in parallel
+        regions_to_query = get_instances_by_region()
         tasks = [
-            query_region_instances(region, instance_ids)
-            for region, instance_ids in instances_by_region.items()
+            query_region_instances(region, region_data)
+            for region, region_data in regions_to_query.items()
         ]
         
         if tasks:
@@ -1029,22 +1641,30 @@ async def wait_for_public_ips():
             try:
                 results = await asyncio.gather(*tasks)
                 
-                # Process all results and update instance statuses
-                for result in results:
-                    for instance_id, ips in result.items():
-                        for status in all_statuses.values():
-                            if status.instance_id == instance_id:
-                                if ips.get("public_ip"):
-                                    status.public_ip = ips["public_ip"]
-                                if ips.get("private_ip"):
-                                    status.private_ip = ips["private_ip"]
-                                events_to_progress.append(status)
+                # Sum up the total updated
+                updated_count = sum(results)
                 
+                # Log how many updates we made
+                if updated_count > 0:
+                    # Count current success stats
+                    fulfilled_requests = sum(1 for status in all_statuses.values() 
+                                         if status.spot_request_id and status.instance_id)
+                    ip_assigned = sum(1 for status in all_statuses.values() 
+                                   if status.instance_id and status.public_ip)
+                    
+                    logger.info(f"Updated {updated_count} instances - {fulfilled_requests} spot requests fulfilled, {ip_assigned} instances have IPs")
+                    
+                    # Save the updates to MACHINES.json
+                    save_machines_to_json(operation="update")
+                    
             except Exception as e:
-                logger.error(f"Error waiting for public IPs: {str(e)}")
+                logger.error(f"Error waiting for instances: {str(e)}")
         
-        # Wait before next poll
+        # Wait before next poll - we don't want to hammer the AWS API
         await asyncio.sleep(poll_interval)
+    
+    # Return whether all instances got IPs or not
+    return all_ips_received
 
 
 async def list_spot_instances():
@@ -1142,18 +1762,108 @@ async def list_spot_instances():
 
 
 async def destroy_instances():
-    instance_region_map = {}
-
+    """Destroy all managed instances across all regions.
+    
+    This function first removes instances from MACHINES.json to provide immediate feedback,
+    then asynchronously queries AWS APIs to find and terminate any instances that might
+    have been missed in our tracking file.
+    """
     global task_name, task_total, events_to_progress
     task_name = "Terminating Spot Instances"
     events_to_progress = []
-
-    logger.info("Identifying instances to terminate...")
-    for region in AWS_REGIONS:
-        logger.info(f"Checking region {region} for instances to terminate...")
-        ec2 = get_ec2_client(region)
+    
+    # Start by loading and clearing MACHINES.json for immediate feedback
+    logger.info("Loading existing machine records from MACHINES.json")
+    existing_data = load_machines_from_json()
+    existing_machines = existing_data.get("machines", {})
+    
+    # If we have existing machines in the file, create status objects for them first
+    if existing_machines:
+        logger.info(f"Found {len(existing_machines)} existing machines in MACHINES.json")
+        for machine_id, machine_data in existing_machines.items():
+            try:
+                # Extract needed information for termination
+                region = machine_data.get("region")
+                zone = machine_data.get("zone")
+                instance_id = machine_data.get("instance_id")
+                vpc_id = machine_data.get("vpc_id")
+                
+                if not all([region, zone, instance_id]):
+                    logger.warning(f"Incomplete data for machine {machine_id}, skipping")
+                    continue
+                
+                # Create a status object for tracking
+                status = InstanceStatus(region, zone)
+                status.instance_id = instance_id
+                status.status = "Terminating"
+                status.detailed_status = "From MACHINES.json"
+                status.vpc_id = vpc_id
+                all_statuses[instance_id] = status
+                events_to_progress.append(status)
+                
+                logger.info(f"Added instance {instance_id} in {region} for termination from MACHINES.json")
+                
+            except Exception as e:
+                logger.error(f"Error processing machine record {machine_id}: {str(e)}")
+    
+    # Remove all machines from MACHINES.json immediately
+    if existing_machines:
+        logger.info("Clearing MACHINES.json to provide immediate feedback")
         try:
-            # Use safe_aws_call instead of asyncio.to_thread directly
+            # Create empty machine data
+            output_data = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "machines": {},
+                "total_count": 0,
+                "regions": [],
+                "last_operation": "delete",
+                "last_updated": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Write to temporary file first
+            temp_file = "MACHINES.json.tmp"
+            with open(temp_file, "w") as f:
+                # Use fcntl for file locking on Unix systems
+                try:
+                    import fcntl
+                    fcntl.flock(f, fcntl.LOCK_EX)  # Exclusive lock for writing
+                    json.dump(output_data, indent=2, default=str, sort_keys=True, fp=f)
+                    f.flush()  # Ensure data is written to disk
+                    os.fsync(f.fileno())  # Sync filesystem
+                    fcntl.flock(f, fcntl.LOCK_UN)  # Release lock
+                except (ImportError, AttributeError):
+                    # On Windows or if fcntl not available
+                    json.dump(output_data, indent=2, default=str, sort_keys=True, fp=f)
+                    f.flush()  # Ensure data is written to disk
+            
+            # Atomic rename to ensure file is either fully written or not at all
+            os.replace(temp_file, "MACHINES.json")
+            logger.info("Successfully cleared MACHINES.json")
+            
+        except Exception as e:
+            logger.error(f"Error clearing MACHINES.json: {str(e)}")
+    
+    # Now asynchronously query AWS APIs to find any instances we might have missed
+    logger.info("Asynchronously querying AWS APIs for any additional instances...")
+    
+    # Create a map to track instance-to-region mapping for later termination
+    instance_region_map = {}
+    
+    # Add all instances from MACHINES.json to our map
+    for instance_id, status in all_statuses.items():
+        instance_region_map[instance_id] = {
+            "region": status.region,
+            "vpc_id": status.vpc_id,
+        }
+    
+    # Query each region in parallel
+    async def query_region_for_instances(region):
+        logger.info(f"Checking region {region} for instances to terminate...")
+        region_instances = {}  # Store instances found in this region
+        
+        try:
+            ec2 = get_ec2_client(region)
+            # Use safe_aws_call for proper timeout handling
             logger.info(f"Querying AWS API for instances in {region}...")
             response = await safe_aws_call(
                 ec2.describe_instances,
@@ -1173,34 +1883,45 @@ async def destroy_instances():
                     instance_id = instance["InstanceId"]
                     az = instance["Placement"]["AvailabilityZone"]
                     vpc_id = instance.get("VpcId")
-                    logger.info(f"Found instance {instance_id} in {az}")
-                    thisInstanceStatusObject = InstanceStatus(region, az)
-                    thisInstanceStatusObject.instance_id = instance_id
-                    thisInstanceStatusObject.status = "Terminating"
-                    thisInstanceStatusObject.detailed_status = (
-                        "Initializing termination"
-                    )
-                    thisInstanceStatusObject.vpc_id = vpc_id
-                    all_statuses[instance_id] = thisInstanceStatusObject
-                    instance_region_map[instance_id] = {
-                        "region": region,
-                        "vpc_id": vpc_id,
-                    }
-
+                    
+                    # Check if we already have this instance in our tracking or instance_region_map
+                    if instance_id not in all_statuses and instance_id not in instance_region_map:
+                        logger.info(f"Found additional instance {instance_id} in {az} from AWS API")
+                        thisInstanceStatusObject = InstanceStatus(region, az)
+                        thisInstanceStatusObject.instance_id = instance_id
+                        thisInstanceStatusObject.status = "Terminating"
+                        thisInstanceStatusObject.detailed_status = "Found via AWS API"
+                        thisInstanceStatusObject.vpc_id = vpc_id
+                        all_statuses[instance_id] = thisInstanceStatusObject
+                        region_instances[instance_id] = {
+                            "region": region,
+                            "vpc_id": vpc_id,
+                        }
+                    
             if instance_count == 0:
                 logger.info(f"No instances found in region {region}")
+                
+            return region_instances
 
         except TimeoutError:
             logger.error(
                 f"Timeout while listing instances in {region}. Check your AWS credentials."
             )
-            continue
+            return {}
         except Exception as e:
             logger.error(
                 f"An error occurred while listing instances in {region}: {str(e)}"
             )
-            continue
-
+            return {}
+    
+    # Query all regions in parallel
+    tasks = [query_region_for_instances(region) for region in AWS_REGIONS]
+    region_results = await asyncio.gather(*tasks)
+    
+    # Merge results from all regions
+    for region_instances in region_results:
+        instance_region_map.update(region_instances)
+    
     if not all_statuses:
         logger.info("No instances found to terminate.")
         return
@@ -1209,6 +1930,18 @@ async def destroy_instances():
     logger.info(f"Found {task_total} instances to terminate.")
 
     async def terminate_instances_in_region(region, region_instances):
+        if not region_instances:
+            logger.info(f"No instances to terminate in {region}")
+            return
+            
+        # Deduplication check - double check for duplicates
+        # This is an extra safeguard to ensure we don't try to terminate the same instance twice
+        unique_instances = list(set(region_instances))
+        
+        if len(unique_instances) != len(region_instances):
+            logger.warning(f"Removed {len(region_instances) - len(unique_instances)} duplicate instances in {region}")
+            region_instances = unique_instances
+        
         ec2 = get_ec2_client(region)
         try:
             logger.info(f"Terminating {len(region_instances)} instances in {region}...")
@@ -1299,14 +2032,28 @@ async def destroy_instances():
                 f"An error occurred while cleaning up resources in {region}: {str(e)}"
             )
 
+    # Create a deduplicated mapping of instance_id to region/vpc info
+    # This ensures we don't have duplicate entries for the same instance
+    deduplicated_map = {}
+    for instance_id, info in instance_region_map.items():
+        # Check if we already have this instance (shouldn't happen, but just in case)
+        if instance_id not in deduplicated_map:
+            deduplicated_map[instance_id] = info
+        else:
+            logger.warning(f"Duplicate instance found: {instance_id} - keeping first entry")
+    
     # Group instances by region
     region_instances = {}
-    for instance_id, info in instance_region_map.items():
+    for instance_id, info in deduplicated_map.items():
         region = info["region"]
         if region not in region_instances:
             region_instances[region] = []
         region_instances[region].append(instance_id)
 
+    # Log the deduplication results
+    if len(deduplicated_map) != len(instance_region_map):
+        logger.info(f"Removed {len(instance_region_map) - len(deduplicated_map)} duplicate instances")
+    
     # Terminate instances in parallel
     termination_tasks = []
     for region, instances in region_instances.items():
@@ -1323,6 +2070,9 @@ async def destroy_instances():
         logger.info("No termination tasks to execute")
 
     logger.info("All instances have been terminated.")
+    
+    # Create and print a summary of what was terminated
+    print_termination_summary(deduplicated_map)
 
 
 async def clean_up_vpc_resources(ec2, vpc_id):
@@ -1415,9 +2165,75 @@ async def clean_up_vpc_resources(ec2, vpc_id):
     await update_status(f"VPC {vpc_id} successfully deleted")
 
 
+def print_termination_summary(instance_map):
+    """Print a summary table of all terminated instances.
+    
+    Args:
+        instance_map: Dictionary mapping instance IDs to region/vpc info
+    """
+    if not instance_map:
+        console.print("[yellow]No instances were terminated[/yellow]")
+        return
+    
+    # Collect zone information from status objects
+    zone_info = {}
+    for instance_id, info in instance_map.items():
+        # Try to get zone from status object
+        region = info.get("region", "unknown")
+        
+        # Look for the zone in the status object if available
+        zone = "unknown"
+        if instance_id in all_statuses:
+            zone = all_statuses[instance_id].zone
+        
+        # Track by region and zone
+        if region not in zone_info:
+            zone_info[region] = {}
+        
+        if zone not in zone_info[region]:
+            zone_info[region][zone] = 0
+        
+        zone_info[region][zone] += 1
+    
+    # Create a summary table
+    table = Table(title="Terminated Instances Summary", box=box.ROUNDED, show_header=True, header_style="bold red")
+    
+    # Add columns
+    table.add_column("Region", style="cyan")
+    table.add_column("Zone", style="blue")
+    table.add_column("Instances", style="red", justify="right")
+    
+    # Add rows for each region and zone
+    total_instances = 0
+    
+    # Sort regions for consistent display
+    for region in sorted(zone_info.keys()):
+        regions_zones = zone_info[region]
+        # Sort zones within each region
+        for zone in sorted(regions_zones.keys()):
+            count = regions_zones[zone]
+            total_instances += count
+            
+            # Only show region on first row for this region
+            if table.row_count > 0 and zone != sorted(regions_zones.keys())[0]:
+                table.add_row("", zone, str(count))
+            else:
+                table.add_row(region, zone, str(count))
+    
+    # Add a total row
+    table.add_row("", "[bold]TOTAL[/bold]", f"[bold]{total_instances}[/bold]")
+    
+    # Display the table
+    console.print()
+    console.print(table)
+    console.print()
+    console.print(f"[bold red]✓[/bold red] Successfully terminated {total_instances} instances")
+    console.print()
+
 async def delete_disconnected_aws_nodes():
     try:
         # Run bacalhau node list command and capture output
+        logger.info("Running 'bacalhau node list' to find disconnected nodes")
         result = subprocess.run(
             ["bacalhau", "node", "list", "--output", "json"],
             capture_output=True,
@@ -1437,26 +2253,26 @@ async def delete_disconnected_aws_nodes():
                 disconnected_aws_nodes.append(node["Info"]["NodeID"])
 
         if not disconnected_aws_nodes:
-            print("No disconnected AWS nodes found.")
+            logger.info("No disconnected AWS nodes found.")
             return
 
-        print(f"Found {len(disconnected_aws_nodes)} disconnected AWS node(s).")
+        logger.info(f"Found {len(disconnected_aws_nodes)} disconnected AWS node(s).")
 
         for node_id in disconnected_aws_nodes:
-            print(f"Deleting node: {node_id}")
+            logger.info(f"Deleting node: {node_id}")
             try:
                 # Run bacalhau admin node delete command
                 subprocess.run(["bacalhau", "node", "delete", node_id], check=True)
-                print(f"Successfully deleted node: {node_id}")
+                logger.info(f"Successfully deleted node: {node_id}")
             except subprocess.CalledProcessError as e:
-                print(f"Failed to delete node {node_id}. Error: {e}")
+                logger.error(f"Failed to delete node {node_id}. Error: {e}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Error running bacalhau node list: {e}")
+        logger.error(f"Error running bacalhau node list: {e}")
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON output: {e}")
+        logger.error(f"Error parsing JSON output: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
 
 
 def all_statuses_to_dict():
@@ -1469,12 +2285,149 @@ def all_statuses_to_dict():
             "detailed_status": status.detailed_status,
             "elapsed_time": status.elapsed_time,
             "instance_id": status.instance_id,
+            "spot_request_id": status.spot_request_id,
+            "fulfilled": getattr(status, "fulfilled", False),
             "public_ip": status.public_ip,
             "private_ip": status.private_ip,
             "vpc_id": status.vpc_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         for status in all_statuses.values()
     }
+
+def load_machines_from_json():
+    """Atomically load machine data from MACHINES.json if it exists"""
+    try:
+        # Check if the file exists
+        if not os.path.exists("MACHINES.json"):
+            logger.debug("MACHINES.json does not exist yet")
+            return {}
+            
+        # Open with exclusive access to ensure atomic read
+        with open("MACHINES.json", "r") as f:
+            # Use fcntl for file locking on Unix systems
+            try:
+                import fcntl
+                fcntl.flock(f, fcntl.LOCK_SH)  # Shared lock for reading
+                data = json.load(f)
+                fcntl.flock(f, fcntl.LOCK_UN)  # Release lock
+            except (ImportError, AttributeError):
+                # On Windows or if fcntl not available, just read without locking
+                data = json.load(f)
+                
+        return data
+    except json.JSONDecodeError:
+        logger.warning("MACHINES.json exists but contains invalid JSON, treating as empty")
+        return {}
+    except Exception as e:
+        logger.error(f"Failed to load machines from JSON: {str(e)}", exc_info=True)
+        return {}
+
+def save_machines_to_json(operation="update"):
+    """Atomically save the current machine statuses to MACHINES.json
+    
+    Args:
+        operation: String indicating the type of operation - "update" or "delete"
+    """
+    try:
+        # Create temporary file first (atomic write pattern)
+        temp_file = "MACHINES.json.tmp"
+        
+        # First try to load existing data
+        existing_data = load_machines_from_json()
+        existing_machines = existing_data.get("machines", {})
+        
+        # Convert all current instances to a dict
+        current_machines = all_statuses_to_dict()
+        
+        if operation == "update":
+            # Update existing machines with current ones
+            machines_data = {**existing_machines, **current_machines}
+            
+            # Log operations
+            new_count = len(set(current_machines.keys()) - set(existing_machines.keys()))
+            updated_count = len(set(current_machines.keys()) & set(existing_machines.keys()))
+            logger.info(f"Adding {new_count} new and updating {updated_count} existing machines")
+            
+        elif operation == "delete":
+            # For delete, remove current machines from existing ones
+            machines_to_remove = set(current_machines.keys())
+            machines_data = {k: v for k, v in existing_machines.items() 
+                            if k not in machines_to_remove}
+            
+            # Log operation
+            removed_count = len(machines_to_remove)
+            logger.info(f"Removing {removed_count} machines from MACHINES.json")
+        else:
+            # Default to just using current machines
+            machines_data = current_machines
+        
+        # Extract regions from the machines data (safely)
+        regions = set()
+        for machine_data in machines_data.values():
+            # Check if the machine data has a region key
+            if isinstance(machine_data, dict) and "region" in machine_data:
+                region = machine_data["region"]
+                if region:  # Only add non-empty regions
+                    regions.add(region)
+        
+        # Include metadata
+        output_data = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "machines": machines_data,
+            "total_count": len(machines_data),
+            "regions": list(regions),
+            "last_operation": operation,
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Write to temporary file first
+        with open(temp_file, "w") as f:
+            # Use fcntl for file locking on Unix systems
+            try:
+                import fcntl
+                fcntl.flock(f, fcntl.LOCK_EX)  # Exclusive lock for writing
+                json.dump(output_data, indent=2, default=str, sort_keys=True, fp=f)
+                f.flush()  # Ensure data is written to disk
+                os.fsync(f.fileno())  # Sync filesystem
+                fcntl.flock(f, fcntl.LOCK_UN)  # Release lock
+            except (ImportError, AttributeError):
+                # On Windows or if fcntl not available
+                json.dump(output_data, indent=2, default=str, sort_keys=True, fp=f)
+                f.flush()  # Ensure data is written to disk
+        
+        # Atomic rename to ensure file is either fully written or not at all
+        os.replace(temp_file, "MACHINES.json")
+            
+        if operation == "update":
+            logger.info(f"Saved {len(machines_data)} machine records to MACHINES.json")
+        else:
+            logger.info(f"Updated MACHINES.json - {len(machines_data)} machines remain")
+            
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save machines to JSON: {str(e)}", exc_info=True)
+        
+        # Log more debug info to help diagnose the issue
+        logger.debug(f"machines_data type: {type(machines_data)}")
+        if isinstance(machines_data, dict):
+            logger.debug(f"machines_data has {len(machines_data)} entries")
+            # Log a sample of the data
+            if machines_data:
+                sample_key = next(iter(machines_data))
+                sample_value = machines_data[sample_key]
+                logger.debug(f"Sample entry - key: {sample_key}, value type: {type(sample_value)}")
+                if isinstance(sample_value, dict):
+                    logger.debug(f"Sample keys: {list(sample_value.keys())}")
+        
+        # Clean up temp file if it exists
+        try:
+            if os.path.exists("MACHINES.json.tmp"):
+                os.remove("MACHINES.json.tmp")
+        except Exception as cleanup_error:
+            logger.error(f"Error cleaning up temp file: {str(cleanup_error)}")
+            
+        return False
 
 
 def parse_args():
@@ -1501,20 +2454,26 @@ def parse_args():
 
     args = parser.parse_args()
 
-    # Configure logging based on verbose flag
+    # Configure unified logging - use the same file_handler for both log file and console
     global file_handler
-    # Truncate debug.log file if it exists or create a new one
+    
+    # Remove any existing handlers to ensure clean configuration
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Create/truncate the debug.log file
     try:
         with open("debug.log", "w") as f:
             pass  # Just open in write mode to truncate
     except Exception as e:
-        print(f"Warning: Could not truncate debug.log: {e}")
-
+        sys.stdout.write(f"Warning: Could not truncate debug.log: {e}\n")
+        sys.stdout.flush()
+    
     # Create and configure file handler
     file_handler = logging.FileHandler("debug.log")
     file_handler.setFormatter(log_formatter)
     
-    # Set file_handler level based on verbose flag
+    # Set log levels based on verbose flag
     if args.verbose:
         file_handler.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
@@ -1522,7 +2481,7 @@ def parse_args():
         file_handler.setLevel(logging.INFO)
         logger.setLevel(logging.INFO)
     
-    # Add the handler to our logger
+    # Add the file handler to our logger - this will be shared with the console handler
     logger.addHandler(file_handler)
     
     # Log initial startup message
@@ -1552,24 +2511,174 @@ def parse_args():
     return args
 
 
+async def check_aws_credentials():
+    """Check if AWS credentials are valid before proceeding.
+    
+    Returns:
+        bool: True if credentials are valid, False otherwise
+    """
+    logger.info("Checking AWS credentials validity...")
+    try:
+        # Try to use any region for the check - we'll use the first configured region
+        region = AWS_REGIONS[0] if AWS_REGIONS else "us-east-1"
+        ec2 = get_ec2_client(region)
+        
+        # Make a simple API call that requires valid credentials
+        await safe_aws_call(ec2.describe_regions, RegionNames=[region])
+        
+        logger.info("AWS credentials are valid")
+        return True
+    except botocore.exceptions.ClientError as e:
+        error_code = getattr(e, 'response', {}).get('Error', {}).get('Code', '')
+        error_msg = getattr(e, 'response', {}).get('Error', {}).get('Message', str(e))
+        
+        if error_code in ['ExpiredToken', 'InvalidToken', 'UnauthorizedOperation']:
+            logger.error(f"AWS credentials have expired or are invalid: {error_msg}")
+            console.print("[bold red]AWS credentials have expired or are invalid.[/bold red]")
+            console.print("[yellow]Please run 'aws sso login' to refresh your credentials.[/yellow]")
+        else:
+            logger.error(f"Error checking AWS credentials: {error_code} - {error_msg}")
+            console.print(f"[bold red]AWS credentials error:[/bold red] {error_code} - {error_msg}")
+        
+        return False
+    except Exception as e:
+        logger.error(f"Error checking AWS credentials: {str(e)}")
+        console.print(f"[bold red]Error checking AWS credentials:[/bold red] {str(e)}")
+        console.print("[yellow]Please verify your AWS configuration and connectivity.[/yellow]")
+        return False
+
 async def perform_action():
     """Execute the requested action"""
     args = parse_args()
     logger.debug(f"Starting perform_action with action: {args.action}")
+    operation_result = {
+        "success": False,
+        "action": args.action,
+        "start_time": datetime.now(timezone.utc).isoformat(),
+        "end_time": None,
+        "result_summary": {}
+    }
+    
+    # Check AWS credentials before performing any action that requires AWS API calls
+    if args.action in ["create", "destroy", "list"]:
+        credentials_valid = await check_aws_credentials()
+        if not credentials_valid:
+            operation_result["error"] = "Invalid AWS credentials"
+            return operation_result
+    
     try:
         if args.action == "create":
             logger.info("Initiating create_spot_instances")
-            await create_spot_instances()
+            # Wait for the create operation to fully complete
+            creation_success = await create_spot_instances()
+            
+            # Count successfully created instances by region
+            created_instances = {}
+            for status in all_statuses.values():
+                if status.instance_id and status.public_ip:  # Successfully created with IP
+                    region = status.region
+                    if region not in created_instances:
+                        created_instances[region] = 0
+                    created_instances[region] += 1
+            
+            total_created = sum(created_instances.values())
+            
+            # Count instances with public IPs and completed provisioning
+            provisioned_instances = {}
+            for status in all_statuses.values():
+                if status.instance_id and status.public_ip and status.detailed_status == "Provisioning complete":
+                    region = status.region
+                    if region not in provisioned_instances:
+                        provisioned_instances[region] = 0
+                    provisioned_instances[region] += 1
+            
+            total_provisioned = sum(provisioned_instances.values())
+            
+            # Set operation result based on success of creation
+            operation_result["success"] = total_created > 0
+            operation_result["result_summary"] = {
+                "instances_created": total_created,
+                "instances_by_region": created_instances,
+                "instances_provisioned": total_provisioned,
+                "all_received_ips": creation_success
+            }
+            
+            # Save newly created instances to MACHINES.json (operation="update")
+            if len(all_statuses) > 0:
+                save_result = save_machines_to_json(operation="update")
+                operation_result["result_summary"]["saved_to_file"] = save_result
+                
+            logger.info(f"Creation completed: {total_created} instances created, {total_provisioned} fully provisioned")
+            
+            # If we didn't create any instances, that's an issue
+            if total_created == 0:
+                raise Exception("Failed to create any instances - check AWS credentials and limits")
+            
         elif args.action == "list":
             logger.info("Initiating list_spot_instances")
             await list_spot_instances()
+            
+            # Count instances by status
+            instance_counts = {}
+            for status in all_statuses.values():
+                if status.status not in instance_counts:
+                    instance_counts[status.status] = 0
+                instance_counts[status.status] += 1
+            
+            operation_result["success"] = True
+            operation_result["result_summary"] = {
+                "total_instances": len(all_statuses),
+                "instances_by_status": instance_counts
+            }
+            
+            # Update MACHINES.json with current instances (operation="update")
+            if len(all_statuses) > 0:
+                save_machines_to_json(operation="update")
+            
         elif args.action == "destroy":
+            # Store counts before destruction for reporting
+            initial_count = len(all_statuses)
+            initial_regions = set(status.region for status in all_statuses.values() if status.region)
+            
+            # Create a dictionary to track instances per region and zone
+            region_zone_counts = {}
+            for status in all_statuses.values():
+                if status.region and status.zone:
+                    if status.region not in region_zone_counts:
+                        region_zone_counts[status.region] = {}
+                    if status.zone not in region_zone_counts[status.region]:
+                        region_zone_counts[status.region][status.zone] = 0
+                    region_zone_counts[status.region][status.zone] += 1
+            
+            # Skip doing any MACHINES.json operations if empty
+            has_instances = initial_count > 0
+            
             logger.info("Initiating destroy_instances")
             await destroy_instances()
+            
+            # Get summary of terminated instances
+            operation_result["success"] = True
+            operation_result["result_summary"] = {
+                "instances_terminated": initial_count,
+                "regions_affected": list(initial_regions),
+                "region_zone_distribution": region_zone_counts,
+                "cleanup_completed": True
+            }
+            
+            # Remove destroyed instances from MACHINES.json (operation="delete")
+            if has_instances:
+                save_machines_to_json(operation="delete")
+            
         elif args.action == "delete_disconnected_aws_nodes":
             logger.info("Initiating delete_disconnected_aws_nodes")
             await delete_disconnected_aws_nodes()
+            operation_result["success"] = True
+            
         logger.debug(f"Completed action: {args.action}")
+            
+        # Set completion timestamp
+        operation_result["end_time"] = datetime.now(timezone.utc).isoformat()
+        
     except TimeoutError as e:
         logger.error(f"TimeoutError occurred: {str(e)}")
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
@@ -1578,7 +2687,9 @@ async def perform_action():
             "[yellow]Try running 'aws sso login' to refresh your credentials.[/yellow]"
         )
         table_update_event.set()
-        return
+        operation_result["error"] = str(e)
+        return operation_result
+        
     except botocore.exceptions.ClientError as e:
         logger.error(f"AWS ClientError occurred: {str(e)}")
         if "ExpiredToken" in str(e) or "InvalidToken" in str(e):
@@ -1589,12 +2700,17 @@ async def perform_action():
         else:
             console.print(f"[bold red]AWS Error:[/bold red] {str(e)}")
         table_update_event.set()
-        return
+        operation_result["error"] = str(e)
+        return operation_result
+        
     except Exception as e:
         logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
         table_update_event.set()
-        return
+        operation_result["error"] = str(e)
+        return operation_result
+        
+    return operation_result
 
 
 async def main():
@@ -1603,19 +2719,29 @@ async def main():
     try:
         args = parse_args()
 
-        # Set logging level based on verbosity
+        # Logging has been configured in parse_args
+        # We'll see these log messages in both debug.log and the Rich console panel
         if args.verbose:
-            logger.setLevel(logging.DEBUG)
             logger.debug("Verbose logging enabled")
-        else:
-            logger.setLevel(logging.INFO)
-
+            
         logger.info(f"Starting action: {args.action}")
 
         if args.format == "json":
             logger.info("Using JSON output format")
-            await perform_action()
-            print(json.dumps(all_statuses_to_dict(), indent=2))
+            operation_result = await perform_action()
+            # Machine updates in MACHINES.json are now handled within perform_action()
+            
+            # For JSON output, also show MACHINES.json contents if it exists
+            machines_from_file = load_machines_from_json().get("machines", {})
+            
+            # Use direct stdout before rich console is initialized
+            output = {
+                "current_machines": all_statuses_to_dict(),
+                "saved_machines_count": len(machines_from_file),
+                "operation_result": operation_result
+            }
+            sys.stdout.write(json.dumps(output, indent=2, default=str) + "\n")
+            sys.stdout.flush()
             return
 
         # Create initial progress and table
@@ -1645,8 +2771,8 @@ async def main():
                 global is_terminal_cleared
                 is_terminal_cleared = True
                 
-                # Add the rich console handler for logging with separate layout reference
-                handler = RichConsoleHandler(live, layout)  # Pass layout directly
+                # Add the rich console handler for logging, sharing the file handler
+                handler = RichConsoleHandler(live, layout, file_handler)  # Pass layout and file handler
                 logger.addHandler(handler)
 
                 # Start display update task in a separate thread
@@ -1665,19 +2791,97 @@ async def main():
                 display_task.add_done_callback(handle_display_task_exception)
 
                 # Perform the requested action
-                await perform_action()
+                operation_result = await perform_action()
 
+                # Display summary after operation completes (if successful)
+                if operation_result.get("success", False):
+                    # Create a nice summary table
+                    summary_table = Table(title=f"{args.action.capitalize()} Operation Summary", 
+                                     show_header=True, 
+                                     header_style="bold cyan",
+                                     box=box.ROUNDED)
+                    
+                    # Add columns based on the action
+                    if args.action == "create":
+                        summary_table.add_column("Total Created", style="green")
+                        summary_table.add_column("Regions", style="blue")
+                        summary_table.add_column("Distribution", style="cyan")
+                        
+                        # Get summary data
+                        summary = operation_result["result_summary"]
+                        total = summary.get("instances_created", 0)
+                        by_region = summary.get("instances_by_region", {})
+                        all_ips = summary.get("all_received_ips", True)
+                        
+                        # Add the IP status column
+                        summary_table.add_column("IP Status", style="green")
+                        
+                        # Format region distribution
+                        region_list = ", ".join(by_region.keys()) if by_region else "None"
+                        distribution = " | ".join([f"{region}: {count}" for region, count in by_region.items()]) if by_region else "None"
+                        
+                        # Format IP status message
+                        ip_status = "✓ All Received" if all_ips else "⚠ Some missing IPs"
+                        
+                        # Add the row with status
+                        summary_table.add_row(str(total), region_list, distribution, ip_status)
+                        
+                    elif args.action == "destroy":
+                        summary_table.add_column("Instances Terminated", style="red")
+                        summary_table.add_column("Regions Affected", style="cyan")
+                        summary_table.add_column("Result", style="magenta")
+                        
+                        # Get summary data
+                        summary = operation_result["result_summary"]
+                        terminated = summary.get("instances_terminated", 0)
+                        regions = summary.get("regions_affected", [])
+                        
+                        # Format for display
+                        region_text = ", ".join(regions) if regions else "None"
+                        
+                        # Add the row - show if machines file was updated
+                        if terminated > 0:
+                            summary_table.add_row(str(terminated), region_text, "✓ Successful")
+                        else:
+                            summary_table.add_row(str(terminated), region_text, "No machines found")
+                    
+                    # Print the summary
+                    console.print("\n")  # Add some space
+                    console.print(summary_table)
+                    console.print("\n")  # Add some space after
+                    
+                    # Show appropriate message based on the operation
+                    if args.action == "create" and operation_result.get("result_summary", {}).get("instances_created", 0) > 0:
+                        console.print("[green]✓ Machine information saved to MACHINES.json[/green]")
+                    elif args.action == "list" and operation_result.get("result_summary", {}).get("total_instances", 0) > 0:
+                        console.print("[green]✓ Machine information updated in MACHINES.json[/green]")
+                    elif args.action == "destroy" and operation_result.get("result_summary", {}).get("instances_terminated", 0) > 0:
+                        console.print("[red]✓ Terminated machines removed from MACHINES.json[/red]")
+                
                 # Signal display task to stop and wait for completion
                 logger.debug("Signaling display task to stop")
                 table_update_event.set()
 
+                # For create action, make sure we keep the display up just long enough
+                # to let users see the results but not block on full provisioning
+                if args.action == "create":
+                    # Just wait a short time to ensure users see the final IP table
+                    logger.debug("Keeping display open briefly to show final IP table")
+                    await asyncio.sleep(5.0)
+                
+                # Signal display task to stop (normal case)
+                logger.debug("Ending display task")
+                
                 # Wait for display to finish updating with a timeout
                 try:
                     logger.debug("Waiting for display task to complete")
-                    await asyncio.wait_for(asyncio.shield(display_task), timeout=5.0)
+                    
+                    # Short timeout for display task cleanup
+                    display_timeout = 5.0
+                    await asyncio.wait_for(asyncio.shield(display_task), timeout=display_timeout)
                     logger.debug("Display task completed")
                 except asyncio.TimeoutError:
-                    logger.warning("Display task did not complete within timeout")
+                    logger.warning(f"Display task did not complete within {display_timeout}s timeout")
                     # We continue anyway, the task will be cancelled in the finally block
 
             except Exception as e:
@@ -1706,23 +2910,35 @@ if __name__ == "__main__":
     
     # Function to print error outside of rich Live display context
     def print_error_message(message):
+        # Ensure we're writing directly to stdout to avoid stderr
         if is_terminal_cleared:
             # If terminal was cleared by rich Live display, add newlines for visibility
-            print("\n\n")
-        print(f"\n[ERROR] {message}")
-        print("Check debug.log for more details.")
+            sys.stdout.write("\n\n")
+        sys.stdout.write(f"\n[ERROR] {message}\n")
+        sys.stdout.write("Check debug.log for more details.\n")
+        sys.stdout.flush()
         
+    # Add a simple info message directly to console for initial startup
+    # This is only for user feedback before the rich console is ready
+    sys.stdout.write("Initializing...\n")
+    sys.stdout.flush()
+    
     try:
+        # Log to file only, not stdout
         logger.info("Starting main execution")
         asyncio.run(main())
         logger.info("Main execution completed")
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
+        sys.stderr = open(os.devnull, 'w')  # Suppress any stderr output
         print_error_message("Operation cancelled by user.")
         sys.exit(1)
     except Exception as e:
         # Log detailed error
         logger.error(f"Fatal error occurred: {str(e)}", exc_info=True)
+        
+        # Silence stderr completely
+        sys.stderr = open(os.devnull, 'w')
         
         # Print user-friendly error message outside of any rich context
         error_msg = f"Fatal error occurred: {str(e)}"
