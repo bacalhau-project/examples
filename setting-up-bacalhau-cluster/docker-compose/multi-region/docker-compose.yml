@@ -27,6 +27,7 @@ services:
       - bacalhau-network
     volumes:
       - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+      - /bacalhau_data:/bacalhau_data
     healthcheck:
       test: ["CMD", "bacalhau", "agent", "alive"]
       interval: 2s

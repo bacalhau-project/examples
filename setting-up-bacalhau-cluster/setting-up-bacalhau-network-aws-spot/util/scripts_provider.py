@@ -17,9 +17,41 @@ class ScriptsProvider:
 
     @staticmethod
     def get_ssh_public_key(file_path):
-        with open(file_path, "r") as file:
-            content = file.read()
-        return content
+        """Read and validate a public SSH key from the given file path.
+        
+        Args:
+            file_path: Path to the public SSH key file
+            
+        Returns:
+            The SSH public key content as a string
+        """
+        # Handle empty path
+        if not file_path:
+            return ""
+            
+        # Expand any tilde in file path
+        expanded_path = os.path.expanduser(file_path)
+        
+        # Read and validate key
+        try:
+            with open(expanded_path, "r") as file:
+                content = file.read().strip()
+                
+            # Basic validation - public keys should start with ssh-rsa, ssh-ed25519, etc.
+            if not (content.startswith('ssh-rsa') or 
+                    content.startswith('ssh-ed25519') or 
+                    content.startswith('ssh-dss') or 
+                    content.startswith('ecdsa-sha2')):
+                raise ValueError(f"Invalid SSH public key format in {file_path}")
+                
+            return content
+            
+        except FileNotFoundError:
+            print(f"Warning: SSH public key file not found at {expanded_path}")
+            return ""
+        except Exception as e:
+            print(f"Error reading SSH public key: {str(e)}")
+            return ""
 
     @staticmethod
     def encode_file_to_base64(file_path):
@@ -54,11 +86,13 @@ class ScriptsProvider:
         return base64.b64encode(memory_file.getvalue()).decode()
 
     def create_cloud_init_script(self):
+        # Get public SSH key - handle properly without base64 encoding
+        ssh_public_key = self.get_ssh_public_key(self.config.get_public_ssh_key_path())
+        
         values = {
             "compressed_scripts": self.tar_and_encode_scripts(),
             "username": self.config.get_username(),
-            "public_ssh_key": base64.b64encode(
-                self.get_ssh_public_key(self.config.get_public_ssh_key_path()).encode()).decode("utf-8"),
+            "public_ssh_key": ssh_public_key,  # No longer needs base64 encoding
             "bacalhau_data_dir": "/bacalhau_data",
             "bacalhau_node_dir": "/bacalhau_node",
             "bacalhau_config_file": self.create_bacalhau_config(),
