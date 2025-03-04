@@ -1,0 +1,124 @@
+max_instances: 30
+orchestrators:
+- nats://4adb3098-aee8-4d5f-b8db-ee6514735347.us1.cloud.expanso.io:4222
+public_ssh_key_path: /Users/daaronch/.ssh/id_rsa.pub
+regions:
+- eu-central-1:
+    image: auto
+    machine_type: t2.micro
+    node_count: auto
+- eu-west-1:
+    image: auto
+    machine_type: t2.micro
+    node_count: auto
+- eu-west-2:
+    image: auto
+    machine_type: t2.micro
+    node_count: auto
+- eu-south-1:
+    image: auto
+    machine_type: t3a.small
+    node_count: auto
+- eu-north-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-southeast-4:
+    image: auto
+    machine_type: t4g.small
+    node_count: auto
+- me-central-1:
+    image: auto
+    machine_type: t4g.small
+    node_count: auto
+- ap-southeast-3:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ca-west-1:
+    image: auto
+    machine_type: t4g.small
+    node_count: auto
+- ap-south-2:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- sa-east-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-south-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- me-south-1:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- us-west-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- eu-south-2:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- af-south-1:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- eu-central-2:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- ap-east-1:
+    image: auto
+    machine_type: t3.medium
+    node_count: auto
+- ap-northeast-2:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-southeast-5:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- ap-southeast-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ca-central-1:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-southeast-2:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-northeast-3:
+    image: auto
+    machine_type: t4g.medium
+    node_count: auto
+- eu-west-3:
+    image: auto
+    machine_type: m6gd.medium
+    node_count: auto
+- ap-northeast-1:
+    image: auto
+    machine_type: m5dn.large
+    node_count: auto
+- us-west-2:
+    image: auto
+    machine_type: m5d.xlarge
+    node_count: auto
+- us-east-2:
+    image: auto
+    machine_type: m5d.xlarge
+    node_count: auto
+- us-east-1:
+    image: auto
+    machine_type: t2.2xlarge
+    node_count: auto
+tls: true
+token: in52W4ifArJaXZeEb7MwzZPGd6PBry37kPp44uGpmHWETbEBu7qumitJzkhqVHq9
+username: bacalhau-runner

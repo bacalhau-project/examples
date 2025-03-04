@@ -1,0 +1,10 @@
+postgresql:
+  host: c-c-cosmosdb-psql.7gv6zdqo5bto43.postgres.cosmos.azure.com
+  port: 5432
+  user: citus
+  password: 7h2VzjPS8WIxeIK
+  database: global_telemetry
+
+azure:
+  resource_group: CosmosDB-RG
+  server_name: c-c-cosmosdb-psql

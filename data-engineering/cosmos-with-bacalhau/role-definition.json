@@ -1,0 +1,12 @@
+{
+  "RoleName": "CosmosWriteOnlyRole",
+  "Type": "CustomRole",
+  "AssignableScopes": ["/"],
+  "Permissions": [
+    {
+      "DataActions": [
+        "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/create"
+      ]
+    }
+  ]
+}
