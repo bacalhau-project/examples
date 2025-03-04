@@ -1,187 +1,185 @@
-# Bacalhau AWS Spot Instance Cluster Setup Guide
+# AWS Spot Instance Region Finder
 
-This guide walks you through setting up a Bacalhau compute cluster using AWS spot instances. The scripts in this repository automate finding cost-effective regions, configuring the right instance types, and deploying a complete Bacalhau cluster with minimal effort.
+This repository contains scripts to help set up a Bacalhau cluster on AWS spot instances by finding the most cost-effective regions and instance types.
 
-## Prerequisites
+## Scripts
 
-Before you begin, make sure you have:
+### 1. Region Availability Checker (`util/get_available_regions.py`)
 
-1. **AWS Account and Credentials**: Active AWS account with permissions to create EC2 instances, VPCs, security groups, etc.
-2. **AWS CLI Tools**: Installed and configured with valid credentials.
-3. **Python 3.9+**: With pip or uv package manager.
-4. **SSH Key Pair**: For secure access to your instances. 
+This script checks all AWS regions to find those that have spot instances available that meet the minimum requirements for running Docker and one small Python container:
+- At least 1 vCPU
+- At least 2 GiB of memory
 
-## Setup Process
+The script:
+1. Queries all AWS regions (not just a subset)
+2. Checks each region for instance types that meet the minimum requirements
+3. Prioritizes smaller, cost-effective instance types (t3, t3a, t4g, t2, a1, m6g, m5, m5a families)
+4. Verifies spot instance availability and pricing for suitable instance types
+5. Outputs the results to:
+   - `available_regions.json` - Comprehensive JSON file with detailed region and instance information
+   - `available_regions.py` - Python importable format (for backward compatibility)
+6. Displays a summary of the top 5 cheapest regions by default (with an option to show all)
 
-### Step 1: Configure AWS Credentials
+#### Command-line Options
 
-Ensure your AWS credentials are properly configured:
+```
+usage: get_available_regions.py [-h] [--show-all] [--max-workers MAX_WORKERS]
 
-```bash
-# Configure AWS credentials
-aws configure
-# or
-aws sso login
+Find AWS regions with suitable spot instances for Docker and containers
+
+options:
+  -h, --help            show this help message and exit
+  --show-all            Show all available regions, not just the top 5
+  --max-workers MAX_WORKERS
+                        Maximum number of parallel workers (default: 10)
 ```
 
-Verify your credentials work correctly:
+### 2. Ubuntu AMI Finder (`util/get_ubuntu_amis.py`)
+
+This script finds the latest Ubuntu 22.04 LTS AMI IDs for each available region:
+1. Reads the list of available regions from `available_regions.json` (created by the first script)
+2. Queries AWS for the latest Ubuntu 22.04 LTS AMI in each region
+3. Outputs the results to `ubuntu_amis.csv` with detailed instance information including:
+   - Region
+   - AMI ID
+   - Instance Type
+   - vCPUs
+   - Memory (GiB)
+   - Spot Price ($/hr)
+
+### 3. Config Updater (`util/update_config_with_regions.py`)
+
+This script updates your Bacalhau cluster configuration with the available regions:
+1. Reads the list of available regions from `available_regions.json`
+2. Loads your existing `config.yaml` file
+3. Adds all new regions that aren't already in your configuration
+4. Uses recommended instance types from the region details when available
+5. Creates a backup of your original configuration
+6. Saves the updated configuration with all available regions
+
+## Workflow
+
+The scripts are designed to work together in sequence:
+
+1. First, run `get_available_regions.py` to find regions with suitable spot instances
+2. Then, run `get_ubuntu_amis.py` to get the latest Ubuntu AMIs for those regions
+3. Finally, run `update_config_with_regions.py` to update your Bacalhau configuration
+
+This approach ensures you're only looking for AMIs in regions that have suitable spot instances available, and that your configuration includes all viable regions.
+
+## Usage
+
+### Prerequisites
+
+1. AWS CLI configured with appropriate credentials
+2. Python 3.6+ with required packages
+
+You can run these scripts in two ways:
+
+#### Option 1: Using uv (recommended)
+
+The scripts include dependency metadata for use with [uv](https://github.com/astral-sh/uv), which will automatically install required dependencies:
+
 ```bash
-aws sts get-caller-identity
-```
-
-### Step 2: Clone the Repository
-
-```bash
-git clone https://github.com/bacalhau-project/bacalhau-examples.git
-cd bacalhau-examples/setting-up-bacalhau-cluster/setting-up-bacalhau-network-aws-spot
-```
-
-### Step 3: Install Dependencies
-
-Using uv (recommended):
-```bash
+# Install uv if you don't have it
 pip install uv
-```
 
-Or using pip directly:
-
-### Step 4: Create Configuration File
-
-Copy the example configuration:
-```bash
-cp config.yaml_example config.yaml
-```
-
-Edit `config.yaml` to customize your deployment:
-```yaml
-aws:
-  total_instances: 3  # Total instances across all regions
-  username: bacalhau-runner  # SSH username
-  private_ssh_key_path: ~/.ssh/id_rsa  # Path to your private SSH key
-  public_ssh_key_path: ~/.ssh/id_rsa.pub  # Path to your public SSH key
-  timeouts:
-    api: 30
-    spot_fulfillment: 600
-    ip_assignment: 300
-    provisioning: 600
-    
-bacalhau:
-  orchestrators:
-    - nats://<your_orchestrator_url>:4222  # Your Bacalhau orchestrator URL
-  token: <your_bacalhau_network_token>  # Network token for authentication
-  tls: true  # Enable TLS
-```
-
-Ensure your SSH keys have the correct permissions:
-```bash
-chmod 600 ~/.ssh/id_rsa
-```
-
-Additionally, you can add additional commands to the cloud-init script by creating a file called `additional_commands.sh` in the `instance/scripts` directory.
-
-```bash
-cp instance/scripts/additional_commands.sh_example instance/scripts/additional_commands.sh
-chmod 700 instance/scripts/additional_commands.sh
-```
-
-Edit the `additional_commands.sh` file to add your commands.
-
-This could be anything you want to run on the instances after they are deployed:
-- Setting secrets
-- Installing additional software
-- Setting up environment variables
-
-### Step 5: Find Optimal Regions and Instance Types
-
-The scripts will automatically identify regions with available spot capacity and the most cost-effective instance types:
-
-```bash
-# Find available regions with suitable spot instances
+# Run scripts directly with uv
 uv run -s util/get_available_regions.py
-
-# Get Ubuntu AMIs for available regions
 uv run -s util/get_ubuntu_amis.py
+uv run -s util/update_config_with_regions.py
 
-# Update config.yaml with optimal regions and instances
+# To see all available regions, not just the top 5
+uv run -s util/get_available_regions.py --show-all
+```
+
+#### Option 2: Using pip
+
+```bash
+# Install dependencies manually
+pip install boto3 botocore argparse pyyaml
+
+# Run scripts
+python util/get_available_regions.py
+python util/get_ubuntu_amis.py
+python util/update_config_with_regions.py
+
+# To see all available regions, not just the top 5
+python util/get_available_regions.py --show-all
+```
+
+### Step 1: Find Available Regions with Smallest Suitable Instances
+
+```bash
+uv run -s util/get_available_regions.py
+```
+
+This will create:
+- `available_regions.json` - Comprehensive JSON file with detailed region and instance information
+- `available_regions.py` - Python importable format (for backward compatibility)
+- A console output showing the top 5 cheapest regions and their smallest suitable instances
+
+Example output:
+```
+Checking 28 AWS regions for spot availability...
+Looking for instances with at least 1 vCPUs and 2 GiB RAM
+
+Found 18 regions with suitable spot instances out of 28 total regions
+Available regions saved to: available_regions.json
+Python module also saved to: available_regions.py
+
+Top 5 cheapest regions for running Docker with a small Python container:
+(Use --show-all to see all 18 available regions)
+1. us-east-1 - t3.small - 2 vCPUs, 2.0 GiB RAM, $0.0078/hr
+2. us-west-2 - t3a.small - 2 vCPUs, 2.0 GiB RAM, $0.0084/hr
+3. eu-west-1 - t3.small - 2 vCPUs, 2.0 GiB RAM, $0.0091/hr
+4. ap-southeast-1 - t3.small - 2 vCPUs, 2.0 GiB RAM, $0.0094/hr
+5. eu-central-1 - t3.small - 2 vCPUs, 2.0 GiB RAM, $0.0098/hr
+```
+
+### Step 2: Get Ubuntu AMIs for Available Regions
+
+```bash
+uv run -s util/get_ubuntu_amis.py
+```
+
+This will create:
+- `ubuntu_amis.csv` - CSV file with region, AMI ID, and instance details
+
+Example CSV content:
+```
+Region,AMI ID,Instance Type,vCPUs,Memory (GiB),Spot Price ($/hr)
+us-east-1,ami-0c7217cdde317cfec,t3.small,2,2.0,$0.0078
+us-west-2,ami-0efcece6bed30fd98,t3a.small,2,2.0,$0.0084
+eu-west-1,ami-0694d931cee176e7d,t3.small,2,2.0,$0.0091
+```
+
+### Step 3: Update Your Bacalhau Configuration
+
+```bash
 uv run -s util/update_config_with_regions.py
 ```
 
-### Step 6: Deploy Your Bacalhau Cluster
-
-With your configuration prepared, deploy the cluster:
-
-```bash
-# Create spot instances and deploy Bacalhau
-uv run -s deploy_spot.py --action create
-```
-
 This will:
-1. Create VPC infrastructure in each configured region
-2. Launch spot instances with the specified configuration
-3. Install and configure Bacalhau on each instance
-4. Join the instances to your Bacalhau network
+- Read your existing `config.yaml` file
+- Add all new regions from `available_regions.json`
+- Use recommended instance types for each region
+- Create a backup of your original configuration at `config.yaml.bak`
+- Save the updated configuration with all available regions
 
-### Step 7: Manage Your Cluster
-
-List running instances (this queries the record in machines.db and then queries AWS to get the latest status):
-```bash
-uv run -s deploy_spot.py --action list
+Example output:
+```
+Found 30 available regions in available_regions.json
+Loaded configuration from config.yaml
+Adding 27 new regions to config.yaml
+Created backup of original config at config.yaml.bak
+Updated config.yaml with 27 new regions
+Total regions in config: 30
 ```
 
-View instance details in a formatted table (only reads from machines.db):
-```bash
-uv run -s deploy_spot.py --action table
-```
+## Notes
 
-When you're done, terminate all instances:
-```bash
-uv run -s deploy_spot.py --action destroy
-```
-
-**Note**: The destroy command may need to be run multiple times to completely clean up all resources. You can also use the dedicated VPC cleanup script:
-
-```bash
-uv run -s delete_vpcs.py
-```
-
-**Note**: The delete_vpcs.py script will delete all VPCs in the regions specified in the config.yaml file - it may need to be run multiple times to completely clean up all resources, due to AWS API issues with completing the deletion.
-
-## Understanding the Configuration
-
-### Key Configuration Options
-
-- **total_instances**: Controls how many instances will be deployed across all regions
-- **node_count**: Can be set to a specific number or "auto" to distribute evenly
-- **regions**: Each region section specifies:
-  - **ami_id**: The Ubuntu AMI ID (can be "auto" to select based on architecture)
-  - **architecture**: Either "x86_64" or "arm64"
-  - **machine_type**: EC2 instance type (e.g., "t3.small", "t4g.small")
-
-### Architecture Compatibility
-
-Ensure that your instance types match the AMI architecture:
-- x86_64 AMIs require x86_64 instances (e.g., t3.micro, m5.large)
-- ARM64 AMIs require ARM instances (e.g., t4g.micro, a1.medium)
-
-The `verify_config_architecture.py` script helps identify and fix incompatibilities.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **AWS Authentication Errors**: Run `aws sso login` to renew credentials
-
-2. **Spot Capacity Not Available**: Try different regions or instance types
-
-3. **Resources Not Fully Cleaned Up**: Run destroy multiple times and use delete_vpcs.py:
-   ```bash
-   uv run -s deploy_spot.py --action destroy
-   uv run -s delete_vpcs.py
-   ```
-
-### Viewing Logs
-
-For detailed logging information:
-```bash
-cat debug_deploy_spot.log
-```
+- The region availability script may take several minutes to run as it checks all AWS regions
+- If `available_regions.json` is not found, the Ubuntu AMI finder will fall back to a default list of regions
+- AWS credentials with EC2 describe permissions are required to run these scripts
+- Spot instance pricing is dynamic and may change over time, so it's recommended to run the script periodically to get the latest pricing information 

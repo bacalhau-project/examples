@@ -1,4 +1,4 @@
-#!/usr/bin/env uv run -s
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # /// script
 # requires-python = ">=3.11"
@@ -92,24 +92,6 @@ def main():
                         default_machine_type = region_config["machine_type"]
                         break
 
-    # Load AMI information if available
-    ami_json_path = os.path.join(parent_dir, "ubuntu_amis.json")
-    ami_data = {}
-
-    if os.path.exists(ami_json_path):
-        try:
-            with open(ami_json_path, "r") as f:
-                ami_data = json.load(f)
-            print(f"Loaded AMI information from {ami_json_path}")
-        except Exception as e:
-            print(f"Error reading {ami_json_path}: {str(e)}")
-            print("Proceeding without AMI architecture information")
-    else:
-        print(
-            f"AMI information file {ami_json_path} not found. Please run get_ubuntu_amis.py first."
-        )
-        print("Proceeding without AMI architecture information")
-
     # Add new regions to the config
     for region in new_regions:
         # Get the recommended instance type from region_details if available
@@ -119,93 +101,14 @@ def main():
                 region_details[region].get("cheapest_instance", {}).get("instance_type")
             )
 
-        # Set of widely compatible instance types by region for 2 vCPU/4GB minimum
-        # These are the most reliable medium instances (2vCPU, 4GB RAM) across AWS regions
-        region_instance_map = {
-            # North America
-            "us-east-1": ["t3.medium", "t2.medium"],
-            "us-east-2": ["t3.medium", "t2.medium"],
-            "us-west-1": ["t3.medium", "t2.medium"],
-            "us-west-2": ["t3.medium", "t2.medium"],
-            "ca-central-1": ["t3.medium", "t2.medium"],
-            "ca-west-1": ["t3.medium"],
-            
-            # Europe
-            "eu-west-1": ["t3.medium", "t2.medium"],
-            "eu-west-2": ["t3.medium", "t2.medium"],
-            "eu-west-3": ["t3.medium", "t2.medium"],
-            "eu-central-1": ["t3.medium", "t2.medium"],
-            "eu-central-2": ["t3.medium"],
-            "eu-north-1": ["t3.medium"],
-            "eu-south-1": ["t3.medium"],
-            "eu-south-2": ["t3.medium"],
-            
-            # Asia Pacific
-            "ap-northeast-1": ["t3.medium", "t2.medium"],
-            "ap-northeast-2": ["t3.medium", "t2.medium"],
-            "ap-northeast-3": ["t3.medium", "t2.medium"],
-            "ap-southeast-1": ["t3.medium", "t2.medium"],
-            "ap-southeast-2": ["t3.medium", "t2.medium"],
-            "ap-southeast-3": ["t3.medium"],
-            "ap-southeast-4": ["t3.medium"],
-            "ap-southeast-5": ["t3.medium"],
-            "ap-south-1": ["t3.medium", "t2.medium"],
-            "ap-south-2": ["t3.medium"],
-            "ap-east-1": ["t3.medium"],
-            
-            # Middle East and Africa
-            "me-central-1": ["t3.medium"],
-            "me-south-1": ["t3.medium"],
-            "af-south-1": ["t3.medium"],
-            
-            # South America
-            "sa-east-1": ["t3.medium", "t2.medium"],
-        }
-        
-        # Default to t2.medium which is widely available with 2vCPU/4GB RAM
-        machine_type = "t2.medium"
-        
-        # First preference: Check if we have a region-specific override
-        if region in region_instance_map:
-            machine_type = region_instance_map[region][0]
-            
-        # Second preference: Check if recommended instance meets our specs (2vCPU, 4GB+)
-        # This helps find the most cost-effective option from available_regions.json
-        if (recommended_instance and 
-            region_details.get(region, {}).get("available", False)):
-            
-            instance_info = region_details[region].get("cheapest_instance", {})
-            
-            # Verify instance has 2+ vCPU and 4+ GB RAM
-            if (instance_info.get("vcpus", 0) >= 2 and 
-                instance_info.get("memory_gib", 0) >= 4):
-                
-                machine_type = recommended_instance
-                print(f"Using recommended instance {machine_type} for {region} (confirmed: {instance_info.get('vcpus')} vCPU, {instance_info.get('memory_gib')} GB RAM)")
-            else:
-                print(f"Recommended instance {recommended_instance} rejected (insufficient resources). Using {machine_type} for {region}")
-        else:
-            print(f"Using default instance {machine_type} for {region}")
-
-        # Determine instance architecture
-        is_arm_instance = any(
-            family in machine_type for family in ["a1", "t4g", "c6g", "m6g", "r6g"]
+        machine_type = (
+            recommended_instance if recommended_instance else default_machine_type
         )
-        instance_arch = "arm64" if is_arm_instance else "x86_64"
-
-        # Get the appropriate AMI ID for the architecture if available
-        ami_id = "auto"
-        if region in ami_data and instance_arch in ami_data[region]:
-            ami_id = ami_data[region][instance_arch]["image_id"]
-            print(
-                f"Using {instance_arch} AMI {ami_id} for {region} with {machine_type} instance"
-            )
 
         config["regions"].append(
             {
                 region: {
-                    "ami_id": ami_id,
-                    "architecture": instance_arch,
+                    "image": "auto",
                     "machine_type": machine_type,
                     "node_count": "auto",
                 }

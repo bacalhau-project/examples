@@ -1,32 +1,34 @@
-# syntax=docker/dockerfile:1.4
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM python:3.11-slim
 
-# Set working directory 
-WORKDIR /cosmos-uploader
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
 
-# Copy sln, csproj and restore dependencies using the solution file
-COPY cosmos-uploader.sln .
-COPY *.csproj .
-RUN dotnet restore cosmos-uploader.sln
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy all source files and build using the project file
-COPY . .
-RUN dotnet publish CosmosUploader.csproj -c Release -o /app
+# Install uv for faster package installation
+RUN pip install uv
 
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+# Set working directory
 WORKDIR /app
-COPY --from=build /app .
 
-# Explicitly copy the entrypoint script into the final image
-COPY entrypoint.sh /app/entrypoint.sh
-# Ensure it has execute permissions within the image
-RUN chmod +x /app/entrypoint.sh
+# Copy requirements file
+COPY requirements.txt .
 
-# Install iproute2 for the 'ip' command
-# Using apt-get for the Debian-based runtime image
-RUN apt-get update && apt-get install -y --no-install-recommends iproute2 && \
-    rm -rf /var/lib/apt/lists/*
+# Install dependencies
+RUN uv pip install -r requirements.txt
 
-# Set entrypoint to use our wrapper script
+# Copy source code
+COPY . .
+
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
+
+# Set entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
