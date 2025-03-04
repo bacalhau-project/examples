@@ -118,7 +118,12 @@ class Config(dict):
         return self.get("tls", False)
 
     def get_public_ssh_key_path(self):
-        return self.get("public_ssh_key_path", "")
+        path = self.get("public_ssh_key_path", "")
+        return os.path.expanduser(path) if path else ""
+
+    def get_private_ssh_key_path(self):
+        path = self.get("private_ssh_key_path", "")
+        return os.path.expanduser(path) if path else ""
 
     def get_username(self):
         return self.get("username", "bacalhau-runner")

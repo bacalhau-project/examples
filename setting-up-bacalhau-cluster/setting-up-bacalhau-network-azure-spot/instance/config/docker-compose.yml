@@ -1,10 +1,9 @@
 services:
   bacalhau-node:
-    image: docker.io/bacalhauproject/bacalhau-dind-compute-node:latest
+    image: ghcr.io/bacalhau-project/bacalhau:v1.6.4-dind:latest
     privileged: true
     restart: always
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - type: bind
         source: /bacalhau_node/config.yaml
         target: /etc/bacalhau/config.yaml
