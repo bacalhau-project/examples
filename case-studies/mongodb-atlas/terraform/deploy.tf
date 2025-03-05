@@ -1,17 +1,17 @@
 provider "google" {
-	project = var.project_id
+  project = var.project_id
 }
 
 # Archive the scripts folder
 data "archive_file" "scripts" {
-	type        = "zip"
-	source_dir  = "../scripts/"
-	output_path = "../scripts.zip"
+  type        = "zip"
+  source_dir  = "../scripts/"
+  output_path = "../scripts.zip"
 }
 
 resource "google_storage_bucket" "public_bucket" {
-  name     = var.bucket_name
-  location = "US"
+  name          = var.bucket_name
+  location      = "US"
   force_destroy = true
 }
 
@@ -25,15 +25,15 @@ resource "google_storage_bucket_iam_binding" "public_read" {
 }
 
 resource "google_compute_firewall" "http" {
-	name    = "allow-public-access"
-	network = "default"
+  name    = "allow-public-access"
+  network = "default"
 
-	allow {
-		protocol = "tcp"
-		ports    = ["80", "443", "1234", "4001", "4222", "5001", "8080", "43167", "42717"]
-	}
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443", "1234", "4001", "4222", "5001", "6001", "8080", "43167", "42717"]
+  }
 
-	source_ranges = ["0.0.0.0/0"]
+  source_ranges = ["0.0.0.0/0"]
 }
 
 data "cloudinit_config" "user_data" {
@@ -56,7 +56,7 @@ data "cloudinit_config" "user_data" {
       ipfs_service : base64encode(file("${path.module}/node_files/ipfs.service")),
       start_bacalhau : filebase64("${path.root}/node_files/start_bacalhau.sh"),
 
-      scripts_bucket_source: "${google_storage_bucket_object.zip_file.bucket}",
+      scripts_bucket_source : "${google_storage_bucket_object.zip_file.bucket}",
       scripts_object_key : "${google_storage_bucket_object.zip_file.name}",
       # Need to do the below to remove spaces and newlines from public key
       ssh_key : compact(split("\n", file(var.public_key)))[0],
@@ -71,40 +71,40 @@ data "cloudinit_config" "user_data" {
 }
 
 resource "google_storage_bucket_object" "zip_file" {
-	name   = "scripts.zip"
-	bucket = var.bucket_name
-	source = "../scripts.zip"
+  name       = "scripts.zip"
+  bucket     = var.bucket_name
+  source     = "../scripts.zip"
   depends_on = [google_storage_bucket.public_bucket]
 }
 
 resource "google_compute_instance" "gcp_instance" {
-	for_each = var.locations
+  for_each = var.locations
 
-	# Execute a local command to print out the key
-	provisioner "local-exec" {
-		command = "echo 'Non-bootstrapped instance key: ${each.key}'"
-	}
+  # Execute a local command to print out the key
+  provisioner "local-exec" {
+    command = "echo 'Non-bootstrapped instance key: ${each.key}'"
+  }
 
-	name         = "${var.app_name}-${each.key}"
-	machine_type = "${var.machine_type}"
-	zone         = "${each.key}"
+  name         = "${var.app_name}-${each.key}"
+  machine_type = var.machine_type
+  zone         = each.key
 
-	boot_disk {
-		initialize_params {
-			image = "ubuntu-os-cloud/ubuntu-2004-lts"
-			size = 20
-		}
-	}
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      size  = 20
+    }
+  }
 
-	network_interface {
-		network = "default"
-		access_config {}
-	}
+  network_interface {
+    network = "default"
+    access_config {}
+  }
 
-	metadata = {
-		user-data = "${data.cloudinit_config.user_data[each.key].rendered}",
-		ssh-keys  = "${var.username}:${file(var.public_key)}",
-	}
+  metadata = {
+    user-data = "${data.cloudinit_config.user_data[each.key].rendered}",
+    ssh-keys  = "${var.username}:${file(var.public_key)}",
+  }
 
 }
 
@@ -116,9 +116,9 @@ resource "null_resource" "configure_requester_node" {
   depends_on = [google_compute_instance.gcp_instance]
 
   connection {
-    host        = each.value.network_interface[0].access_config[0].nat_ip
-    port        = 22
-    user        = var.username
+    host  = each.value.network_interface[0].access_config[0].nat_ip
+    port  = 22
+    user  = var.username
     agent = true
   }
 
@@ -126,7 +126,7 @@ resource "null_resource" "configure_requester_node" {
     inline = [
       "echo 'SSHD is now alive.'",
       "echo 'Hello, world.'",
-	  "sudo timeout 600 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
+      "sudo timeout 600 bash -c 'until [[ -s /data/bacalhau.run ]]; do sleep 1; done' && echo 'Bacalhau is now alive.'",
     ]
   }
 
@@ -142,9 +142,9 @@ resource "null_resource" "configure_compute_node" {
   depends_on = [null_resource.configure_requester_node]
 
   connection {
-    host        = each.value.network_interface[0].access_config[0].nat_ip
-    port        = 22
-    user        = var.username
+    host  = each.value.network_interface[0].access_config[0].nat_ip
+    port  = 22
+    user  = var.username
     agent = true
   }
 
@@ -162,7 +162,7 @@ resource "null_resource" "configure_compute_node" {
       "sudo mv /home/${var.username}/bacalhau-bootstrap /etc/bacalhau-bootstrap",
       "sudo systemctl daemon-reload",
       "sudo systemctl restart bacalhau.service",
-	  "echo 'Restarted Bacalhau Compute node'",
+      "echo 'Restarted Bacalhau Compute node'",
     ]
   }
 }

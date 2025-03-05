@@ -384,7 +384,7 @@ def get_user_data_script(orchestrators, encoded_tar, token=""):
     return f"""#!/bin/bash
 
 # Export ORCHESTRATORS
-export ORCHESTRATORS="{','.join(orchestrators)}"
+export ORCHESTRATORS="{",".join(orchestrators)}"
 export TOKEN="{token}"
 
 # Create and populate /etc/node-config
@@ -801,6 +801,12 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
                     "IpProtocol": "tcp",
                     "FromPort": 1235,
                     "ToPort": 1235,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 6001,
+                    "ToPort": 6001,
                     "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
                 },
             ],

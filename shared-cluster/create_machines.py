@@ -15,6 +15,13 @@ from subprocess import CalledProcessError, run
 
 import asyncssh
 from asyncssh import Error as AsyncSSHError
+from dotenv import load_dotenv, set_key
+from rich.console import Console
+from rich.layout import Layout
+from rich.live import Live
+from rich.panel import Panel
+from rich.table import Table
+
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.core.pipeline.policies import HttpLoggingPolicy
 
@@ -26,12 +33,6 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
-from dotenv import load_dotenv, set_key
-from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
-from rich.panel import Panel
-from rich.table import Table
 
 messages = []
 
@@ -1118,6 +1119,19 @@ async def create_cluster(num_vms=2):
                             "direction": "Inbound",
                         },
                     },
+                    {
+                        "name": "AllowBacalhau6001",
+                        "params": {
+                            "protocol": "Tcp",
+                            "source_port_range": "*",
+                            "destination_port_range": "6001",
+                            "source_address_prefix": "*",
+                            "destination_address_prefix": "*",
+                            "access": "Allow",
+                            "priority": 1004,
+                            "direction": "Inbound",
+                        },
+                    },
                 ]
 
                 rule_tasks = [
@@ -1181,7 +1195,7 @@ async def create_cluster(num_vms=2):
         vm_tasks = []
         for i in range(num_vms):
             vm_name = (
-                f"{REQUESTER_NODE_NAME if i == 0 else COMPUTE_NODE_NAME}-{i+1:03d}"
+                f"{REQUESTER_NODE_NAME if i == 0 else COMPUTE_NODE_NAME}-{i + 1:03d}"
             )
             is_orchestrator = i == 0
             vm_size = REQUESTER_NODE_SIZE if i == 0 else COMPUTE_NODE_SIZE
