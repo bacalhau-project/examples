@@ -11,9 +11,9 @@ resource "oci_core_network_security_group" "nsg" {
 resource "oci_core_network_security_group_security_rule" "ssh_rule" {
   network_security_group_id = oci_core_network_security_group.nsg.id
   direction                 = "INGRESS"
-  protocol                 = "6" # TCP
-  source                   = "0.0.0.0/0"
-  source_type              = "CIDR_BLOCK"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
       min = 22
@@ -25,9 +25,9 @@ resource "oci_core_network_security_group_security_rule" "ssh_rule" {
 resource "oci_core_network_security_group_security_rule" "bacalhau_rule" {
   network_security_group_id = oci_core_network_security_group.nsg.id
   direction                 = "INGRESS"
-  protocol                 = "6" # TCP
-  source                   = "0.0.0.0/0"
-  source_type              = "CIDR_BLOCK"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
       min = 1234
@@ -39,9 +39,9 @@ resource "oci_core_network_security_group_security_rule" "bacalhau_rule" {
 resource "oci_core_network_security_group_security_rule" "ipfs_rule" {
   network_security_group_id = oci_core_network_security_group.nsg.id
   direction                 = "INGRESS"
-  protocol                 = "6" # TCP
-  source                   = "0.0.0.0/0"
-  source_type              = "CIDR_BLOCK"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
       min = 1235
@@ -53,13 +53,27 @@ resource "oci_core_network_security_group_security_rule" "ipfs_rule" {
 resource "oci_core_network_security_group_security_rule" "outbound_https" {
   network_security_group_id = oci_core_network_security_group.nsg.id
   direction                 = "EGRESS"
-  protocol                 = "6" # TCP
-  destination              = "0.0.0.0/0"
-  destination_type         = "CIDR_BLOCK"
+  protocol                  = "6" # TCP
+  destination               = "0.0.0.0/0"
+  destination_type          = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
       min = 443
       max = 443
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "bacalhau_rule" {
+  network_security_group_id = oci_core_network_security_group.nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  tcp_options {
+    destination_port_range {
+      min = 6001
+      max = 6001
     }
   }
 }

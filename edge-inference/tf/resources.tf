@@ -54,7 +54,7 @@ module "instanceModule" {
   zone               = var.locations[var.region].availability_zone
   vpc_id             = module.networkModule.vpc_id
   subnet_public_id   = module.networkModule.public_subnets[0]
-  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_1234, module.securityGroupModule.sg_1235]
+  security_group_ids = [module.securityGroupModule.sg_22, module.securityGroupModule.sg_1234, module.securityGroupModule.sg_1235, module.securityGroupModule.sg_6001]
   app_tag            = var.app_tag
   bacalhau_run_file  = var.bacalhau_run_file
   bootstrap_region   = var.bootstrap_region
