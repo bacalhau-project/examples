@@ -74,6 +74,18 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2020-11-01' = {
           destinationAddressPrefix: '*'
         }
       }
+      {
+        name: 'Allow-6001'
+        properties: {
+          priority: 1003
+          protocol: 'Tcp'
+          access: 'Allow'
+          direction: 'Inbound'
+          sourcePortRange: '*'
+          destinationPortRange: '6001'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+      }
     ]
   }
   tags: {

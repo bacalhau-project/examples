@@ -8,7 +8,7 @@ network_security_group_rules = [
         "destination_address_prefix": "*",
         "access": "Allow",
         "priority": 300,
-        "direction": "Inbound"
+        "direction": "Inbound",
     },
     {
         "name": "AllowAnyCustom1234Inbound",
@@ -19,7 +19,7 @@ network_security_group_rules = [
         "destination_address_prefix": "*",
         "access": "Allow",
         "priority": 310,
-        "direction": "Inbound"
+        "direction": "Inbound",
     },
     {
         "name": "AllowAnyCustom1235Inbound",
@@ -30,7 +30,7 @@ network_security_group_rules = [
         "destination_address_prefix": "*",
         "access": "Allow",
         "priority": 320,
-        "direction": "Inbound"
+        "direction": "Inbound",
     },
     {
         "name": "AllowAnyCustom4222Inbound",
@@ -41,6 +41,17 @@ network_security_group_rules = [
         "destination_address_prefix": "*",
         "access": "Allow",
         "priority": 330,
-        "direction": "Inbound"
-    }
+        "direction": "Inbound",
+    },
+    {
+        "name": "AllowAnyCustom6001Inbound",
+        "protocol": "*",
+        "source_port_range": "*",
+        "destination_port_range": "6001",
+        "source_address_prefix": "*",
+        "destination_address_prefix": "*",
+        "access": "Allow",
+        "priority": 340,
+        "direction": "Inbound",
+    },
 ]

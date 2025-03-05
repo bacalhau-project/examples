@@ -67,7 +67,9 @@ if os.path.exists(KEY_PAIR_NAME + ".pub"):
     with open(KEY_PAIR_NAME + ".pub", "r") as public_key_file:
         public_key_material = public_key_file.read().strip()
 else:
-    raise FileNotFoundError(f"The key pair file '{KEY_PAIR_NAME + ".pub"}' does not exist.")
+    raise FileNotFoundError(
+        f"The key pair file '{KEY_PAIR_NAME + '.pub'}' does not exist."
+    )
 
 SCRIPT_DIR = "spot_creation_scripts"
 
@@ -83,6 +85,7 @@ task_name = "TASK NAME"
 task_total = 10000
 task_count = 0
 events_to_progress = []
+
 
 # Update all_statuses threadsafe
 def update_all_statuses(status):
@@ -384,7 +387,7 @@ def get_user_data_script(orchestrators, encoded_tar, token=""):
     return f"""#!/bin/bash
 
 # Export ORCHESTRATORS
-export ORCHESTRATORS="{','.join(orchestrators)}"
+export ORCHESTRATORS="{",".join(orchestrators)}"
 export TOKEN="{token}"
 
 # Create and populate /etc/node-config
@@ -803,6 +806,12 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
                     "ToPort": 1235,
                     "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
                 },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 6001,
+                    "ToPort": 6001,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                },
             ],
         )
         return security_group_id
@@ -1212,32 +1221,32 @@ async def main():
     parser = argparse.ArgumentParser(
         description="Manage spot instances across multiple AWS regions."
     )
-    
+
     parser.add_argument(
         "action",
         choices=["create", "destroy", "list", "delete_disconnected_aws_nodes"],
         help="Action to perform",
     )
-    
+
     parser.add_argument(
         "--orchestrators",
         help="Comma-separated list of orchestrator addresses",
         default="",
     )
-    
+
     parser.add_argument(
         "--token",
         help="Token for the cluster",
         default="",
     )
-    
+
     parser.add_argument(
         "--no-of-instances",
         type=int,
         default=30,
         help="Total number of instances to create",
     )
-    
+
     parser.add_argument(
         "--format", choices=["default", "json"], default="default", help="Output format"
     )
