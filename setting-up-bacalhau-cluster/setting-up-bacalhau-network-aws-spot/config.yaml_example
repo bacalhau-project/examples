@@ -1,21 +1,36 @@
-max_instances: 3
-username: bacalhau-runner
-public_ssh_key_path: ~/.ssh/id_rsa.pub
-private_ssh_key_path: ~/.ssh/id_rsa
-orchestrators:
-  - nats://<your_orchestrator_url>:4222
-token: <your_bacalhau_network_token>
-tls: true
+aws:
+  total_instances: 3
+  username: bacalhau-runner
+  ssh_key: ~/.ssh/id_rsa
+  public_ssh_key: ~/.ssh/id_rsa.pub
+  timeouts:
+    api: 30
+    spot_fulfillment: 600
+    ip_assignment: 300
+    provisioning: 600
+    
+bacalhau:
+  orchestrators:
+    - nats://<your_orchestrator_url>:4222
+  token: <your_bacalhau_network_token>
+  tls: true
+  
 regions:
-  - eu-central-1:
-      image: auto
-      machine_type: t2.micro
-      node_count: auto
-  - eu-west-1:
-      image: auto
-      machine_type: t2.micro
-      node_count: auto
-  - eu-west-2:
-      image: auto
-      machine_type: t2.micro
-      node_count: auto
+  # x86_64 instances with x86_64 AMIs
+  eu-central-1:
+    ami_id: ami-0437e8813894fa0c5  # Ubuntu 22.04 x86_64
+    architecture: x86_64
+    machine_type: t2.micro  # x86_64 instance type
+    node_count: auto
+  eu-west-1:
+    ami_id: ami-032a56ad5e480189c  # Ubuntu 22.04 x86_64
+    architecture: x86_64  
+    machine_type: t2.micro  # x86_64 instance type
+    node_count: auto
+    
+  # ARM64 instance with ARM64 AMI
+  us-east-1:
+    ami_id: auto  # Will be selected automatically based on architecture
+    architecture: arm64
+    machine_type: t4g.small  # ARM64 instance type
+    node_count: auto
