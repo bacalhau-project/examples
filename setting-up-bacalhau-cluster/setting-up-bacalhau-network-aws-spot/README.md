@@ -64,8 +64,9 @@ The scripts are designed to work together in sequence:
 1. First, run `get_available_regions.py` to find regions with suitable spot instances
 2. Then, run `get_ubuntu_amis.py` to get the latest Ubuntu AMIs for those regions
 3. Finally, run `update_config_with_regions.py` to update your Bacalhau configuration
+4. Verify your configuration with `verify_config_architecture.py` to ensure compatibility
 
-This approach ensures you're only looking for AMIs in regions that have suitable spot instances available, and that your configuration includes all viable regions.
+This approach ensures you're only looking for AMIs in regions that have suitable spot instances available, and that your configuration includes all viable regions with the correct architecture compatibility between instance types and AMIs.
 
 ## Usage
 
@@ -177,9 +178,72 @@ Updated config.yaml with 27 new regions
 Total regions in config: 30
 ```
 
+### Step 4: Verify Architecture Compatibility
+
+```bash
+uv run -s util/verify_config_architecture.py
+```
+
+This will:
+- Check your `config.yaml` for architecture mismatches between instance types and AMIs
+- Verify that instance types are supported in their respective regions
+- Provide detailed recommendations if issues are found
+- Ensure that x86_64 AMIs are used with x86_64 instances and arm64 AMIs with ARM instances
+
+You can also automatically fix common issues with:
+
+```bash
+uv run -s util/verify_config_architecture.py --fix
+```
+
+The auto-fix option will:
+- Create a backup of your current config.yaml
+- Replace unsupported instance types with region-specific compatible alternatives
+- Apply fixes based on a comprehensive database of instance type compatibility by region
+- Re-verify the configuration after making changes
+
+Example output:
+```
+Loading configuration from config.yaml...
+Loading AMI data from ubuntu_amis.json...
+Verifying architecture compatibility...
+✓ No architecture compatibility issues found!
+```
+
 ## Notes
 
 - The region availability script may take several minutes to run as it checks all AWS regions
 - If `available_regions.json` is not found, the Ubuntu AMI finder will fall back to a default list of regions
 - AWS credentials with EC2 describe permissions are required to run these scripts
-- Spot instance pricing is dynamic and may change over time, so it's recommended to run the script periodically to get the latest pricing information 
+- Spot instance pricing is dynamic and may change over time, so it's recommended to run the script periodically to get the latest pricing information
+- Not all instance types are available in all regions (especially newer regions) - the verify script will help identify unsupported types
+- Architecture compatibility is critical - ARM instances (t4g, a1, c6g, etc.) require ARM64 AMIs, while x86 instances (t2, t3, m5, etc.) require x86_64 AMIs
+
+## Quick Setup Guide
+
+To quickly set up a Bacalhau cluster with optimal configuration, run these commands in sequence:
+
+```bash
+# 1. Find the lowest price instances with at least 2 CPU and 4GB RAM
+uv run -s util/get_available_regions.py --show-all
+
+# 2. Get the compatible Ubuntu AMIs for all regions
+uv run -s util/get_ubuntu_amis.py
+
+# 3. Update config.yaml with optimal settings (uses t3.medium or equivalent in each region)
+uv run -s util/update_config_with_regions.py
+
+# 4. Verify and automatically fix any remaining compatibility issues
+uv run -s util/verify_config_architecture.py --fix --skip-live-check
+
+# Optional: Run with live AWS availability check (requires AWS credentials)
+# uv run -s util/verify_config_architecture.py --fix
+```
+
+This sequence will:
+1. Find appropriate instances with sufficient resources (2 vCPU, 4GB RAM)
+2. Fetch correct AMIs for each architecture and region
+3. Configure with region-appropriate instance types (t3.medium or t2.medium in most regions)
+4. Verify that all instance types are compatible with their regions
+
+The updated scripts now properly identify instance capabilities and ensure you get instances with sufficient resources for running Docker and containers. 
