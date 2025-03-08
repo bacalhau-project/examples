@@ -86,8 +86,8 @@ Before starting, ensure your system meets the following minimum requirements:
 ### Deploy Environment
 ```bash
 # Clone and start the multi-region environment
-git clone https://github.com/bacalhau-project/examples.git
-cd examples/setting-up-bacalhau-cluster/docker-compose/multi-region
+git clone https://github.com/bacalhau-project/bacalhau-network-setups
+cd bacalhau-network-setups/docker-compose/multi-region
 docker compose up -d
 ```
 
@@ -101,14 +101,9 @@ docker exec -it bacalhau-multi-region-client-1 bash
 
 ### Generate Fake Sensitive Data
 
-```bash
-# Generate Data in EU region data
-bacalhau job run -V Region=eu data-generator.yaml
-```
+Here we generate fake sensitive data for that will be pushed to the EU storage bucket. It replicates the notion of having sensitive data in the EU jurisdiction. 
 
-### Generate Fake Sensitive Data
-
-Here we generate fake sensitive data for that will be pushed to the EU storage bucket. It replicates the notion of having sensitive data in the EU jurisdiction.
+**Note:** The content of `data-generator.yaml` file can be found here: [data-generator.yaml](jobs/data-generator.yaml).
 
 ```bash
 # Generate Data in EU region data
@@ -120,6 +115,8 @@ bacalhau job run -V Region=eu data-generator.yaml
 Here we run the data anonymization job utilizing the EU region compute nodes. The Bacalhau Job will pull down the data from the EU storage, anonymize it, and then publish it to the US based storage. 
 
 This utilizes bacalhau to maintain data protection laws across jurisdiction.
+
+**Note:** The content of `anonymize-job.yaml` file can be found here: [anonymize-job.yaml](jobs/anonymize-job.yaml).
 
 ```bash
 # Generate Data in EU region data
