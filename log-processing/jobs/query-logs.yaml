@@ -1,0 +1,43 @@
+Name: Query logs
+Type: ops
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: "alpine:3.17"
+        Entrypoint:
+          - "sh"
+        Parameters:
+          - "-c"
+          - |
+            apk add --no-cache jq &&
+            jq -r 'select(.status == 404)
+                  | [.time_local, .remote_addr, .request]
+                  | @tsv' /app/output/application.log
+
+    # Network specifies networking requirements.  
+    # Here our job will have full access to the network
+    Network:
+      Type: Full
+
+    # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
+    # Here we are mounting the logs directory to /app/output
+    InputSources:
+      - Target: /app/output
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-processing/logs
+            ReadWrite: true
+
+    # Publisher specifies where the results of the task should be published - S3, IPFS, Local or none
+    # Here we are publishing the results to the MinIO "logs-bucket" bucket
+    Publisher:
+      Type: "s3"
+      Params:
+        Bucket: "logs-bucket"
+        Key: "jobs/{jobID}/{executionID}"
+        Endpoint: "http://storage:9000"
+        Region: "us-east-1"
