@@ -247,3 +247,69 @@ This sequence will:
 4. Verify that all instance types are compatible with their regions
 
 The updated scripts now properly identify instance capabilities and ensure you get instances with sufficient resources for running Docker and containers. 
+
+## Managing AWS Spot Instances
+
+Once you have configured your environment, you can use the following commands to manage your AWS spot instances for the Bacalhau cluster:
+
+### Create Spot Instances
+
+To create spot instances based on your configuration:
+
+```bash
+# Using uv
+uv run -s deploy_spot.py --action create
+
+# Using pip
+python deploy_spot.py --action create
+```
+
+This will:
+- Create VPC infrastructure in each configured region
+- Launch spot instances across your configured regions
+- Set up security groups and networking
+- Install Bacalhau and dependencies via cloud-init
+
+### List Spot Instances
+
+To list all running spot instances:
+
+```bash
+# Using uv
+uv run -s deploy_spot.py --action list
+
+# Using pip
+python deploy_spot.py --action list
+
+# For JSON output
+uv run -s deploy_spot.py --action list --format json
+```
+
+### Destroy Spot Instances
+
+To terminate all spot instances and clean up resources:
+
+```bash
+# Using uv
+uv run -s deploy_spot.py --action destroy
+
+# Using pip
+python deploy_spot.py --action destroy
+```
+
+This will:
+- Terminate all running instances
+- Delete associated VPCs, security groups, subnets, and internet gateways
+- Clean up all AWS resources created by this tool
+
+### Delete Disconnected AWS Nodes
+
+To remove any disconnected Bacalhau nodes that are running on AWS:
+
+```bash
+# Using uv
+uv run -s deploy_spot.py --action delete_disconnected_aws_nodes
+
+# Using pip
+python deploy_spot.py --action delete_disconnected_aws_nodes
+```
