@@ -21,6 +21,49 @@ aws_with_timeout() {
     return $status
 }
 
+# Function to verify AWS credentials are valid
+verify_aws_credentials() {
+    echo "Verifying AWS credentials..."
+    
+    # Try a simple API call that requires valid credentials
+    local result=$(aws sts get-caller-identity 2>&1)
+    local status=$?
+    
+    if [ $status -ne 0 ]; then
+        echo "Error: AWS credentials verification failed"
+        
+        # Check for specific error patterns
+        if [[ "$result" == *"Token"*"expired"* ]]; then
+            echo "AWS token has expired. Please refresh your credentials."
+            echo "Try running: 'aws sso login' or refresh your credentials in your AWS config."
+        elif [[ "$result" == *"AccessDenied"* ]] || [[ "$result" == *"NotAuthorized"* ]]; then
+            echo "You don't have sufficient permissions to access AWS resources."
+        else
+            echo "AWS credentials error: $result"
+        fi
+        
+        return 1
+    fi
+    
+    echo "AWS credentials verified successfully."
+    return 0
+}
+
+# Run credential verification unless --skip-credential-check is provided
+SKIP_AWS_CHECK=false
+if [[ "$1" == "--skip-credential-check" ]]; then
+    SKIP_AWS_CHECK=true
+    shift
+fi
+
+if [ "$SKIP_AWS_CHECK" = false ]; then
+    verify_aws_credentials
+    if [ $? -ne 0 ]; then
+        echo "Exiting due to credential verification failure."
+        exit 1
+    fi
+fi
+
 # Function to terminate instances in a VPC
 terminate_vpc_instances() {
     local VPC_ID=$1
@@ -352,26 +395,43 @@ delete_vpc_resources() {
         IS_MAIN=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[].Associations[?Main==\`true\`]" --output text --no-cli-pager)
         
         # First, delete all routes in the route table (except local routes which cannot be deleted)
-        ROUTES=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[].Routes[?DestinationCidrBlock!='10.0.0.0/16'].DestinationCidrBlock" --output text --no-cli-pager)
-        for ROUTE in $ROUTES; do
-            echo "Deleting route to $ROUTE from route table $RT"
-            aws ec2 delete-route --region $REGION --route-table-id $RT --destination-cidr-block $ROUTE > /dev/null 2>&1 || true
-        done
+        # Handle IPv4 routes - Fix for "list index out of range" by checking for specific key existence
+        ROUTES=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[0].Routes[?GatewayId!='local' && contains(keys(@), 'DestinationCidrBlock')].DestinationCidrBlock" --output text --no-cli-pager)
         
-        # Get the association IDs for this route table
-        ASSOC_IDS=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[].Associations[?RouteTableAssociationId!=null].RouteTableAssociationId" --output text --no-cli-pager)
+        # Only process if we have routes
+        if [ -n "$ROUTES" ]; then
+            for ROUTE in $ROUTES; do
+                echo "Deleting IPv4 route to $ROUTE from route table $RT"
+                aws ec2 delete-route --region $REGION --route-table-id $RT --destination-cidr-block "$ROUTE" > /dev/null 2>&1 || true
+            done
+        fi
         
-        for ASSOC in $ASSOC_IDS; do
-            # Skip if this is a main association (cannot be disassociated)
-            IS_MAIN_ASSOC=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[].Associations[?RouteTableAssociationId=='$ASSOC'].Main" --output text --no-cli-pager)
-            
-            if [ "$IS_MAIN_ASSOC" != "True" ] && [ "$IS_MAIN_ASSOC" != "true" ]; then
-                echo "Disassociating route table association: $ASSOC"
-                aws ec2 disassociate-route-table --region $REGION --association-id $ASSOC > /dev/null 2>&1 || true
-            else
-                echo "Skipping main route table association $ASSOC (cannot be disassociated)"
-            fi
-        done
+        # Handle IPv6 routes separately
+        IPV6_ROUTES=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[0].Routes[?GatewayId!='local' && contains(keys(@), 'DestinationIpv6CidrBlock')].DestinationIpv6CidrBlock" --output text --no-cli-pager 2>/dev/null || echo "")
+        
+        if [ -n "$IPV6_ROUTES" ]; then
+            for ROUTE in $IPV6_ROUTES; do
+                echo "Deleting IPv6 route to $ROUTE from route table $RT"
+                aws ec2 delete-route --region $REGION --route-table-id $RT --destination-ipv6-cidr-block "$ROUTE" > /dev/null 2>&1 || true
+            done
+        fi
+        
+        # Get the association IDs for this route table with safer query that handles empty results
+        ASSOC_IDS=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[0].Associations[?RouteTableAssociationId!=null].RouteTableAssociationId" --output text --no-cli-pager)
+        
+        if [ -n "$ASSOC_IDS" ]; then
+            for ASSOC in $ASSOC_IDS; do
+                # Skip if this is a main association (cannot be disassociated)
+                IS_MAIN_ASSOC=$(aws ec2 describe-route-tables --region $REGION --route-table-ids $RT --query "RouteTables[0].Associations[?RouteTableAssociationId=='$ASSOC'].Main" --output text --no-cli-pager)
+                
+                if [ "$IS_MAIN_ASSOC" != "True" ] && [ "$IS_MAIN_ASSOC" != "true" ]; then
+                    echo "Disassociating route table association: $ASSOC"
+                    aws ec2 disassociate-route-table --region $REGION --association-id $ASSOC > /dev/null 2>&1 || true
+                else
+                    echo "Skipping main route table association $ASSOC (cannot be disassociated)"
+                fi
+            done
+        fi
         
         # Only try to delete non-main route tables
         if [ -z "$IS_MAIN" ]; then
