@@ -1,0 +1,70 @@
+name: bacalhau-single-region
+
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+
+x-compute-image: &compute-image
+  image: ghcr.io/bacalhau-project/bacalhau:${COMPUTE_IMAGE_TAG:-latest-dind}
+
+services:
+  compute:
+    <<: *compute-image
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "mkdir -p /data/log-processing/logs && bacalhau serve -c /etc/bacalhau/config.yaml"]
+    volumes:
+      - ./compute.yaml:/etc/bacalhau/config.yaml
+    environment: *common-env-variables
+    depends_on:
+      storage:
+        condition: service_healthy
+    deploy:
+      replicas: 3
+    privileged: true
+    networks:
+      - bacalhau-network
+
+  storage:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/logs-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      bacalhau-network:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  opensearch:
+    image: opensearchproject/opensearch:2.9.0
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+    ports:
+      - "9200:9200"
+    networks:
+      - bacalhau-network
+
+  dashboard:
+    image: opensearchproject/opensearch-dashboards:2.9.0
+    ports:
+      - "5601:5601"
+    networks:
+      - bacalhau-network
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    depends_on:
+      - opensearch
+
+networks:
+  bacalhau-network:

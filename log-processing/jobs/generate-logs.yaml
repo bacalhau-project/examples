@@ -1,0 +1,23 @@
+Name: Log Generator
+Type: daemon
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: expanso/nginx-access-log-generator:1.0.0
+        Entrypoint:
+          - "sh"
+          - "-c"
+          # Create the necessary directories and run the log generator
+          - "mkdir -p /app/output && mkdir -p /app/state && exec python log-generator.py --input-log-directory /app/access_logs/ --rate 10 --output-log-file /app/output/application.log --input-log-directory /app/access_logs"
+    
+    # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
+    # Here we are mounting the logs directory to /app/output
+    InputSources:
+      - Target: /app/output
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-processing/logs
+            ReadWrite: true
