@@ -88,6 +88,9 @@ table_update_event = (
 events_to_progress = []  # Events queue for progress tracking
 task_name = "TASK NAME"  # Default task name for progress bar
 task_total = 10000  # Default task total for progress bar
+operation_logs = []  # Queue of operation logs to display in the console
+operation_logs_lock = asyncio.Lock()  # Lock for thread-safe updates to operation logs
+max_operation_logs = 15  # Maximum number of operation logs to keep
 
 # --- Logging Setup ---
 # Use a single, well-configured logger throughout the script.
@@ -950,21 +953,38 @@ async def wait_for_spot_fulfillment(
     """
     fulfilled_instance_ids = []
     start_time = time.time()
+    region = client.meta.region_name  # Get region from client
+    
+    # Log the initial spot request status
+    await log_operation(f"Waiting for {len(spot_request_ids)} spot request(s) to be fulfilled", "info", region)
+    for req_id in spot_request_ids:
+        await log_operation(f"Monitoring spot request: {req_id}", "info", region)
 
     try:
+        progress_updates = 0
         while time.time() - start_time < max_wait_time:
             response = await asyncio.to_thread(
                 client.describe_spot_instance_requests,
                 SpotInstanceRequestIds=spot_request_ids,
             )
+            
             for request in response["SpotInstanceRequests"]:
-                if request["State"] == "active" and "InstanceId" in request:
+                request_id = request["SpotInstanceRequestId"]
+                request_state = request.get("State", "unknown")
+                request_status = request.get("Status", {}).get("Code", "unknown")
+                
+                # Log status updates but avoid flooding logs with repeated messages
+                if "InstanceId" not in request and progress_updates % 6 == 0:  # Every ~30 seconds
+                    await log_operation(f"Spot request {request_id} status: {request_state}/{request_status}", "info", region)
+                
+                if request_state == "active" and "InstanceId" in request:
                     instance_id = request["InstanceId"]
                     if instance_id not in fulfilled_instance_ids:
                         fulfilled_instance_ids.append(instance_id)
                         logger.info(
                             f"Spot Instance request fulfilled. Instance ID: {instance_id}"
                         )
+                        await log_operation(f"Spot request fulfilled! Instance ID: {instance_id}", "info", region)
 
                         # Tag the instance
                         await asyncio.to_thread(
@@ -973,23 +993,42 @@ async def wait_for_spot_fulfillment(
                             Tags=convert_tags(tags),
                         )
                         logger.debug(f"Tagged instance {instance_id} with tags: {tags}")
+                        await log_operation(f"Tagged instance with metadata", "info", region)
+                elif request_state == "failed":
+                    # Log failed spot requests with error details
+                    error_code = request.get("Status", {}).get("Code", "Unknown")
+                    error_message = request.get("Status", {}).get("Message", "No error message")
+                    await log_operation(f"Spot request {request_id} failed: {error_code} - {error_message}", "error", region)
 
             if len(fulfilled_instance_ids) == len(spot_request_ids):
                 logger.info("All spot instances requests fulfilled")
+                await log_operation(f"All {len(spot_request_ids)} spot requests fulfilled!", "info", region)
                 return fulfilled_instance_ids  # All requests fulfilled
 
+            # Increment progress counter for throttling log messages
+            progress_updates += 1
+            
             await asyncio.sleep(5)  # Check every 5 seconds
 
+        # If we reach here, we timed out
+        pending_count = len(spot_request_ids) - len(fulfilled_instance_ids)
         logger.warning(
             f"Timed out waiting for Spot Instance requests. Fulfilled: {len(fulfilled_instance_ids)}/{len(spot_request_ids)}"
+        )
+        await log_operation(
+            f"Timed out waiting for {pending_count} spot request(s). {len(fulfilled_instance_ids)} were fulfilled.", 
+            "warn", 
+            region
         )
         return fulfilled_instance_ids  # Return whatever instances *were* fulfilled
 
     except botocore.exceptions.ClientError as e:
         logger.error(f"Error waiting for Spot Instance fulfillment: {e}")
+        await log_operation(f"Error waiting for spot fulfillment: {str(e)}", "error", region)
         return fulfilled_instance_ids  # Return what we have, even if it's an error
     except Exception as e:
         logger.exception(f"An unexpected error occurred: {e}")  # catch-all
+        await log_operation(f"Unexpected error: {str(e)}", "error", region)
         return fulfilled_instance_ids
 
 
@@ -1135,10 +1174,14 @@ async def run_instances_in_region(
         # Validate region
         if not region:
             logger.error("Region cannot be empty")
+            await log_operation("Region cannot be empty", "error")
             return {
                 "success": False,
                 "result_summary": {"error": "Region cannot be empty"},
             }
+
+        # Log the attempt to create in this region
+        await log_operation(f"Starting spot instance creation in region", "info", region)
 
         # Create an EC2 client for the region
         client = boto3.client(
@@ -1148,6 +1191,7 @@ async def run_instances_in_region(
                 retries={"max_attempts": 10, "mode": "standard"}
             ),
         )
+        await log_operation(f"Connected to AWS EC2 API", "info", region)
 
         # Priority for instance_type:
         # 1. Command line argument (if specified)
@@ -1187,33 +1231,42 @@ async def run_instances_in_region(
         # Ensure instance_type is not None at this point
         if not instance_type:
             instance_type = "t3.medium"
+            
+        await log_operation(f"Using instance type: {instance_type}", "info", region)
 
         # Configure tags and names
         tags, instance_name, vpc_name = configure_tags_and_names(
             job_name, script_name, region
         )
+        await log_operation(f"Configured instance name: {instance_name}", "info", region)
 
         # Create VPC and related resources
+        await log_operation(f"Creating VPC and networking resources", "info", region)
         vpc_id, subnet_id = await create_vpc(client, vpc_name, tags)
         if vpc_id is None or subnet_id is None:
             logger.error(f"Failed to create VPC in region {region}.")
+            await log_operation(f"Failed to create VPC", "error", region)
             return {
                 "success": False,
                 "result_summary": {
                     "error": f"Failed to create VPC in region {region}."
                 },
             }
+        await log_operation(f"VPC created successfully: {vpc_id}", "info", region)
 
         # Create security group
+        await log_operation(f"Creating security group", "info", region)
         security_group_id = await create_security_group(client, vpc_id, vpc_name, tags)
         if security_group_id is None:
             logger.error(f"Failed to create security group in region {region}.")
+            await log_operation(f"Failed to create security group", "error", region)
             return {
                 "success": False,
                 "result_summary": {
                     "error": f"Failed to create security group in region {region}."
                 },
             }
+        await log_operation(f"Security group created: {security_group_id}", "info", region)
 
         # Get instance count from config if possible
         number_of_instances = args.number_of_instances
@@ -1236,8 +1289,11 @@ async def run_instances_in_region(
             logger.warning(
                 f"Error getting node count from config: {e}. Using default: {number_of_instances}"
             )
+            
+        await log_operation(f"Requesting {number_of_instances} instance(s)", "info", region)
 
         # Run Spot Instances
+        await log_operation(f"Submitting spot instance request", "info", region)
         instance_ids = await run_spot_instance(
             client,
             script_name,
@@ -1256,30 +1312,44 @@ async def run_instances_in_region(
 
         if not instance_ids:
             logger.error(f"No instances launched in region {region}.")
+            await log_operation(f"No instances launched", "error", region)
             return {
                 "success": False,
                 "result_summary": {
                     "error": f"No instances launched in region {region}."
                 },
             }
+            
+        await log_operation(f"Successfully launched {len(instance_ids)} instance(s)", "info", region)
 
         # Initial status update for all launched instances.
+        await log_operation(f"Monitoring status of {len(instance_ids)} instance(s)", "info", region)
         for instance_id in instance_ids:
             instance_status = await describe_instance_status(client, instance_id)
             if instance_status:
+                state = instance_status["State"]["Name"]
+                await log_operation(f"Instance {instance_id} initial state: {state}", "info", region)
                 await handle_instance_state(
                     instance_id,
-                    instance_status["State"]["Name"],
+                    state,
                     region,
                     job_name,
                     instance_status,
                 )
+            else:
+                await log_operation(f"Could not get initial status for instance {instance_id}", "warn", region)
 
         # Monitor instance status until all instances are terminated or an error occurs.
+        update_counter = 0
         while True:
             all_terminated = (
                 True  # Assume all instances are terminated until proven otherwise
             )
+            
+            # Log status updates occasionally to show progress
+            if update_counter % 6 == 0:  # Every ~30 seconds
+                await log_operation(f"Checking status of {len(instance_ids)} instance(s)", "info", region)
+                
             for instance_id in instance_ids:
                 instance_status = await describe_instance_status(client, instance_id)
 
@@ -1287,12 +1357,22 @@ async def run_instances_in_region(
                     async with status_lock:
                         if instance_id in all_statuses:
                             # Mark as terminated if it was present before
+                            await log_operation(f"Instance {instance_id} no longer found, marking as terminated", "info", region)
                             await handle_instance_state(
                                 instance_id, "terminated", region, job_name
                             )
                     continue
 
                 current_state = instance_status["State"]["Name"]
+                previous_state = None
+                async with status_lock:
+                    if instance_id in all_statuses:
+                        previous_state = all_statuses[instance_id].get("state")
+                
+                # Log state transitions
+                if previous_state and previous_state != current_state:
+                    await log_operation(f"Instance {instance_id} changed state: {previous_state} → {current_state}", "info", region)
+                
                 await handle_instance_state(
                     instance_id, current_state, region, job_name, instance_status
                 )
@@ -1302,6 +1382,7 @@ async def run_instances_in_region(
 
             if all_terminated:
                 logger.info(f"All instances in region {region} have terminated.")
+                await log_operation(f"All instances have terminated", "info", region)
                 return {
                     "success": True,
                     "result_summary": {
@@ -1310,6 +1391,7 @@ async def run_instances_in_region(
                     },
                 }
 
+            update_counter += 1
             await asyncio.sleep(5)  # wait before next status check.
 
     except Exception as e:
@@ -2152,7 +2234,7 @@ class RichConsoleHandler(logging.Handler):
             # Join all messages with newlines
             all_messages = "\n".join(self.log_messages)
 
-            # Update the layout
+            # Update the logs panel
             if "logs" in self.layout:
                 self.layout["logs"].update(
                     Panel(
@@ -2161,7 +2243,21 @@ class RichConsoleHandler(logging.Handler):
                         border_style="blue",
                     )
                 )
-                self.live.refresh()
+            
+            # Update the operations panel
+            if "operations" in self.layout:
+                global operation_logs
+                ops_content = "\n".join(operation_logs) if operation_logs else "[dim]No operations logged yet...[/dim]"
+                self.layout["operations"].update(
+                    Panel(
+                        ops_content,
+                        title="[bold]AWS Operations[/bold]",
+                        border_style="yellow",
+                        padding=(0, 1)
+                    )
+                )
+                
+            self.live.refresh()
         except Exception:
             self.handleError(record)
 
@@ -2181,6 +2277,56 @@ def get_current_live():
     return _current_live
 
 
+async def log_operation(message: str, level: str = "info", region: str = None):
+    """
+    Logs an operation to the operation_logs queue for display in the console.
+    
+    Args:
+        message: The message to log
+        level: The log level (info, warn, error)
+        region: Optional region context for the operation
+    """
+    global operation_logs
+    
+    # Format timestamp for the log
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    
+    # Format the message with optional region and log level
+    formatted_message = f"[dim]{timestamp}[/dim] "
+    if region:
+        formatted_message += f"[cyan]{region}:[/cyan] "
+    
+    if level == "error":
+        formatted_message += f"[red bold]{message}[/red bold]"
+    elif level == "warn":
+        formatted_message += f"[yellow]{message}[/yellow]"
+    else:  # default to info
+        formatted_message += f"[green]{message}[/green]"
+    
+    # Add to the operation logs with thread-safe lock
+    async with operation_logs_lock:
+        operation_logs.append(formatted_message)
+        # Keep only the most recent logs
+        if len(operation_logs) > max_operation_logs:
+            operation_logs = operation_logs[-max_operation_logs:]
+        
+    # Also log to the standard logger
+    if level == "error":
+        logger.error(message)
+    elif level == "warn":
+        logger.warning(message)
+    else:
+        logger.info(message)
+    
+    # If we have a live display, refresh it
+    live = get_current_live()
+    if live:
+        try:
+            live.refresh()
+        except Exception as e:
+            logger.error(f"Error refreshing live display: {e}")
+
+
 async def update_display(live, progress: Progress):
     """Update the display with current instance status."""
     try:
@@ -2195,22 +2341,51 @@ async def update_display(live, progress: Progress):
             async with status_lock:
                 current_statuses = all_statuses.copy()
 
+            # Get a copy of current operation logs
+            async with operation_logs_lock:
+                current_op_logs = operation_logs.copy()
+
             # Update progress
             progress.update(task_id, advance=1)
 
             # Update table
             table = make_progress_table()
             for instance_id, status in current_statuses.items():
+                # Format public IP address if available
+                ip_display = "pending"
+                if "public_ip" in status:
+                    ip_display = status["public_ip"]
+                elif "private_ip" in status:
+                    ip_display = f"private: {status['private_ip']}"
+                
+                # Format launch time if available
+                launch_time = status.get("created_at", "unknown")
+                if isinstance(launch_time, (int, float)):
+                    launch_time = datetime.fromtimestamp(launch_time).strftime("%H:%M:%S")
+                
                 table.add_row(
                     instance_id,
                     status.get("region", "unknown"),
                     status.get("state", "unknown"),
-                    status.get("ip", "pending"),
-                    status.get("launch_time", "unknown"),
+                    ip_display,
+                    launch_time,
                 )
 
             # Update layout
             layout = create_layout(progress, table)
+            
+            # Update operations log panel
+            if "operations" in layout:
+                ops_content = "\n".join(current_op_logs) if current_op_logs else "[dim]No operations logged yet...[/dim]"
+                layout["operations"].update(
+                    Panel(
+                        ops_content,
+                        title="[bold]AWS Operations[/bold]",
+                        border_style="yellow",
+                        padding=(0, 1)
+                    )
+                )
+            
             live.update(layout)
 
             # Wait before next update
@@ -2249,14 +2424,30 @@ def create_layout(progress: Progress, table: Table) -> Layout:
         ),
     )
 
-    # Create log area
-    logs = Layout(name="logs", size=8)
+    # Create log area for general logs
+    logs = Layout(name="logs", size=6)
     logs.update(
         Panel("", title="[bold]Logs[/bold]", border_style="blue", padding=(0, 1))
     )
 
+    # Create operations log area for tracking AWS operations
+    operations = Layout(name="operations", size=8)
+    
+    # Get the operations logs to display
+    global operation_logs
+    ops_content = "\n".join(operation_logs) if operation_logs else "[dim]No operations logged yet...[/dim]"
+    
+    operations.update(
+        Panel(
+            ops_content, 
+            title="[bold]AWS Operations[/bold]", 
+            border_style="yellow", 
+            padding=(0, 1)
+        )
+    )
+
     # Combine all layouts
-    layout.split_column(header, content, logs)
+    layout.split_column(header, content, operations, logs)
 
     return layout
 
@@ -2285,29 +2476,75 @@ async def perform_action():
     """Perform the requested action based on command line arguments."""
     try:
         if args.command == "create":
+            # Log the operation initiation
+            await log_operation(f"Starting 'create' operation", "info")
+            
             # Get configuration values
             script_name, instance_type, region = get_config_values(args, config)
+            
+            if region == "all":
+                await log_operation(f"Using multi-region deployment for script: {script_name}", "info")
+            else:
+                await log_operation(f"Using region: {region} for script: {script_name}", "info")
+                if instance_type:
+                    await log_operation(f"Instance type: {instance_type}", "info")
 
             # Create new instances
+            await log_operation(f"Starting instance creation process", "info")
             result = await run_instances_in_region(
                 region, args, script_name, script_name, ""
             )
+            
+            # Log completion
+            if isinstance(result, dict) and result.get("success", False):
+                await log_operation(f"Create operation completed successfully", "info")
+            else:
+                await log_operation(f"Create operation completed with errors", "warn")
+                
             return {"success": True, "result_summary": result}
 
         elif args.command == "destroy":
+            # Log the operation initiation
+            await log_operation(f"Starting 'destroy' operation", "info")
+            
             # Destroy instances based on filters
-            return await destroy_instances(args)
+            result = await destroy_instances(args)
+            
+            # Log completion
+            if result.get("success", False):
+                terminated = result.get("result_summary", {}).get("instances_terminated", 0)
+                regions = result.get("result_summary", {}).get("regions_affected", [])
+                await log_operation(f"Destroyed {terminated} instance(s) in {len(regions)} region(s)", "info")
+            else:
+                await log_operation(f"Destroy operation completed with errors", "warn")
+                
+            return result
 
         elif args.command == "nuke":
+            # Log the operation initiation
+            await log_operation(f"Starting 'nuke' operation", "info")
+            await log_operation(f"This will terminate ALL spot instances and resources", "warn")
+            
             # Nuke all instances
-            return await nuke_all_instances(args)
+            result = await nuke_all_instances(args)
+            
+            # Log completion
+            if result.get("success", False):
+                terminated = result.get("result_summary", {}).get("instances_terminated", 0)
+                await log_operation(f"Nuked {terminated} instance(s) and associated resources", "info")
+            else:
+                await log_operation(f"Nuke operation completed with errors", "warn")
+                
+            return result
 
         else:
             logger.error(f"Unknown command: {args.command}")
+            await log_operation(f"Unknown command: {args.command}", "error")
             return {"success": False, "error": f"Unknown command: {args.command}"}
 
     except Exception as e:
         logger.error(f"Error performing action: {str(e)}", exc_info=True)
+        await log_operation(f"Error: {str(e)}", "error")
         return {"success": False, "error": str(e)}
 
 
