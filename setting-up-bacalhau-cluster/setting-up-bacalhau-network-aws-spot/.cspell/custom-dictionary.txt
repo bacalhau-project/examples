@@ -1,5 +1,8 @@
 bacalhau
+checkmark
+elbv
 Hostnames
 igws
 levelname
+natgw
 renderable
