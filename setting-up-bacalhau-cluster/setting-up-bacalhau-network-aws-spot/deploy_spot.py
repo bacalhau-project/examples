@@ -7,8 +7,7 @@
 #     "rich",
 #     "aiosqlite",
 #     "aiofiles",
-#     "boto3",
-#     "botocore",
+#     "pyyaml",
 # ]
 # ///
 
@@ -644,34 +643,6 @@ async def get_availability_zones(ec2):
 
 async def create_spot_instances_in_region(config: Config, instances_to_create, region):
     global all_statuses, events_to_progress
-
-    # Validate SSH keys before proceeding
-    private_ssh_key_path = config.get("private_ssh_key_path")
-    public_ssh_key_path = config.get("public_ssh_key_path")
-
-    if not private_ssh_key_path or not public_ssh_key_path:
-        error_msg = "Both private_ssh_key_path and public_ssh_key_path must be specified in config.yaml"
-        logger.error(error_msg)
-        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
-        return [], {}
-
-    # Expand paths
-    private_ssh_key_path = os.path.expanduser(private_ssh_key_path)
-    public_ssh_key_path = os.path.expanduser(public_ssh_key_path)
-
-    # Check file permissions on private key
-    try:
-        mode = os.stat(private_ssh_key_path).st_mode
-        if (mode & 0o077) != 0:
-            error_msg = f"Private key file {private_ssh_key_path} has too open permissions. Please run: chmod 600 {private_ssh_key_path}"
-            logger.error(error_msg)
-            console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
-            return [], {}
-    except Exception as e:
-        error_msg = f"Error checking private key permissions: {str(e)}"
-        logger.error(error_msg)
-        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
-        return [], {}
 
     log_operation("Starting instance creation in region", "info", region)
     ec2 = get_ec2_client(region)
@@ -2850,6 +2821,40 @@ def check_aws_sso_token() -> bool:
         return False
 
 
+def check_ssh_key() -> bool:
+    """Check if SSH key exists and has proper permissions."""
+    private_ssh_key_path = config.get("private_ssh_key_path")
+    public_ssh_key_path = config.get("public_ssh_key_path")
+
+    logger.debug(f"Checking private SSH key at: {private_ssh_key_path}")
+    logger.debug(f"Checking public SSH key at: {public_ssh_key_path}")
+
+    if not private_ssh_key_path or not public_ssh_key_path:
+        error_msg = "Both private_ssh_key_path and public_ssh_key_path must be specified in config.yaml"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+    # Expand paths
+    private_ssh_key_path = os.path.expanduser(private_ssh_key_path)
+    public_ssh_key_path = os.path.expanduser(public_ssh_key_path)
+
+    # Check file permissions on private key
+    try:
+        mode = os.stat(private_ssh_key_path).st_mode
+        if (mode & 0o077) != 0:
+            error_msg = f"Private key file {private_ssh_key_path} has too open permissions. Please run: chmod 600 {private_ssh_key_path}"
+            logger.error(error_msg)
+            console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+            return False
+        return True
+    except Exception as e:
+        error_msg = f"Error checking private key permissions: {str(e)}"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+
 async def main():
     global table_update_running
     table_update_running = False
@@ -2979,12 +2984,16 @@ async def update_table_now():
 
 if __name__ == "__main__":
     try:
-        logger.debug("Script starting")
         logger.info("Starting deploy_spot.py")
 
         # Check AWS SSO token before anything else
         if not check_aws_sso_token():
             logger.error("Script exiting due to AWS authentication failure")
+            sys.exit(1)
+
+        # Check SSH key before proceeding
+        if not check_ssh_key():
+            logger.error("Script exiting due to SSH key issues")
             sys.exit(1)
 
         asyncio.run(main())
