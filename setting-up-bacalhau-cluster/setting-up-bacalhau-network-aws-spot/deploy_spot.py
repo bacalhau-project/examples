@@ -4,13 +4,11 @@
 # dependencies = [
 #     "boto3",
 #     "botocore",
-#     "pyyaml",
 #     "rich",
 #     "aiosqlite",
 #     "aiofiles",
 #     "boto3",
 #     "botocore",
-#     "pyyaml",
 # ]
 # ///
 
@@ -2304,13 +2302,11 @@ class SQLiteMachineStateManager:
             count = (await cursor.fetchone())[0]
 
             if count > 0 and not overwrite:
-                await log_operation_async(
-                    f"WARNING: Database already contains {count} instances.",
-                    "warning",
+                print(
+                    f"WARNING: Database already contains {count} instances. Cannot proceed without --overwrite flag."
                 )
-                await log_operation_async(
-                    "Use --overwrite flag to continue anyway, or --action destroy to delete existing instances first.",
-                    "warning",
+                print(
+                    "Use --overwrite flag to continue anyway, or --action destroy to delete existing instances first."
                 )
                 return False
 
@@ -2879,176 +2875,106 @@ async def main():
         "--overwrite", action="store_true", help="Overwrite database if it exists"
     )
     args = parser.parse_args()
-    logger.debug(f"Parsed arguments: {args}")
 
-    # Log the action being performed at INFO level for better visibility
-    action_msg = f"Starting {args.action} operation..."
-    logger.info(action_msg)
-    log_operation(action_msg)
+    try:
+        # Log the action being performed at INFO level for better visibility
+        action_msg = f"Starting {args.action} operation..."
+        logger.info(action_msg)
+        log_operation(action_msg)
 
-    # Load existing machine state
-    log_operation("Loading machine state...")
-    machines = await machine_state.load()
+        # Load existing machine state
+        log_operation("Loading machine state...")
+        machines = await machine_state.load()
 
-    if args.action == "table":
-        print_machines_table()
-        return 0
+        if args.action == "table":
+            print_machines_table()
+            return 0
 
-    # For 'create' action, check if database exists and would be overwritten
-    if args.action == "create" and not args.overwrite:
-        can_proceed = await machine_state.check_existing_file(overwrite=args.overwrite)
-        if not can_proceed:
-            logger.error(
-                "Cannot proceed with create operation - database already contains instances"
+        # For 'create' action, check if database exists and would be overwritten
+        if args.action == "create" and not args.overwrite:
+            can_proceed = await machine_state.check_existing_file(
+                overwrite=args.overwrite
             )
-            log_operation(
-                "Cannot proceed without --overwrite flag when database contains instances",
-                "error",
-            )
-            # Exit with error code
-            return 1
-
-    # Report valid AWS instances
-    valid_count = machine_state.count()
-    print(f"Loaded {valid_count} valid AWS instances from database")
-    log_operation(f"Found {valid_count} valid AWS instances in database")
-
-    if machines:
-        logger.debug("Database contains the following instances:")
-        for instance_id, machine in machines.items():
-            logger.debug(
-                f"  Instance {instance_id} in {machine['region']}-{machine['zone']}"
-            )
-
-    elif args.action == "destroy":
-        msg = "Database is empty. No instances to process."
-        logger.info(msg)
-        print(msg)
-        log_operation(msg, "warning")
-        print("Please run 'deploy_spot.py --action create' to create instances.")
-        print(
-            "Or run 'delete_vpcs.py' if there are still resources that need to be cleaned up."
-        )
-        return
-
-    async def perform_action():
-        logger.debug(f"Performing action: {args.action}")
-        try:
-            if args.action == "create":
-                log_operation("Starting 'create' action")
-                await create_spot_instances()
-                print_machines_table()
-                log_operation("Create action completed successfully")
-            elif args.action == "list":
-                log_operation("Starting 'list' action")
-                await list_spot_instances()
-                log_operation("List action completed successfully")
-            elif args.action == "destroy":
-                log_operation("Starting 'destroy' action")
-                await destroy_instances()
-                log_operation("Destroy action completed successfully")
-            elif args.action == "delete_disconnected_aws_nodes":
-                log_operation("Starting 'delete_disconnected_aws_nodes' action")
-                await delete_disconnected_aws_nodes()
+            if not can_proceed:
+                logger.error(
+                    "Cannot proceed with create operation - database already contains instances"
+                )
                 log_operation(
-                    "Delete_disconnected_aws_nodes action completed successfully"
+                    "Cannot proceed without --overwrite flag when database contains instances",
+                    "error",
                 )
-            logger.debug(f"Action {args.action} completed successfully")
-        except asyncio.CancelledError:
-            cancel_msg = f"Action {args.action} was cancelled by user"
-            logger.info(cancel_msg)
-            log_operation(cancel_msg, "warning")
-            raise
-        except Exception as e:
-            error_msg = f"Error performing action {args.action}: {str(e)}"
-            logger.exception(error_msg)
-            log_operation(error_msg, "error")
-            raise
+                return 1
 
-    if args.format == "json":
-        logger.debug("Using JSON output format")
-        try:
-            # Create a fake console that only logs operations
-            with Live(
-                console=console, refresh_per_second=4, auto_refresh=True, screen=True
-            ) as live:
-                # Create an initial layout with just the operations panel
-                ops_content = "[dim]Starting operation...[/dim]"
-                layout = Layout(
-                    Panel(
-                        ops_content,
-                        title="AWS Operations",
-                        border_style="yellow",
-                        padding=(1, 1),
-                    )
-                )
-                live.update(layout)
+        # Report valid AWS instances
+        valid_count = machine_state.count()
+        print(f"Loaded {valid_count} valid AWS instances from database")
+        log_operation(f"Found {valid_count} valid AWS instances in database")
 
-                # Set up operations logging
-                update_task = asyncio.create_task(update_table(live))
+        with Live(console=console, refresh_per_second=4, screen=True) as live:
+            update_task = asyncio.create_task(update_table(live))
 
-                # Run the action
-                try:
-                    await perform_action()
-                    result = all_statuses_to_dict()
-                    if not result and args.action != "destroy":
-                        logger.warning(
-                            "Operation completed but no instances were processed"
-                        )
-                        log_operation(
-                            "Operation completed but no instances were processed",
-                            "warning",
-                        )
-
-                    # Output is only sent to the operations panel, not to stdout
-                    logger.debug(f"JSON result: {json.dumps(result, indent=2)}")
-                    log_operation(
-                        "Operation completed successfully. Results available in debug log."
-                    )
-                except Exception as e:
-                    logger.error(f"Operation failed: {str(e)}")
-                    log_operation(f"Operation failed: {str(e)}", "error")
-                    raise
-                finally:
-                    # Clean up
-                    table_update_event.set()
-                    await update_task
-        except Exception as e:
-            # This should never print to console
-            logger.error(f"Live display error: {str(e)}")
-            raise
-    else:
-        logger.debug("Using default (live) output format")
-        try:
-            with Live(console=console, refresh_per_second=4, screen=True) as live:
-                update_task = asyncio.create_task(update_table(live))
-                try:
-                    # Initial message to show the UI is working
-                    log_operation(f"Initializing {args.action} operation...")
-                    await perform_action()
+            try:
+                if args.action == "list":
+                    log_operation("Starting 'list' action")
+                    await list_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
                     await asyncio.sleep(1)
-                    logger.debug("Main execution completed successfully")
-                    log_operation("Operation completed successfully", "info")
-                except asyncio.CancelledError:
-                    logger.info("Operation was cancelled by user")
-                    log_operation("Operation was cancelled by user", "warning")
-                    raise
-                except Exception as e:
-                    error_msg = f"Operation failed: {str(e)}"
-                    logger.exception("Error in main execution")
-                    log_operation(error_msg, "error")
-                    raise
-                finally:
-                    logger.debug("Cleaning up and shutting down")
-                    log_operation("Cleaning up...", "info")
-                    table_update_event.set()
-                    await update_task
-        except KeyboardInterrupt:
-            # Don't log to console, only to file
-            logger.info("Operation was manually interrupted")
-            raise
+                    log_operation("List action completed successfully")
+                elif args.action == "create":
+                    log_operation("Starting 'create' action")
+                    await create_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
+                    await asyncio.sleep(1)
+                    log_operation("Create action completed successfully")
+                elif args.action == "destroy":
+                    log_operation("Starting 'destroy' action")
+                    await destroy_instances()
+                    log_operation("Destroy action completed successfully")
+                elif args.action == "delete_disconnected_aws_nodes":
+                    log_operation("Starting delete_disconnected_aws_nodes action")
+                    await delete_disconnected_aws_nodes()
+                    log_operation(
+                        "Delete_disconnected_aws_nodes action completed successfully"
+                    )
 
-    logger.info(f"Completed {args.action} operation successfully")
+                logger.debug("Action %s completed successfully", args.action)
+                logger.debug("Main execution completed successfully")
+                logger.info("Operation completed successfully")
+
+                # Give time for final table update to be visible
+                if args.action in ["list", "create"]:
+                    await asyncio.sleep(2)
+
+            finally:
+                # Stop the table update task
+                table_update_event.set()
+                await update_task
+
+    except Exception as e:
+        logger.exception("Error in main execution")
+        log_operation(f"Operation failed: {str(e)}", "error")
+        return 1
+    finally:
+        # Cleanup phase
+        logger.debug("Cleaning up and shutting down")
+        logger.info("Cleaning up...")
+
+        if args.action in ["list", "create"]:
+            logger.info(f"Completed {args.action} operation successfully")
+
+        logger.debug("Script completed successfully")
+
+    return 0
+
+
+async def update_table_now():
+    """Force an immediate table update."""
+    # Update all statuses to trigger a UI refresh
+    for status in all_statuses.values():
+        await update_all_statuses_async(status)
+    await asyncio.sleep(0.1)  # Small delay to ensure update is visible
 
 
 if __name__ == "__main__":

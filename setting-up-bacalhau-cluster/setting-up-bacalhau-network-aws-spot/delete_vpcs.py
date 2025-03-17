@@ -326,7 +326,7 @@ class AwsVpcCleaner:
                 # Wait for instances to start terminating
                 await asyncio.sleep(5)
 
-            # Now handle network interfaces after instances are terminating
+            # Get all network interfaces in the VPC
             network_interfaces = (
                 await self.execute_aws_api(
                     ec2.describe_network_interfaces,
@@ -334,35 +334,39 @@ class AwsVpcCleaner:
                 )
             )["NetworkInterfaces"]
 
-            # Release any Elastic IP addresses
+            # First pass: Release all Elastic IPs
             for eni in network_interfaces:
                 if eni.get("Association") and eni["Association"].get("PublicIp"):
-                    # Update status to show we're releasing Elastic IPs
-                    self._update_vpc_row(
-                        vpc_id,
-                        ec2.meta.region_name,
-                        "[yellow]Releasing Elastic IPs[/yellow]",
-                        f"IP: {eni['Association']['PublicIp']}",
-                    )
-                    if eni["Association"].get("AllocationId"):
-                        try:
+                    try:
+                        # Update status to show we're releasing Elastic IPs
+                        self._update_vpc_row(
+                            vpc_id,
+                            ec2.meta.region_name,
+                            "[yellow]Releasing Elastic IPs[/yellow]",
+                            f"IP: {eni['Association']['PublicIp']}",
+                        )
+                        if eni["Association"].get("AssociationId"):
                             await self.execute_aws_api(
                                 ec2.disassociate_address,
                                 AssociationId=eni["Association"]["AssociationId"],
                             )
+                        if eni["Association"].get("AllocationId"):
                             await self.execute_aws_api(
                                 ec2.release_address,
                                 AllocationId=eni["Association"]["AllocationId"],
                             )
-                        except botocore.exceptions.ClientError as e:
-                            if "does not exist" not in str(e).lower():
-                                logger.error(f"Error releasing Elastic IP: {str(e)}")
+                    except botocore.exceptions.ClientError as e:
+                        if "does not exist" not in str(e).lower():
+                            logger.error(f"Error releasing Elastic IP: {str(e)}")
 
-            # Handle remaining network interfaces
+            # Wait a moment for Elastic IP operations to complete
+            await asyncio.sleep(2)
+
+            # Second pass: Handle network interfaces
             for eni in network_interfaces:
                 if eni["Status"] not in ["deleting", "deleted"]:
                     try:
-                        # Skip detachment if this is the primary network interface (device index 0)
+                        # Skip detachment if this is the primary network interface
                         if eni.get("Attachment"):
                             if eni["Attachment"].get("DeviceIndex", 0) == 0:
                                 logger.debug(
@@ -376,6 +380,8 @@ class AwsVpcCleaner:
                                     AttachmentId=eni["Attachment"]["AttachmentId"],
                                     Force=True,
                                 )
+                                # Small delay after detachment
+                                await asyncio.sleep(1)
                             except botocore.exceptions.ClientError as e:
                                 error_code = e.response.get("Error", {}).get("Code", "")
                                 if error_code in [
@@ -404,7 +410,9 @@ class AwsVpcCleaner:
                             logger.error(
                                 f"Error handling network interface {eni['NetworkInterfaceId']}: {str(e)}"
                             )
-                        # Continue with other interfaces even if this one fails
+
+            # Wait for network interface operations to complete
+            await asyncio.sleep(2)
 
             # Delete NAT Gateways
             nat_gateways = (
@@ -482,7 +490,7 @@ class AwsVpcCleaner:
                         ec2.delete_security_group, GroupId=sg["GroupId"]
                     )
 
-            # Delete the VPC itself
+            # Finally delete the VPC itself
             await self.execute_aws_api(ec2.delete_vpc, VpcId=vpc_id)
             return True
 
