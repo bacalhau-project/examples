@@ -2,3 +2,5 @@
 .idea
 .pem
 config.yaml
+**/*.log
+
