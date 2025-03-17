@@ -127,6 +127,7 @@ class AwsVpcCleaner:
         self.dry_run = dry_run
         self.region_filter = region_filter
         self.skip_credential_check = skip_credential_check
+        self.region_stats = {}  # Track statistics per region
 
         # Set up AWS session
         self.session = boto3.Session()
@@ -288,63 +289,7 @@ class AwsVpcCleaner:
                 "Vpcs"
             ][0]
 
-            # First, check for network interfaces and their associated public IPs
-            network_interfaces = (
-                await self.execute_aws_api(
-                    ec2.describe_network_interfaces,
-                    Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
-                )
-            )["NetworkInterfaces"]
-
-            # Release any Elastic IP addresses
-            for eni in network_interfaces:
-                if eni.get("Association") and eni["Association"].get("PublicIp"):
-                    # Update status to show we're releasing Elastic IPs
-                    self._update_vpc_row(
-                        vpc_id,
-                        ec2.meta.region_name,
-                        "[yellow]Releasing Elastic IPs[/yellow]",
-                        f"IP: {eni['Association']['PublicIp']}",
-                    )
-                    if eni["Association"].get("AllocationId"):
-                        try:
-                            await self.execute_aws_api(
-                                ec2.disassociate_address,
-                                AssociationId=eni["Association"]["AssociationId"],
-                            )
-                            await self.execute_aws_api(
-                                ec2.release_address,
-                                AllocationId=eni["Association"]["AllocationId"],
-                            )
-                        except botocore.exceptions.ClientError as e:
-                            if "does not exist" not in str(e).lower():
-                                logger.error(f"Error releasing Elastic IP: {str(e)}")
-
-            for eni in network_interfaces:
-                if eni["Status"] not in ["deleting", "deleted"]:
-                    # Update status to show we're deleting network interfaces
-                    self._update_vpc_row(
-                        vpc_id,
-                        ec2.meta.region_name,
-                        "[yellow]Deleting Network Interfaces[/yellow]",
-                        f"Interface: {eni['NetworkInterfaceId']}",
-                    )
-                    try:
-                        if eni.get("Attachment"):
-                            await self.execute_aws_api(
-                                ec2.detach_network_interface,
-                                AttachmentId=eni["Attachment"]["AttachmentId"],
-                                Force=True,
-                            )
-                        await self.execute_aws_api(
-                            ec2.delete_network_interface,
-                            NetworkInterfaceId=eni["NetworkInterfaceId"],
-                        )
-                    except botocore.exceptions.ClientError as e:
-                        if "does not exist" not in str(e).lower():
-                            logger.error(f"Error deleting network interface: {str(e)}")
-
-            # Next, terminate any EC2 instances in the VPC
+            # First, terminate any EC2 instances in the VPC
             instances = (
                 await self.execute_aws_api(
                     ec2.describe_instances,
@@ -378,16 +323,88 @@ class AwsVpcCleaner:
                 await self.execute_aws_api(
                     ec2.terminate_instances, InstanceIds=instance_ids
                 )
-                # Wait a bit for instance termination to begin
-                await asyncio.sleep(2)
+                # Wait for instances to start terminating
+                await asyncio.sleep(5)
 
-                # Update status to show instances are being terminated
-                self._update_vpc_row(
-                    vpc_id,
-                    ec2.meta.region_name,
-                    "[blue]Instances Terminating[/blue]",
-                    f"Terminated {len(instance_ids)} instances",
+            # Now handle network interfaces after instances are terminating
+            network_interfaces = (
+                await self.execute_aws_api(
+                    ec2.describe_network_interfaces,
+                    Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
                 )
+            )["NetworkInterfaces"]
+
+            # Release any Elastic IP addresses
+            for eni in network_interfaces:
+                if eni.get("Association") and eni["Association"].get("PublicIp"):
+                    # Update status to show we're releasing Elastic IPs
+                    self._update_vpc_row(
+                        vpc_id,
+                        ec2.meta.region_name,
+                        "[yellow]Releasing Elastic IPs[/yellow]",
+                        f"IP: {eni['Association']['PublicIp']}",
+                    )
+                    if eni["Association"].get("AllocationId"):
+                        try:
+                            await self.execute_aws_api(
+                                ec2.disassociate_address,
+                                AssociationId=eni["Association"]["AssociationId"],
+                            )
+                            await self.execute_aws_api(
+                                ec2.release_address,
+                                AllocationId=eni["Association"]["AllocationId"],
+                            )
+                        except botocore.exceptions.ClientError as e:
+                            if "does not exist" not in str(e).lower():
+                                logger.error(f"Error releasing Elastic IP: {str(e)}")
+
+            # Handle remaining network interfaces
+            for eni in network_interfaces:
+                if eni["Status"] not in ["deleting", "deleted"]:
+                    try:
+                        # Skip detachment if this is the primary network interface (device index 0)
+                        if eni.get("Attachment"):
+                            if eni["Attachment"].get("DeviceIndex", 0) == 0:
+                                logger.debug(
+                                    f"Skipping detachment of primary network interface {eni['NetworkInterfaceId']}"
+                                )
+                                continue
+
+                            try:
+                                await self.execute_aws_api(
+                                    ec2.detach_network_interface,
+                                    AttachmentId=eni["Attachment"]["AttachmentId"],
+                                    Force=True,
+                                )
+                            except botocore.exceptions.ClientError as e:
+                                error_code = e.response.get("Error", {}).get("Code", "")
+                                if error_code in [
+                                    "OperationNotPermitted",
+                                    "UnsupportedOperation",
+                                ]:
+                                    logger.debug(
+                                        f"Skipping network interface detachment due to {error_code}: {eni['NetworkInterfaceId']}"
+                                    )
+                                    continue
+                                raise
+
+                        # Try to delete the network interface
+                        try:
+                            await self.execute_aws_api(
+                                ec2.delete_network_interface,
+                                NetworkInterfaceId=eni["NetworkInterfaceId"],
+                            )
+                        except botocore.exceptions.ClientError as e:
+                            if "does not exist" not in str(e).lower():
+                                logger.error(
+                                    f"Error deleting network interface {eni['NetworkInterfaceId']}: {str(e)}"
+                                )
+                    except botocore.exceptions.ClientError as e:
+                        if "does not exist" not in str(e).lower():
+                            logger.error(
+                                f"Error handling network interface {eni['NetworkInterfaceId']}: {str(e)}"
+                            )
+                        # Continue with other interfaces even if this one fails
 
             # Delete NAT Gateways
             nat_gateways = (
@@ -511,6 +528,14 @@ class AwsVpcCleaner:
         self.progress.start_task(task_id)
         ec2 = self.session.client("ec2", region_name=region)
 
+        # Initialize region stats
+        self.region_stats[region] = {
+            "instances_found": 0,
+            "instances_deleted": 0,
+            "vpcs_found": 0,
+            "vpcs_deleted": 0,
+        }
+
         try:
             # Scan for VPCs
             self.progress.update(
@@ -525,6 +550,7 @@ class AwsVpcCleaner:
                     description=f"[yellow]Found {len(vpc_ids)} VPCs in {region}",
                 )
                 results["vpcs_found"].update(vpc_ids)
+                self.region_stats[region]["vpcs_found"] = len(vpc_ids)
 
                 for vpc_id in vpc_ids:
                     status = (
@@ -537,9 +563,32 @@ class AwsVpcCleaner:
                 if not self.dry_run:
                     for vpc_id in vpc_ids:
                         try:
+                            # Count instances before deletion
+                            instances = (
+                                await self.execute_aws_api(
+                                    ec2.describe_instances,
+                                    Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
+                                )
+                            )["Reservations"]
+
+                            instance_count = sum(
+                                1
+                                for r in instances
+                                for i in r["Instances"]
+                                if i["State"]["Name"]
+                                not in ["terminated", "shutting-down"]
+                            )
+                            self.region_stats[region]["instances_found"] += (
+                                instance_count
+                            )
+
                             # Delete VPC dependencies
                             if await self.delete_vpc_dependencies(ec2, vpc_id):
                                 results["vpcs_deleted"] += 1
+                                self.region_stats[region]["vpcs_deleted"] += 1
+                                self.region_stats[region]["instances_deleted"] += (
+                                    instance_count
+                                )
                                 # Update row with new status
                                 self._update_vpc_row(
                                     vpc_id,
@@ -558,8 +607,9 @@ class AwsVpcCleaner:
                                 f"Error: {str(e)[:50]}",
                             )
 
+            # Mark region as complete
             self.progress.update(
-                task_id, advance=50, description=f"[green]Completed {region}"
+                task_id, completed=100, description=f"[green]Completed {region}"
             )
             self.progress.stop_task(task_id)
 
@@ -641,12 +691,37 @@ class AwsVpcCleaner:
 
                 results = await self._process_regions(max_concurrency)
 
-                # Wait 3 seconds for final status to be visible
-                await asyncio.sleep(3)
+                # Wait for all progress bars to show 100%
+                await asyncio.sleep(2)
 
             # After Live context exits, print final static summary
             console.print("\n[bold]Final Status:[/bold]")
             console.print(self.details_table)
+
+            # Print region statistics
+            stats_table = Table(
+                title="Region Statistics",
+                box=box.ROUNDED,
+                show_header=True,
+                header_style="bold magenta",
+            )
+            stats_table.add_column("Region", style="cyan")
+            stats_table.add_column("Instances Found", justify="right")
+            stats_table.add_column("Instances Deleted", justify="right")
+            stats_table.add_column("VPCs Found", justify="right")
+            stats_table.add_column("VPCs Deleted", justify="right")
+
+            for region, stats in sorted(self.region_stats.items()):
+                stats_table.add_row(
+                    region,
+                    str(stats["instances_found"]),
+                    str(stats["instances_deleted"]),
+                    str(stats["vpcs_found"]),
+                    str(stats["vpcs_deleted"]),
+                )
+
+            console.print("\n[bold]Region Statistics:[/bold]")
+            console.print(stats_table)
 
             total_vpcs = len(results["vpcs_found"])
             if self.dry_run:
@@ -663,11 +738,10 @@ class AwsVpcCleaner:
 
             # Print final AWS activity with full history
             console.print(
-                Panel(
-                    Text(self.aws_tracker.get_activity_summary()),
-                    title=f"AWS API Activity Summary (Total Calls: {self.aws_tracker.total_calls})",
-                    border_style="cyan",
-                )
+                Text(
+                    f"AWS API Total Calls: {self.aws_tracker.total_calls}",
+                    style="cyan",
+                ),
             )
 
         except Exception as e:

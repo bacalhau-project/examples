@@ -14,7 +14,7 @@ package_upgrade: true
 runcmd:
   - |
     # Remove minimal packages only if DNF is available (i.e., on Amazon Linux 2023).
-    all_packages="curl gnupg2 jq python3 python3-pip"
+    all_packages="curl gnupg2 jq yq python3 python3-pip"
     if command -v dnf >/dev/null 2>&1; then
       dnf install --allowerasing -y $all_packages
     elif command -v apt >/dev/null 2>&1; then

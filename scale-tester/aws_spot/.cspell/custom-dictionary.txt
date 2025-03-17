@@ -1,8 +1,0 @@
-bacalhau
-bacalhauproject
-CPUS
-dind
-levelname
-oneshot
-pythonjsonlogger
-vcpus
