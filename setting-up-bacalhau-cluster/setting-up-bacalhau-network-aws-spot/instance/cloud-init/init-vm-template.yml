@@ -57,13 +57,13 @@ runcmd:
 
   # Write files after directories are created
   - mv /tmp/exs/bacalhau-startup.service /etc/systemd/system/bacalhau-startup.service
-  - mv /tmp/exs/startup.sh /usr/local/bin/startup.sh
+  - mv /tmp/exs/startup.py /usr/local/bin/startup.py
   - echo "${bacalhau_config_file}" | base64 -d > /${bacalhau_node_dir}/config.yaml
   - mv /tmp/exs/docker-compose.yaml ${bacalhau_node_dir}/docker-compose.yaml
 
   # Set correct permissions
   - chmod 0600 /etc/systemd/system/bacalhau-startup.service
-  - chmod 0700 /usr/local/bin/startup.sh
+  - chmod 0700 /usr/local/bin/startup.py
   - chmod 0400 ${bacalhau_node_dir}/config.yaml
   - chmod 0400 ${bacalhau_node_dir}/docker-compose.yaml
   - chmod 0777 ${bacalhau_data_dir}

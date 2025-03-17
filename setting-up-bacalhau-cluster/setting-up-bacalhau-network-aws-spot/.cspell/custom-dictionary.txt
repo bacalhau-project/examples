@@ -1,4 +1,5 @@
 allowerasing
+arcname
 bacalhau
 checkmark
 daaronch
