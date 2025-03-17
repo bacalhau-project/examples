@@ -46,6 +46,48 @@ get_cloud_metadata() {
     fi
 }
 
+# Function to check if yq is installed
+check_yq() {
+    if ! command -v yq &> /dev/null
+    then
+        echo "yq is not installed. Installing..."
+        # Detect the package manager and install yq
+        if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            apt-get update && apt-get install -y yq
+        elif command -v yum &> /dev/null; then
+            # Amazon Linux/CentOS/RHEL
+            yum install -y yq
+        elif command -v dnf &> /dev/null; then
+            # Newer versions of RHEL/CentOS
+            dnf install -y yq
+        else
+            echo "Error: Could not find a supported package manager to install yq"
+            exit 1
+        fi
+    fi
+}
+
+# Function to add a label to config.yaml
+add_label() {
+    local key=$1
+    local value=$2
+    local config_file="${BACALHAU_NODE_DIR}/config.yaml"
+    
+    # Ensure yq is available
+    check_yq
+    
+    # Check if Labels section exists
+    if ! yq -e '.Labels' "$config_file" &>/dev/null
+    then
+        # Create Labels section if it doesn't exist
+        yq -i '.Labels = []' "$config_file"
+    fi
+    
+    # Add the new label
+    yq -i ".Labels += {\"$key\": \"$value\"}" "$config_file"
+}
+
 get_cloud_metadata
 cat > "${BACALHAU_NODE_DIR}/node-info" << EOF
 CLOUD_PROVIDER=${CLOUD_PROVIDER}
@@ -63,6 +105,24 @@ fi
 
 # shellcheck disable=SC1091
 source "${BACALHAU_NODE_DIR}/node-info"
+
+while IFS=':' read -r key value
+do
+    # Trim whitespace
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
+    
+    if [ -n "$key" ] && [ -n "$value" ]
+    then
+        echo "Adding label: $key: $value"
+        add_label "$key" "$value"
+        
+        # Also add the -d version of the label
+        key_d="${key}-d"
+        echo "Adding label: $key_d: $value"
+        add_label "$key_d" "$value"
+    fi
+done < "${BACALHAU_NODE_DIR}/node-info"
 
 echo "Verifying Docker service..."
 if ! systemctl is-active --quiet docker; then
@@ -101,5 +161,3 @@ fi
 echo "Bacalhau node setup complete in ${CLOUD_PROVIDER} region ${REGION}"
 echo "Public IP: ${PUBLIC_IP}"
 echo "Private IP: ${PRIVATE_IP}"
-
-exit 0
