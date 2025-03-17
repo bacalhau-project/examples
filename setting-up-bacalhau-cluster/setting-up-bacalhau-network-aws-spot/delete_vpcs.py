@@ -334,33 +334,54 @@ class AwsVpcCleaner:
                 )
             )["NetworkInterfaces"]
 
-            # First pass: Release all Elastic IPs
+            # First pass: Release all Elastic IPs and unmap public IPs
             for eni in network_interfaces:
-                if eni.get("Association") and eni["Association"].get("PublicIp"):
+                if eni.get("Association"):
                     try:
-                        # Update status to show we're releasing Elastic IPs
-                        self._update_vpc_row(
-                            vpc_id,
-                            ec2.meta.region_name,
-                            "[yellow]Releasing Elastic IPs[/yellow]",
-                            f"IP: {eni['Association']['PublicIp']}",
-                        )
-                        if eni["Association"].get("AssociationId"):
-                            await self.execute_aws_api(
-                                ec2.disassociate_address,
-                                AssociationId=eni["Association"]["AssociationId"],
+                        public_ip = eni["Association"].get("PublicIp")
+                        if public_ip:
+                            # Update status to show we're releasing IPs
+                            self._update_vpc_row(
+                                vpc_id,
+                                ec2.meta.region_name,
+                                "[yellow]Releasing Public IPs[/yellow]",
+                                f"IP: {public_ip}",
                             )
-                        if eni["Association"].get("AllocationId"):
-                            await self.execute_aws_api(
-                                ec2.release_address,
-                                AllocationId=eni["Association"]["AllocationId"],
-                            )
+
+                            # First try to disassociate the public IP
+                            if eni["Association"].get("AssociationId"):
+                                try:
+                                    await self.execute_aws_api(
+                                        ec2.disassociate_address,
+                                        AssociationId=eni["Association"][
+                                            "AssociationId"
+                                        ],
+                                    )
+                                except botocore.exceptions.ClientError as e:
+                                    if "does not exist" not in str(e).lower():
+                                        logger.warning(
+                                            f"Error disassociating public IP: {str(e)}"
+                                        )
+
+                            # Then release the Elastic IP if it exists
+                            if eni["Association"].get("AllocationId"):
+                                try:
+                                    await self.execute_aws_api(
+                                        ec2.release_address,
+                                        AllocationId=eni["Association"]["AllocationId"],
+                                    )
+                                except botocore.exceptions.ClientError as e:
+                                    if "does not exist" not in str(e).lower():
+                                        logger.warning(
+                                            f"Error releasing Elastic IP: {str(e)}"
+                                        )
+
                     except botocore.exceptions.ClientError as e:
                         if "does not exist" not in str(e).lower():
-                            logger.error(f"Error releasing Elastic IP: {str(e)}")
+                            logger.warning(f"Error handling IP address: {str(e)}")
 
-            # Wait a moment for Elastic IP operations to complete
-            await asyncio.sleep(2)
+            # Wait for IP operations to complete
+            await asyncio.sleep(3)
 
             # Second pass: Handle network interfaces
             for eni in network_interfaces:
@@ -381,7 +402,7 @@ class AwsVpcCleaner:
                                     Force=True,
                                 )
                                 # Small delay after detachment
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(2)
                             except botocore.exceptions.ClientError as e:
                                 error_code = e.response.get("Error", {}).get("Code", "")
                                 if error_code in [
@@ -412,7 +433,7 @@ class AwsVpcCleaner:
                             )
 
             # Wait for network interface operations to complete
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
 
             # Delete NAT Gateways
             nat_gateways = (
@@ -427,6 +448,7 @@ class AwsVpcCleaner:
                     await self.execute_aws_api(
                         ec2.delete_nat_gateway, NatGatewayId=nat["NatGatewayId"]
                     )
+                    await asyncio.sleep(2)  # Wait for NAT Gateway deletion to start
 
             # Delete Internet Gateways
             igws = (
@@ -437,30 +459,24 @@ class AwsVpcCleaner:
             )["InternetGateways"]
 
             for igw in igws:
-                await self.execute_aws_api(
-                    ec2.detach_internet_gateway,
-                    InternetGatewayId=igw["InternetGatewayId"],
-                    VpcId=vpc_id,
-                )
-                await self.execute_aws_api(
-                    ec2.delete_internet_gateway,
-                    InternetGatewayId=igw["InternetGatewayId"],
-                )
+                try:
+                    await self.execute_aws_api(
+                        ec2.detach_internet_gateway,
+                        InternetGatewayId=igw["InternetGatewayId"],
+                        VpcId=vpc_id,
+                    )
+                    await self.execute_aws_api(
+                        ec2.delete_internet_gateway,
+                        InternetGatewayId=igw["InternetGatewayId"],
+                    )
+                except botocore.exceptions.ClientError as e:
+                    if "does not exist" not in str(e).lower():
+                        logger.error(f"Error deleting Internet Gateway: {str(e)}")
 
-            # Delete Subnets
-            subnets = (
-                await self.execute_aws_api(
-                    ec2.describe_subnets,
-                    Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
-                )
-            )["Subnets"]
+            # Wait for gateway operations to complete
+            await asyncio.sleep(3)
 
-            for subnet in subnets:
-                await self.execute_aws_api(
-                    ec2.delete_subnet, SubnetId=subnet["SubnetId"]
-                )
-
-            # Delete Route Tables
+            # Delete Route Tables (except main)
             route_tables = (
                 await self.execute_aws_api(
                     ec2.describe_route_tables,
@@ -472,9 +488,72 @@ class AwsVpcCleaner:
                 if not rt.get("Associations", []) or not rt["Associations"][0].get(
                     "Main", False
                 ):
+                    try:
+                        # First disassociate any subnets
+                        for assoc in rt.get("Associations", []):
+                            if assoc.get("SubnetId"):
+                                try:
+                                    await self.execute_aws_api(
+                                        ec2.disassociate_route_table,
+                                        AssociationId=assoc["RouteTableAssociationId"],
+                                    )
+                                except botocore.exceptions.ClientError as e:
+                                    if "does not exist" not in str(e).lower():
+                                        logger.warning(
+                                            f"Error disassociating route table: {str(e)}"
+                                        )
+
+                        # Then delete the route table
+                        await self.execute_aws_api(
+                            ec2.delete_route_table, RouteTableId=rt["RouteTableId"]
+                        )
+                    except botocore.exceptions.ClientError as e:
+                        if "does not exist" not in str(e).lower():
+                            logger.error(f"Error deleting route table: {str(e)}")
+
+            # Wait for route table operations to complete
+            await asyncio.sleep(2)
+
+            # Delete Subnets
+            subnets = (
+                await self.execute_aws_api(
+                    ec2.describe_subnets,
+                    Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
+                )
+            )["Subnets"]
+
+            for subnet in subnets:
+                try:
+                    # Ensure all network interfaces in the subnet are deleted
+                    subnet_enis = (
+                        await self.execute_aws_api(
+                            ec2.describe_network_interfaces,
+                            Filters=[
+                                {"Name": "subnet-id", "Values": [subnet["SubnetId"]]}
+                            ],
+                        )
+                    )["NetworkInterfaces"]
+
+                    for eni in subnet_enis:
+                        if eni["Status"] not in ["deleting", "deleted"]:
+                            try:
+                                await self.execute_aws_api(
+                                    ec2.delete_network_interface,
+                                    NetworkInterfaceId=eni["NetworkInterfaceId"],
+                                )
+                            except botocore.exceptions.ClientError as e:
+                                if "does not exist" not in str(e).lower():
+                                    logger.warning(
+                                        f"Error deleting subnet ENI: {str(e)}"
+                                    )
+
+                    # Delete the subnet
                     await self.execute_aws_api(
-                        ec2.delete_route_table, RouteTableId=rt["RouteTableId"]
+                        ec2.delete_subnet, SubnetId=subnet["SubnetId"]
                     )
+                except botocore.exceptions.ClientError as e:
+                    if "does not exist" not in str(e).lower():
+                        logger.error(f"Error deleting subnet: {str(e)}")
 
             # Delete Security Groups
             security_groups = (
@@ -486,13 +565,22 @@ class AwsVpcCleaner:
 
             for sg in security_groups:
                 if sg["GroupName"] != "default":
-                    await self.execute_aws_api(
-                        ec2.delete_security_group, GroupId=sg["GroupId"]
-                    )
+                    try:
+                        await self.execute_aws_api(
+                            ec2.delete_security_group, GroupId=sg["GroupId"]
+                        )
+                    except botocore.exceptions.ClientError as e:
+                        if "does not exist" not in str(e).lower():
+                            logger.error(f"Error deleting security group: {str(e)}")
 
             # Finally delete the VPC itself
-            await self.execute_aws_api(ec2.delete_vpc, VpcId=vpc_id)
-            return True
+            try:
+                await self.execute_aws_api(ec2.delete_vpc, VpcId=vpc_id)
+                return True
+            except botocore.exceptions.ClientError as e:
+                if "does not exist" not in str(e).lower():
+                    logger.error(f"Error deleting VPC: {str(e)}")
+                return False
 
         except botocore.exceptions.ClientError as e:
             if "does not exist" in str(e).lower():
