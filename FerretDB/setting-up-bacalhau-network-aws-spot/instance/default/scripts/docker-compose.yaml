@@ -1,9 +1,18 @@
 services:
   bacalhau-node:
-    image: ghcr.io/bacalhau-project/bacalhau:latest
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
     privileged: true
     restart: always
+    command:
+      - "serve"
+      - "--config"
+      - "/etc/bacalhau/config.yaml"
+      - "-c"
+      - "Logging.Level=info"
+      - "-c"
+      - "LABELS=${LABELS}"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - type: bind
         source: /bacalhau_node/config.yaml
         target: /etc/bacalhau/config.yaml

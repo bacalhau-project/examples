@@ -1,0 +1,22 @@
+max_instances: 2
+username: bacalhau-runner
+public_ssh_key_path: /home/bacalhau-runner/.ssh/id_rsa.pub
+orchestrators:
+  - nats://<orchestrator>:4222
+token: <token>
+tls: true
+regions:
+  - eu-central-1:
+      image: auto
+      architecture: x86_64
+      machine_type: t2.micro
+      cloud-init-scripts: "ferretdb" # override cloud-init-scripts (it must be the existing folder instance/xxxx with custom implementation of scripts_provider
+      node_count: 1
+      tags: ferretdb_node
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.micro
+      node_count: 10
+      tags: bacalhau_node

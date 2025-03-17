@@ -1,5 +1,11 @@
 #cloud-config
 
+write_files:
+  - path: /tmp/scripts.tar.gz
+    encoding: base64
+    content: ${compressed_scripts}
+    permissions: '0600'
+
 users:
   - name: ${username}
     sudo: ALL=(ALL) NOPASSWD:ALL
@@ -12,6 +18,8 @@ package_update: true
 package_upgrade: true
 
 runcmd:
+  - mkdir -p /tmp/exs
+  - tar -xzf /tmp/scripts.tar.gz -C /tmp/exs
   - |
     # Remove minimal packages only if DNF is available (i.e., on Amazon Linux 2023).
     all_packages="curl gnupg2 jq python3 python3-pip"
@@ -28,7 +36,7 @@ runcmd:
     fi
 
   # Install Docker
-  - echo "${docker_install_script_file}" | base64 -d > /root/install-docker.sh
+  - mv /tmp/exs/install-docker.sh /root/install-docker.sh
   - chmod 755 /root/install-docker.sh
   - /root/install-docker.sh
 
@@ -39,17 +47,13 @@ runcmd:
   - chmod 0600 /home/${username}/.ssh/authorized_keys
 
   # Create necessary directories first
-  - mkdir -p ${bacalhau_data_dir}
-  - mkdir -p ${bacalhau_node_dir}
-  - mkdir -p /etc/bacalhau
-  - mkdir -p /etc/systemd/system
-  - mkdir -p /usr/local/bin
+  - mkdir -p ${bacalhau_data_dir} ${bacalhau_node_dir} /etc/bacalhau /etc/systemd/system /usr/local/bin
 
   # Write files after directories are created
-  - echo "${bacalhau_startup_service_file}" | base64 -d > /etc/systemd/system/bacalhau-startup.service
-  - echo "${bacalhau_startup_script_file}" | base64 -d > /usr/local/bin/startup.sh
-  - echo "${bacalhau_config_file}" | base64 -d > ${bacalhau_node_dir}/config.yaml
-  - echo "${docker_compose_file}" | base64 -d > ${bacalhau_node_dir}/docker-compose.yaml
+  - mv /tmp/exs/bacalhau-startup.service /etc/systemd/system/bacalhau-startup.service
+  - mv /tmp/exs/startup.sh /usr/local/bin/startup.sh
+  - echo "${bacalhau_config_file}" | base64 -d > /${bacalhau_node_dir}/config.yaml
+  - mv /tmp/exs/docker-compose.yaml ${bacalhau_node_dir}/docker-compose.yaml
 
   # Set correct permissions
   - chmod 0600 /etc/systemd/system/bacalhau-startup.service
@@ -78,7 +82,7 @@ runcmd:
   - chown -R ${username}:${username} /home/${username}/.cache
 
   # Install health check web server
-  - echo "${healthz_web_server_script_file}" | base64 -d > /usr/local/bin/healthz-web-server.py
+  - mv /tmp/exs/healthz-web-server.py /usr/local/bin/healthz-web-server.py
   - chmod 755 /usr/local/bin/healthz-web-server.py
   - chown ${username}:${username} /usr/local/bin/healthz-web-server.py
 
@@ -86,7 +90,7 @@ runcmd:
   - ln -sf /usr/local/bin/healthz-web-server.py /usr/local/bin/healthz-web-server
 
   # Install service
-  - echo "${healthz_service_file}" | base64 -d > /etc/systemd/system/healthz-web.service
+  - mv /tmp/exs/healthz-web.service /etc/systemd/system/healthz-web.service
   - chmod 644 /etc/systemd/system/healthz-web.service
 
   # Configure Docker to start on boot

@@ -57,6 +57,16 @@ INSTANCE_ID=${INSTANCE_ID}
 INSTANCE_TYPE=${INSTANCE_TYPE}
 EOF
 
+LABELS=$(awk -F= '{print $1 "=" $2}' /bacalhau_node/node-info | tr '\n' ',' | sed 's/,$//')
+
+sed -i '/^LABELS=/d' /etc/environment
+echo "LABELS=${LABELS}" >> /etc/environment
+
+sed -i '/^export LABELS=/d' ~/.profile
+echo 'export LABELS=$(grep LABELS /etc/environment | cut -d "=" -f2-)' >> ~/.profile
+
+source ~/.profile
+
 if [ "$CLOUD_PROVIDER" = "GCP" ]; then
     echo "PROJECT_ID=${PROJECT_ID}" >> "${BACALHAU_NODE_DIR}/node-info"
 fi

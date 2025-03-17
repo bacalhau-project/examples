@@ -1,3 +1,17 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "boto3",
+#     "click",
+#     "aiohttp",
+#     "botocore",
+#     "python-dotenv",
+#     "pyyaml",
+#     "rich",
+# ]
+# ///
+
 import argparse
 import asyncio
 import base64
@@ -21,7 +35,7 @@ from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
 from util.config import Config
-from util.scripts_provider import ScriptsProvider
+# from util.scripts_provider import ScriptsProvider
 
 # Tag to filter instances by
 FILTER_TAG_NAME = "ManagedBy"
@@ -61,7 +75,7 @@ except Exception as e:
         f.write(f"Failed to set up file logging: {e}\n")
 
 config = Config("config.yaml")
-scripts_provider = ScriptsProvider(config)
+# scripts_provider = ScriptsProvider(config)
 
 AWS_REGIONS = config.get_regions()
 TOTAL_INSTANCES = config.get_total_instances()
@@ -615,18 +629,6 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
     log_operation(f"Connected to AWS EC2 API", "info", region)
 
     try:
-        # Create cloud-init script
-        log_operation(f"Generating startup script", "info", region)
-        user_data = scripts_provider.create_cloud_init_script()
-        if not user_data:
-            error_msg = "User data is empty. Stopping creation."
-            logger.error(error_msg)
-            log_operation(error_msg, "error", region)
-            return [], {}
-
-        encoded_user_data = base64.b64encode(user_data.encode()).decode()
-        log_operation(f"Startup script generated successfully", "info", region)
-
         # Create VPC and networking resources
         log_operation(f"Creating/checking VPC", "info", region)
         vpc_id = await create_vpc_if_not_exists(ec2)
@@ -657,6 +659,18 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                 "info",
                 region,
             )
+
+            # Create cloud-init script
+            log_operation(f"Generating startup script", "info", region)
+            user_data = config.get_scripts_provider(region, i)
+            if not user_data:
+                error_msg = "User data is empty. Stopping creation."
+                logger.error(error_msg)
+                log_operation(error_msg, "error", region)
+                return [], {}
+
+            encoded_user_data = base64.b64encode(user_data.encode()).decode()
+            log_operation(f"Startup script generated successfully", "info", region)
 
             log_operation(f"Creating subnet in zone {zone}", "info", region)
             subnet_id = await create_subnet(ec2, vpc_id, zone, f"10.0.{i}.0/24")

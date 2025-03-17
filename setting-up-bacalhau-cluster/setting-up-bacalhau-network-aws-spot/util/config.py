@@ -1,8 +1,11 @@
 import csv
 import logging
 import os
+from importlib import import_module
 
 import yaml
+
+from util.scripts_provider import ScriptsProvider
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,30 @@ class Config(dict):
                 return config
         logger.warning(f"No config found for region: {region_name}")
         return None
+
+    def get_scripts_provider_name(self, region_name, node_idx):
+        scripts = self.get('cloud_init_scripts', {})
+        script_key = f"{region_name}-node{node_idx + 1}"
+        scripts_provider_name = scripts.get(script_key, "default")
+        return scripts_provider_name
+
+    def get_scripts_provider(self, region_name, node_idx):
+        # Construct the module name and class name dynamically
+        scripts_provider_name = self.get_scripts_provider_name(region_name, node_idx)
+
+        if scripts_provider_name == "default":
+            return ScriptsProvider(self)
+
+        module_name = f"instance.{scripts_provider_name.lower()}.scripts_provider"
+        class_name = f"{scripts_provider_name}ScriptsProvider"
+        try:
+            module = import_module(module_name)
+            cls = getattr(module, class_name)
+            instance = cls(self)
+            return instance
+
+        except (ModuleNotFoundError, AttributeError) as e:
+            raise ImportError(f"Failed to import or instantiate {class_name}: {str(e)}")
 
     def get_amis_file_path(self):
         parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

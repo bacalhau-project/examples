@@ -4,14 +4,14 @@ import logging
 import os
 import tarfile
 
-from util.config import Config
+# from util.config import Config
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
 class ScriptsProvider:
-    def __init__(self, config: Config):
+    def __init__(self, config):
         super().__init__()
         self.config = config
 
