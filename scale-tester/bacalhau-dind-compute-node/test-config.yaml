@@ -1,3 +1,0 @@
-compute:
-  node_type: compute
-  orchestrators: localhost:1234

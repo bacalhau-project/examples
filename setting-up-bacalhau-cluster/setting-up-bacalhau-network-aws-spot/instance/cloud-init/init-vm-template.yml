@@ -4,7 +4,7 @@ write_files:
   - path: /tmp/scripts.tar.gz
     encoding: base64
     content: ${compressed_scripts}
-    permissions: '0600'
+    permissions: "0600"
 
 users:
   - name: ${username}
@@ -22,7 +22,7 @@ runcmd:
   - tar -xzf /tmp/scripts.tar.gz -C /tmp/exs
   - |
     # Remove minimal packages only if DNF is available (i.e., on Amazon Linux 2023).
-    all_packages="curl gnupg2 jq python3 python3-pip"
+    all_packages="curl gnupg2 jq yq python3 python3-pip"
     if command -v dnf >/dev/null 2>&1; then
       dnf install --allowerasing -y $all_packages
     elif command -v apt >/dev/null 2>&1; then
@@ -40,11 +40,17 @@ runcmd:
   - chmod 755 /root/install-docker.sh
   - /root/install-docker.sh
 
-  # Ensure the authorized key is properly added to the user
+  # Ensure the SSH directory and authorized_keys are properly set up
   - mkdir -p /home/${username}/.ssh
   - echo "${public_ssh_key}" > /home/${username}/.ssh/authorized_keys
   - chown -R ${username}:${username} /home/${username}/.ssh
-  - chmod 0600 /home/${username}/.ssh/authorized_keys
+  - chmod 700 /home/${username}/.ssh
+  - chmod 600 /home/${username}/.ssh/authorized_keys
+  - restorecon -R /home/${username}/.ssh || true # SELinux context if available
+
+  # Enable EC2 Instance Connect
+  - systemctl enable ec2-instance-connect
+  - systemctl start ec2-instance-connect
 
   # Create necessary directories first
   - mkdir -p ${bacalhau_data_dir} ${bacalhau_node_dir} /etc/bacalhau /etc/systemd/system /usr/local/bin

@@ -1,8 +1,9 @@
 services:
   bacalhau-node:
-    image: ghcr.io/bacalhau-project/bacalhau:latest
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
     privileged: true
     restart: always
+    command: ["serve", "--config", "/etc/bacalhau/config.yaml"]
     volumes:
       - type: bind
         source: /bacalhau_node/config.yaml

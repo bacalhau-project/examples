@@ -123,7 +123,7 @@ class ScriptsProvider:
         values = {
             "compressed_scripts": self.tar_and_encode_scripts(),
             "username": self.config.get_username(),
-            "public_ssh_key": ssh_public_key,  # No longer needs base64 encoding
+            "public_ssh_key": ssh_public_key,
             "bacalhau_data_dir": "/bacalhau_data",
             "bacalhau_node_dir": "/bacalhau_node",
             "bacalhau_config_file": self.create_bacalhau_config(),
