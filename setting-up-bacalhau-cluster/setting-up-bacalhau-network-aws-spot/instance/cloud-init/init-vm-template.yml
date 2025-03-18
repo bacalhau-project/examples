@@ -112,10 +112,8 @@ runcmd:
   - systemctl enable bacalhau-startup.service
   - systemctl start bacalhau-startup.service
 
-  # Run additional commands - touch here just to ensure the file exists
-  - touch /tmp/exs/additional_commands.sh
-  - chmod 0700 /tmp/exs/additional_commands.sh
-  - /tmp/exs/additional_commands.sh
+  # Run additional commands if file exists
+  - test -f /tmp/exs/additional_commands.sh && sh -c /tmp/exs/additional_commands.sh
 
 power_state:
   mode: reboot
