@@ -1,3 +1,3 @@
 #!/bin/bash
 
-echo "Placeholder file."
+cat "foobaz" > /bacalhau_data
