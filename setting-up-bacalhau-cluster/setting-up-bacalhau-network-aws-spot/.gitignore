@@ -5,3 +5,5 @@ config.yaml
 **/*.log
 machines.db
 **/__pycache__
+
+instance/scripts/additional_commands.sh
