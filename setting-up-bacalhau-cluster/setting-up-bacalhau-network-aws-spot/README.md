@@ -77,6 +77,20 @@ Ensure your SSH keys have the correct permissions:
 chmod 600 ~/.ssh/id_rsa
 ```
 
+Additionally, you can add additional commands to the cloud-init script by creating a file called `additional_commands.sh` in the `instance/scripts` directory.
+
+```bash
+cp instance/scripts/additional_commands.sh_example instance/scripts/additional_commands.sh
+chmod 700 instance/scripts/additional_commands.sh
+```
+
+Edit the `additional_commands.sh` file to add your commands.
+
+This could be anything you want to run on the instances after they are deployed:
+- Setting secrets
+- Installing additional software
+- Setting up environment variables
+
 ### Step 5: Find Optimal Regions and Instance Types
 
 The scripts will automatically identify regions with available spot capacity and the most cost-effective instance types:
