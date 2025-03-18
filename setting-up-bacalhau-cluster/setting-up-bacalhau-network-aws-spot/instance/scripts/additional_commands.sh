@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cat "foobaz" > /bacalhau_data
+echo "Additional commands executed."

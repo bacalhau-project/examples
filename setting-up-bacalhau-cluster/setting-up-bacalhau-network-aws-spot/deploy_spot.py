@@ -24,6 +24,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 import aiosqlite
 import boto3
@@ -46,7 +47,7 @@ FILTER_TAG_VALUE = "SpotInstanceScript"
 console = Console()
 
 # Set up logging to file only (no console output)
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Disable noisy boto3/botocore logging
@@ -111,6 +112,10 @@ events_to_progress_lock = (
 operations_logs = []
 operations_logs_lock = asyncio.Lock()  # Lock for thread-safe updates to operations logs
 MAX_OPERATIONS_LOGS = 20  # Maximum number of operations logs to keep
+
+# Initialize global state manager
+machine_state = None
+state_manager = None
 
 
 def log_operation(message, level="info", region=None):
@@ -721,7 +726,7 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             # Add to global tracking with proper thread safety - this updates the UI but doesn't save to MACHINES.json
             await update_all_statuses_async(thisInstanceStatusObject)
 
-            # IMPORTANT: We're not saving anything to MACHINES.json at this stage.
+            # IMPORTANT: We're not saving anything to machines.db at this stage.
             # We'll only save instances with valid AWS IDs once the spot request is fulfilled.
 
             launch_specification = {
@@ -2179,50 +2184,6 @@ async def clean_up_vpc_resources(ec2, vpc_id):
     await asyncio.to_thread(ec2.delete_vpc, VpcId=vpc_id)
 
 
-async def delete_disconnected_aws_nodes():
-    try:
-        # Run bacalhau node list command and capture output
-        result = subprocess.run(
-            ["bacalhau", "node", "list", "--output", "json"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        nodes = json.loads(result.stdout)
-
-        disconnected_aws_nodes = []
-
-        for node in nodes:
-            if (
-                node["Connection"] == "DISCONNECTED"
-                and node["Info"]["NodeType"] == "Compute"
-                and "EC2_INSTANCE_FAMILY" in node["Info"]["Labels"]
-            ):
-                disconnected_aws_nodes.append(node["Info"]["NodeID"])
-
-        if not disconnected_aws_nodes:
-            logger.info("No disconnected AWS nodes found.")
-            return
-
-        logger.info(f"Found {len(disconnected_aws_nodes)} disconnected AWS node(s).")
-
-        for node_id in disconnected_aws_nodes:
-            logger.info(f"Deleting node: {node_id}")
-            try:
-                # Run bacalhau admin node delete command
-                subprocess.run(["bacalhau", "node", "delete", node_id], check=True)
-                logger.info(f"Successfully deleted node: {node_id}")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to delete node {node_id}. Error: {e}")
-
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error running bacalhau node list: {e}")
-    except json.JSONDecodeError as e:
-        logger.error(f"Error parsing JSON output: {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
-
-
 def all_statuses_to_dict():
     return {
         status.id: {
@@ -2350,8 +2311,10 @@ class SQLiteMachineStateManager:
             }
 
     def get_all(self):
-        """Get all valid machines"""
+        """Get all machine data"""
         with sqlite3.connect(self.db_path) as conn:
+            # Ensure table exists before querying
+            self._ensure_db_exists()
             cursor = conn.execute("SELECT data FROM machines")
             return {
                 json.loads(row[0])["instance_id"]: json.loads(row[0])
@@ -2562,6 +2525,12 @@ async def handle_spot_request(
 
                         # Set the instance ID - this will change the ID property
                         instance_status.instance_id = status["instance_id"]
+
+                        # Update the key in all_statuses to use the new instance ID
+                        old_id = instance_status._temp_id
+                        all_statuses[status["instance_id"]] = instance_status
+                        if old_id in all_statuses:
+                            del all_statuses[old_id]
 
                         # Update instance status for provisioning phase
                         instance_status.detailed_status = "Spot request fulfilled"
@@ -2869,7 +2838,12 @@ async def main():
     )
     parser.add_argument(
         "--action",
-        choices=["create", "destroy", "list", "delete_disconnected_aws_nodes", "table"],
+        choices=[
+            "create",
+            "destroy",
+            "list",
+            "print-database",
+        ],
         help="Action to perform",
         default="list",
     )
@@ -2891,7 +2865,7 @@ async def main():
         log_operation("Loading machine state...")
         machines = await machine_state.load()
 
-        if args.action == "table":
+        if args.action == "print-database":
             print_machines_table()
             return 0
 
@@ -2937,12 +2911,6 @@ async def main():
                     log_operation("Starting 'destroy' action")
                     await destroy_instances()
                     log_operation("Destroy action completed successfully")
-                elif args.action == "delete_disconnected_aws_nodes":
-                    log_operation("Starting delete_disconnected_aws_nodes action")
-                    await delete_disconnected_aws_nodes()
-                    log_operation(
-                        "Delete_disconnected_aws_nodes action completed successfully"
-                    )
 
                 logger.debug("Action %s completed successfully", args.action)
                 logger.debug("Main execution completed successfully")
@@ -2968,6 +2936,8 @@ async def main():
 
         if args.action in ["list", "create"]:
             logger.info(f"Completed {args.action} operation successfully")
+
+        print_machines_table()
 
         logger.debug("Script completed successfully")
 
