@@ -4,7 +4,7 @@ write_files:
   - path: /tmp/scripts.tar.gz
     encoding: base64
     content: ${compressed_scripts}
-    permissions: '0600'
+    permissions: "0600"
 
 users:
   - name: ${username}
@@ -40,24 +40,30 @@ runcmd:
   - chmod 755 /root/install-docker.sh
   - /root/install-docker.sh
 
-  # Ensure the authorized key is properly added to the user
+  # Ensure the SSH directory and authorized_keys are properly set up
   - mkdir -p /home/${username}/.ssh
   - echo "${public_ssh_key}" > /home/${username}/.ssh/authorized_keys
   - chown -R ${username}:${username} /home/${username}/.ssh
-  - chmod 0600 /home/${username}/.ssh/authorized_keys
+  - chmod 700 /home/${username}/.ssh
+  - chmod 600 /home/${username}/.ssh/authorized_keys
+  - restorecon -R /home/${username}/.ssh || true # SELinux context if available
+
+  # Enable EC2 Instance Connect
+  - systemctl enable ec2-instance-connect
+  - systemctl start ec2-instance-connect
 
   # Create necessary directories first
   - mkdir -p ${bacalhau_data_dir} ${bacalhau_node_dir} /etc/bacalhau /etc/systemd/system /usr/local/bin
 
   # Write files after directories are created
   - mv /tmp/exs/bacalhau-startup.service /etc/systemd/system/bacalhau-startup.service
-  - mv /tmp/exs/startup.sh /usr/local/bin/startup.sh
+  - mv /tmp/exs/startup.py /usr/local/bin/startup.py
   - echo "${bacalhau_config_file}" | base64 -d > /${bacalhau_node_dir}/config.yaml
   - mv /tmp/exs/docker-compose.yaml ${bacalhau_node_dir}/docker-compose.yaml
 
   # Set correct permissions
   - chmod 0600 /etc/systemd/system/bacalhau-startup.service
-  - chmod 0700 /usr/local/bin/startup.sh
+  - chmod 0700 /usr/local/bin/startup.py
   - chmod 0400 ${bacalhau_node_dir}/config.yaml
   - chmod 0400 ${bacalhau_node_dir}/docker-compose.yaml
   - chmod 0777 ${bacalhau_data_dir}
@@ -105,6 +111,9 @@ runcmd:
   - systemctl start healthz-web.service
   - systemctl enable bacalhau-startup.service
   - systemctl start bacalhau-startup.service
+
+  # Run additional commands if file exists
+  - test -f /tmp/exs/additional_commands.sh && sh -c /tmp/exs/additional_commands.sh
 
 power_state:
   mode: reboot

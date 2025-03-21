@@ -102,6 +102,9 @@ runcmd:
   - systemctl enable bacalhau-startup.service
   - systemctl start bacalhau-startup.service
 
+  # Run additional commands if file exists
+  - test -f /tmp/exs/additional_commands.sh && sh -c /tmp/exs/additional_commands.sh
+
 power_state:
   mode: reboot
   timeout: 1800

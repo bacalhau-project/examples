@@ -1,6 +1,7 @@
 .env
 .idea
 .pem
-config.yaml
+config*.yaml
 **/*.log
-
+machines.db
+**/__pycache__

@@ -1,16 +1,32 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "boto3",
+#     "botocore",
+#     "rich",
+#     "aiosqlite",
+#     "aiofiles",
+#     "pyyaml",
+# ]
+# ///
+
 import argparse
 import asyncio
 import base64
-import hashlib
 import json
 import logging
 import os
+import sqlite3
 import subprocess
+import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
+import aiosqlite
 import boto3
 import botocore
 from rich.console import Console
@@ -27,10 +43,11 @@ from util.scripts_provider import ScriptsProvider
 FILTER_TAG_NAME = "ManagedBy"
 FILTER_TAG_VALUE = "SpotInstanceScript"
 
+# Create console instance for rich output
 console = Console()
 
 # Set up logging to file only (no console output)
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Disable noisy boto3/botocore logging
@@ -87,12 +104,18 @@ task_name = "TASK NAME"
 task_total = 10000
 task_count = 0
 events_to_progress = []
-events_to_progress_lock = asyncio.Lock()  # Lock for thread-safe updates to events_to_progress
+events_to_progress_lock = (
+    asyncio.Lock()
+)  # Lock for thread-safe updates to events_to_progress
 
 # List to store operations logs
 operations_logs = []
 operations_logs_lock = asyncio.Lock()  # Lock for thread-safe updates to operations logs
 MAX_OPERATIONS_LOGS = 20  # Maximum number of operations logs to keep
+
+# Initialize global state manager
+machine_state = None
+state_manager = None
 
 
 def log_operation(message, level="info", region=None):
@@ -126,7 +149,7 @@ def log_operation(message, level="info", region=None):
         # For synchronous contexts, we can't use the async lock
         # This is not ideal but better than no logging at all
         operations_logs.append(formatted_message)
-        
+
         # Keep only the most recent logs
         if len(operations_logs) > MAX_OPERATIONS_LOGS:
             operations_logs = operations_logs[-MAX_OPERATIONS_LOGS:]
@@ -140,6 +163,7 @@ def log_operation(message, level="info", region=None):
         logger.warning(message)
     else:
         logger.info(message)
+
 
 # Async version for when called from async code
 async def log_operation_async(message, level="info", region=None):
@@ -167,7 +191,7 @@ async def log_operation_async(message, level="info", region=None):
     # Thread-safe update to operations logs
     async with operations_logs_lock:
         operations_logs.append(formatted_message)
-        
+
         # Keep only the most recent logs
         if len(operations_logs) > MAX_OPERATIONS_LOGS:
             operations_logs = operations_logs[-MAX_OPERATIONS_LOGS:]
@@ -184,13 +208,15 @@ async def log_operation_async(message, level="info", region=None):
 # Global lock for thread-safe updates to shared state
 all_statuses_lock = asyncio.Lock()
 
+
 def update_all_statuses(status):
     """
     Update the global status dictionary (sync version)
     This must be called from synchronous code
     """
     all_statuses[status.id] = status
-    
+
+
 async def update_all_statuses_async(status):
     """
     Update the global status dictionary (async version)
@@ -224,7 +250,7 @@ class InstanceStatus:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": {},
         }
-    
+
     @property
     def id(self):
         """Return the instance ID if available, otherwise return the temporary ID.
@@ -285,15 +311,23 @@ def make_progress_table():
     table = Table(show_header=True, header_style="bold magenta", show_lines=False)
     table.overflow = "ellipsis"
     table.add_column("ID", width=5, style="cyan", no_wrap=True)
-    table.add_column("Region", width=20, style="cyan", no_wrap=True)
-    table.add_column("Zone", width=20, style="cyan", no_wrap=True)
-    table.add_column("Status", width=20, style="yellow", no_wrap=True)
+    table.add_column("Region", width=15, style="cyan", no_wrap=True)
+    table.add_column("Zone", width=15, style="cyan", no_wrap=True)
     table.add_column(
-        "Elapsed", width=20, justify="right", style="magenta", no_wrap=True
-    )
-    table.add_column("Instance ID", width=20, style="blue", no_wrap=True)
-    table.add_column("Public IP", width=20, style="blue", no_wrap=True)
-    table.add_column("Private IP", width=20, style="blue", no_wrap=True)
+        "Status", width=40, style="yellow", no_wrap=True
+    )  # Increased from 20 to 40
+    table.add_column(
+        "Elapsed", width=10, justify="right", style="magenta", no_wrap=True
+    )  # Reduced from 20 to 10
+    table.add_column(
+        "Instance ID", width=25, style="blue", no_wrap=True
+    )  # Increased from 20 to 25
+    table.add_column(
+        "Public IP", width=15, style="blue", no_wrap=True
+    )  # Reduced from 20 to 15
+    table.add_column(
+        "Private IP", width=15, style="blue", no_wrap=True
+    )  # Reduced from 20 to 15
 
     # Define the failed status list for display consistency
     FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
@@ -347,19 +381,21 @@ def make_progress_table():
             status_style = "bold green"
         elif status.status == "Terminated":
             status_style = "dim"
-            
+
         # Format combined status with appropriate styling
         combined_status = status.combined_status()
         if status_style:
             combined_status = f"[{status_style}]{combined_status}[/{status_style}]"
-            
+
         # Display "Waiting..." in the public IP column for instances that exist but have no IP yet
         # Don't show "Waiting..." for failed or terminated instances
         public_ip_display = status.public_ip
-        if (not status.public_ip 
-            and status.instance_id 
+        if (
+            not status.public_ip
+            and status.instance_id
             and status.status not in FAILED_STATUSES
-            and status.status != "Terminated"):
+            and status.status != "Terminated"
+        ):
             public_ip_display = "[yellow]Waiting...[/yellow]"
         elif status.status in FAILED_STATUSES:
             public_ip_display = "[red]N/A[/red]"
@@ -367,10 +403,12 @@ def make_progress_table():
         # Display "Waiting..." in the private IP column for instances that exist but have no private IP yet
         # Don't show "Waiting..." for failed or terminated instances
         private_ip_display = status.private_ip
-        if (not status.private_ip 
-            and status.instance_id 
+        if (
+            not status.private_ip
+            and status.instance_id
             and status.status not in FAILED_STATUSES
-            and status.status != "Terminated"):
+            and status.status != "Terminated"
+        ):
             private_ip_display = "[yellow]Waiting...[/yellow]"
         elif status.status in FAILED_STATUSES:
             private_ip_display = "[red]N/A[/red]"
@@ -484,7 +522,7 @@ async def update_table(live):
                     events_to_progress.clear()
             except Exception as e:
                 logger.error(f"Error processing events: {e}")
-            
+
             # Process the events we captured
             if current_events:
                 update_needed = True
@@ -498,7 +536,7 @@ async def update_table(live):
                             all_statuses[event.id] = event
                     except Exception as e:
                         logger.error(f"Error processing event {event}: {e}")
-                
+
                 # Log how many events we processed to help with debugging
                 if len(current_events) > 5:
                     logger.debug(f"Processed {len(current_events)} UI events")
@@ -538,21 +576,23 @@ async def update_table(live):
             # Determine if we need to update any part of the UI
             ops_update_needed = force_ops_update
             table_update_needed = update_needed
-            
+
             if ops_update_needed or table_update_needed:
-                logger.debug(f"UI update: ops={ops_update_needed}, table={table_update_needed}")
-                
+                logger.debug(
+                    f"UI update: ops={ops_update_needed}, table={table_update_needed}"
+                )
+
                 # Always rebuild table if we have updates
                 if table_update_needed:
                     table = make_progress_table()
-                
-                # Get operations content 
+
+                # Get operations content
                 ops_content = (
                     "\n".join(operations_logs)
                     if operations_logs
                     else "[dim]No operations logged yet...[/dim]"
                 )
-                
+
                 # Strategy: Only rebuild entire layout if we absolutely must
                 # Otherwise just update the parts that changed
                 if hasattr(live, "_layout") and live._layout is not None:
@@ -566,10 +606,10 @@ async def update_table(live):
                                 padding=(1, 1),
                             )
                         )
-                    
+
                     if "table" in live._layout and table_update_needed:
                         live._layout["table"].update(table)
-                    
+
                     # Only refresh if we updated something
                     if ops_update_needed or table_update_needed:
                         live.refresh()
@@ -577,7 +617,7 @@ async def update_table(live):
                     # First time or layout was reset - create full layout
                     layout = create_layout(progress, table)
                     live.update(layout)
-                
+
                 # Reset the update timer
                 if ops_update_needed:
                     last_ops_update = now
@@ -609,14 +649,14 @@ async def get_availability_zones(ec2):
 async def create_spot_instances_in_region(config: Config, instances_to_create, region):
     global all_statuses, events_to_progress
 
-    log_operation(f"Starting instance creation in region", "info", region)
+    log_operation("Starting instance creation in region", "info", region)
     ec2 = get_ec2_client(region)
     region_cfg = config.get_region_config(region)
-    log_operation(f"Connected to AWS EC2 API", "info", region)
+    log_operation("Connected to AWS EC2 API", "info", region)
 
     try:
         # Create cloud-init script
-        log_operation(f"Generating startup script", "info", region)
+        log_operation("Generating startup script", "info", region)
         user_data = scripts_provider.create_cloud_init_script()
         if not user_data:
             error_msg = "User data is empty. Stopping creation."
@@ -625,27 +665,27 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             return [], {}
 
         encoded_user_data = base64.b64encode(user_data.encode()).decode()
-        log_operation(f"Startup script generated successfully", "info", region)
+        log_operation("Startup script generated successfully", "info", region)
 
         # Create VPC and networking resources
-        log_operation(f"Creating/checking VPC", "info", region)
+        log_operation("Creating/checking VPC", "info", region)
         vpc_id = await create_vpc_if_not_exists(ec2)
         log_operation(f"VPC ready: {vpc_id}", "info", region)
 
-        log_operation(f"Setting up internet gateway", "info", region)
+        log_operation("Setting up internet gateway", "info", region)
         igw_id = await create_internet_gateway(ec2, vpc_id)
         log_operation(f"Internet gateway ready: {igw_id}", "info", region)
 
-        log_operation(f"Creating route table", "info", region)
+        log_operation("Creating route table", "info", region)
         route_table_id = await create_route_table(ec2, vpc_id, igw_id)
         log_operation(f"Route table ready: {route_table_id}", "info", region)
 
-        log_operation(f"Setting up security group", "info", region)
+        log_operation("Setting up security group", "info", region)
         security_group_id = await create_security_group_if_not_exists(ec2, vpc_id)
         log_operation(f"Security group ready: {security_group_id}", "info", region)
 
         instance_ids = []
-        log_operation(f"Getting available zones", "info", region)
+        log_operation("Getting available zones", "info", region)
         zones = await get_availability_zones(ec2)
         log_operation(f"Available zones: {', '.join(zones)}", "info", region)
 
@@ -662,31 +702,31 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             subnet_id = await create_subnet(ec2, vpc_id, zone, f"10.0.{i}.0/24")
             log_operation(f"Subnet created: {subnet_id}", "info", region)
 
-            log_operation(f"Associating route table with subnet", "info", region)
+            log_operation("Associating route table with subnet", "info", region)
             try:
                 await associate_route_table(ec2, route_table_id, subnet_id)
-                log_operation(
-                    f"Route table associated successfully", "info", region
-                )
+                log_operation("Route table associated successfully", "info", region)
             except botocore.exceptions.ClientError as e:
                 if e.response["Error"]["Code"] == "Resource.AlreadyAssociated":
-                    already_msg = (
-                        f"Route table already associated in {region}-{zone}"
-                    )
+                    already_msg = f"Route table already associated in {region}-{zone}"
                     logger.info(already_msg)
                     log_operation(already_msg, "info", region)
                 else:
-                    error_msg = f"Error associating route table in {region}-{zone}: {str(e)}"
+                    error_msg = (
+                        f"Error associating route table in {region}-{zone}: {str(e)}"
+                    )
                     logger.warning(error_msg)
                     log_operation(error_msg, "warning", region)
 
             thisInstanceStatusObject = InstanceStatus(region, zone, i)
-            thisInstanceStatusObject.vpc_id = vpc_id  # Store VPC ID early so it's available for cleanup if needed
-            
+            thisInstanceStatusObject.vpc_id = (
+                vpc_id  # Store VPC ID early so it's available for cleanup if needed
+            )
+
             # Add to global tracking with proper thread safety - this updates the UI but doesn't save to MACHINES.json
             await update_all_statuses_async(thisInstanceStatusObject)
-            
-            # IMPORTANT: We're not saving anything to MACHINES.json at this stage.
+
+            # IMPORTANT: We're not saving anything to machines.db at this stage.
             # We'll only save instances with valid AWS IDs once the spot request is fulfilled.
 
             launch_specification = {
@@ -710,29 +750,6 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                 ],
             }
 
-            # Add KeyName if specified in config
-            pem_path = config.get("pem_path")
-            if pem_path:
-                # Extract key name from path (without .pem extension)
-                key_name = os.path.splitext(os.path.basename(pem_path))[0]
-                try:
-                    # Check if key pair exists in AWS
-                    key_pairs = await asyncio.to_thread(ec2.describe_key_pairs)
-                    key_exists = any(
-                        kp["KeyName"] == key_name
-                        for kp in key_pairs.get("KeyPairs", [])
-                    )
-
-                    if key_exists:
-                        launch_specification["KeyName"] = key_name
-                        logger.info(f"Using SSH key pair: {key_name}")
-                    else:
-                        logger.warning(
-                            f"SSH key pair {key_name} not found in AWS. Instance will be created without SSH access."
-                        )
-                except botocore.exceptions.ClientError as e:
-                    logger.warning(f"Error checking SSH key pair: {e}")
-
             thisInstanceStatusObject.status = "Requesting"
             thisInstanceStatusObject.detailed_status = "Sending spot request"
             await update_all_statuses_async(thisInstanceStatusObject)
@@ -744,22 +761,22 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             if instance_id is None:
                 # Spot instance request failed - mark as failed and continue
                 thisInstanceStatusObject.status = "Failed"
-                thisInstanceStatusObject.detailed_status = (
-                    "No spot capacity available"
-                )
+                thisInstanceStatusObject.detailed_status = "No spot capacity available"
                 await update_all_statuses_async(thisInstanceStatusObject)
-                
-                # For failed instances, we don't save to MACHINES.json 
+
+                # For failed instances, we don't save to MACHINES.json
                 # since they don't have AWS instance IDs
-                await log_operation_async(f"Instance request failed in {region}-{zone}", "warning", region)
-                
+                await log_operation_async(
+                    f"Instance request failed in {region}-{zone}", "warning", region
+                )
+
                 # Continue to the next instance in the loop
                 continue
 
             # Set the instance ID - this changes the ID property to use AWS instance ID
             thisInstanceStatusObject.instance_id = instance_id
             instance_ids.append(instance_id)
-            
+
             # Tag instances
             await asyncio.to_thread(
                 ec2.create_tags,
@@ -778,17 +795,17 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             )
             if instance_details["Reservations"]:
                 instance = instance_details["Reservations"][0]["Instances"][0]
-                thisInstanceStatusObject.public_ip = instance.get(
-                    "PublicIpAddress", ""
-                )
+                thisInstanceStatusObject.public_ip = instance.get("PublicIpAddress", "")
                 thisInstanceStatusObject.private_ip = instance.get(
                     "PrivateIpAddress", ""
                 )
                 thisInstanceStatusObject.vpc_id = vpc_id
-            
+
             # Save to MACHINES.json using the AWS instance ID as the key
             # This ensures each machine has a proper AWS identifier in the state file
-            machine_state.set(thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict())
+            machine_state.set(
+                thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict()
+            )
             await log_operation_async(f"Saved instance {instance_id} to MACHINES.json")
 
             # Mark the instance as done when it's been created successfully
@@ -796,9 +813,11 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
             thisInstanceStatusObject.detailed_status = "Instance created successfully"
             # Force UI update
             await update_all_statuses_async(thisInstanceStatusObject)
-            
+
             # Update the status in MACHINES.json
-            machine_state.set(thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict())
+            machine_state.set(
+                thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict()
+            )
 
     except Exception as e:
         logger.error(f"An error occurred in {region}: {str(e)}", exc_info=True)
@@ -811,12 +830,13 @@ async def create_vpc_if_not_exists(ec2):
     # Log at the start of the function
     logger.debug("Checking for existing VPC")
     await log_operation_async("Checking for existing VPC tagged as SpotInstanceVPC")
-    
+
     try:
         vpcs = await asyncio.to_thread(
-            ec2.describe_vpcs, Filters=[{"Name": "tag:Name", "Values": ["SpotInstanceVPC"]}]
+            ec2.describe_vpcs,
+            Filters=[{"Name": "tag:Name", "Values": ["SpotInstanceVPC"]}],
         )
-        
+
         if vpcs["Vpcs"]:
             vpc_id = vpcs["Vpcs"][0]["VpcId"]
             await log_operation_async(f"Found existing VPC: {vpc_id}")
@@ -824,28 +844,30 @@ async def create_vpc_if_not_exists(ec2):
         else:
             await log_operation_async("No existing VPC found, creating new VPC")
             logger.debug("Creating new VPC with CIDR 10.0.0.0/16")
-            
+
             vpc = await asyncio.to_thread(ec2.create_vpc, CidrBlock="10.0.0.0/16")
             vpc_id = vpc["Vpc"]["VpcId"]
             await log_operation_async(f"Created new VPC: {vpc_id}")
-            
+
             await log_operation_async("Tagging VPC")
             await asyncio.to_thread(
                 ec2.create_tags,
                 Resources=[vpc_id],
                 Tags=[{"Key": "Name", "Value": "SpotInstanceVPC"}],
             )
-            
+
             await log_operation_async("Enabling DNS hostnames for VPC")
             await asyncio.to_thread(
-                ec2.modify_vpc_attribute, VpcId=vpc_id, EnableDnsHostnames={"Value": True}
+                ec2.modify_vpc_attribute,
+                VpcId=vpc_id,
+                EnableDnsHostnames={"Value": True},
             )
-            
+
             await log_operation_async("Enabling DNS support for VPC")
             await asyncio.to_thread(
                 ec2.modify_vpc_attribute, VpcId=vpc_id, EnableDnsSupport={"Value": True}
             )
-            
+
             await log_operation_async(f"VPC {vpc_id} setup complete")
             return vpc_id
     except Exception as e:
@@ -884,7 +906,9 @@ async def create_subnet(ec2, vpc_id, zone, cidr_block=None):
                 else cidr_base_prefix + str(i) + cidr_base_suffix
             )
             logger.debug(f"Creating subnet in {zone} with CIDR block {cidrBlock}")
-            await log_operation_async(f"Attempting CIDR block {cidrBlock} in zone {zone}")
+            await log_operation_async(
+                f"Attempting CIDR block {cidrBlock} in zone {zone}"
+            )
             subnet = await asyncio.to_thread(
                 ec2.create_subnet,
                 VpcId=vpc_id,
@@ -892,12 +916,16 @@ async def create_subnet(ec2, vpc_id, zone, cidr_block=None):
                 AvailabilityZone=zone,
             )
             subnet_id = subnet["Subnet"]["SubnetId"]
-            await log_operation_async(f"Created subnet {subnet_id} in zone {zone} with CIDR {cidrBlock}")
+            await log_operation_async(
+                f"Created subnet {subnet_id} in zone {zone} with CIDR {cidrBlock}"
+            )
             return subnet_id
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "InvalidSubnet.Conflict":
                 # If this CIDR is in use, try the next one
-                await log_operation_async(f"CIDR {cidrBlock} already in use, trying next one", "info")
+                await log_operation_async(
+                    f"CIDR {cidrBlock} already in use, trying next one", "info"
+                )
                 continue
             else:
                 # If it's a different error, raise it
@@ -911,7 +939,9 @@ async def create_subnet(ec2, vpc_id, zone, cidr_block=None):
 
 
 async def create_internet_gateway(ec2, vpc_id):
-    await log_operation_async(f"Checking for existing Internet Gateway attached to VPC {vpc_id}")
+    await log_operation_async(
+        f"Checking for existing Internet Gateway attached to VPC {vpc_id}"
+    )
     # First, check if the VPC already has an Internet Gateway attached
     igws = await asyncio.to_thread(
         ec2.describe_internet_gateways,
@@ -931,19 +961,25 @@ async def create_internet_gateway(ec2, vpc_id):
     await log_operation_async(f"Created Internet Gateway: {igw_id}")
 
     try:
-        await log_operation_async(f"Attaching Internet Gateway {igw_id} to VPC {vpc_id}")
+        await log_operation_async(
+            f"Attaching Internet Gateway {igw_id} to VPC {vpc_id}"
+        )
         await asyncio.to_thread(
             ec2.attach_internet_gateway, InternetGatewayId=igw_id, VpcId=vpc_id
         )
         await log_operation_async(f"Internet Gateway {igw_id} attached successfully")
     except botocore.exceptions.ClientError as e:
-        await log_operation_async(f"Error attaching Internet Gateway: {str(e)}", "warning")
+        await log_operation_async(
+            f"Error attaching Internet Gateway: {str(e)}", "warning"
+        )
         # If an error occurs during attachment, delete the created IGW
         await log_operation_async(f"Cleaning up Internet Gateway {igw_id}")
         await asyncio.to_thread(ec2.delete_internet_gateway, InternetGatewayId=igw_id)
-        
+
         # Re-check for existing IGW in case one was attached concurrently
-        await log_operation_async("Checking if an Internet Gateway was attached concurrently")
+        await log_operation_async(
+            "Checking if an Internet Gateway was attached concurrently"
+        )
         igws = await asyncio.to_thread(
             ec2.describe_internet_gateways,
             Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}],
@@ -954,7 +990,9 @@ async def create_internet_gateway(ec2, vpc_id):
             return igw_id
         else:
             # If still no IGW found, re-raise the original error
-            await log_operation_async("No Internet Gateway found and failed to create one", "error")
+            await log_operation_async(
+                "No Internet Gateway found and failed to create one", "error"
+            )
             raise
 
     return igw_id
@@ -967,26 +1005,32 @@ async def create_route_table(ec2, vpc_id, igw_id):
         ec2.describe_route_tables,
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
     )
-    
+
     for rt in route_tables["RouteTables"]:
         for association in rt.get("Associations", []):
             if association.get("Main", False):
                 # Found the main route table, check if we need to add a route to the IGW
                 route_table_id = rt["RouteTableId"]
                 await log_operation_async(f"Found main route table: {route_table_id}")
-                
+
                 routes = rt.get("Routes", [])
                 if not any(route.get("GatewayId") == igw_id for route in routes):
-                    await log_operation_async(f"Adding internet route to existing route table {route_table_id}")
+                    await log_operation_async(
+                        f"Adding internet route to existing route table {route_table_id}"
+                    )
                     await asyncio.to_thread(
                         ec2.create_route,
                         RouteTableId=route_table_id,
                         DestinationCidrBlock="0.0.0.0/0",
                         GatewayId=igw_id,
                     )
-                    await log_operation_async(f"Added internet route (0.0.0.0/0) via {igw_id}")
+                    await log_operation_async(
+                        f"Added internet route (0.0.0.0/0) via {igw_id}"
+                    )
                 else:
-                    await log_operation_async(f"Internet route already exists in route table")
+                    await log_operation_async(
+                        "Internet route already exists in route table"
+                    )
                 return route_table_id
 
     # If no route table exists, create a new one
@@ -1003,35 +1047,41 @@ async def create_route_table(ec2, vpc_id, igw_id):
         DestinationCidrBlock="0.0.0.0/0",
         GatewayId=igw_id,
     )
-    await log_operation_async(f"Internet route added successfully")
+    await log_operation_async("Internet route added successfully")
 
     # Associate the route table with the VPC (make it the main route table)
-    await log_operation_async(f"Associating route table with VPC (making it main)")
+    await log_operation_async("Associating route table with VPC (making it main)")
     await asyncio.to_thread(
         ec2.associate_route_table,
         RouteTableId=route_table_id,
         VpcId=vpc_id,
     )
-    await log_operation_async(f"Route table association complete")
+    await log_operation_async("Route table association complete")
 
     return route_table_id
 
 
 async def associate_route_table(ec2, route_table_id, subnet_id):
-    await log_operation_async(f"Associating route table {route_table_id} with subnet {subnet_id}")
+    await log_operation_async(
+        f"Associating route table {route_table_id} with subnet {subnet_id}"
+    )
     try:
         await asyncio.to_thread(
             ec2.associate_route_table, RouteTableId=route_table_id, SubnetId=subnet_id
         )
-        await log_operation_async(f"Route table association completed successfully")
+        await log_operation_async("Route table association completed successfully")
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "Resource.AlreadyAssociated":
-            await log_operation_async(f"Route table already associated with subnet", "info")
+            await log_operation_async(
+                "Route table already associated with subnet", "info"
+            )
             logger.debug(
-                f"Route table already associated in {route_table_id}-{subnet_id}: {str(e)}"
+                "Route table already associated in {route_table_id}-{subnet_id}: {str(e)}"
             )
         else:
-            await log_operation_async(f"Error associating route table: {str(e)}", "error")
+            await log_operation_async(
+                f"Error associating route table: {str(e)}", "error"
+            )
             raise
 
 
@@ -1058,8 +1108,17 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
         )
         security_group_id = security_group["GroupId"]
         await log_operation_async(f"Created security group: {security_group_id}")
-        
-        await log_operation_async("Adding security group ingress rules (SSH port 22, Bacalhau ports 1234-1235)")
+
+        await log_operation_async(
+            "Adding security group ingress rules (SSH port 22, Bacalhau ports 1234-1235, and EC2 Instance Connect)"
+        )
+
+        # EC2 Instance Connect IP ranges vary by region
+        # Format: ec2-instance-connect.{region}.amazonaws.com
+        ec2_connect_cidr = (
+            "18.206.107.24/29"  # This is a common CIDR for EC2 Instance Connect
+        )
+
         await asyncio.to_thread(
             ec2.authorize_security_group_ingress,
             GroupId=security_group_id,
@@ -1068,7 +1127,13 @@ async def create_security_group_if_not_exists(ec2, vpc_id):
                     "IpProtocol": "tcp",
                     "FromPort": 22,
                     "ToPort": 22,
-                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                    "IpRanges": [
+                        {"CidrIp": "0.0.0.0/0"},
+                        {
+                            "CidrIp": ec2_connect_cidr,
+                            "Description": "EC2 Instance Connect",
+                        },
+                    ],
                 },
                 {
                     "IpProtocol": "tcp",
@@ -1117,7 +1182,7 @@ async def create_spot_instances():
 
         if instances_to_create == 0:
             logger.debug(f"No instances to create in region {region}")
-            log_operation(f"No instances to create", "info", region)
+            log_operation("No instances to create", "info", region)
             return [], {}
 
         create_msg = (
@@ -1142,10 +1207,10 @@ async def create_spot_instances():
             return [], {}
 
     try:
-        log_operation(f"Launching creation tasks in parallel across regions")
+        log_operation("Launching creation tasks in parallel across regions")
         tasks = [create_in_region(region) for region in AWS_REGIONS]
         results = await asyncio.gather(*tasks)
-        log_operation(f"All region creation tasks completed")
+        log_operation("All region creation tasks completed")
         logger.debug(f"All region creation tasks completed. Results: {results}")
     except Exception as e:
         error_msg = f"Failed during instance creation: {str(e)}"
@@ -1160,111 +1225,190 @@ async def create_spot_instances():
         for status in all_statuses.values()
         if status.status in FAILED_STATUSES
     ]
-    
+
     if failed_instances:
-        await log_operation_async(f"Detected {len(failed_instances)} failed instance requests", "warning")
+        await log_operation_async(
+            f"Detected {len(failed_instances)} failed instance requests", "warning"
+        )
         # Log details about the failed instances
         for status_id in failed_instances:
             status = all_statuses[status_id]
             await log_operation_async(
                 f"Instance failed in {status.region}-{status.zone}: {status.detailed_status}",
                 "warning",
-                status.region
+                status.region,
             )
-    
+
     # Count valid instances that are waiting for IPs
     waiting_instances = [
         status
         for status in all_statuses.values()
-        if status.instance_id and not status.public_ip and status.status not in FAILED_STATUSES
+        if status.instance_id
+        and not status.public_ip
+        and status.status not in FAILED_STATUSES
     ]
-    
+
     if waiting_instances:
         logger.debug("Waiting for public IP addresses...")
-        await log_operation_async(f"Waiting for public IP addresses to be assigned to {len(waiting_instances)} instances...")
+        await log_operation_async(
+            f"Waiting for public IP addresses to be assigned to {len(waiting_instances)} instances..."
+        )
         await wait_for_public_ips()
         await log_operation_async("IP address assignment complete")
     else:
         await log_operation_async("No instances waiting for IP addresses")
-    
+
     # Before logging a summary, ensure all instances with IPs are marked as Done
     # and saved to MACHINES.json with their final state
-    await log_operation_async("Final pass - updating all completed instances to 'Done' status")
+    await log_operation_async(
+        "Final pass - updating all completed instances to 'Done' status"
+    )
     completion_count = 0
-    
+
     # Update all instances that have IPs to Done status
     for status in all_statuses.values():
         if status.public_ip and status.private_ip and status.instance_id:
             # Mark as done if not already
             if status.status != "Done":
-                status.status = "Done" 
-                status.detailed_status = f"Ready - {datetime.now().strftime('%H:%M:%S')}"
+                status.status = "Done"
+                status.detailed_status = (
+                    f"Ready - {datetime.now().strftime('%H:%M:%S')}"
+                )
                 await update_all_statuses_async(status)
-                
+
             # Save to MACHINES.json via the thread-safe dictionary
             machine_state.set(status.id, status.to_dict())
             completion_count += 1
-    
+
     if completion_count > 0:
-        await log_operation_async(f"Updated {completion_count} completed instances to final state")
-            
+        await log_operation_async(
+            f"Updated {completion_count} completed instances to final state"
+        )
+
     # Get a summary of the machine state
     valid_machines = machine_state.get_all()
     valid_count = len(valid_machines)
-    
+
     # Count failed instances in all_statuses for accurate reporting
     FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
     failed_instances = [
-        status for status in all_statuses.values()
-        if status.status in FAILED_STATUSES
+        status for status in all_statuses.values() if status.status in FAILED_STATUSES
     ]
-    
+
     # Create a detailed summary
     await log_operation_async(
-        f"MACHINES.json summary: {valid_count} instances with AWS IDs " +
-        f"({len(failed_instances)} failed requests during creation)"
+        f"MACHINES.json summary: {valid_count} instances with AWS IDs "
+        + f"({len(failed_instances)} failed requests during creation)"
     )
-    
+
     if valid_count == 0:
         if len(failed_instances) > 0:
             # If all instances failed, provide a clear error message
             await log_operation_async(
-                f"WARNING: All {len(failed_instances)} instance requests failed - check logs for details", 
-                "warning"
+                f"WARNING: All {len(failed_instances)} instance requests failed - check logs for details",
+                "warning",
             )
             # Summarize failures by region
             failures_by_region = {}
             for status in failed_instances:
                 if status.region not in failures_by_region:
                     failures_by_region[status.region] = []
-                failures_by_region[status.region].append(f"{status.id} ({status.detailed_status})")
-            
+                failures_by_region[status.region].append(
+                    f"{status.id} ({status.detailed_status})"
+                )
+
             for region, failures in failures_by_region.items():
                 await log_operation_async(
-                    f"Region {region} failures: {', '.join(failures)}",
-                    "warning"
+                    f"Region {region} failures: {', '.join(failures)}", "warning"
                 )
         else:
-            await log_operation_async("WARNING: No AWS instance IDs found in MACHINES.json", "warning")
-            
+            await log_operation_async(
+                "WARNING: No AWS instance IDs found in MACHINES.json", "warning"
+            )
+
         # Dump the all_statuses to help diagnose the issue
-        status_summary = ", ".join([f"{s.id}:{s.status}" for s in all_statuses.values()])
+        status_summary = ", ".join(
+            [f"{s.id}:{s.status}" for s in all_statuses.values()]
+        )
         logger.debug(f"Current status objects: {status_summary}")
     else:
         if len(failed_instances) > 0:
             # Some instances succeeded but some failed
             await log_operation_async(
-                f"Successfully provisioned {valid_count} instances " +
-                f"({len(failed_instances)} requests failed, most likely due to capacity issues)",
-                "info"
+                f"Successfully provisioned {valid_count} instances "
+                + f"({len(failed_instances)} requests failed, most likely due to capacity issues)",
+                "info",
             )
         else:
             # All instances succeeded
-            await log_operation_async(f"Successfully provisioned {valid_count} instances")
-    
+            await log_operation_async(
+                f"Successfully provisioned {valid_count} instances"
+            )
+
     logger.debug("Finished creating spot instances")
     await log_operation_async("Finished creating spot instances")
     return
+
+
+async def update_instance_status(status, public_ip="", private_ip="", mark_done=False):
+    """Helper function to update instance status and IPs."""
+    status_changed = False
+
+    # Update IPs if provided
+    if public_ip and not status.public_ip:
+        status.public_ip = public_ip
+        status_changed = True
+        await log_operation_async(
+            f"Instance {status.instance_id} got public IP: {public_ip}",
+            "info",
+            status.region,
+        )
+
+    if private_ip and not status.private_ip:
+        status.private_ip = private_ip
+        status_changed = True
+        await log_operation_async(
+            f"Instance {status.instance_id} got private IP: {private_ip}",
+            "info",
+            status.region,
+        )
+
+    # Update status based on current state
+    if mark_done and status.public_ip and status.private_ip and status.status != "Done":
+        status.status = "Done"
+        status.detailed_status = f"Ready - {datetime.now().strftime('%H:%M:%S')}"
+        status_changed = True
+    elif status.public_ip and not status.private_ip:
+        status.detailed_status = "Public IP assigned, waiting for private IP..."
+        status_changed = True
+    elif not status.public_ip and status.private_ip:
+        status.detailed_status = "Private IP assigned, waiting for public IP..."
+        status_changed = True
+    elif not status.public_ip:
+        status.detailed_status = "Waiting for public IP address..."
+        status_changed = True
+    elif not status.private_ip:
+        status.detailed_status = "Waiting for private IP address..."
+        status_changed = True
+
+    # Update UI and state file if needed
+    if status_changed:
+        await update_all_statuses_async(status)
+        if status.status == "Done" and status.instance_id:
+            machine_state.set(status.id, status.to_dict())
+
+    return status_changed
+
+
+def get_instances_without_ip(statuses, no_ip_status, failed_statuses):
+    """Helper function to count instances still waiting for IPs."""
+    return [
+        status
+        for status in statuses.values()
+        if not status.public_ip
+        and status.status != no_ip_status
+        and status.status not in failed_statuses
+    ]
 
 
 async def wait_for_public_ips():
@@ -1276,17 +1420,13 @@ async def wait_for_public_ips():
     FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
     await log_operation_async("Checking for public IP addresses on all instances")
 
-    # Count how many instances still need IP addresses
-    instances_without_ip = len(
-        [
-            status
-            for status in all_statuses.values()
-            if not status.public_ip 
-            and status.status != NO_IP_STATUS
-            and status.status not in FAILED_STATUSES
-        ]
+    # Count initial instances without IPs
+    instances_without_ip = get_instances_without_ip(
+        all_statuses, NO_IP_STATUS, FAILED_STATUSES
     )
-    await log_operation_async(f"Waiting for IP addresses for {instances_without_ip} instances")
+    await log_operation_async(
+        f"Waiting for IP addresses for {len(instances_without_ip)} instances"
+    )
 
     # Identify failed instances that we won't wait for
     failed_instances = [
@@ -1295,80 +1435,69 @@ async def wait_for_public_ips():
         if status.status in FAILED_STATUSES
     ]
     if failed_instances:
-        await log_operation_async(f"Ignoring {len(failed_instances)} failed instances: {', '.join(failed_instances)}", "warning")
+        await log_operation_async(
+            f"Ignoring {len(failed_instances)} failed instances: {', '.join(failed_instances)}",
+            "warning",
+        )
 
     check_count = 0
     try:
         while True:
-            # Check if all instances either: have IPs, are marked as NO_IP_STATUS, or are in a failed state
+            # Check if all instances have required IPs or are in terminal states
             all_have_ips = all(
-                status.public_ip or status.status == NO_IP_STATUS or status.status in FAILED_STATUSES
+                status.public_ip
+                or status.status == NO_IP_STATUS
+                or status.status in FAILED_STATUSES
                 for status in all_statuses.values()
             )
 
             if all_have_ips:
-                await log_operation_async("All non-failed instances have IP addresses assigned")
-                # Mark all instances with IPs as Done
+                await log_operation_async(
+                    "All non-failed instances have IP addresses assigned"
+                )
+                # Mark all valid instances as done
                 for status in all_statuses.values():
-                    if status.public_ip and status.private_ip and status.status != "Done":
-                        # Update final status to Done with a timestamp
-                        status.status = "Done"
-                        status.detailed_status = f"Ready - {datetime.now().strftime('%H:%M:%S')}"
-                        # Update UI
-                        await update_all_statuses_async(status)
-                        # Update MACHINES.json to record final state
-                        if status.instance_id:
-                            machine_state.set(status.id, status.to_dict())
-                                
-                # Now break out of the loop since all valid instances have IPs
+                    await update_instance_status(status, mark_done=True)
                 break
 
+            # Check for timeout
             if time.time() - start_time > timeout:
-                await log_operation_async("Timed out waiting for IP addresses", "warning")
-                # Mark all instances with IPs as Done, even on timeout
+                await log_operation_async(
+                    "Timed out waiting for IP addresses", "warning"
+                )
+                # Mark instances with IPs as done
                 for status in all_statuses.values():
-                    if status.public_ip and status.private_ip and status.status != "Done":
-                        # Update final status to Done with a timestamp
-                        status.status = "Done"
-                        status.detailed_status = f"Ready - {datetime.now().strftime('%H:%M:%S')}"
-                        # Update UI
-                        await update_all_statuses_async(status)
-                        # Update MACHINES.json to record final state
-                        if status.instance_id:
-                            machine_state.set(status.id, status.to_dict())
-                
-                # Identify any instances still waiting for IPs
+                    await update_instance_status(status, mark_done=True)
+
+                # Report instances still waiting
                 still_waiting = [
-                    f"{status.id} ({status.region})" 
-                    for status in all_statuses.values()
-                    if not status.public_ip 
-                    and status.status != NO_IP_STATUS
-                    and status.status not in FAILED_STATUSES
+                    f"{status.id} ({status.region})"
+                    for status in get_instances_without_ip(
+                        all_statuses, NO_IP_STATUS, FAILED_STATUSES
+                    )
                 ]
-                
                 if still_waiting:
-                    await log_operation_async(f"Giving up on waiting for IPs for instances: {', '.join(still_waiting)}", "warning")
-                
+                    await log_operation_async(
+                        f"Giving up on waiting for IPs for instances: {', '.join(still_waiting)}",
+                        "warning",
+                    )
                 break
 
-            # Only log status occasionally to avoid flooding
+            # Periodic status update
             if check_count % 6 == 0:  # Every ~30 seconds
-                instances_without_ip = len(
-                    [
-                        status
-                        for status in all_statuses.values()
-                        if not status.public_ip 
-                        and status.status != NO_IP_STATUS
-                        and status.status not in FAILED_STATUSES
-                    ]
+                waiting_count = len(
+                    get_instances_without_ip(
+                        all_statuses, NO_IP_STATUS, FAILED_STATUSES
+                    )
                 )
                 elapsed = int(time.time() - start_time)
                 await log_operation_async(
-                    f"Still waiting for {instances_without_ip} IP addresses... ({elapsed}s elapsed)"
+                    f"Still waiting for {waiting_count} IP addresses... ({elapsed}s elapsed)"
                 )
 
             check_count += 1
 
+            # Check each region for IP updates
             for region in AWS_REGIONS:
                 ec2 = get_ec2_client(region)
                 instance_ids = [
@@ -1382,108 +1511,52 @@ async def wait_for_public_ips():
                         and status.instance_id is not None
                     )
                 ]
-                if instance_ids:
-                    try:
-                        # Update detailed status to show we're checking IPs
-                        for instance_id in instance_ids:
+
+                if not instance_ids:
+                    continue
+
+                try:
+                    # Update status to show we're checking
+                    for instance_id in instance_ids:
+                        for status in all_statuses.values():
+                            if status.instance_id == instance_id:
+                                status.detailed_status = "🔄 Checking IP addresses..."
+                                await update_all_statuses_async(status)
+
+                    # Get instance information from AWS
+                    response = await asyncio.to_thread(
+                        ec2.describe_instances, InstanceIds=instance_ids
+                    )
+
+                    # Process each instance
+                    for reservation in response["Reservations"]:
+                        for instance in reservation["Instances"]:
+                            instance_id = instance["InstanceId"]
+                            public_ip = instance.get("PublicIpAddress", "")
+                            private_ip = instance.get("PrivateIpAddress", "")
+
+                            # Update matching status
                             for status in all_statuses.values():
                                 if status.instance_id == instance_id:
-                                    # Make the status message clear that we're actively checking for IPs
-                                    if not status.public_ip:
-                                        status.detailed_status = "🔄 Checking for public IP address..."
-                                    elif not status.private_ip:
-                                        status.detailed_status = "🔄 Checking for private IP address..."
-                                    else:
-                                        status.detailed_status = "🔄 Verifying IP addresses..."
-                                    # Force update to UI
-                                    await update_all_statuses_async(status)
+                                    await update_instance_status(
+                                        status,
+                                        public_ip=public_ip,
+                                        private_ip=private_ip,
+                                    )
 
-                        response = await asyncio.to_thread(
-                            ec2.describe_instances, InstanceIds=instance_ids
-                        )
-                        for reservation in response["Reservations"]:
-                            for instance in reservation["Instances"]:
-                                instance_id = instance["InstanceId"]
-                                public_ip = instance.get("PublicIpAddress", "")
-                                private_ip = instance.get("PrivateIpAddress", "")
+                except Exception as e:
+                    logger.warning(f"Error checking IPs in region {region}: {str(e)}")
+                    await log_operation_async(
+                        f"Error checking IPs: {str(e)}", "warning", region
+                    )
 
-                                # Update status for this instance
-                                for status in all_statuses.values():
-                                    if status.instance_id == instance_id:
-                                        # Track if we need to update the status
-                                        status_changed = False
-                                        
-                                        # Update public IP if available
-                                        if public_ip and not status.public_ip:
-                                            status.public_ip = public_ip
-                                            
-                                            # Update status based on IPs
-                                            if private_ip or status.private_ip:
-                                                # If we have both IPs, mark as done
-                                                status.status = "Done"
-                                                status.detailed_status = "All IP addresses assigned"
-                                            else:
-                                                status.detailed_status = "Public IP assigned, waiting for private IP..."
-                                                
-                                            status_changed = True
-                                            await log_operation_async(
-                                                f"Instance {instance_id} got public IP: {public_ip}",
-                                                "info",
-                                                region,
-                                            )
-
-                                        # Update private IP if available and not already set
-                                        if private_ip and not status.private_ip:
-                                            status.private_ip = private_ip
-                                            
-                                            # Update status based on IPs
-                                            if status.public_ip:
-                                                # If we have both IPs, mark as done
-                                                status.status = "Done"
-                                                status.detailed_status = "All IP addresses assigned"
-                                            else:
-                                                status.detailed_status = "Private IP assigned, waiting for public IP..."
-                                                
-                                            status_changed = True
-                                            await log_operation_async(
-                                                f"Instance {instance_id} got private IP: {private_ip}",
-                                                "info",
-                                                region,
-                                            )
-
-                                        # If we're still waiting for public IP, update status
-                                        if not status.public_ip:
-                                            status.detailed_status = (
-                                                "Waiting for public IP address..."
-                                            )
-                                            status_changed = True
-                                        
-                                        # If we're still waiting for private IP but have public IP
-                                        elif not status.private_ip:
-                                            status.detailed_status = (
-                                                "Waiting for private IP address..."
-                                            )
-                                            status_changed = True
-                                            
-                                        # If status changed, update the UI
-                                        if status_changed:
-                                            await update_all_statuses_async(status)
-                    except Exception as e:
-                        logger.warning(
-                            f"Error checking IPs in region {region}: {str(e)}"
-                        )
-                        await log_operation_async(
-                            f"Error checking IPs: {str(e)}", "warning", region
-                        )
-
-            # Use a shorter sleep time and check for cancellation
-            # Break into smaller sleeps to be more responsive to cancellation
+            # Short sleep with cancellation check
             for _ in range(5):
                 await asyncio.sleep(1)
+
     except asyncio.CancelledError:
         logger.info("IP address check was cancelled")
         await log_operation_async("IP address check was cancelled", "warning")
-        # Let the cancellation propagate
         raise
 
 
@@ -1531,14 +1604,16 @@ async def list_spot_instances():
                 all_statuses[instance_id] = thisInstanceStatusObject
             else:
                 # Instance no longer exists, remove from MACHINES.json
-                async with machine_state.update() as current_machines:
-                    current_machines.pop(instance_id, None)
+                machine_state.delete(instance_id)
+                logger.debug(
+                    f"Removed non-existent instance {instance_id} from state file"
+                )
 
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
                 # Instance no longer exists, remove from MACHINES.json
-                async with machine_state.update() as current_machines:
-                    current_machines.pop(instance_id, None)
+                machine_state.delete(instance_id)
+                logger.debug(f"Removed invalid instance {instance_id} from state file")
             else:
                 logger.error(f"Error checking instance {instance_id}: {str(e)}")
 
@@ -1551,22 +1626,40 @@ async def destroy_instances():
     task_name = "Terminating Spot Instances"
     events_to_progress = []
 
-    logger.info("Loading instance information from MACHINES.json...")
-    log_operation("Loading instance information from MACHINES.json...")
+    logger.info("Loading instance information from machines.db...")
+    log_operation("Loading instance information from machines.db...")
 
-    # Check if MACHINES.json exists
-    if not os.path.exists("MACHINES.json"):
-        msg = "MACHINES.json not found. No instances to terminate."
+    # Check if machines.db exists and has instances
+    if machine_state.count() == 0:
+        msg = "No instances found in database. No instances to terminate."
         logger.info(msg)
         log_operation(msg, "warning")
+
+        # Clean up empty database file if it exists
+        if os.path.exists(machine_state.db_path):
+            try:
+                os.remove(machine_state.db_path)
+                logger.info("Removed empty machines.db file")
+                log_operation("Removed empty machines.db file")
+            except Exception as e:
+                logger.warning(f"Failed to remove machines.db: {str(e)}")
         return
 
     machines = await machine_state.load()
 
     if not machines:
-        msg = "MACHINES.json exists but contains no instances to terminate."
+        msg = "Database exists but contains no instances to terminate."
         logger.info(msg)
         log_operation(msg, "warning")
+
+        # Clean up empty database file
+        if os.path.exists(machine_state.db_path):
+            try:
+                os.remove(machine_state.db_path)
+                logger.info("Removed empty machines.db file")
+                log_operation("Removed empty machines.db file")
+            except Exception as e:
+                logger.warning(f"Failed to remove machines.db: {str(e)}")
         return
 
     task_total = len(machines)
@@ -1753,6 +1846,20 @@ async def destroy_instances():
                 log_operation(
                     f"Terminating {len(instance_ids)} instances", "info", region
                 )
+
+                # Remove from MACHINES.json before termination
+                async with machine_state.update() as current_machines:
+                    # Find machine IDs associated with these instance IDs
+                    for machine_id in list(current_machines.keys()):
+                        machine = current_machines[machine_id]
+                        if machine.get("instance_id") in instance_ids:
+                            log_operation(
+                                f"Removing {machine_id} from state file before termination",
+                                "info",
+                                region,
+                            )
+                            current_machines.pop(machine_id, None)
+
                 for instance_id in instance_ids:
                     if instance_id in all_statuses:
                         all_statuses[
@@ -1765,9 +1872,7 @@ async def destroy_instances():
                     await asyncio.to_thread(
                         ec2.terminate_instances, InstanceIds=instance_ids
                     )
-                    log_operation(
-                        f"Terminate command sent successfully", "info", region
-                    )
+                    log_operation("Terminate command sent successfully", "info", region)
 
                     # Wait for termination
                     waiter = ec2.get_waiter("instance_terminated")
@@ -1783,7 +1888,7 @@ async def destroy_instances():
                     while True:
                         try:
                             log_operation(
-                                f"Checking termination status...", "info", region
+                                "Checking termination status...", "info", region
                             )
                             await asyncio.to_thread(
                                 waiter.wait,
@@ -1791,7 +1896,7 @@ async def destroy_instances():
                                 WaiterConfig={"MaxAttempts": 1},
                             )
                             log_operation(
-                                f"All instances terminated successfully", "info", region
+                                "All instances terminated successfully", "info", region
                             )
                             break
                         except botocore.exceptions.WaiterError:
@@ -1818,7 +1923,7 @@ async def destroy_instances():
                             # Break out if taking too long
                             if elapsed_time > 300:  # 5 minutes timeout
                                 log_operation(
-                                    f"Termination taking too long, continuing...",
+                                    "Termination taking too long, continuing...",
                                     "warning",
                                     region,
                                 )
@@ -1875,17 +1980,6 @@ async def destroy_instances():
                     error_msg = f"Error cleaning up VPC {vpc_id}: {str(e)}"
                     logger.error(error_msg)
                     log_operation(error_msg, "error", region)
-
-            # Remove terminated instances from MACHINES.json
-            async with machine_state.update() as current_machines:
-                # Find machine IDs associated with these instance IDs
-                for machine_id in list(current_machines.keys()):
-                    machine = current_machines[machine_id]
-                    if machine.get("instance_id") in instance_ids:
-                        log_operation(
-                            f"Removing {machine_id} from state file", "info", region
-                        )
-                        current_machines.pop(machine_id, None)
 
         except Exception as e:
             error_msg = f"Error cleaning up resources: {str(e)}"
@@ -2022,6 +2116,16 @@ async def destroy_instances():
 
     logger.info("All instances and spot requests have been terminated.")
 
+    # After all instances are terminated and database is empty, remove the file
+    if machine_state.count() == 0 and os.path.exists(machine_state.db_path):
+        try:
+            os.remove(machine_state.db_path)
+            logger.info("Cleanup complete - removed machines.db file")
+            log_operation("Cleanup complete - removed machines.db file")
+        except Exception as e:
+            logger.warning(f"Failed to remove machines.db after cleanup: {str(e)}")
+            log_operation("Warning: Could not remove machines.db file", "warning")
+
 
 async def clean_up_vpc_resources(ec2, vpc_id):
     async def update_status(message):
@@ -2080,50 +2184,6 @@ async def clean_up_vpc_resources(ec2, vpc_id):
     await asyncio.to_thread(ec2.delete_vpc, VpcId=vpc_id)
 
 
-async def delete_disconnected_aws_nodes():
-    try:
-        # Run bacalhau node list command and capture output
-        result = subprocess.run(
-            ["bacalhau", "node", "list", "--output", "json"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        nodes = json.loads(result.stdout)
-
-        disconnected_aws_nodes = []
-
-        for node in nodes:
-            if (
-                node["Connection"] == "DISCONNECTED"
-                and node["Info"]["NodeType"] == "Compute"
-                and "EC2_INSTANCE_FAMILY" in node["Info"]["Labels"]
-            ):
-                disconnected_aws_nodes.append(node["Info"]["NodeID"])
-
-        if not disconnected_aws_nodes:
-            logger.info("No disconnected AWS nodes found.")
-            return
-
-        logger.info(f"Found {len(disconnected_aws_nodes)} disconnected AWS node(s).")
-
-        for node_id in disconnected_aws_nodes:
-            logger.info(f"Deleting node: {node_id}")
-            try:
-                # Run bacalhau admin node delete command
-                subprocess.run(["bacalhau", "node", "delete", node_id], check=True)
-                logger.info(f"Successfully deleted node: {node_id}")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to delete node {node_id}. Error: {e}")
-
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error running bacalhau node list: {e}")
-    except json.JSONDecodeError as e:
-        logger.error(f"Error parsing JSON output: {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
-
-
 def all_statuses_to_dict():
     return {
         status.id: {
@@ -2142,164 +2202,205 @@ def all_statuses_to_dict():
     }
 
 
-class MachineStateManager:
-    def __init__(self, filename="MACHINES.json"):
-        self.filename = filename
-        # Use a thread-safe dictionary (no locks needed)
-        from threading import RLock
-        self.machines = {}
-        self._write_lock = RLock()  # Only used for file I/O operations
-        self.overwrite_confirmed = False
+class SQLiteMachineStateManager:
+    def __init__(self, db_path="machines.db"):
+        self.db_path = db_path
+        self._ensure_db_exists()
 
-    def _write_to_disk(self):
-        """
-        Write the current machines dictionary to disk immediately.
-        This is called every time the dictionary is updated.
-        """
-        try:
-            with self._write_lock:  # Thread-safe file writing
-                # Filter out entries that don't have valid AWS instance IDs
-                valid_machines = {
-                    k: v for k, v in self.machines.items()
-                    if isinstance(v, dict) and v.get("instance_id") and str(v.get("instance_id")).startswith("i-")
-                }
-                
-                # Create parent directory if it doesn't exist
-                os.makedirs(os.path.dirname(os.path.abspath(self.filename)), exist_ok=True)
-                
-                # Use atomic write pattern for reliability
-                temp_file = f"{self.filename}.tmp"
-                try:
-                    with open(temp_file, "w") as f:
-                        json.dump(valid_machines, f, indent=2)
-                        f.flush()
-                        os.fsync(f.fileno())
-                    os.replace(temp_file, self.filename)
-                    logger.debug(f"Wrote {len(valid_machines)} instances to {self.filename}")
-                finally:
-                    if os.path.exists(temp_file):
-                        os.unlink(temp_file)
-        except Exception as e:
-            logger.error(f"Error writing machine state to disk: {e}")
+    def _ensure_db_exists(self):
+        """Create the database and table if they don't exist"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS machines (
+                    instance_id TEXT PRIMARY KEY,
+                    region TEXT NOT NULL,
+                    zone TEXT NOT NULL,
+                    vpc_id TEXT,
+                    public_ip TEXT,
+                    private_ip TEXT,
+                    spot_request_id TEXT,
+                    status TEXT,
+                    detailed_status TEXT,
+                    creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    data JSON
+                )
+            """)
+            conn.commit()
 
     async def check_existing_file(self, overwrite=False):
-        """
-        Check if MACHINES.json already exists and warn the user if it does.
-        
-        Args:
-            overwrite: If True, allow overwriting existing file without warning.
-            
-        Returns:
-            bool: True if it's safe to proceed, False if the user should be warned
-        """
-        if os.path.exists(self.filename) and not self.overwrite_confirmed and not overwrite:
-            existing_count = 0
-            try:
-                with open(self.filename, "r") as f:
-                    existing_data = json.load(f)
-                    existing_count = len(existing_data)
-            except:
-                pass
-                
-            if existing_count > 0:
-                await log_operation_async(
-                    f"WARNING: {self.filename} already exists with {existing_count} instances.", 
-                    "warning"
+        """Check if there are existing machines in the database"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM machines")
+            count = (await cursor.fetchone())[0]
+
+            if count > 0 and not overwrite:
+                print(
+                    f"WARNING: Database already contains {count} instances. Cannot proceed without --overwrite flag."
                 )
-                await log_operation_async(
-                    "Use --overwrite flag to continue anyway, or --action destroy to delete existing instances first.",
-                    "warning"
+                print(
+                    "Use --overwrite flag to continue anyway, or --action destroy to delete existing instances first."
                 )
                 return False
-        
-        # Either the file doesn't exist, is empty, or overwrite is confirmed
-        self.overwrite_confirmed = True
-        return True
+
+            if overwrite:
+                await db.execute("DELETE FROM machines")
+                await db.commit()
+
+            return True
 
     def get(self, instance_id, default=None):
-        """Get an instance by ID"""
-        return self.machines.get(instance_id, default)
+        """Get machine data by instance ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT data FROM machines WHERE instance_id = ?", (instance_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return json.loads(row[0])
+            return default
 
     def set(self, instance_id, data):
-        """Set an instance and immediately write to disk"""
-        # Only store instances with valid AWS IDs
-        if not (isinstance(data, dict) and data.get("instance_id") and 
-                str(data.get("instance_id")).startswith("i-")):
+        """Set machine data by instance ID"""
+        if not (
+            isinstance(data, dict)
+            and data.get("instance_id")
+            and str(data.get("instance_id")).startswith("i-")
+        ):
             return False
-            
-        self.machines[instance_id] = data
-        # Write to disk immediately after every change
-        self._write_to_disk()
-        return True
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    instance_id, region, zone, vpc_id, public_ip, private_ip,
+                    spot_request_id, status, detailed_status, data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    instance_id,
+                    data.get("region"),
+                    data.get("zone"),
+                    data.get("vpc_id"),
+                    data.get("public_ip"),
+                    data.get("private_ip"),
+                    data.get("spot_request_id"),
+                    data.get("status"),
+                    data.get("detailed_status"),
+                    json.dumps(data),
+                ),
+            )
+            conn.commit()
+            return True
 
     def delete(self, instance_id):
-        """Delete an instance and immediately write to disk"""
-        if instance_id in self.machines:
-            del self.machines[instance_id]
-            # Write to disk immediately after every change
-            self._write_to_disk()
-            return True
-        return False
-    
-    def load(self):
-        """Load machine state from disk"""
-        if not os.path.exists(self.filename):
-            return {}
-            
-        try:
-            with open(self.filename, "r") as f:
-                data = json.load(f)
-                # Update our in-memory copy
-                self.machines.clear()
-                self.machines.update(data)
-                return data
-        except Exception as e:
-            logger.error(f"Error loading machine state: {e}")
-            # Create a backup if the file seems corrupted
-            try:
-                backup_name = f"{self.filename}.backup.{int(time.time())}"
-                with open(self.filename, "r") as src, open(backup_name, "w") as dst:
-                    dst.write(src.read())
-                logger.warning(f"Created backup of {self.filename} at {backup_name}")
-            except:
-                pass
-            return {}
-    
+        """Delete machine data by instance ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "DELETE FROM machines WHERE instance_id = ?", (instance_id,)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    async def load(self):
+        """Load all machine data"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT data FROM machines")
+            rows = await cursor.fetchall()
+            return {
+                json.loads(row[0])["instance_id"]: json.loads(row[0]) for row in rows
+            }
+
     def get_all(self):
-        """Get all valid machines"""
-        # Return only machines with valid AWS instance IDs
-        return {
-            k: v for k, v in self.machines.items()
-            if isinstance(v, dict) and v.get("instance_id") and str(v.get("instance_id")).startswith("i-")
-        }
-    
+        """Get all machine data"""
+        with sqlite3.connect(self.db_path) as conn:
+            # Ensure table exists before querying
+            self._ensure_db_exists()
+            cursor = conn.execute("SELECT data FROM machines")
+            return {
+                json.loads(row[0])["instance_id"]: json.loads(row[0])
+                for row in cursor.fetchall()
+            }
+
     def count(self):
         """Count valid machines"""
-        return len(self.get_all())
-    
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM machines")
+            return cursor.fetchone()[0]
+
     def clear(self):
-        """Clear all machines and write to disk"""
-        self.machines.clear()
-        self._write_to_disk()
-    
+        """Clear all machines"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM machines")
+            conn.commit()
+
     def debug_state(self):
         """Print debug information about the current machine state"""
-        valid_machines = self.get_all()
-        aws_instance_ids = [m.get("instance_id") for m in valid_machines.values()]
-        
-        logger.debug(f"MACHINES.json has {len(valid_machines)} valid AWS instances")
-        if valid_machines:
-            logger.debug(f"Instance IDs: {aws_instance_ids}")
-        
-        return {
-            "total": len(valid_machines),
-            "aws_ids": len(valid_machines),
-            "aws_id_list": aws_instance_ids,
-            "machines": valid_machines
-        }
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT data FROM machines")
+            machines = {
+                json.loads(row[0])["instance_id"]: json.loads(row[0])
+                for row in cursor.fetchall()
+            }
+
+            aws_instance_ids = [m.get("instance_id") for m in machines.values()]
+
+            logger.debug(f"Database has {len(machines)} valid AWS instances")
+            if machines:
+                logger.debug(f"Instance IDs: {aws_instance_ids}")
+
+            return {
+                "total": len(machines),
+                "aws_ids": len(machines),
+                "aws_id_list": aws_instance_ids,
+                "machines": machines,
+            }
+
+    @asynccontextmanager
+    async def update(self):
+        """
+        Async context manager for atomic updates to the machine state.
+        This ensures that all updates within the context are atomic.
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("BEGIN TRANSACTION")
+            try:
+                cursor = await db.execute("SELECT instance_id, data FROM machines")
+                rows = await cursor.fetchall()
+                machines = {row[0]: json.loads(row[1]) for row in rows}
+
+                yield machines
+
+                # Update all machines in the transaction
+                await db.execute("DELETE FROM machines")
+                for instance_id, data in machines.items():
+                    await db.execute(
+                        """
+                        INSERT INTO machines (
+                            instance_id, region, zone, vpc_id, public_ip, private_ip,
+                            spot_request_id, status, detailed_status, data
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            instance_id,
+                            data.get("region"),
+                            data.get("zone"),
+                            data.get("vpc_id"),
+                            data.get("public_ip"),
+                            data.get("private_ip"),
+                            data.get("spot_request_id"),
+                            data.get("status"),
+                            data.get("detailed_status"),
+                            json.dumps(data),
+                        ),
+                    )
+                await db.commit()
+            except:
+                await db.rollback()
+                raise
 
 
-machine_state = MachineStateManager()
+# Replace the JSON-based manager with the SQLite-based one
+machine_state = SQLiteMachineStateManager()
 
 
 async def handle_spot_request(
@@ -2330,10 +2431,16 @@ async def handle_spot_request(
 
             # Add info about instance type being requested
             instance_type = launch_specification.get("InstanceType", "unknown")
-            await log_operation_async(f"Requesting spot instance type: {instance_type}", "info", region)
+            await log_operation_async(
+                f"Requesting spot instance type: {instance_type}", "info", region
+            )
 
             try:
-                await log_operation_async(f"Sending spot request to AWS with one-time request type", "info", region)
+                await log_operation_async(
+                    "Sending spot request to AWS with one-time request type",
+                    "info",
+                    region,
+                )
                 response = await asyncio.to_thread(
                     ec2.request_spot_instances,
                     InstanceCount=1,
@@ -2378,7 +2485,7 @@ async def handle_spot_request(
 
             # Update instance status to reflect spot request creation
             instance_status.spot_request_id = request_id
-            instance_status.detailed_status = f"Waiting for spot request fulfillment"
+            instance_status.detailed_status = "Waiting for spot request fulfillment"
             instance_status.update_creation_state(
                 "requesting",
                 {
@@ -2394,7 +2501,9 @@ async def handle_spot_request(
             # Only update the UI, don't save to MACHINES.json yet
             await update_all_statuses_async(instance_status)
 
-            await log_operation_async(f"Waiting for spot request fulfillment...", "info", region)
+            await log_operation_async(
+                "Waiting for spot request fulfillment...", "info", region
+            )
 
             async with asyncio.timeout(300):
                 status_check_count = 0
@@ -2416,9 +2525,15 @@ async def handle_spot_request(
 
                         # Set the instance ID - this will change the ID property
                         instance_status.instance_id = status["instance_id"]
-                        
+
+                        # Update the key in all_statuses to use the new instance ID
+                        old_id = instance_status._temp_id
+                        all_statuses[status["instance_id"]] = instance_status
+                        if old_id in all_statuses:
+                            del all_statuses[old_id]
+
                         # Update instance status for provisioning phase
-                        instance_status.detailed_status = f"Spot request fulfilled"
+                        instance_status.detailed_status = "Spot request fulfilled"
                         instance_status.update_creation_state(
                             "provisioning",
                             {
@@ -2428,12 +2543,14 @@ async def handle_spot_request(
                                 ).isoformat(),
                             },
                         )
-                        
+
                         # Now that we have a valid AWS instance ID, save it to MACHINES.json
                         # The thread-safe dict will handle the write to disk
                         machine_state.set(instance_status.id, instance_status.to_dict())
-                        await log_operation_async(f"Saved instance {instance_status.id} to MACHINES.json")
-                            
+                        await log_operation_async(
+                            f"Saved instance {instance_status.id} to MACHINES.json"
+                        )
+
                         # Make sure UI is updated with new ID
                         await update_all_statuses_async(instance_status)
 
@@ -2449,19 +2566,21 @@ async def handle_spot_request(
                         await log_operation_async(error_msg, "warning", region)
 
                         # Update instance status for failure
-                        instance_status.status = "Failed" 
-                        instance_status.detailed_status = (
-                            f"No capacity available"
-                        )
+                        instance_status.status = "Failed"
+                        instance_status.detailed_status = "No capacity available"
                         instance_status.update_creation_state(
                             "failed",
                             {"reason": status["state"], "message": status["message"]},
                         )
-                        
+
                         # We don't save failed capacity instances to MACHINES.json
                         # since they don't have AWS instance IDs
-                        await log_operation_async(f"Abandoning spot request due to no capacity", "warning", region)
-                        
+                        await log_operation_async(
+                            "Abandoning spot request due to no capacity",
+                            "warning",
+                            region,
+                        )
+
                         # Update UI then return to abandon this attempt
                         await update_all_statuses_async(instance_status)
                         return None
@@ -2512,8 +2631,8 @@ async def handle_spot_request(
                         if status_check_count % 15 == 0:
                             await log_operation_async(
                                 f"Still waiting for spot request {request_id}: {status['state']}",
-                                "info", 
-                                region
+                                "info",
+                                region,
                             )
 
                     await asyncio.sleep(5)
@@ -2581,9 +2700,137 @@ async def get_spot_request_status(ec2, request_id):
         return {"state": "failed", "message": str(e), "instance_id": None}
 
 
+def print_machines_table():
+    """Print a simple text table of machine information."""
+    machines = machine_state.get_all()
+    if not machines:
+        print("No machines found in database")
+        return
+
+    # Define column widths
+    col_widths = {
+        "instance_id": 20,
+        "region": 15,
+        "vpc_id": 22,  # VPC IDs are 'vpc-' followed by 17 chars
+        "status": 15,
+        "public_ip": 16,
+        "private_ip": 16,
+    }
+
+    # Print header
+    header = (
+        f"{'Instance ID':<{col_widths['instance_id']}} "
+        f"{'Region':<{col_widths['region']}} "
+        f"{'VPC ID':<{col_widths['vpc_id']}} "
+        f"{'Status':<{col_widths['status']}} "
+        f"{'Public IP':<{col_widths['public_ip']}} "
+        f"{'Private IP':<{col_widths['private_ip']}}"
+    )
+    print("\n" + "=" * (sum(col_widths.values()) + 6))
+    print(header)
+    print("-" * (sum(col_widths.values()) + 6))
+
+    # Print each machine
+    for machine_id, machine in machines.items():
+        instance_id = machine.get("instance_id", "N/A")
+        region = machine.get("region", "N/A")
+        vpc_id = machine.get("vpc_id", "N/A")
+        status = machine.get("status", "N/A")
+        public_ip = machine.get("public_ip", "N/A")
+        private_ip = machine.get("private_ip", "N/A")
+
+        row = (
+            f"{instance_id:<{col_widths['instance_id']}} "
+            f"{region:<{col_widths['region']}} "
+            f"{vpc_id:<{col_widths['vpc_id']}} "
+            f"{status:<{col_widths['status']}} "
+            f"{public_ip:<{col_widths['public_ip']}} "
+            f"{private_ip:<{col_widths['private_ip']}}"
+        )
+        print(row)
+
+    print("=" * (sum(col_widths.values()) + 6) + "\n")
+
+
+def check_aws_sso_token() -> bool:
+    """Check if AWS SSO token is valid."""
+    try:
+        logger.info("Checking AWS SSO token")
+        logger.debug("Inside of check_aws_sso_token")
+        result = boto3.client("sts").get_caller_identity()
+        logger.debug(f"Result of get_caller_identity: {result}")
+        logger.info(
+            f"Successfully authenticated as {result.get('Arn', 'unknown user')}"
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error checking AWS SSO token: {str(e)}")
+        if hasattr(e, "response"):
+            error_code = e.response.get("Error", {}).get("Code", "")
+            error_msg = e.response.get("Error", {}).get("Message", str(e))
+            if error_code in ["ExpiredToken", "InvalidClientTokenId"]:
+                console.print("\n[bold red]Authentication Error[/bold red]")
+                console.print(
+                    "[yellow]AWS SSO token has expired. Please follow these steps:[/yellow]"
+                )
+                console.print("1. Run: [bold]aws sso login[/bold]")
+                console.print("2. Wait for authentication to complete in your browser")
+                console.print("3. Try running this script again\n")
+                logger.error(f"AWS SSO token expired: {error_msg}")
+            else:
+                console.print("\n[bold red]AWS Authentication Error[/bold red]")
+                console.print(f"[yellow]Error: {error_msg}[/yellow]")
+                console.print("Please check your AWS credentials and try again.\n")
+                logger.error(f"AWS authentication error: {error_msg}")
+        else:
+            console.print("\n[bold red]AWS Authentication Error[/bold red]")
+            console.print(f"[yellow]Error: {str(e)}[/yellow]")
+            console.print("Please check your AWS configuration and try again.\n")
+            logger.error(f"AWS authentication error: {str(e)}")
+        return False
+
+
+def check_ssh_key() -> bool:
+    """Check if SSH key exists and has proper permissions."""
+    private_ssh_key_path = config.get("private_ssh_key_path")
+    public_ssh_key_path = config.get("public_ssh_key_path")
+
+    logger.debug(f"Checking private SSH key at: {private_ssh_key_path}")
+    logger.debug(f"Checking public SSH key at: {public_ssh_key_path}")
+
+    if not private_ssh_key_path or not public_ssh_key_path:
+        error_msg = "Both private_ssh_key_path and public_ssh_key_path must be specified in config.yaml"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+    # Expand paths
+    private_ssh_key_path = os.path.expanduser(private_ssh_key_path)
+    public_ssh_key_path = os.path.expanduser(public_ssh_key_path)
+
+    # Check file permissions on private key
+    try:
+        mode = os.stat(private_ssh_key_path).st_mode
+        if (mode & 0o077) != 0:
+            error_msg = f"Private key file {private_ssh_key_path} has too open permissions. Please run: chmod 600 {private_ssh_key_path}"
+            logger.error(error_msg)
+            console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+            return False
+        return True
+    except Exception as e:
+        error_msg = f"Error checking private key permissions: {str(e)}"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+
 async def main():
     global table_update_running
     table_update_running = False
+
+    # Check AWS SSO token first
+    if not check_aws_sso_token():
+        return 1
 
     logger.debug("Starting main execution")
     parser = argparse.ArgumentParser(
@@ -2591,7 +2838,12 @@ async def main():
     )
     parser.add_argument(
         "--action",
-        choices=["create", "destroy", "list", "delete_disconnected_aws_nodes"],
+        choices=[
+            "create",
+            "destroy",
+            "list",
+            "print-database",
+        ],
         help="Action to perform",
         default="list",
     )
@@ -2599,182 +2851,131 @@ async def main():
         "--format", choices=["default", "json"], default="default", help="Output format"
     )
     parser.add_argument(
-        "--overwrite", action="store_true", help="Overwrite MACHINES.json if it exists"
+        "--overwrite", action="store_true", help="Overwrite database if it exists"
     )
     args = parser.parse_args()
-    logger.debug(f"Parsed arguments: {args}")
 
-    # Log the action being performed at INFO level for better visibility
-    action_msg = f"Starting {args.action} operation..."
-    logger.info(action_msg)
-    log_operation(action_msg)
+    try:
+        # Log the action being performed at INFO level for better visibility
+        action_msg = f"Starting {args.action} operation..."
+        logger.info(action_msg)
+        log_operation(action_msg)
 
-    # Load existing machine state
-    log_operation(f"Loading machine state...")
-    machines = machine_state.load()
-    
-    # For 'create' action, check if MACHINES.json exists and would be overwritten
-    if args.action == "create" and not args.overwrite:
-        can_proceed = await machine_state.check_existing_file(overwrite=args.overwrite)
-        if not can_proceed:
-            logger.error("Cannot proceed with create operation - MACHINES.json already exists")
-            log_operation("Cannot proceed without --overwrite flag when MACHINES.json exists", "error")
-            # Exit with error code
-            return 1
-    
-    # Report valid AWS instances    
-    valid_count = machine_state.count()
-    logger.info(f"Loaded {valid_count} valid AWS instances from MACHINES.json")
-    log_operation(f"Found {valid_count} valid AWS instances in state file")
+        # Load existing machine state
+        log_operation("Loading machine state...")
+        machines = await machine_state.load()
 
-    if machines:
-        logger.debug("MACHINES.json contains the following instances:")
-        for instance_id, machine in machines.items():
-            logger.debug(
-                f"  Instance {instance_id} in {machine['region']}-{machine['zone']}"
+        if args.action == "print-database":
+            print_machines_table()
+            return 0
+
+        # For 'create' action, check if database exists and would be overwritten
+        if args.action == "create" and not args.overwrite:
+            can_proceed = await machine_state.check_existing_file(
+                overwrite=args.overwrite
             )
-    elif args.action == "destroy":
-        msg = "MACHINES.json is empty. No instances to process."
-        logger.info(msg)
-        log_operation(msg, "warning")
-        logger.info("Please run 'deploy_spot.py --action create' to create instances.")
-        logger.info(
-            "Or run 'delete_vpcs.py' if there are still resources that need to be cleaned up."
-        )
-        return
-
-    async def perform_action():
-        logger.debug(f"Performing action: {args.action}")
-        try:
-            if args.action == "create":
-                log_operation(f"Starting 'create' action")
-                await create_spot_instances()
-                log_operation(f"Create action completed successfully")
-            elif args.action == "list":
-                log_operation(f"Starting 'list' action")
-                await list_spot_instances()
-                log_operation(f"List action completed successfully")
-            elif args.action == "destroy":
-                log_operation(f"Starting 'destroy' action")
-                await destroy_instances()
-                log_operation(f"Destroy action completed successfully")
-            elif args.action == "delete_disconnected_aws_nodes":
-                log_operation(f"Starting 'delete_disconnected_aws_nodes' action")
-                await delete_disconnected_aws_nodes()
+            if not can_proceed:
+                logger.error(
+                    "Cannot proceed with create operation - database already contains instances"
+                )
                 log_operation(
-                    f"Delete_disconnected_aws_nodes action completed successfully"
+                    "Cannot proceed without --overwrite flag when database contains instances",
+                    "error",
                 )
-            logger.debug(f"Action {args.action} completed successfully")
-        except asyncio.CancelledError:
-            cancel_msg = f"Action {args.action} was cancelled by user"
-            logger.info(cancel_msg)
-            log_operation(cancel_msg, "warning")
-            raise
-        except Exception as e:
-            error_msg = f"Error performing action {args.action}: {str(e)}"
-            logger.exception(error_msg)
-            log_operation(error_msg, "error")
-            raise
+                return 1
 
-    if args.format == "json":
-        logger.debug("Using JSON output format")
-        try:
-            # Create a fake console that only logs operations
-            with Live(
-                console=console, refresh_per_second=4, auto_refresh=True, screen=True
-            ) as live:
-                # Create an initial layout with just the operations panel
-                ops_content = "[dim]Starting operation...[/dim]"
-                layout = Layout(
-                    Panel(
-                        ops_content,
-                        title="AWS Operations",
-                        border_style="yellow",
-                        padding=(1, 1),
-                    )
-                )
-                live.update(layout)
+        # Report valid AWS instances
+        valid_count = machine_state.count()
+        print(f"Loaded {valid_count} valid AWS instances from database")
+        log_operation(f"Found {valid_count} valid AWS instances in database")
 
-                # Set up operations logging
-                update_task = asyncio.create_task(update_table(live))
+        with Live(console=console, refresh_per_second=4, screen=True) as live:
+            update_task = asyncio.create_task(update_table(live))
 
-                # Run the action
-                try:
-                    await perform_action()
-                    result = all_statuses_to_dict()
-                    if not result and args.action != "destroy":
-                        logger.warning(
-                            "Operation completed but no instances were processed"
-                        )
-                        log_operation(
-                            "Operation completed but no instances were processed",
-                            "warning",
-                        )
-
-                    # Output is only sent to the operations panel, not to stdout
-                    logger.debug(f"JSON result: {json.dumps(result, indent=2)}")
-                    log_operation(
-                        "Operation completed successfully. Results available in debug log."
-                    )
-                except Exception as e:
-                    logger.error(f"Operation failed: {str(e)}")
-                    log_operation(f"Operation failed: {str(e)}", "error")
-                    raise
-                finally:
-                    # Clean up
-                    table_update_event.set()
-                    await update_task
-        except Exception as e:
-            # This should never print to console
-            logger.error(f"Live display error: {str(e)}")
-            raise
-    else:
-        logger.debug("Using default (live) output format")
-        try:
-            with Live(console=console, refresh_per_second=4, screen=True) as live:
-                update_task = asyncio.create_task(update_table(live))
-                try:
-                    # Initial message to show the UI is working
-                    log_operation(f"Initializing {args.action} operation...")
-                    await perform_action()
+            try:
+                if args.action == "list":
+                    log_operation("Starting 'list' action")
+                    await list_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
                     await asyncio.sleep(1)
-                    logger.debug("Main execution completed successfully")
-                    log_operation("Operation completed successfully", "info")
-                except asyncio.CancelledError:
-                    logger.info("Operation was cancelled by user")
-                    log_operation("Operation was cancelled by user", "warning")
-                    raise
-                except Exception as e:
-                    error_msg = f"Operation failed: {str(e)}"
-                    logger.exception("Error in main execution")
-                    log_operation(error_msg, "error")
-                    raise
-                finally:
-                    logger.debug("Cleaning up and shutting down")
-                    log_operation("Cleaning up...", "info")
-                    table_update_event.set()
-                    await update_task
-        except KeyboardInterrupt:
-            # Don't log to console, only to file
-            logger.info("Operation was manually interrupted")
-            raise
+                    log_operation("List action completed successfully")
+                elif args.action == "create":
+                    log_operation("Starting 'create' action")
+                    await create_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
+                    await asyncio.sleep(1)
+                    log_operation("Create action completed successfully")
+                elif args.action == "destroy":
+                    log_operation("Starting 'destroy' action")
+                    await destroy_instances()
+                    log_operation("Destroy action completed successfully")
 
-    logger.info(f"Completed {args.action} operation successfully")
+                logger.debug("Action %s completed successfully", args.action)
+                logger.debug("Main execution completed successfully")
+                logger.info("Operation completed successfully")
+
+                # Give time for final table update to be visible
+                if args.action in ["list", "create"]:
+                    await asyncio.sleep(2)
+
+            finally:
+                # Stop the table update task
+                table_update_event.set()
+                await update_task
+
+    except Exception as e:
+        logger.exception("Error in main execution")
+        log_operation(f"Operation failed: {str(e)}", "error")
+        return 1
+    finally:
+        # Cleanup phase
+        logger.debug("Cleaning up and shutting down")
+        logger.info("Cleaning up...")
+
+        if args.action in ["list", "create"]:
+            logger.info(f"Completed {args.action} operation successfully")
+
+        print_machines_table()
+
+        logger.debug("Script completed successfully")
+
+    return 0
+
+
+async def update_table_now():
+    """Force an immediate table update."""
+    # Update all statuses to trigger a UI refresh
+    for status in all_statuses.values():
+        await update_all_statuses_async(status)
+    await asyncio.sleep(0.1)  # Small delay to ensure update is visible
 
 
 if __name__ == "__main__":
     try:
-        logger.debug("Script starting")
+        logger.info("Starting deploy_spot.py")
+
+        # Check AWS SSO token before anything else
+        if not check_aws_sso_token():
+            logger.error("Script exiting due to AWS authentication failure")
+            sys.exit(1)
+
+        # Check SSH key before proceeding
+        if not check_ssh_key():
+            logger.error("Script exiting due to SSH key issues")
+            sys.exit(1)
+
         asyncio.run(main())
         logger.debug("Script completed successfully")
     except KeyboardInterrupt:
         logger.info("Script was manually interrupted by user (Ctrl+C)")
-        # Don't print to console - all user feedback is in the Rich UI
-    except Exception:
+        console.print("\n[yellow]Operation cancelled by user (Ctrl+C)[/yellow]")
+    except Exception as e:
         logger.exception("Script failed with unhandled exception")
-        # Only print error message if the Rich UI hasn't started yet
         console.print(
             "\n[bold red]ERROR:[/bold red] Operation failed unexpectedly.",
-            "See debug_deploy_spot.log for details.",
+            f"Error: {str(e)}",
+            "\nSee debug_deploy_spot.log for details.",
         )
-        raise
+        sys.exit(1)

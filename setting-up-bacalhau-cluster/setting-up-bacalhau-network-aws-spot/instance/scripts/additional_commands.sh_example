@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# If there are any additional commands, this will be 
+# run at the end of the cloud-init script.
+
+# Copy this file to additional_commands.sh and add your commands.
+
+# Check if the user is root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root"
+    exit 1
+fi
+
+# Additional commands can be added here.
+#
+echo "Additional commands are empty"
+#
+# End of additional commands.

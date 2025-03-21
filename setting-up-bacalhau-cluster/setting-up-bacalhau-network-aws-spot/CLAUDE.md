@@ -6,25 +6,29 @@
 - `uv run -s util/get_available_regions.py [--show-all]` - Find regions with suitable spot instances
 - `uv run -s util/get_ubuntu_amis.py` - Get Ubuntu AMIs for available regions
 - `uv run -s util/update_config_with_regions.py` - Update config with available regions
-- `uv run -s deploy_spot_v2.py [create|list|destroy|nuke]` - Manage AWS spot instances (latest version)
-- `uv run -s deploy_spot_v2.py --dry-run [command]` - Test operations without making changes
-- `uv run -s deploy_spot_v2.py --debug` - Run with verbose debugging output
+- `uv run -s deploy_spot.py [create|list|destroy|nuke]` - Manage AWS spot instances
+- `uv run -s deploy_spot.py --dry-run [command]` - Test operations without making changes
+- `uv run -s deploy_spot.py --debug` - Run with verbose debugging output
+- `uv run -s delete_vpcs.py` - Clean up VPCs created by the deployment script
+
+### Linting
+- `ruff check .` - Run linter on all Python files
+- `ruff format .` - Auto-format Python code to match style guidelines
 
 ### Alternative (pip)
-- `python util/get_available_regions.py`
-- `python util/get_ubuntu_amis.py`
-- `python util/update_config_with_regions.py`
-- `python deploy_spot_v2.py [create|list|destroy|nuke]`
+- `python -m util.get_available_regions [--show-all]`
+- `python -m util.get_ubuntu_amis`
+- `python -m util.update_config_with_regions`
+- `python deploy_spot.py [create|list|destroy|nuke]`
 
 ## Code Style Guidelines
 - Use f-strings for string formatting
-- Use async/await for concurrency with proper task handling
-- Use rich library for terminal UI (progress bars, tables, live displays)
-- Wrap AWS API calls with timeouts, retries, and comprehensive error handling
-- Use hierarchical logging with different levels (DEBUG, INFO, ERROR)
-- Follow PEP 8 naming conventions (snake_case for functions/variables)
-- Use type annotations for function parameters and return values
-- Implement idempotent operations and proper resource cleanup for AWS resources
-- Organize code with modular architecture (aws/, config/, spot/, ui/ packages)
-- Use proper signal handling for clean shutdowns
-- Implement state management for tracking operation progress
+- Use async/await for proper concurrency with task handling and error propagation
+- Leverage rich library for terminal UI (progress bars, tables, live displays)
+- Implement comprehensive error handling with timeouts and retries for AWS API calls
+- Structure logging with levels (DEBUG, INFO, WARNING, ERROR) and consistent formatting
+- Follow PEP 8 naming conventions (snake_case for variables/functions, UPPER_CASE for constants)
+- Include type annotations for all function parameters and return values
+- Design idempotent operations with proper resource cleanup for AWS resources
+- Organize code into logical modules (aws/, config/, spot/, ui/ packages)
+- Implement proper signal handling and state management for tracking operation progress
