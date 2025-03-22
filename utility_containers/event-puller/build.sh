@@ -29,15 +29,15 @@ TIMESTAMP=$(date +%Y%m%d%H%M)
 # Registry configuration
 REGISTRY="docker.io"    
 ORGANIZATION="bacalhauproject"      
-IMAGE_NAME="event-pusher"
+IMAGE_NAME="event-puller"
 TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:${TIMESTAMP}"
 
 log "Building binary with Go..."
-CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/app . || error "Failed to build with Go"
+CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/event-puller . || error "Failed to build with Go"
 
 if command -v upx >/dev/null 2>&1; then
   log "Compressing binary with UPX..."
-  upx --best --lzma bin/app || error "Failed to compress binary"
+  upx --best --lzma bin/event-puller || error "Failed to compress binary"
 fi
 
 log "Building Docker image..."
