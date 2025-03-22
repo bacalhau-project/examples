@@ -1,2 +1,28 @@
-*.json
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
+*.wasm
+*.wat
+build/
+dist/
+
+# Environment variables
 .env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Local debug directory
+local_debug/
+
+*.json
+
+config.yaml
