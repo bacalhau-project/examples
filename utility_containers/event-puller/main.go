@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/charmbracelet/bubbles/table"
@@ -35,30 +37,41 @@ const (
 )
 
 type Message struct {
+	Id          string `json:"id,omitempty"`          // Used for Cosmos DB
 	VMName      string `json:"vm_name"`
 	ContainerID string `json:"container_id"`
 	IconName    string `json:"icon_name"`
 	Color       string `json:"color"`
 	Timestamp   string `json:"timestamp"`
+	Region      string `json:"region,omitempty"`      // Used for Cosmos DB partitioning
+	Type        string `json:"type,omitempty"`        // Document type for Cosmos DB
+	EventTime   int64  `json:"event_time,omitempty"`  // Unix timestamp for sorting
 }
 
 type model struct {
-	table            table.Model
-	lastPoll         time.Time
-	queueURL         string
-	queueSize        int64
-	totalProcessed   uint64
-	messages         []Message
-	hub              *Hub
-	showConfirmClear bool
-	sqsClient        *sqs.SQS
-	ctx              context.Context
-	cancel           context.CancelFunc
-	lastQueueCheck   time.Time
-	logs             []string
-	maxLogs          int
-	messageChan      chan Message
-	updateLock       sync.Mutex
+	table              table.Model
+	lastPoll           time.Time
+	queueURL           string
+	queueSize          int64
+	totalProcessed     uint64
+	messages           []Message
+	hub                *Hub
+	showConfirmClear   bool
+	sqsClient          *sqs.SQS
+	ctx                context.Context
+	cancel             context.CancelFunc
+	lastQueueCheck     time.Time
+	logs               []string
+	maxLogs            int
+	messageChan        chan Message
+	updateLock         sync.Mutex
+	cosmosClient       *azcosmos.Client
+	cosmosContainer    *azcosmos.ContainerClient
+	cosmosBatchSize    int
+	cosmosEnabled      bool
+	cosmosMessagesLock sync.Mutex
+	cosmosMessages     []Message
+	cosmosWriteTimer   *time.Timer
 }
 
 type tickMsg time.Time
@@ -169,13 +182,28 @@ func (m model) View() string {
 			"  Messages Processed: %d\n"+
 			"  Last Poll: %s\n"+
 			"  Queue URL: %s\n"+
-			"  Region: %s\n\n",
+			"  Region: %s\n",
 		m.queueSize,
 		m.totalProcessed,
 		m.lastPoll.Format("15:04:05.000"),
 		m.queueURL,
 		os.Getenv("AWS_REGION"),
 	))
+	
+	if m.cosmosEnabled {
+		s.WriteString(fmt.Sprintf(
+			"Cosmos DB Status:\n"+
+				"  Status: Connected\n"+
+				"  Database: %s\n"+
+				"  Container: %s\n"+
+				"  Batch Size: %d\n\n",
+			os.Getenv("COSMOS_DATABASE"),
+			os.Getenv("COSMOS_CONTAINER"),
+			m.cosmosBatchSize,
+		))
+	} else {
+		s.WriteString("\nCosmos DB: Not configured\n\n")
+	}
 
 	if len(m.messages) > 0 {
 		s.WriteString(fmt.Sprintf("Recent Messages (%d):\n", len(m.messages)))
@@ -234,6 +262,12 @@ func (m *model) startMessageWorker(workerID int) {
 
 				// Process messages in batches for efficient updates
 				for _, msg := range messages {
+					// Send to Cosmos DB if enabled
+					if m.cosmosEnabled {
+						m.addMessageToCosmosBatch(msg)
+					}
+					
+					// Send to WebSocket UI
 					if batch, shouldUpdate := mp.add(msg); shouldUpdate {
 						if err := m.sendWebSocketUpdate(batch); err != nil {
 							m.addLog("Error sending websocket update: %v", err)
@@ -388,17 +422,20 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 
 	modelCtx, cancel := context.WithCancel(ctx)
 	m := model{
-		table:          t,
-		queueURL:       queueURL,
-		hub:            hub,
-		lastPoll:       time.Now(),
-		sqsClient:      sqsClient,
-		ctx:            modelCtx,
-		cancel:         cancel,
-		lastQueueCheck: time.Time{},
-		maxLogs:        1000,
-		logs:           make([]string, 0, 1000),
-		messageChan:    make(chan Message, BUFFER_SIZE),
+		table:           t,
+		queueURL:        queueURL,
+		hub:             hub,
+		lastPoll:        time.Now(),
+		sqsClient:       sqsClient,
+		ctx:             modelCtx,
+		cancel:          cancel,
+		lastQueueCheck:  time.Time{},
+		maxLogs:         1000,
+		logs:            make([]string, 0, 1000),
+		messageChan:     make(chan Message, BUFFER_SIZE),
+		cosmosEnabled:   false,
+		cosmosBatchSize: 100,
+		cosmosMessages:  make([]Message, 0, 100),
 	}
 
 	// Add initial logs
@@ -407,6 +444,33 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	m.addLog("Region: %s", os.Getenv("AWS_REGION"))
 	if strings.HasSuffix(queueURL, ".fifo") {
 		m.addLog("FIFO queue detected - using FIFO-specific handling")
+	}
+	
+	// Initialize Cosmos DB client if config is provided
+	if client, enabled, err := initCosmosClient(modelCtx); err != nil {
+		m.addLog("Failed to initialize Cosmos DB client: %v", err)
+	} else if enabled {
+		m.cosmosClient = client
+		m.cosmosEnabled = true
+		m.addLog("Cosmos DB client initialized successfully")
+		
+		// Get container
+		if container, err := getCosmosContainer(client, modelCtx); err != nil {
+			m.addLog("Failed to get Cosmos DB container: %v", err)
+			m.cosmosEnabled = false
+		} else {
+			m.cosmosContainer = container
+			m.addLog("Connected to Cosmos DB container %s in database %s",
+				os.Getenv("COSMOS_CONTAINER"), os.Getenv("COSMOS_DATABASE"))
+		}
+	}
+	
+	// Set batch size from environment if provided
+	if batchSizeStr := os.Getenv("COSMOS_BATCH_SIZE"); batchSizeStr != "" {
+		if batchSize, err := strconv.Atoi(batchSizeStr); err == nil && batchSize > 0 {
+			m.cosmosBatchSize = batchSize
+			m.addLog("Cosmos DB batch size set to %d", batchSize)
+		}
 	}
 
 	// Start multiple polling workers
@@ -417,6 +481,25 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 
 	// Start background queue size checker
 	go m.backgroundQueueSizeChecker()
+	
+	// Start a background goroutine to periodically flush cosmos messages
+	if m.cosmosEnabled {
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			
+			for {
+				select {
+				case <-modelCtx.Done():
+					// Flush any remaining messages before shutdown
+					m.flushCosmosBatch()
+					return
+				case <-ticker.C:
+					m.flushCosmosBatch()
+				}
+			}
+		}()
+	}
 
 	return m
 }
@@ -534,6 +617,14 @@ func loadEnvConfig() error {
 		return fmt.Errorf("\nMissing required environment variables in %s:\n%s\n\nPlease ensure all required variables are set in your environment file",
 			strings.TrimPrefix(envSource, "Environment loaded from "),
 			strings.Join(missing, "\n"))
+	}
+	
+	// Check if Cosmos DB is enabled
+	if os.Getenv("COSMOS_ENDPOINT") != "" && os.Getenv("COSMOS_KEY") != "" && 
+	   os.Getenv("COSMOS_DATABASE") != "" && os.Getenv("COSMOS_CONTAINER") != "" {
+		log.Println("Cosmos DB integration enabled")
+	} else {
+		log.Println("Cosmos DB integration disabled. Set COSMOS_ENDPOINT, COSMOS_KEY, COSMOS_DATABASE, and COSMOS_CONTAINER to enable")
 	}
 
 	return nil
@@ -803,4 +894,201 @@ func (m *model) addLog(format string, args ...interface{}) {
 	if len(m.logs) > m.maxLogs {
 		m.logs = m.logs[1:]
 	}
+}
+
+// Initialize Cosmos DB client
+func initCosmosClient(ctx context.Context) (*azcosmos.Client, bool, error) {
+	endpoint := os.Getenv("COSMOS_ENDPOINT")
+	key := os.Getenv("COSMOS_KEY")
+	
+	if endpoint == "" || key == "" {
+		return nil, false, nil
+	}
+	
+	cred, err := azcosmos.NewKeyCredential(key)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create key credential: %v", err)
+	}
+	
+	clientOpts := &azcosmos.ClientOptions{
+		// Configure connection options
+		ConnectionOptions: azcosmos.ConnectionOptions{
+			MaxConnectionPoolSize: 100,  // Adjust based on expected load
+		},
+		// Add diagnostics if needed
+		Diagnostics: azcore.ClientOptions{
+			Tracing: azcore.TracingOptions{
+				TracerProvider: nil, // Add OpenTelemetry if needed
+			},
+		},
+	}
+	
+	client, err := azcosmos.NewClientWithKey(endpoint, cred, clientOpts)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create cosmos client: %v", err)
+	}
+	
+	return client, true, nil
+}
+
+// Get a container client for Cosmos DB
+func getCosmosContainer(client *azcosmos.Client, ctx context.Context) (*azcosmos.ContainerClient, error) {
+	databaseName := os.Getenv("COSMOS_DATABASE")
+	containerName := os.Getenv("COSMOS_CONTAINER")
+	
+	if databaseName == "" || containerName == "" {
+		return nil, fmt.Errorf("COSMOS_DATABASE and COSMOS_CONTAINER must be set")
+	}
+	
+	database, err := client.NewDatabase(databaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database: %v", err)
+	}
+	
+	container, err := database.NewContainer(containerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container: %v", err)
+	}
+	
+	return container, nil
+}
+
+// addMessageToCosmosBatch adds a message to the batch for Cosmos DB
+func (m *model) addMessageToCosmosBatch(msg Message) {
+	if !m.cosmosEnabled {
+		return
+	}
+	
+	// Add unique ID and timestamp for Cosmos if not present
+	if msg.Id == "" {
+		msg.Id = fmt.Sprintf("%s-%s-%d", msg.ContainerID, msg.VMName, time.Now().UnixNano())
+	}
+	
+	if msg.EventTime == 0 {
+		msg.EventTime = time.Now().UnixNano()
+	}
+	
+	// Set the type and region for partitioning
+	msg.Type = "event"
+	
+	// Use Azure region if available, otherwise default to "unknown"
+	if msg.Region == "" {
+		msg.Region = os.Getenv("AZURE_REGION")
+		if msg.Region == "" {
+			msg.Region = "unknown"
+		}
+	}
+	
+	m.cosmosMessagesLock.Lock()
+	defer m.cosmosMessagesLock.Unlock()
+	
+	m.cosmosMessages = append(m.cosmosMessages, msg)
+	
+	// If batch size threshold is reached, trigger immediate write
+	if len(m.cosmosMessages) >= m.cosmosBatchSize {
+		// Reset timer
+		if m.cosmosWriteTimer != nil {
+			m.cosmosWriteTimer.Stop()
+		}
+		
+		// Make a copy of the batch
+		batchToWrite := make([]Message, len(m.cosmosMessages))
+		copy(batchToWrite, m.cosmosMessages)
+		m.cosmosMessages = nil
+		
+		// Write the batch asynchronously
+		go m.writeCosmosBatch(batchToWrite)
+	} else if m.cosmosWriteTimer == nil && len(m.cosmosMessages) > 0 {
+		// Start timer for a delayed write if not already running
+		m.cosmosWriteTimer = time.AfterFunc(2*time.Second, func() {
+			m.flushCosmosBatch()
+		})
+	}
+}
+
+// flushCosmosBatch writes any pending messages to Cosmos DB
+func (m *model) flushCosmosBatch() {
+	m.cosmosMessagesLock.Lock()
+	
+	if len(m.cosmosMessages) == 0 {
+		m.cosmosMessagesLock.Unlock()
+		return
+	}
+	
+	// Make a copy of the batch
+	batchToWrite := make([]Message, len(m.cosmosMessages))
+	copy(batchToWrite, m.cosmosMessages)
+	m.cosmosMessages = nil
+	
+	// Reset timer
+	if m.cosmosWriteTimer != nil {
+		m.cosmosWriteTimer.Stop()
+		m.cosmosWriteTimer = nil
+	}
+	
+	m.cosmosMessagesLock.Unlock()
+	
+	// Write the batch
+	go m.writeCosmosBatch(batchToWrite)
+}
+
+// writeCosmosBatch writes a batch of messages to Cosmos DB
+func (m *model) writeCosmosBatch(messages []Message) {
+	if !m.cosmosEnabled || m.cosmosContainer == nil || len(messages) == 0 {
+		return
+	}
+	
+	startTime := time.Now()
+	m.addLog("Writing batch of %d messages to Cosmos DB", len(messages))
+	
+	var successCount, errorCount int
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+	// Use a semaphore to limit concurrent writes
+	semaphore := make(chan struct{}, 10)
+	
+	for _, msg := range messages {
+		wg.Add(1)
+		semaphore <- struct{}{} // Acquire semaphore slot
+		
+		go func(message Message) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Release semaphore slot
+			
+			// Convert message to JSON
+			jsonData, err := json.Marshal(message)
+			if err != nil {
+				mutex.Lock()
+				errorCount++
+				mutex.Unlock()
+				m.addLog("Error marshaling message: %v", err)
+				return
+			}
+			
+			// Create the item options with partition key
+			itemOptions := &azcosmos.ItemOptions{
+				PartitionKey: azcosmos.PartitionKey{message.Region},
+			}
+			
+			// Create the item
+			_, err = m.cosmosContainer.CreateItem(m.ctx, itemOptions, jsonData)
+			if err != nil {
+				mutex.Lock()
+				errorCount++
+				mutex.Unlock()
+				m.addLog("Error writing to Cosmos DB: %v", err)
+				return
+			}
+			
+			mutex.Lock()
+			successCount++
+			mutex.Unlock()
+		}(msg)
+	}
+	
+	wg.Wait()
+	
+	duration := time.Since(startTime)
+	m.addLog("Cosmos DB write complete: %d successful, %d failed in %v", 
+		successCount, errorCount, duration)
 }
