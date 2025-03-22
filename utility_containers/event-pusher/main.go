@@ -1,354 +1,392 @@
+// HTTP Test Module for Bacalhau
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
-	"net/url"
 	"os"
-	"regexp"
-	"strings"
-	"sync/atomic"
+	"path/filepath"
 	"time"
 
-	"github.com/joho/godotenv"
+	"github.com/bacalhau-project/examples/utility_containers/event-pusher/internal/http"
+	"github.com/bacalhau-project/examples/utility_containers/event-pusher/internal/messages"
+	"github.com/bacalhau-project/examples/utility_containers/event-pusher/internal/utils"
+	"gopkg.in/yaml.v3"
 )
 
-// Add counters for monitoring
-var (
-	messagesSent  uint64
-	messagesError uint64
-)
+// Configuration for the application
+type Config struct {
+	// HTTP mode config
+	Method  string `yaml:"method"`
+	URL     string `yaml:"url"`
+	Headers string `yaml:"headers"`
+	Body    string `yaml:"body"`
 
-// Message represents the structure we'll send to SQS
-type Message struct {
-	VMName      string `json:"vm_name"`
-	IconName    string `json:"icon_name"`
-	Timestamp   string `json:"timestamp"`
-	Color       string `json:"color"`
-	ContainerID string `json:"container_id"`
+	// Event pusher config
+	Region      string `yaml:"region"`
+	AccessKey   string `yaml:"access_key"`
+	SecretKey   string `yaml:"secret_key"`
+	QueueURL    string `yaml:"queue_url"`
+	Color       string `yaml:"color"`
+	VMName      string `yaml:"vm_name"`
+	MaxInterval int    `yaml:"max_interval_seconds"`
+	RandomOff   bool   `yaml:"random_off"`
+	MaxMessages int    `yaml:"max_messages"`
+	Simulate    bool   `yaml:"simulate"`
+	Mode        string `yaml:"mode"`
 }
 
-// Simple regex to validate a 6-digit hex code with a leading '#'
-var hexColorRegex = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
-
-const containerIDLength = 8
-
-func GetRandomIcon(r *rand.Rand) string {
-	return GetRandomEmoji(r)
+// ConfigState tracks the current config and its last modification time
+type ConfigState struct {
+	Config      Config
+	LastModTime time.Time
+	ConfigPath  string
 }
 
-func getSignatureKey(key, datestamp, region, service string) []byte {
-	kDate := hmac.New(sha256.New, []byte("AWS4"+key))
-	kDate.Write([]byte(datestamp))
-	kRegion := hmac.New(sha256.New, kDate.Sum(nil))
-	kRegion.Write([]byte(region))
-	kService := hmac.New(sha256.New, kRegion.Sum(nil))
-	kService.Write([]byte(service))
-	kSigning := hmac.New(sha256.New, kService.Sum(nil))
-	kSigning.Write([]byte("aws4_request"))
-	return kSigning.Sum(nil)
+// loadConfig loads configuration from config.yaml file
+// If configPath is provided (as in tests), it will load from that path
+// Also supports environment variables for backward compatibility
+func loadConfig(configPath ...string) Config {
+	// Default configuration
+	config := Config{
+		// HTTP mode config
+		Method: "GET",
+
+		// Event pusher config
+		Region:      "us-west-2",
+		Color:       "#000000",
+		VMName:      "default",
+		MaxInterval: 5,
+		Mode:        "auto",
+	}
+
+	// Determine which config path to use
+	var configPaths []string
+	if len(configPath) > 0 && configPath[0] != "" {
+		// Use the provided path (useful for testing)
+		configPaths = []string{configPath[0]}
+	} else {
+		// Look for config.yaml in the current directory, and if not found,
+		// check in the directory where the executable is located
+		configPaths = []string{
+			"config.yaml",
+			filepath.Join(filepath.Dir(os.Args[0]), "config.yaml"),
+		}
+	}
+
+	var configData []byte
+	var err error
+	var loadedPath string
+	var usingConfigFile bool
+
+	for _, path := range configPaths {
+		configData, err = os.ReadFile(path)
+		if err == nil {
+			loadedPath = path
+			usingConfigFile = true
+			break
+		}
+	}
+
+	if err == nil {
+		// Parse YAML configuration
+		err = yaml.Unmarshal(configData, &config)
+		if err != nil {
+			fmt.Printf("Error parsing config.yaml: %v\n", err)
+			fmt.Printf("Falling back to default configuration and environment variables.\n")
+		} else {
+			fmt.Printf("Configuration loaded from: %s\n", loadedPath)
+		}
+	} else {
+		fmt.Printf("No config file found. Checking environment variables.\n")
+		fmt.Printf("Tried paths: %v\n", configPaths)
+	}
+
+	// Check environment variables for backward compatibility
+	// HTTP mode config
+	if envVal := os.Getenv("HTTP_METHOD"); envVal != "" && !usingConfigFile {
+		config.Method = envVal
+		fmt.Println("Using HTTP_METHOD from environment variable")
+	}
+	if envVal := os.Getenv("HTTP_URL"); envVal != "" && !usingConfigFile {
+		config.URL = envVal
+		fmt.Println("Using HTTP_URL from environment variable")
+	}
+	if envVal := os.Getenv("HTTP_HEADERS"); envVal != "" && !usingConfigFile {
+		config.Headers = envVal
+		fmt.Println("Using HTTP_HEADERS from environment variable")
+	}
+	if envVal := os.Getenv("HTTP_BODY"); envVal != "" && !usingConfigFile {
+		config.Body = envVal
+		fmt.Println("Using HTTP_BODY from environment variable")
+	}
+
+	// Event pusher config
+	if envVal := os.Getenv("AWS_REGION"); envVal != "" && !usingConfigFile {
+		config.Region = envVal
+		fmt.Println("Using AWS_REGION from environment variable")
+	}
+	if envVal := os.Getenv("AWS_ACCESS_KEY_ID"); envVal != "" && !usingConfigFile {
+		config.AccessKey = envVal
+		fmt.Println("Using AWS_ACCESS_KEY_ID from environment variable")
+	}
+	if envVal := os.Getenv("AWS_SECRET_ACCESS_KEY"); envVal != "" && !usingConfigFile {
+		config.SecretKey = envVal
+		fmt.Println("Using AWS_SECRET_ACCESS_KEY from environment variable")
+	}
+	if envVal := os.Getenv("SQS_QUEUE_URL"); envVal != "" && !usingConfigFile {
+		config.QueueURL = envVal
+		fmt.Println("Using SQS_QUEUE_URL from environment variable")
+	}
+	if envVal := os.Getenv("COLOR"); envVal != "" && !usingConfigFile {
+		config.Color = envVal
+		fmt.Println("Using COLOR from environment variable")
+	}
+	if envVal := os.Getenv("VM_NAME"); envVal != "" && !usingConfigFile {
+		config.VMName = envVal
+		fmt.Println("Using VM_NAME from environment variable")
+	}
+	if envVal := os.Getenv("MODE"); envVal != "" && !usingConfigFile {
+		config.Mode = envVal
+		fmt.Println("Using MODE from environment variable")
+	}
+	if envVal := os.Getenv("MAX_INTERVAL_SECONDS"); envVal != "" && !usingConfigFile {
+		fmt.Sscanf(envVal, "%d", &config.MaxInterval)
+		fmt.Println("Using MAX_INTERVAL_SECONDS from environment variable")
+	}
+	if envVal := os.Getenv("MAX_MESSAGES"); envVal != "" && !usingConfigFile {
+		fmt.Sscanf(envVal, "%d", &config.MaxMessages)
+		fmt.Println("Using MAX_MESSAGES from environment variable")
+	}
+	if envVal := os.Getenv("RANDOM_OFF"); envVal != "" && !usingConfigFile {
+		config.RandomOff = utils.ParseBool(envVal)
+		fmt.Println("Using RANDOM_OFF from environment variable")
+	}
+	if envVal := os.Getenv("SIMULATE"); envVal != "" && !usingConfigFile {
+		config.Simulate = utils.ParseBool(envVal)
+		fmt.Println("Using SIMULATE from environment variable")
+	}
+
+	// Validate and set defaults for numeric values
+	if config.MaxInterval < 1 {
+		config.MaxInterval = 5
+	}
+
+	return config
 }
 
-func createSignature(method, host, uri, region, accessKey, secretKey string, params map[string]string) map[string]string {
-	t := time.Now().UTC()
-	amzDate := t.Format("20060102T150405Z")
-	datestamp := t.Format("20060102")
-
-	// Create form data
-	formData := url.Values{}
-	for k, v := range params {
-		formData.Set(k, v)
-	}
-
-	// Calculate payload hash from form-encoded data
-	payload := formData.Encode()
-	payloadHash := fmt.Sprintf("%x", sha256.Sum256([]byte(payload)))
-
-	// Create canonical request with exact formatting
-	canonicalRequest := fmt.Sprintf("%s\n%s\n\n%s:%s\nx-amz-date:%s\n\n%s\n%s",
-		method,
-		uri,
-		"host", host,
-		amzDate,
-		"host;x-amz-date",
-		payloadHash,
-	)
-
-	// Create string to sign
-	algorithm := "AWS4-HMAC-SHA256"
-	credentialScope := fmt.Sprintf("%s/%s/sqs/aws4_request", datestamp, region)
-	stringToSign := fmt.Sprintf("%s\n%s\n%s\n%x",
-		algorithm,
-		amzDate,
-		credentialScope,
-		sha256.Sum256([]byte(canonicalRequest)),
-	)
-
-	// Calculate signature
-	signingKey := getSignatureKey(secretKey, datestamp, region, "sqs")
-	signature := hmac.New(sha256.New, signingKey)
-	signature.Write([]byte(stringToSign))
-	sig := fmt.Sprintf("%x", signature.Sum(nil))
-
-	// Create authorization header
-	authorizationHeader := fmt.Sprintf("%s Credential=%s/%s, SignedHeaders=host;x-amz-date, Signature=%s",
-		algorithm,
-		accessKey,
-		credentialScope,
-		sig,
-	)
-
-	return map[string]string{
-		"Authorization": authorizationHeader,
-		"X-Amz-Date":    amzDate,
-	}
-}
-
-func sendSQSMessage(msg Message, region, accessKey, secretKey, queueURL string) error {
-	msgJSON, err := json.Marshal(msg)
+// loadConfigState loads or updates the configuration state
+func loadConfigState(state *ConfigState) error {
+	// Get current file info
+	fileInfo, err := os.Stat(state.ConfigPath)
 	if err != nil {
-		return fmt.Errorf("error marshaling message: %w", err)
+		return fmt.Errorf("error checking config file: %v", err)
 	}
 
-	parsedURL, err := url.Parse(queueURL)
-	if err != nil {
-		return fmt.Errorf("invalid queue URL: %w", err)
-	}
-
-	// Create a unique deduplication ID based on the message content and timestamp
-	deduplicationID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s-%s", msgJSON, msg.Timestamp))))
-
-	params := map[string]string{
-		"Action":                 "SendMessage",
-		"MessageBody":            string(msgJSON),
-		"Version":                "2012-11-05",
-		"MessageGroupId":         msg.VMName, // Use VM name as the group ID to maintain order per VM
-		"MessageDeduplicationId": deduplicationID,
-	}
-
-	// Use the full SQS hostname
-	host := fmt.Sprintf("sqs.%s.amazonaws.com", region)
-	headers := createSignature("POST", host, parsedURL.Path, region, accessKey, secretKey, params)
-
-	// Create form data
-	formData := url.Values{}
-	for k, v := range params {
-		formData.Set(k, v)
-	}
-
-	// Create request
-	req, err := http.NewRequest("POST", queueURL, strings.NewReader(formData.Encode()))
-	if err != nil {
-		return fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Host", host) // Explicitly set the Host header
-
-	// Send request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("error sending request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check response
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("SQS error (status %d): %s", resp.StatusCode, string(body))
+	// If this is the first load or the file has been modified
+	if state.LastModTime.IsZero() || fileInfo.ModTime().After(state.LastModTime) {
+		// Load new config
+		config := loadConfig(state.ConfigPath)
+		state.Config = config
+		state.LastModTime = fileInfo.ModTime()
+		fmt.Println("Configuration reloaded from file")
 	}
 
 	return nil
 }
 
-func getContainerID() string {
-	// Try to get container ID from /proc/self/mountinfo (works in most container runtimes)
-	if mountData, err := os.ReadFile("/proc/self/mountinfo"); err == nil {
-		lines := strings.Split(string(mountData), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "/containers/") {
-				parts := strings.Split(line, "/containers/")
-				if len(parts) > 1 {
-					containerID := strings.Split(parts[1], "/")[0]
-					if len(containerID) >= containerIDLength {
-						return containerID[:containerIDLength]
-					}
-				}
-			}
-		}
+// These functions are now implemented in internal/utils
+// Using utils package functions instead
+
+// runHTTPMode executes a single HTTP request
+func runHTTPMode(config Config) error {
+	// Validate URL
+	if config.URL == "" {
+		return fmt.Errorf("HTTP_URL environment variable is required")
 	}
 
-	// Try to get container ID from cgroup file (Docker)
-	if cgroupData, err := os.ReadFile("/proc/self/cgroup"); err == nil {
-		lines := strings.Split(string(cgroupData), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "docker") {
-				parts := strings.Split(line, "/")
-				containerID := parts[len(parts)-1]
-				if len(containerID) >= containerIDLength {
-					return containerID[:containerIDLength]
-				}
-			}
-			// Check for containerd format
-			if strings.Contains(line, "containers") {
-				parts := strings.Split(line, "/")
-				for i, part := range parts {
-					if strings.HasPrefix(part, "containers") && i+1 < len(parts) {
-						containerID := parts[i+1]
-						if len(containerID) >= containerIDLength {
-							return containerID[:containerIDLength]
-						}
-					}
-				}
-			}
-		}
+	// Create HTTP client
+	httpClient := http.New()
+
+	// Convert method string to constant
+	methodCode, err := httpClient.GetMethodConstant(config.Method)
+	if err != nil {
+		return err
 	}
 
-	// Try to get container ID from hostname (Kubernetes pods)
-	if hostname, err := os.Hostname(); err == nil {
-		// Kubernetes pod names often contain the container/pod ID
-		if strings.Contains(hostname, "-") {
-			parts := strings.Split(hostname, "-")
-			lastPart := parts[len(parts)-1]
-			if len(lastPart) >= containerIDLength {
-				return lastPart[:containerIDLength]
-			}
-		}
-		return hostname
+	// Parse headers
+	headers := utils.ParseHeaders(config.Headers)
+
+	// Make the request
+	fmt.Printf("Making %s request to %s\n", config.Method, config.URL)
+	response, err := httpClient.Request(methodCode, config.URL, headers, config.Body)
+	if err != nil {
+		return fmt.Errorf("error making request: %v", err)
 	}
 
-	return "unknown"
+	// Print response
+	fmt.Printf("Status Code: %d\n", response.StatusCode)
+	fmt.Println("Headers:")
+	for key, values := range response.Headers {
+		for _, value := range values {
+			fmt.Printf("%s: %s\n", key, value)
+		}
+	}
+	fmt.Printf("\nBody:\n%s\n", response.Body)
+
+	return nil
 }
 
-func main() {
-	// Initialize local random source
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+// This function is now implemented in internal/utils
+// Using utils.ParseHeaders instead
 
-	// Check for ENV_FILE environment variable
-	envFile := os.Getenv("ENV_FILE")
-	var envSource string
-
-	if envFile != "" {
-		// Check if the specified file exists and is readable
-		if _, err := os.Stat(envFile); err != nil {
-			fmt.Printf("Error: Specified ENV_FILE '%s' is not accessible: %v\n", envFile, err)
-			os.Exit(1)
-		}
-		// Load the specified env file
-		if err := godotenv.Load(envFile); err != nil {
-			fmt.Printf("Error loading specified env file '%s': %v\n", envFile, err)
-			os.Exit(1)
-		}
-		envSource = fmt.Sprintf("Environment loaded from specified ENV_FILE: %s", envFile)
-	} else {
-		// Try to load default .env file, but don't error if it doesn't exist
-		if err := godotenv.Load(); err != nil {
-			envSource = "Using environment variables (no .env file found)"
-		} else {
-			envSource = "Environment loaded from default .env file in current directory"
-		}
-	}
-
-	fmt.Println(envSource)
-
-	// Get environment variables
-	required := map[string]string{
-		"AWS_REGION":            os.Getenv("AWS_REGION"),
-		"AWS_ACCESS_KEY_ID":     os.Getenv("AWS_ACCESS_KEY_ID"),
-		"AWS_SECRET_ACCESS_KEY": os.Getenv("AWS_SECRET_ACCESS_KEY"),
-		"SQS_QUEUE_URL":         os.Getenv("SQS_QUEUE_URL"),
-	}
-
-	// Check for missing required variables
-	var missing []string
-	for name, value := range required {
-		if value == "" {
-			missing = append(missing, name)
-		}
-	}
-
-	if len(missing) > 0 {
-		fmt.Printf("\nMissing required environment variables in %s:\n%s\n\n",
-			strings.TrimPrefix(envSource, "Environment loaded from "),
-			strings.Join(missing, "\n"))
-		fmt.Println("Required variables:")
-		fmt.Println("- AWS_REGION")
-		fmt.Println("- AWS_ACCESS_KEY_ID")
-		fmt.Println("- AWS_SECRET_ACCESS_KEY")
-		fmt.Println("- SQS_QUEUE_URL")
-		fmt.Println("\nOptional variables:")
-		fmt.Println("- COLOR (hex color code, e.g., #4287f5)")
-		os.Exit(1)
-	}
-
-	// Get optional color variable
-	color := os.Getenv("COLOR")
-	if color == "" {
-		color = "#4287f5" // Default to a nice blue if not specified
+// runEventPusherMode sends events to SQS queue
+func runEventPusherMode(config Config) error {
+	// Validate required environment variables (if not in simulate mode)
+	if !config.Simulate && (config.AccessKey == "" || config.SecretKey == "" || config.QueueURL == "") {
+		return fmt.Errorf("missing required environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, SQS_QUEUE_URL")
 	}
 
 	// Validate color format
-	if !hexColorRegex.MatchString(color) {
-		fmt.Printf("Error: COLOR must be a valid hex color code (e.g., #4287f5), got: %s\n", color)
+	if !messages.IsValidHexColor(config.Color) {
+		return fmt.Errorf("invalid color format. Must be a 6-digit hex code with leading #")
+	}
+
+	fmt.Println("Event pusher started")
+	if config.Simulate {
+		fmt.Println("Running in SIMULATION mode (no actual SQS messages will be sent)")
+	} else {
+		fmt.Printf("Pushing events to SQS queue: %s\n", config.QueueURL)
+	}
+
+	if config.RandomOff {
+		fmt.Printf("Randomization: OFF (fixed interval of %d seconds)\n", config.MaxInterval)
+	} else {
+		fmt.Printf("Randomization: ON (random interval between 0.1 and %d seconds)\n", config.MaxInterval)
+	}
+
+	if config.MaxMessages > 0 {
+		fmt.Printf("Will send %d messages and then exit\n", config.MaxMessages)
+	} else {
+		fmt.Println("Will send messages indefinitely until stopped")
+	}
+
+	// Create message generator
+	generator := messages.NewDefaultGenerator()
+
+	// Initialize config state
+	configState := &ConfigState{
+		Config:     config,
+		ConfigPath: "config.yaml", // Default config path
+	}
+
+	// Create SQS sender with initial config
+	sqsConfig := messages.SQSConfig{
+		Region:    config.Region,
+		AccessKey: config.AccessKey,
+		SecretKey: config.SecretKey,
+		QueueURL:  config.QueueURL,
+		Simulate:  config.Simulate,
+	}
+	sender := messages.NewSQSSender(sqsConfig)
+
+	messageCount := 0
+	for {
+		// Check and reload config if needed
+		if err := loadConfigState(configState); err != nil {
+			fmt.Printf("Warning: Error checking config: %v\n", err)
+		} else {
+			// Update SQS sender with new config if needed
+			sender.UpdateConfig(messages.SQSConfig{
+				Region:    configState.Config.Region,
+				AccessKey: configState.Config.AccessKey,
+				SecretKey: configState.Config.SecretKey,
+				QueueURL:  configState.Config.QueueURL,
+				Simulate:  configState.Config.Simulate,
+			})
+		}
+
+		// Create message with current config
+		message := messages.Message{
+			VMName:      configState.Config.VMName,
+			IconName:    generator.GetRandomIcon(configState.Config.RandomOff),
+			Timestamp:   generator.GetCurrentTimestamp(),
+			Color:       configState.Config.Color,
+			ContainerID: generator.GenerateContainerID(configState.Config.RandomOff),
+		}
+
+		// Send to SQS
+		err := sender.SendMessage(message)
+		if err != nil {
+			fmt.Printf("❌ Error sending message: %v\n", err)
+		} else {
+			messageCount++
+			messageJSON, _ := json.Marshal(message)
+			fmt.Printf("✅ Successfully sent message %d: %s\n", messageCount, string(messageJSON))
+		}
+
+		// Check if we've reached the maximum number of messages
+		if configState.Config.MaxMessages > 0 && messageCount >= configState.Config.MaxMessages {
+			fmt.Printf("Sent %d messages. Exiting.\n", messageCount)
+			break
+		}
+
+		// Calculate sleep duration based on randomization settings
+		var sleepDuration time.Duration
+		if configState.Config.RandomOff {
+			// Fixed interval when randomness is off
+			sleepDuration = time.Duration(configState.Config.MaxInterval) * time.Second
+		} else {
+			// Random interval between 0.1 and max_interval_seconds
+			minDuration := 100 * time.Millisecond // 0.1 seconds
+			maxDuration := time.Duration(configState.Config.MaxInterval) * time.Second
+
+			// Calculate random duration between min and max
+			randomMillis := rand.Int63n(int64(maxDuration-minDuration)) + int64(minDuration)
+			sleepDuration = time.Duration(randomMillis)
+		}
+
+		// Sleep before next message
+		time.Sleep(sleepDuration)
+	}
+
+	return nil
+}
+
+// This function is now implemented in internal/utils
+// Using utils.DetectModeFromEnv instead
+
+// Run the application with the given configuration
+func Run(config Config) error {
+	// Determine mode to run in
+	mode := config.Mode
+	if mode == "auto" {
+		mode = utils.DetectModeFromConfig(config.URL, config.QueueURL, config.Simulate)
+	}
+
+	// Execute the appropriate mode
+	switch mode {
+	case "http":
+		return runHTTPMode(config)
+	case "event-pusher":
+		return runEventPusherMode(config)
+	default:
+		return fmt.Errorf("unknown mode: %s", mode)
+	}
+}
+
+// main is the entry point for the WebAssembly application
+func main() {
+	// Load configuration
+	config := loadConfig()
+
+	// Run the application
+	err := Run(config)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Starting message publisher...")
-	startTime := time.Now()
-
-	// Print stats every minute
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			sent := atomic.LoadUint64(&messagesSent)
-			errors := atomic.LoadUint64(&messagesError)
-			uptime := time.Since(startTime).Round(time.Second)
-
-			fmt.Printf("\n=== Stats (Uptime: %v) ===\n", uptime)
-			fmt.Printf("Messages Sent: %d\n", sent)
-			fmt.Printf("Errors: %d\n", errors)
-			fmt.Printf("Success Rate: %.2f%%\n", float64(sent)/(float64(sent+errors))*100)
-			fmt.Println("===========================")
-		}
-	}()
-
-	// Continuously send messages
-	for {
-		hostname, err := os.Hostname()
-		if err != nil {
-			hostname = "unknown"
-		}
-
-		msg := Message{
-			VMName:      hostname,
-			IconName:    GetRandomIcon(r),
-			Timestamp:   time.Now().Format(time.RFC3339),
-			Color:       color,
-			ContainerID: getContainerID(),
-		}
-
-		if err := sendSQSMessage(msg, os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("SQS_QUEUE_URL")); err != nil {
-			atomic.AddUint64(&messagesError, 1)
-			fmt.Printf("❌ Error sending message: %v\n", err)
-		} else {
-			atomic.AddUint64(&messagesSent, 1)
-			msgJSON, _ := json.Marshal(msg)
-			fmt.Printf("✅ Successfully sent message: %s\n", string(msgJSON))
-		}
-
-		sleepTime := 100 + r.Intn(2900) // 100ms to 3000ms
-		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-	}
+	os.Exit(0)
 }
