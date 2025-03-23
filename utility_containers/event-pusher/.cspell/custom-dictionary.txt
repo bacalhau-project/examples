@@ -2,6 +2,7 @@ AKIA
 bacalhau
 bacalhauproject
 configmap
+crand
 datestamp
 dedup
 DHGR
@@ -18,6 +19,7 @@ joho
 ldflags
 LEGA
 lzma
+mrand
 myconfig
 Nanotime
 nohttp

@@ -1,15 +1,15 @@
 version: "3.8"
 services:
   event-publisher:
-    image: ghcr.io/bacalhau-project/event-pusher:202503222155
+    image: ghcr.io/bacalhau-project/event-pusher:202503231414
     # Mount the .env file into the container for credentials
     environment:
       - ENV_FILE=/config/.env
     volumes:
       - ./config.yaml:/config.yaml:ro
 
-    # Run the compiled binary
-    command: ["/entrypoint.sh"]
+    # Run the entrypoint script
+    command: ["/bin/sh", "/entrypoint.sh"]
     # Always restart to keep the containers running until shutdown
     restart: always
     deploy:
