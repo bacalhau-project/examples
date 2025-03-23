@@ -2,9 +2,10 @@
 package main
 
 import (
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,12 +30,12 @@ type Config struct {
 	SecretKey   string `yaml:"secret_key"`
 	QueueURL    string `yaml:"queue_url"`
 	Color       string `yaml:"color"`
-	VMName      string `yaml:"vm_name"`
 	MaxInterval int    `yaml:"max_interval_seconds"`
 	RandomOff   bool   `yaml:"random_off"`
 	MaxMessages int    `yaml:"max_messages"`
 	Simulate    bool   `yaml:"simulate"`
 	Mode        string `yaml:"mode"`
+	VMName      string `yaml:"vm_name"`
 }
 
 // ConfigState tracks the current config and its last modification time
@@ -56,9 +57,9 @@ func loadConfig(configPath ...string) Config {
 		// Event pusher config
 		Region:      "us-west-2",
 		Color:       "#000000",
-		VMName:      "default",
 		MaxInterval: 5,
 		Mode:        "auto",
+		VMName:      "default",
 	}
 
 	// Determine which config path to use
@@ -143,9 +144,13 @@ func loadConfig(configPath ...string) Config {
 		config.Color = envVal
 		fmt.Println("Using COLOR from environment variable")
 	}
-	if envVal := os.Getenv("VM_NAME"); envVal != "" && !usingConfigFile {
+	if envVal := os.Getenv("VM_NAME"); envVal != "" {
 		config.VMName = envVal
-		fmt.Println("Using VM_NAME from environment variable")
+	} else {
+		// Generate a random 6-character hex string for the VM name
+		hexBytes := make([]byte, 3)
+		crand.Read(hexBytes)
+		config.VMName = fmt.Sprintf("vm-%x", hexBytes)
 	}
 	if envVal := os.Getenv("MODE"); envVal != "" && !usingConfigFile {
 		config.Mode = envVal
@@ -343,7 +348,7 @@ func runEventPusherMode(config Config) error {
 			maxDuration := time.Duration(configState.Config.MaxInterval) * time.Second
 
 			// Calculate random duration between min and max
-			randomMillis := rand.Int63n(int64(maxDuration-minDuration)) + int64(minDuration)
+			randomMillis := mrand.Int63n(int64(maxDuration-minDuration)) + int64(minDuration)
 			sleepDuration = time.Duration(randomMillis)
 		}
 
