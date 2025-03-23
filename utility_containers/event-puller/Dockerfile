@@ -42,18 +42,14 @@ RUN addgroup -g 1000 appuser && \
 # Set working directory
 WORKDIR /app
 
-# Copy the binary from builder
-COPY --from=builder /build/event-puller .
+# Copy the pre-built binary
+COPY bin/event-puller .
 
 # Copy static files - maintain backward compatibility
 COPY static/ ./static/
 
 # Copy the Next.js dashboard if it exists
 COPY dashboard/out/ ./dashboard/out/
-
-# Copy and set up the entrypoint script
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
 
 # Set ownership
 RUN chown -R appuser:appuser /app

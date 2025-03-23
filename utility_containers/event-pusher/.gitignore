@@ -26,3 +26,6 @@ local_debug/
 *.json
 
 config.yaml
+compute.yaml
+
+.specstory/**

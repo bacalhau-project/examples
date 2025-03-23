@@ -16,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -549,9 +548,83 @@ func main() {
 	}
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		// Direct access to model instance
+		serveWs(hub, w, r, &m)
 	})
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	
+	// First check if we have a dashboard directory, use it if it exists
+	if _, err := os.Stat("dashboard/out"); err == nil {
+		// Serve Next.js static export
+		m.addLog("Serving Next.js dashboard from dashboard/out directory")
+		http.Handle("/", http.FileServer(http.Dir("dashboard/out")))
+	} else if _, err := os.Stat("static"); err == nil {
+		// Fall back to the old static HTML if dashboard isn't built
+		m.addLog("Serving static HTML dashboard from static directory")
+		http.Handle("/", http.FileServer(http.Dir("static")))
+	} else {
+		m.addLog("No dashboard found, serving minimal status page")
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write([]byte(`
+				<html>
+					<head>
+						<title>Event Puller</title>
+						<meta http-equiv="refresh" content="5">
+						<style>
+							body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+							.status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+							.running { background-color: #d4edda; color: #155724; }
+							.error { background-color: #f8d7da; color: #721c24; }
+						</style>
+					</head>
+					<body>
+						<h1>Event Puller</h1>
+						<div class="status running">
+							<h3>Service Status: Running</h3>
+							<p>Event Puller is running but no dashboard is available.</p>
+							<p>Connect to the WebSocket API at ws://` + r.Host + `/ws</p>
+							<p>or use the Terminal UI on the server.</p>
+						</div>
+						<p>Page auto-refreshes every 5 seconds</p>
+					</body>
+				</html>
+			`))
+		})
+	}
+
+	// Handle CLI actions via HTTP for dashboard communication
+	http.HandleFunc("/api/actions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		
+		var action struct {
+			Action string `json:"action"`
+		}
+		
+		if err := json.NewDecoder(r.Body).Decode(&action); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		
+		switch action.Action {
+		case "clearQueue":
+			go clearQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(map[string]string{"status": "queue clear started"})
+		case "purgeQueue":
+			err := purgeQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "queue purged"})
+		default:
+			http.Error(w, "Unknown action", http.StatusBadRequest)
+		}
+	})
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -600,7 +673,7 @@ func loadEnvConfig() error {
 		}
 		envSource = "Environment loaded from default .env file in current directory"
 	}
-
+	
 	log.SetOutput(io.Discard)
 	log.SetFlags(0)
 
@@ -910,18 +983,8 @@ func initCosmosClient(ctx context.Context) (*azcosmos.Client, bool, error) {
 		return nil, false, fmt.Errorf("failed to create key credential: %v", err)
 	}
 	
-	clientOpts := &azcosmos.ClientOptions{
-		// Configure connection options
-		ConnectionOptions: azcosmos.ConnectionOptions{
-			MaxConnectionPoolSize: 100,  // Adjust based on expected load
-		},
-		// Add diagnostics if needed
-		Diagnostics: azcore.ClientOptions{
-			Tracing: azcore.TracingOptions{
-				TracerProvider: nil, // Add OpenTelemetry if needed
-			},
-		},
-	}
+	// Using default client options
+	clientOpts := &azcosmos.ClientOptions{}
 	
 	client, err := azcosmos.NewClientWithKey(endpoint, cred, clientOpts)
 	if err != nil {
@@ -1065,13 +1128,11 @@ func (m *model) writeCosmosBatch(messages []Message) {
 				return
 			}
 			
-			// Create the item options with partition key
-			itemOptions := &azcosmos.ItemOptions{
-				PartitionKey: azcosmos.PartitionKey{message.Region},
-			}
+			// Create the partition key
+			partitionKey := azcosmos.NewPartitionKeyString(message.Region)
 			
 			// Create the item
-			_, err = m.cosmosContainer.CreateItem(m.ctx, itemOptions, jsonData)
+			_, err = m.cosmosContainer.CreateItem(m.ctx, partitionKey, jsonData, nil)
 			if err != nil {
 				mutex.Lock()
 				errorCount++
