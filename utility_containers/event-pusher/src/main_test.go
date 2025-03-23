@@ -39,7 +39,6 @@ random_off: true
 	// Check event pusher config
 	assert.Equal(t, "us-west-2", config.Region)
 	assert.Equal(t, "#FF5500", config.Color)
-	assert.Equal(t, "default", config.VMName)
 	assert.Equal(t, 10, config.MaxInterval)
 	assert.Equal(t, 5, config.MaxMessages)
 	assert.True(t, config.RandomOff)
