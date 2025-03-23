@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,12 +28,17 @@ import (
 )
 
 const (
-	// Increased polling frequency and batch sizes
-	POLL_INTERVAL = 100 * time.Millisecond // Reduced from 500ms
-	MAX_MESSAGES  = 10                     // Maximum allowed by SQS
-	WS_BATCH_SIZE = 100                    // Increased from 50
-	NUM_WORKERS   = 5                      // Number of concurrent polling workers
-	BUFFER_SIZE   = 1000                   // Channel buffer size for message processing
+	// Default values - can be overridden by environment variables
+	DEFAULT_POLL_INTERVAL = 100 * time.Millisecond // Interval between SQS polls
+	DEFAULT_MAX_MESSAGES  = 10                     // Maximum allowed by SQS
+	DEFAULT_WS_BATCH_SIZE = 100                    // Messages to batch for websocket
+	DEFAULT_NUM_WORKERS   = 5                      // Concurrent polling workers
+	DEFAULT_BUFFER_SIZE   = 1000                   // Channel buffer size for messages
+	
+	// Retry parameters for SQS operations
+	MAX_RETRY_ATTEMPTS    = 5                      // Maximum number of retry attempts
+	INITIAL_RETRY_DELAY   = 100 * time.Millisecond // Starting delay for exponential backoff
+	MAX_RETRY_DELAY       = 5 * time.Second        // Maximum retry delay
 )
 
 type Message struct {
@@ -71,6 +77,13 @@ type model struct {
 	cosmosMessagesLock sync.Mutex
 	cosmosMessages     []Message
 	cosmosWriteTimer   *time.Timer
+	
+	// Configuration from environment
+	pollInterval      time.Duration
+	maxMessages       int64
+	wsBatchSize       int
+	numWorkers        int
+	bufferSize        int
 }
 
 type tickMsg time.Time
@@ -112,7 +125,7 @@ func (mp *messageProcessor) add(msg Message) ([]Message, bool) {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Tick(POLL_INTERVAL, func(t time.Time) tea.Msg {
+	return tea.Tick(m.pollInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -233,7 +246,7 @@ func (m model) View() string {
 }
 
 func (m *model) startMessageWorker(workerID int) {
-	mp := newMessageProcessor(WS_BATCH_SIZE, 500*time.Millisecond)
+	mp := newMessageProcessor(m.wsBatchSize, 500*time.Millisecond)
 	m.addLog("Worker %d started", workerID)
 
 	for {
@@ -242,12 +255,14 @@ func (m *model) startMessageWorker(workerID int) {
 			m.addLog("Worker %d shutting down", workerID)
 			return
 		default:
-			messages, err := receiveMessages(m.ctx, m.sqsClient, m.queueURL)
+			messages, err := receiveMessages(m.ctx, m.sqsClient, m.queueURL, m.maxMessages)
 			if err != nil {
 				if !isTransientError(err) {
 					m.addLog("Worker %d error receiving messages: %v", workerID, err)
 				}
-				time.Sleep(POLL_INTERVAL)
+				// Use exponential backoff for errors
+				backoffDuration := calculateBackoff(1, MAX_RETRY_ATTEMPTS)
+				time.Sleep(backoffDuration)
 				continue
 			}
 
@@ -277,8 +292,13 @@ func (m *model) startMessageWorker(workerID int) {
 				}
 			}
 
-			// Small sleep to prevent tight polling
-			time.Sleep(POLL_INTERVAL / 2)
+			// Small sleep to prevent tight polling, but make it adaptive
+			sleepTime := m.pollInterval / 2
+			if len(messages) == 0 {
+				// If no messages, back off slightly to reduce API calls
+				sleepTime = m.pollInterval
+			}
+			time.Sleep(sleepTime)
 		}
 	}
 }
@@ -313,7 +333,25 @@ func isTransientError(err error) bool {
 		strings.Contains(errStr, "timeout")
 }
 
-func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) ([]Message, error) {
+// calculateBackoff implements exponential backoff for retries
+func calculateBackoff(attempt, maxAttempts int) time.Duration {
+	if attempt >= maxAttempts {
+		return MAX_RETRY_DELAY
+	}
+	
+	// Add jitter to avoid thundering herd problem
+	jitter := time.Duration(rand.Int63n(100)) * time.Millisecond
+	backoff := INITIAL_RETRY_DELAY * time.Duration(1<<uint(attempt)) + jitter
+	
+	if backoff > MAX_RETRY_DELAY {
+		return MAX_RETRY_DELAY
+	}
+	
+	return backoff
+}
+
+// receiveMessages retrieves messages from SQS with retry logic
+func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string, maxMessages int64) ([]Message, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -325,7 +363,7 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(queueURL),
-		MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+		MaxNumberOfMessages: aws.Int64(maxMessages),
 		WaitTimeSeconds:     aws.Int64(0),
 		AttributeNames: []*string{
 			aws.String("All"),
@@ -340,18 +378,40 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 		input.ReceiveRequestAttemptId = aws.String(fmt.Sprintf("attempt-%d", time.Now().UnixNano()))
 	}
 
-	result, err := sqsClient.ReceiveMessage(input)
-	if err != nil {
-		if isTransientError(err) {
-			return nil, nil
+	// Use retry with exponential backoff for receiving messages
+	var result *sqs.ReceiveMessageOutput
+	var err error
+	
+	for attempt := 0; attempt < MAX_RETRY_ATTEMPTS; attempt++ {
+		result, err = sqsClient.ReceiveMessageWithContext(ctx, input)
+		if err == nil {
+			break // Success
 		}
-		return nil, fmt.Errorf("failed to receive messages: %v", err)
+		
+		if !isTransientError(err) {
+			return nil, fmt.Errorf("failed to receive messages: %v", err)
+		}
+		
+		// Only retry on transient errors
+		backoffDuration := calculateBackoff(attempt, MAX_RETRY_ATTEMPTS)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoffDuration):
+			// Continue with retry
+		}
+	}
+	
+	// If we exhausted all retries
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive messages after %d attempts: %v", MAX_RETRY_ATTEMPTS, err)
 	}
 
 	if len(result.Messages) == 0 {
 		return nil, nil
 	}
 
+	// Sort messages by sent timestamp
 	sort.Slice(result.Messages, func(i, j int) bool {
 		iTime, _ := strconv.ParseInt(*result.Messages[i].Attributes["SentTimestamp"], 10, 64)
 		jTime, _ := strconv.ParseInt(*result.Messages[j].Attributes["SentTimestamp"], 10, 64)
@@ -376,23 +436,131 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 		deleteEntries = append(deleteEntries, entry)
 	}
 
+	// Delete messages with retry logic
 	if len(deleteEntries) > 0 {
 		deleteInput := &sqs.DeleteMessageBatchInput{
 			QueueUrl: aws.String(queueURL),
 			Entries:  deleteEntries,
 		}
-		_, err := sqsClient.DeleteMessageBatch(deleteInput)
-		if err != nil {
-			log.Printf("Error batch deleting messages: %v", err)
+		
+		// Retry deletion a few times if needed
+		for attempt := 0; attempt < MAX_RETRY_ATTEMPTS; attempt++ {
+			_, err := sqsClient.DeleteMessageBatchWithContext(ctx, deleteInput)
+			if err == nil {
+				break // Success
+			}
+			
+			// Only retry on transient errors
+			if !isTransientError(err) {
+				log.Printf("Error batch deleting messages: %v", err)
+				break
+			}
+			
+			backoffDuration := calculateBackoff(attempt, MAX_RETRY_ATTEMPTS)
+			select {
+			case <-ctx.Done():
+				return messages, nil // Return messages even if deletion failed
+			case <-time.After(backoffDuration):
+				// Continue with retry
+			}
 		}
 	}
 
 	return messages, nil
 }
 
+// loadConfiguration loads and validates runtime configuration
+func loadConfiguration() (time.Duration, int64, int, int, int, error) {
+	// Load POLL_INTERVAL from environment or use default
+	pollIntervalStr := os.Getenv("POLL_INTERVAL")
+	var pollInterval time.Duration
+	if pollIntervalStr != "" {
+		var err error
+		pollInterval, err = time.ParseDuration(pollIntervalStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid POLL_INTERVAL format (e.g. 100ms, 1s): %v", err)
+		}
+		if pollInterval < 10*time.Millisecond {
+			return 0, 0, 0, 0, 0, fmt.Errorf("POLL_INTERVAL too small (min 10ms)")
+		}
+	} else {
+		pollInterval = DEFAULT_POLL_INTERVAL
+	}
+	
+	// Load MAX_MESSAGES from environment or use default
+	maxMessagesStr := os.Getenv("MAX_MESSAGES")
+	var maxMessages int64 = DEFAULT_MAX_MESSAGES
+	if maxMessagesStr != "" {
+		var err error
+		maxMessages64, err := strconv.ParseInt(maxMessagesStr, 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid MAX_MESSAGES value: %v", err)
+		}
+		if maxMessages64 < 1 || maxMessages64 > 10 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("MAX_MESSAGES must be between 1 and 10")
+		}
+		maxMessages = maxMessages64
+	}
+	
+	// Load WS_BATCH_SIZE from environment or use default
+	wsBatchSizeStr := os.Getenv("WS_BATCH_SIZE")
+	var wsBatchSize int = DEFAULT_WS_BATCH_SIZE
+	if wsBatchSizeStr != "" {
+		var err error
+		wsBatchSize, err = strconv.Atoi(wsBatchSizeStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid WS_BATCH_SIZE value: %v", err)
+		}
+		if wsBatchSize < 1 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("WS_BATCH_SIZE must be at least 1")
+		}
+	}
+	
+	// Load NUM_WORKERS from environment or use default
+	numWorkersStr := os.Getenv("NUM_WORKERS")
+	var numWorkers int = DEFAULT_NUM_WORKERS
+	if numWorkersStr != "" {
+		var err error
+		numWorkers, err = strconv.Atoi(numWorkersStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid NUM_WORKERS value: %v", err)
+		}
+		if numWorkers < 1 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("NUM_WORKERS must be at least 1")
+		}
+	}
+	
+	// Load BUFFER_SIZE from environment or use default
+	bufferSizeStr := os.Getenv("BUFFER_SIZE")
+	var bufferSize int = DEFAULT_BUFFER_SIZE
+	if bufferSizeStr != "" {
+		var err error
+		bufferSize, err = strconv.Atoi(bufferSizeStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid BUFFER_SIZE value: %v", err)
+		}
+		if bufferSize < 10 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("BUFFER_SIZE must be at least 10")
+		}
+	}
+	
+	return pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, nil
+}
+
 func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub *Hub) model {
+	// Load configuration from environment
+	pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, err := loadConfiguration()
+	if err != nil {
+		log.Printf("Warning: Error loading configuration: %v, using defaults", err)
+		pollInterval = DEFAULT_POLL_INTERVAL
+		maxMessages = DEFAULT_MAX_MESSAGES
+		wsBatchSize = DEFAULT_WS_BATCH_SIZE
+		numWorkers = DEFAULT_NUM_WORKERS
+		bufferSize = DEFAULT_BUFFER_SIZE
+	}
+
 	// Validate queue exists and permissions
-	_, err := sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
+	_, err = sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(queueURL),
 		AttributeNames: []*string{
 			aws.String("QueueArn"),
@@ -431,16 +599,26 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 		lastQueueCheck:  time.Time{},
 		maxLogs:         1000,
 		logs:            make([]string, 0, 1000),
-		messageChan:     make(chan Message, BUFFER_SIZE),
+		messageChan:     make(chan Message, bufferSize),
 		cosmosEnabled:   false,
 		cosmosBatchSize: 100,
 		cosmosMessages:  make([]Message, 0, 100),
+		
+		// Configuration
+		pollInterval:    pollInterval,
+		maxMessages:     maxMessages,
+		wsBatchSize:     wsBatchSize,
+		numWorkers:      numWorkers,
+		bufferSize:      bufferSize,
 	}
 
 	// Add initial logs
 	m.addLog("Starting SQS Queue Monitor...")
 	m.addLog("Queue URL: %s", queueURL)
 	m.addLog("Region: %s", os.Getenv("AWS_REGION"))
+	m.addLog("Configuration: poll=%v, workers=%d, maxMsg=%d, wsBatch=%d", 
+		pollInterval, numWorkers, maxMessages, wsBatchSize)
+	
 	if strings.HasSuffix(queueURL, ".fifo") {
 		m.addLog("FIFO queue detected - using FIFO-specific handling")
 	}
@@ -473,7 +651,7 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	}
 
 	// Start multiple polling workers
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		workerID := i
 		go m.startMessageWorker(workerID)
 	}
@@ -504,6 +682,9 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 }
 
 func main() {
+	// Initialize random seed for jitter
+	rand.Seed(time.Now().UnixNano())
+	
 	if err := loadEnvConfig(); err != nil {
 		log.Fatalf("\nEnvironment configuration error: %v\n", err)
 	}
@@ -776,7 +957,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -790,7 +971,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(30),
 					})
@@ -863,7 +1044,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -877,7 +1058,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(30),
 						AttributeNames: []*string{
