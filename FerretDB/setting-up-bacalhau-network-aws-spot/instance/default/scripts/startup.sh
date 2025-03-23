@@ -3,6 +3,7 @@
 set -e
 
 BACALHAU_NODE_DIR="${BACALHAU_NODE_DIR:-/bacalhau_node}"
+BACALHAU_DATA_DIR="${BACALHAU_DATA_DIR:-/bacalhau_data}"
 
 get_cloud_metadata() {
     cloud=$(cloud-init query cloud-name)
@@ -56,6 +57,9 @@ PRIVATE_IP=${PRIVATE_IP}
 INSTANCE_ID=${INSTANCE_ID}
 INSTANCE_TYPE=${INSTANCE_TYPE}
 EOF
+
+# node info accessible also to jobs via volume (i.e. to get info about environment)
+cp ${BACALHAU_NODE_DIR}/node-info ${BACALHAU_DATA_DIR}/node-info
 
 LABELS=$(awk -F= '{print $1 "=" $2}' /bacalhau_node/node-info | tr '\n' ',' | sed 's/,$//')
 

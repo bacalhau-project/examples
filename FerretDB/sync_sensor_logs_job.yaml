@@ -1,0 +1,34 @@
+Name: Synchronize sensor data to FerretDB
+Type: ops
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+        EnvironmentVariables:
+          - SCRIPT={{.code}}
+        Entrypoint:
+          - /usr/bin/bash
+        Parameters:
+          - -c
+          - |
+            echo $SCRIPT | base64 -d > /app/data/sync.py
+            chmod +x /app/data/sync.py
+            /app/data/sync.py
+    Network:
+      Type: Full
+    Resources:
+      Memory: "256mb"
+    Constraints:
+      - Key: Architecture
+        Operator: '='
+        Values:
+          - arm64
+    InputSources:
+      - Target: /app/data
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /bacalhau_data
+            readWrite: true
