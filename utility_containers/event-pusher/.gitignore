@@ -28,4 +28,8 @@ local_debug/
 config.yaml
 compute.yaml
 
-.specstory/**
+.specstory/*
+
+# Build artifacts
+build/bin/
+build/config/
