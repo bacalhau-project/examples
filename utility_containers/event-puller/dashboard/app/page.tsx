@@ -73,11 +73,12 @@ function DashboardContent() {
           setMessageCount(prev => prev + data.messages.length);
           setQueueSize(data.queue_size);
           
-          // Update VM states with new messages
+          // Update VM states with new messages - using vm_name as the unique key
           setVmStates(prevStates => {
             const updatedStates = new Map(prevStates);
             data.messages.forEach(msg => {
-              updatedStates.set(msg.container_id, msg);
+              // Use vm_name as the key instead of container_id
+              updatedStates.set(msg.vm_name, msg);
             });
             return updatedStates;
           });
@@ -139,7 +140,7 @@ function DashboardContent() {
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
         <div className="bg-white p-4 rounded shadow-md">
-          <div className="text-sm text-gray-500 mb-1">Active VMs</div>
+          <div className="text-sm text-gray-500 mb-1">Unique VMs</div>
           <div className="text-2xl font-bold">{vmStates.size}</div>
         </div>
         <div className="bg-white p-4 rounded shadow-md">
@@ -158,20 +159,20 @@ function DashboardContent() {
       
       <div className="flex-1 p-4">
         <div className="bg-white p-4 rounded shadow-md">
-          <h2 className="text-lg font-bold mb-4">Event Visualization</h2>
+          <h2 className="text-lg font-bold mb-4">Event Visualization (By VM)</h2>
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-12 gap-3">
-            {Array.from(vmStates.entries()).map(([id, vm]) => (
+            {Array.from(vmStates.entries()).map(([vmName, vm]) => (
               <div 
-                key={id}
+                key={vmName}
                 className="flex flex-col items-center justify-center p-2 border-2 rounded-lg h-24 transition-transform hover:-translate-y-1"
                 style={{ borderColor: vm.color }}
               >
                 <div className="text-2xl mb-2" style={{ color: vm.color }}>{vm.icon_name}</div>
-                <div className="text-xs font-medium text-center truncate w-full" title={`${vm.vm_name} (${id})`}>
-                  {vm.vm_name}
+                <div className="text-xs font-medium text-center truncate w-full" title={vmName}>
+                  {vmName}
                 </div>
-                <div className="text-xs text-gray-500 truncate w-full" title={id}>
-                  {id.substring(0, 8)}
+                <div className="text-xs text-gray-500 truncate w-full" title={vm.container_id}>
+                  {vm.container_id.substring(0, 8)}
                 </div>
               </div>
             ))}
