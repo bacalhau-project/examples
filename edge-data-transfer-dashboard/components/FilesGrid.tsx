@@ -26,60 +26,59 @@ interface Node {
 }
 
 // Custom hook to fetch metadata from nodes.
-const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
+const useNodeMetaData = (nodes: Node[]) => {
     const [metaData, setMetaData] = useState<{ [key: string]: string[] }>({});
 
     useEffect(() => {
         if (!nodes || nodes.length === 0) return;
 
         const fetchAllNodeMetaFiles = async () => {
-            try {
-                const metaDataAggregate: { [key: string]: string[] } = {};
-                await Promise.all(
-                    nodes.map(async (node) => {
+            const metaDataAggregate: { [key: string]: string[] } = {};
+            await Promise.all(
+                nodes.map(async (node) => {
+                    const {
+                        Info: { NodeID, Labels: { PUBLIC_IP } },
+                    } = node;
+                    if (PUBLIC_IP) {
+                        // Ustawiamy timeout na 3 sekundy.
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
                         try {
-                            const {
-                                Info: {NodeID, Labels: {PUBLIC_IP}},
-                            } = node;
-                            // Adjust the URL and port as needed.
-                            if (PUBLIC_IP) {
-                                const response = await fetch(`http://${PUBLIC_IP}:9123/process_file`, {
-                                    method: "GET",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer abrakadabra1234!@#`,
-                                    },
-                                });
-                                if (!response.ok) {
-                                    throw new Error(`Error fetching data from node ${NodeID}`);
-                                }
-                                const data = await response.json();
-                                // Assume data.files is an array of processed file names for this node.
-                                metaDataAggregate[NodeID] = data.files;
+                            const response = await fetch(`http://${PUBLIC_IP}:9123/process_file`, {
+                                method: "GET",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer abrakadabra1234!@#`,
+                                },
+                                signal: controller.signal,
+                            });
+                            clearTimeout(timeoutId);
+                            if (!response.ok) {
+                                throw new Error(`Error fetching data from node ${NodeID}`);
+                            }
+                            const data = await response.json();
+                            metaDataAggregate[NodeID] = data.files;
+                        } catch (error: any) {
+                            if (error.name === "AbortError") {
+                                console.warn(`Request to node ${NodeID} aborted due to timeout.`);
+                            } else {
+                                console.error("Error fetching metadata for node", NodeID, error);
                             }
                         }
-                        catch
-                            (error: any)
-                            {
-                                if (error.name === "AbortError") return; // Ignore abort errors
-                                console.error("Error fetching metadata for node", node.Info.NodeID, error);
-                            }
-
-                    })
-                );
-                setMetaData(metaDataAggregate);
-            } catch (error) {
-                console.error("Error aggregating metadata:", error);
-            }
+                    }
+                })
+            );
+            setMetaData(metaDataAggregate);
         };
 
         fetchAllNodeMetaFiles();
-        const intervalId = setInterval(fetchAllNodeMetaFiles, 1000);
+        const intervalId = setInterval(fetchAllNodeMetaFiles, 2000);
         return () => clearInterval(intervalId);
     }, [nodes]);
 
     return metaData;
-}
+};
 
 const FilesGrid = React.memo(function FilesGrid({
                                                     nodes,
@@ -105,7 +104,7 @@ const FilesGrid = React.memo(function FilesGrid({
             "bg-blue-500",
             "bg-green-500",
             "bg-yellow-500",
-            "bg-purple-500",
+            "bg-gray-700",
         ];
         let mapping: { [key: string]: string } = { "0": "bg-gray-200" };
         filteredNodeIDs.forEach((nodeId, i) => {
@@ -212,8 +211,8 @@ const FilesGrid = React.memo(function FilesGrid({
 
                         return (
                             <div key={nodeLabel} className="flex items-center gap-2">
-                                <div className={`h-3 w-3 ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`} />
-                                <span className="min-w-[80px]">{nodeLabel}:</span>
+                                <div className={`h-4 w-7 ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`} />
+                                <span className="min-w-[80px]">{nodeLabel === "Empty" ? 'Files to process' : nodeLabel}:</span>
                                 <div className="h-2 w-full max-w-md rounded-full bg-muted">
                                     <div
                                         className={`h-2 rounded-full ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`}
