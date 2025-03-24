@@ -1,0 +1,18 @@
+NameProvider: puuid
+
+API:
+  Port: 1234
+
+Compute:
+  Enabled: false
+  Orchestrators:
+    - "nats://b4c9bc4f-ea95-420f-9d7a-40b6d6ab4f62.us1.cloud.expanso.io:4222"
+  Auth:
+    Token: "5BTmbJXQei6V5HB2EFgdctAzz32SE3SRs4wzh9Sbfx8GUNBmjWZeaiTrq9y6CG4d"
+  TLS:
+    RequireTLS: false
+Orchestrator:
+  Enabled: true
+  Host: "0.0.0.0"
+  Port: 4222
+
