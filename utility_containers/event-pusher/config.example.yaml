@@ -1,0 +1,20 @@
+# Event Pusher Configuration File
+
+# HTTP mode configuration
+method: "GET" # HTTP method (GET, POST, PUT, DELETE)
+url: "https://example.com/api/endpoint" # HTTP URL to send requests to
+headers: "Content-Type: application/json\nAuthorization: Bearer your-token" # HTTP headers in format "Key1: Value1\nKey2: Value2"
+body: '{"key": "value"}' # HTTP request body
+
+# Event pusher mode configuration
+region: "us-east-1" # AWS region
+access_key: "AKIAXXXXXXXXXXXXXXXX" # AWS access key ID
+secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" # AWS secret access key
+queue_url: "https://sqs.region.amazonaws.com/123456789012/your-queue-name" # SQS queue URL
+color: "#4287f5" # Event color (hex code)
+vm_name: "example-vm" # Virtual machine name
+max_interval_seconds: 5 # Maximum interval between messages in seconds
+random_off: false # Disable randomization of intervals
+max_messages: 0 # Max messages to send (0 = unlimited)
+simulate: true # Simulate mode (no actual AWS API calls)
+mode: "auto" # Mode (auto, http, event-pusher)

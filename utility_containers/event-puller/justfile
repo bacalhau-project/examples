@@ -1,0 +1,109 @@
+# Event Puller justfile
+# Usage: 
+# - just build_binary           # Build the binary
+# - just run_binary             # Run the binary locally
+# - just build_container        # Build the Docker container
+# - just run_container          # Run the Docker container
+
+# Default variables
+registry := "docker.io"
+organization := "bacalhauproject"
+image_name := "event-puller"
+timestamp := `date +%Y%m%d%H%M`
+host_port := "8080"
+container_port := "8080"
+
+# Build the Go binary
+build_binary:
+    @echo "🛠️  Building event-puller binary..."
+    @mkdir -p bin
+    go build -o bin/event-puller
+    @echo "✅ Binary built at bin/event-puller"
+
+# Run the binary locally
+run_binary:
+    @echo "🚀 Running event-puller locally..."
+    just build_binary
+    @echo "📋 Press Ctrl+C to stop"
+    ./bin/event-puller
+
+# Build the dashboard and the Docker container
+build_container:
+    @echo "🔨 Building event-puller container..."
+    @# Build dashboard if Node.js is available
+    @if command -v node > /dev/null && command -v npm > /dev/null; then \
+        if [ -d "dashboard" ] && [ -f "dashboard/package.json" ]; then \
+            echo "📊 Building Next.js dashboard..."; \
+            cd dashboard && npm install && npm run build; \
+            cd ..; \
+        else \
+            echo "⚠️  Dashboard directory or package.json not found, skipping dashboard build"; \
+        fi \
+    else \
+        echo "⚠️  Node.js or npm not found, skipping dashboard build"; \
+    fi
+    
+    @# Build binary for Linux
+    @echo "🔧 Building Go binary for container..."
+    CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/event-puller
+    
+    @# Compress with UPX if available
+    @if command -v upx > /dev/null; then \
+        echo "📦 Compressing binary with UPX..."; \
+        upx --best --lzma bin/event-puller; \
+    fi
+    
+    @# Build Docker image
+    @echo "🐳 Building Docker image..."
+    docker build --platform linux/amd64 -t "{{registry}}/{{organization}}/{{image_name}}:{{timestamp}}" .
+    docker tag "{{registry}}/{{organization}}/{{image_name}}:{{timestamp}}" "{{registry}}/{{organization}}/{{image_name}}:latest"
+    @echo "✅ Container built: {{registry}}/{{organization}}/{{image_name}}:{{timestamp}}"
+    @echo "✅ Also tagged as: {{registry}}/{{organization}}/{{image_name}}:latest"
+
+# Run the container locally
+run_container: 
+    @echo "🚀 Running event-puller in container..."
+    @if ! docker image inspect {{registry}}/{{organization}}/{{image_name}}:latest >/dev/null 2>&1; then \
+        echo "❌ Container image not found. Building first..."; \
+        just build_container; \
+    fi
+    @echo "📋 Press Ctrl+C to stop"
+    @echo "📊 Dashboard will be available at http://localhost:{{host_port}}"
+    docker run --rm -p {{host_port}}:{{container_port}} \
+        -e AWS_ACCESS_KEY_ID \
+        -e AWS_SECRET_ACCESS_KEY \
+        -e AWS_REGION \
+        -e SQS_QUEUE_URL \
+        -e NUM_WORKERS \
+        -e POLL_INTERVAL \
+        -e COSMOS_ENDPOINT \
+        -e COSMOS_KEY \
+        -e COSMOS_DATABASE \
+        -e COSMOS_CONTAINER \
+        {{registry}}/{{organization}}/{{image_name}}:latest
+
+# Push the container to registry
+push_container:
+    @echo "🚢 Pushing container to registry..."
+    docker push "{{registry}}/{{organization}}/{{image_name}}:{{timestamp}}"
+    docker push "{{registry}}/{{organization}}/{{image_name}}:latest"
+    @echo "✅ Container pushed to registry"
+
+# Build the Next.js dashboard
+build_dashboard:
+    @echo "📊 Building dashboard..."
+    @if [ ! -d "dashboard" ] || [ ! -f "dashboard/package.json" ]; then \
+        echo "❌ Dashboard directory or package.json not found"; \
+        exit 1; \
+    fi
+    cd dashboard && npm install && npm run build
+    @echo "✅ Dashboard built"
+
+# Run the dashboard in development mode
+dev_dashboard:
+    @echo "🚀 Running dashboard in development mode..."
+    @if [ ! -d "dashboard" ] || [ ! -f "dashboard/package.json" ]; then \
+        echo "❌ Dashboard directory or package.json not found"; \
+        exit 1; \
+    fi
+    cd dashboard && npm install && npm run dev
