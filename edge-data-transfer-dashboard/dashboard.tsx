@@ -1,13 +1,10 @@
 "use client"
 
-import React, {useCallback, useEffect, useState} from "react"
-import {Badge} from "@/components/ui/badge"
-import {Button} from "@/components/ui/button"
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
-import {Progress} from "@/components/ui/progress"
+import React, {useEffect, useState} from "react"
+import {Card} from "@/components/ui/card"
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
-import {Database, Network, Server, Wifi,} from "lucide-react"
-import useFetchNodes, {getStatusBadge as getNodesStatusBadge, NodesList} from "@/components/NodesList"
+import {Network,} from "lucide-react"
+import useFetchNodes, {NodesList} from "@/components/NodesList"
 import {ClearMetadataButton} from "@/components/ClearMetadataButton"
 import FilesGrid from "./components/FilesGrid"
 
