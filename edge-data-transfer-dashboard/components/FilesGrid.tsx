@@ -74,9 +74,9 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
         };
 
         fetchAllNodeMetaFiles();
-        const intervalId = setInterval(fetchAllNodeMetaFiles, 3600);
+        const intervalId = setInterval(fetchAllNodeMetaFiles, 1000);
         return () => clearInterval(intervalId);
-    }, [nodes, jobRunning]);
+    }, [nodes]);
 
     return metaData;
 }
@@ -84,11 +84,9 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
 const FilesGrid = React.memo(function FilesGrid({
                                                     nodes,
                                                     files,
-                                                    jobRunning,
                                                 }: {
     nodes: Node[];
     files: string[];
-    jobRunning: boolean;
 }) {
     // 1. Build a list of real node IDs (exclude "Requester")
     const filteredNodeIDs = useMemo(() => {
@@ -122,7 +120,7 @@ const FilesGrid = React.memo(function FilesGrid({
     }, [filteredNodeIDs]);
 
     // 4. Fetch metadata from each node’s endpoint using the custom hook.
-    const metaData = useNodeMetaData(nodes, jobRunning);
+    const metaData = useNodeMetaData(nodes);
 
     // 5. Build jobs based on files and metadata.
     // For each file, we check if it exists in one of the node's metadata.
@@ -192,8 +190,6 @@ const FilesGrid = React.memo(function FilesGrid({
     // Stats Component
     // -----------------------------
     const Stats = React.memo(({ jobs, nodesList }: { jobs: Job[]; nodesList: string[] }) => {
-        // Assume an ideal distribution: each node (except "Empty") should handle 20% of all files.
-        // Calculate the expected number of jobs per node.
         const expectedPerNode = jobs.length * 0.2;
 
         return (
@@ -237,7 +233,6 @@ const FilesGrid = React.memo(function FilesGrid({
 
     return (
         <div className="space-y-6 p-4">
-            {/*{filteredNodeIDs.length > 0 && <Legend nodesList={memoizedNodes} />}*/}
             <JobGrid jobs={jobs} nodesList={memoizedNodes} />
             <Stats jobs={jobs} nodesList={memoizedNodes} />
         </div>

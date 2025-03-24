@@ -7,6 +7,7 @@ import React, { useEffect } from "react";
 import { Node } from "./Node";
 import { DisconnectButton } from "@/components/DisconnectButton";
 import { NetworkLossButton } from "@/components/NetworkLostButton";
+import {ClearMetadataButton} from "@/components/ClearMetadataButton";
 
 export const getStatusBadge = (status) => {
     switch (status) {
@@ -51,7 +52,7 @@ export default function useFetchNodes(setNodes, setLoading) {
 
         const fetchNodes = async () => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 7000);
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
             try {
                 const res = await fetch("/api/nodes", { signal: controller.signal });
@@ -73,7 +74,7 @@ export default function useFetchNodes(setNodes, setLoading) {
         };
 
         fetchNodes();
-        const intervalId = setInterval(fetchNodes, 1000);
+        const intervalId = setInterval(fetchNodes, 10000);
 
         return () => clearInterval(intervalId);
     }, [setNodes, setLoading]);
@@ -87,6 +88,7 @@ export function NodesList({ nodes, filesLength = 0 }) {
             <CardHeader className="pb-2">
                 <CardTitle>Environment Setup</CardTitle>
                 <CardDescription>Edge nodes configuration</CardDescription>
+                <ClearMetadataButton nodes={nodes} />
             </CardHeader>
             <CardContent>
                 <div className="space-y-4 w-full">

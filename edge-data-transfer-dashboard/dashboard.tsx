@@ -27,24 +27,17 @@ const HeaderComponent = React.memo(() => {
 // -----------------------------------------
 // Overview Tab Component (Memoized)
 // -----------------------------------------
-const OverviewTab = React.memo(
-    ({ nodes, files, metaData }) => {
+const OverviewTab = ({nodes, files}) => {
       return (
-          <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <NodesList nodes={nodes} filesLength={files.length}/>
               <FilesGrid
                   nodes={nodes}
                   files={files}
-                  metadata={metaData?.files}
               />
-              <Card>
-              </Card>
             </div>
-          </TabsContent>
       )
     }
-)
 
 function useFetchFiles(nodes) {
   const [files, setFiles] = useState([]);
@@ -97,7 +90,7 @@ function useFetchFiles(nodes) {
     };
 
     fetchFiles();
-    const intervalId = setInterval(fetchFiles, 10000);
+    const intervalId = setInterval(fetchFiles, 100000);
     return () => clearInterval(intervalId);
   }, [nodes, files]);
 
@@ -118,17 +111,7 @@ export default function EdgeDataTransferDashboard() {
       <div className="flex min-h-screen flex-col bg-gray-50">
         <HeaderComponent/>
         <main className="flex-1 container py-6">
-          <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <div className="flex justify-between items-center">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-              </TabsList>
-              <div className="flex items-center gap-2">
-                <ClearMetadataButton nodes={nodes} />
-              </div>
-            </div>
-            <OverviewTab nodes={nodes} files={files} metaData={{ files: [] }} />
-          </Tabs>
+            <OverviewTab nodes={nodes} files={files} />
         </main>
       </div>
   )
