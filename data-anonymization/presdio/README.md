@@ -91,12 +91,27 @@ cd bacalhau-network-setups/docker-compose/multi-region
 docker compose up -d
 ```
 
-### Get Into Jumpbox Container
+### Install the Bacalhau CLI
 
-To easily interact with the Bacalhau deployment, get into jumpbox container:
+To easily interact with the newly created Bacalhau deployment, install the Bacalhau CLI on your machine:
 
 ```shell
-docker exec -it bacalhau-multi-region-client-1 bash
+curl -sL 'https://get.bacalhau.org/install.sh' | bash
+```
+
+To verify that you are targeting the right Bacalhau deployment, run the command below. You should see a list of 7 nodes: 1 orchestrator and 6 compute nodes.
+
+```shell
+bacalhau node list
+```
+
+### Clone this repository
+
+In a separate directory, clone this repository:
+
+```shell
+git clone https://github.com/bacalhau-project/examples.git
+cd examples/data-anonymization/presdio
 ```
 
 ### Generate Fake Sensitive Data
@@ -107,7 +122,7 @@ Here we generate fake sensitive data for that will be pushed to the EU storage b
 
 ```bash
 # Generate Data in EU region data
-bacalhau job run -V Region=eu data-generator.yaml
+bacalhau job run -V Region=eu jobs/data-generator.yaml
 ```
 
 ### Anonymize The Data and Publish to US
@@ -120,7 +135,7 @@ This utilizes bacalhau to maintain data protection laws across jurisdiction.
 
 ```bash
 # Generate Data in EU region data
-bacalhau job run -V Region=eu anonymize-job.yaml
+bacalhau job run -V Region=eu jobs/anonymize-job.yaml
 ```
 
 Sample anonymized content will look like this:

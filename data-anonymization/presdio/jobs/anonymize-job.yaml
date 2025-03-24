@@ -154,7 +154,10 @@ Tasks:
             EOF
 
             python3 /app/anonymize.py
-            ls -ltrR /anonymized-output/
+            
+            # showing a sample anonymized file
+            cat /anonymized-output/compute-eu-*/data/confidential_memo_2.txt
+            ls -ltrR /anonymized-output/compute-eu-*/data
     InputSources:
       - Target: /inputs
         Source:
