@@ -31,7 +31,6 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
 
     useEffect(() => {
         if (!nodes || nodes.length === 0) return;
-        const controller = new AbortController();
 
         const fetchAllNodeMetaFiles = async () => {
             try {
@@ -40,17 +39,16 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
                     nodes.map(async (node) => {
                         try {
                             const {
-                                Info: { NodeID, NodeType, Labels: { PUBLIC_IP } },
+                                Info: {NodeID, Labels: {PUBLIC_IP}},
                             } = node;
-                            if (NodeType !== 'Requester') {
-                                // Adjust the URL and port as needed.
+                            // Adjust the URL and port as needed.
+                            if (PUBLIC_IP) {
                                 const response = await fetch(`http://${PUBLIC_IP}:9123/process_file`, {
                                     method: "GET",
                                     headers: {
                                         "Content-Type": "application/json",
                                         Authorization: `Bearer abrakadabra1234!@#`,
                                     },
-                                    signal: controller.signal,
                                 });
                                 if (!response.ok) {
                                     throw new Error(`Error fetching data from node ${NodeID}`);
@@ -59,9 +57,14 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
                                 // Assume data.files is an array of processed file names for this node.
                                 metaDataAggregate[NodeID] = data.files;
                             }
-                        } catch (error) {
-                            console.error("Error fetching metadata for node", node.Info.NodeID, error);
                         }
+                        catch
+                            (error: any)
+                            {
+                                if (error.name === "AbortError") return; // Ignore abort errors
+                                console.error("Error fetching metadata for node", node.Info.NodeID, error);
+                            }
+
                     })
                 );
                 setMetaData(metaDataAggregate);
@@ -71,16 +74,12 @@ const useNodeMetaData = (nodes: Node[], jobRunning: boolean) => {
         };
 
         fetchAllNodeMetaFiles();
-        // Poll every hour (3600000 ms); adjust if a different interval is desired.
-        const intervalId = setInterval(fetchAllNodeMetaFiles, 3600000);
-        return () => {
-            clearInterval(intervalId);
-            controller.abort();
-        };
+        const intervalId = setInterval(fetchAllNodeMetaFiles, 3600);
+        return () => clearInterval(intervalId);
     }, [nodes, jobRunning]);
 
     return metaData;
-};
+}
 
 const FilesGrid = React.memo(function FilesGrid({
                                                     nodes,
@@ -168,10 +167,10 @@ const FilesGrid = React.memo(function FilesGrid({
     // -----------------------------
     const JobGrid = React.memo(({ jobs, nodesList }: { jobs: Job[]; nodesList: string[] }) => {
         return (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(16px,1fr))] gap-1">
-                {jobs.map((job) => (
-                    <TooltipProvider key={job.id}>
-                        <Tooltip>
+            <TooltipProvider>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(16px,1fr))] gap-1">
+                    {jobs.map((job) => (
+                        <Tooltip key={job.id}>
                             <TooltipTrigger asChild>
                                 <div
                                     className={`h-4 w-4 ${nodeColorsMapping[job.nodeId]} ${
@@ -180,18 +179,12 @@ const FilesGrid = React.memo(function FilesGrid({
                                 />
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                {job.nodeId === "0" ? (
-                                    <p>Empty Square #{job.fileName}</p>
-                                ) : (
-                                    <p>
-                                        Job #{job.id} - {job.nodeId}
-                                    </p>
-                                )}
+                                    <p>{job.fileName}</p>
                             </TooltipContent>
                         </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
+                    ))}
+                </div>
+            </TooltipProvider>
         );
     });
 
@@ -199,6 +192,10 @@ const FilesGrid = React.memo(function FilesGrid({
     // Stats Component
     // -----------------------------
     const Stats = React.memo(({ jobs, nodesList }: { jobs: Job[]; nodesList: string[] }) => {
+        // Assume an ideal distribution: each node (except "Empty") should handle 20% of all files.
+        // Calculate the expected number of jobs per node.
+        const expectedPerNode = jobs.length * 0.2;
+
         return (
             <div className="rounded-lg border p-4">
                 <h3 className="mb-2 font-medium">Job Distribution Statistics</h3>
@@ -206,20 +203,30 @@ const FilesGrid = React.memo(function FilesGrid({
                     {nodesList.map((nodeLabel) => {
                         const idToCompare = nodeLabel === "Empty" ? "0" : nodeLabel;
                         const count = jobs.filter((job) => job.nodeId === idToCompare).length;
-                        const percentage = jobs.length > 0 ? ((count / jobs.length) * 100).toFixed(1) : "0";
+
+                        let progress: number;
+                        if (nodeLabel === "Empty") {
+                            // For "Empty": if there are no jobs, the progress is 100%, otherwise 0.
+                            progress = count === 0 ? 100 : 0;
+                        } else {
+                            // For other nodes, calculate the progress based on the ratio of actual jobs to expected jobs.
+                            progress = expectedPerNode > 0 ? (count / expectedPerNode) * 100 : 0;
+                            if (progress > 100) progress = 100;
+                        }
+
                         return (
                             <div key={nodeLabel} className="flex items-center gap-2">
-                                <div className={`h-3 w-3 ${nodeColorsMapping[idToCompare]}`} />
+                                <div className={`h-3 w-3 ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`} />
                                 <span className="min-w-[80px]">{nodeLabel}:</span>
                                 <div className="h-2 w-full max-w-md rounded-full bg-muted">
                                     <div
-                                        className={`h-2 rounded-full ${nodeColorsMapping[idToCompare]}`}
-                                        style={{ width: `${percentage}%` }}
+                                        className={`h-2 rounded-full ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`}
+                                        style={{ width: `${progress}%` }}
                                     />
                                 </div>
                                 <span className="text-sm text-muted-foreground">
-                  {count} jobs ({percentage}%)
-                </span>
+                                {count} jobs ({progress.toFixed(1)}%)
+                            </span>
                             </div>
                         );
                     })}
@@ -228,12 +235,9 @@ const FilesGrid = React.memo(function FilesGrid({
         );
     });
 
-    // -----------------------------
-    // Render FilesGrid with Legend, JobGrid and Stats
-    // -----------------------------
     return (
         <div className="space-y-6 p-4">
-            {filteredNodeIDs.length > 0 && <Legend nodesList={memoizedNodes} />}
+            {/*{filteredNodeIDs.length > 0 && <Legend nodesList={memoizedNodes} />}*/}
             <JobGrid jobs={jobs} nodesList={memoizedNodes} />
             <Stats jobs={jobs} nodesList={memoizedNodes} />
         </div>
