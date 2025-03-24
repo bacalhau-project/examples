@@ -101,6 +101,8 @@ run_container:
     @echo "📄 Using environment file: {{env_file}}"
     docker run --rm -p {{host_port}}:{{container_port}} \
         --env-file {{env_file}} \
+        -v $(pwd)/{{env_file}}:/app/.env \
+        -e ENV_FILE=/app/.env \
         {{registry}}/{{organization}}/{{image_name}}:latest
 
 # Push the container to registry
