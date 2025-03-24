@@ -102,36 +102,17 @@ run_container:
     @echo "📊 Dashboard will be available at http://localhost:{{host_port}}"
     @echo "📄 Using environment file: {{env_file}}"
     
-    # Create a simple shell script to extract variables correctly
-    @cat > .extract_vars.sh << 'EOF'
-    #!/bin/sh
-    ENV_FILE="$1"
-    set -a  # Auto-export all variables
-    if [ -f "$ENV_FILE" ]; then
-       . "$ENV_FILE"  # Source the env file
-    fi
-    EOF
-    @chmod +x .extract_vars.sh
-    
-    # Extract all variables from the environment file
-    @eval $(./.extract_vars.sh "{{env_file}}")
-    
     # When debug is enabled, show what we're doing
     @if [ "{{debug}}" = "true" ]; then \
         echo "🔍 Debug info:"; \
-        echo "  AWS_REGION=$${AWS_REGION}"; \
-        echo "  SQS_QUEUE_URL=$${SQS_QUEUE_URL} (truncated)"; \
-        echo "  AWS_ACCESS_KEY_ID=$${AWS_ACCESS_KEY_ID:0:5}... (truncated for security)"; \
+        cat {{env_file}} | grep -v "KEY\\|SECRET\\|PASSWORD" || true; \
         echo "  Container: {{registry}}/{{organization}}/{{image_name}}:latest"; \
         echo "  Port mapping: {{host_port}}:{{container_port}}"; \
     fi
     
-    # Run with these explicit environment variables
+    # Run the container with the env file using Docker's native support
     docker run --rm -p {{host_port}}:{{container_port}} \
-        -e AWS_ACCESS_KEY_ID="$${AWS_ACCESS_KEY_ID}" \
-        -e AWS_SECRET_ACCESS_KEY="$${AWS_SECRET_ACCESS_KEY}" \
-        -e AWS_REGION="$${AWS_REGION}" \
-        -e SQS_QUEUE_URL="$${SQS_QUEUE_URL}" \
+        --env-file {{env_file}} \
         {{registry}}/{{organization}}/{{image_name}}:latest
 
 # Push the container to registry
