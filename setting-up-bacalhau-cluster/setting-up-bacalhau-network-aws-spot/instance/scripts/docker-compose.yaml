@@ -1,0 +1,22 @@
+services:
+  bacalhau-node:
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    privileged: true
+    restart: always
+    command: ["serve", "--config", "/etc/bacalhau/config.yaml"]
+    volumes:
+      - type: bind
+        source: /bacalhau_node/config.yaml
+        target: /etc/bacalhau/config.yaml
+      - type: bind
+        source: /bacalhau_node/node-info
+        target: /etc/node-info
+      - type: bind
+        source: /bacalhau_data
+        target: /bacalhau_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:1234"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

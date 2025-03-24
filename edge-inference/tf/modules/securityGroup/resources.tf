@@ -64,6 +64,13 @@ resource "aws_security_group" "sg_1235" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 6001
+    to_port     = 6001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     App = var.app_tag
   }

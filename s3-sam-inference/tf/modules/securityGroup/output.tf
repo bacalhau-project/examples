@@ -9,3 +9,7 @@ output "sg_1234" {
 output "sg_1235" {
   value = aws_security_group.sg_1235.id
 }
+
+output "sg_6001" {
+  value = aws_security_group.sg_6001.id
+}

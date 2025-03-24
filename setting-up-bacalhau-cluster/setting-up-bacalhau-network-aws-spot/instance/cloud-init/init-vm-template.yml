@@ -1,0 +1,121 @@
+#cloud-config
+
+write_files:
+  - path: /tmp/scripts.tar.gz
+    encoding: base64
+    content: ${compressed_scripts}
+    permissions: "0600"
+
+users:
+  - name: ${username}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${public_ssh_key}
+    groups: docker
+
+package_update: true
+package_upgrade: true
+
+runcmd:
+  - mkdir -p /tmp/exs
+  - tar -xzf /tmp/scripts.tar.gz -C /tmp/exs
+  - |
+    # Remove minimal packages only if DNF is available (i.e., on Amazon Linux 2023).
+    all_packages="curl gnupg2 jq python3 python3-pip"
+    if command -v dnf >/dev/null 2>&1; then
+      dnf install --allowerasing -y $all_packages
+    elif command -v apt >/dev/null 2>&1; then
+      apt update
+      apt install -y $all_packages
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y $all_packages
+    else
+      echo "Unsupported package manager"
+      exit 1
+    fi
+
+  # Install Docker
+  - mv /tmp/exs/install-docker.sh /root/install-docker.sh
+  - chmod 755 /root/install-docker.sh
+  - /root/install-docker.sh
+
+  # Ensure the SSH directory and authorized_keys are properly set up
+  - mkdir -p /home/${username}/.ssh
+  - echo "${public_ssh_key}" > /home/${username}/.ssh/authorized_keys
+  - chown -R ${username}:${username} /home/${username}/.ssh
+  - chmod 700 /home/${username}/.ssh
+  - chmod 600 /home/${username}/.ssh/authorized_keys
+  - restorecon -R /home/${username}/.ssh || true # SELinux context if available
+
+  # Enable EC2 Instance Connect
+  - systemctl enable ec2-instance-connect
+  - systemctl start ec2-instance-connect
+
+  # Create necessary directories first
+  - mkdir -p ${bacalhau_data_dir} ${bacalhau_node_dir} /etc/bacalhau /etc/systemd/system /usr/local/bin
+
+  # Write files after directories are created
+  - mv /tmp/exs/bacalhau-startup.service /etc/systemd/system/bacalhau-startup.service
+  - mv /tmp/exs/startup.py /usr/local/bin/startup.py
+  - echo "${bacalhau_config_file}" | base64 -d > /${bacalhau_node_dir}/config.yaml
+  - mv /tmp/exs/docker-compose.yaml ${bacalhau_node_dir}/docker-compose.yaml
+
+  # Set correct permissions
+  - chmod 0600 /etc/systemd/system/bacalhau-startup.service
+  - chmod 0700 /usr/local/bin/startup.py
+  - chmod 0400 ${bacalhau_node_dir}/config.yaml
+  - chmod 0400 ${bacalhau_node_dir}/docker-compose.yaml
+  - chmod 0777 ${bacalhau_data_dir}
+
+  # Set ownership
+  - chown -R ${username}:${username} ${bacalhau_data_dir}
+  - chown -R ${username}:${username} ${bacalhau_node_dir}
+  - chown ${username}:${username} ${bacalhau_node_dir}/config.yaml
+  - chown ${username}:${username} ${bacalhau_node_dir}/docker-compose.yaml
+
+  # Add user to docker group
+  - usermod -aG docker ${username}
+
+  # Install uv globally and set permissions
+  - export HOME=/root
+  - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" HOME=/root sh
+  - chmod 755 /usr/local/bin/uv || true
+  - chown ${username}:${username} /usr/local/bin/uv || true
+
+  # Create uv cache directory for user
+  - mkdir -p /home/${username}/.cache/uv
+  - chown -R ${username}:${username} /home/${username}/.cache
+
+  # Install health check web server
+  - mv /tmp/exs/healthz-web-server.py /usr/local/bin/healthz-web-server.py
+  - chmod 755 /usr/local/bin/healthz-web-server.py
+  - chown ${username}:${username} /usr/local/bin/healthz-web-server.py
+
+  # Create a symlink without .py extension for Gunicorn
+  - ln -sf /usr/local/bin/healthz-web-server.py /usr/local/bin/healthz-web-server
+
+  # Install service
+  - mv /tmp/exs/healthz-web.service /etc/systemd/system/healthz-web.service
+  - chmod 644 /etc/systemd/system/healthz-web.service
+
+  # Configure Docker to start on boot
+  - systemctl enable docker.service
+  - systemctl enable containerd.service
+
+  # Start services
+  - systemctl daemon-reload
+  - systemctl enable docker
+  - systemctl start docker
+  - systemctl enable healthz-web.service
+  - systemctl start healthz-web.service
+  - systemctl enable bacalhau-startup.service
+  - systemctl start bacalhau-startup.service
+
+  # Run additional commands if file exists
+  - test -f /tmp/exs/additional_commands.sh && sh -c /tmp/exs/additional_commands.sh
+
+power_state:
+  mode: reboot
+  timeout: 1800
+  condition: True

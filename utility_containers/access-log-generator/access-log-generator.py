@@ -1,3 +1,18 @@
+#!/usr/bin/env uv run -s
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "faker==33.3.1",
+#     "python-dateutil==2.9.0.post0",
+#     "pytz==2024.2",
+#     "pyyaml==6.0.2",
+#     "setuptools==75.8.0",
+#     "six==1.17.0",
+#     "typing-extensions==4.12.2",
+#     "wheel==0.45.1",
+# ]
+# ///
+
 import argparse
 import base64
 import gzip
@@ -7,10 +22,10 @@ import os
 import random
 import shutil
 import sys
+import threading
 import time
 import uuid
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -187,170 +202,158 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
 
 
 # Configure separate logging streams
-def setup_logging(output_dir: Path) -> logging.Logger:
-    """Configure logging with separate streams for access and errors"""
+def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Logger]:
+    """Configure logging with rotation based on configuration"""
     try:
         # Create output directory with permissive permissions if it doesn't exist
-        if not output_dir.exists():
-            try:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                os.chmod(output_dir, 0o777)  # Make world-writable
-                print(f"✅ Created output directory: {output_dir}")
-            except Exception as e:
-                print(f"❌ Failed to create output directory {output_dir}: {e}")
-                sys.exit(1)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(output_dir, 0o755)  # rwxr-xr-x permissions
 
-        # Verify write access
-        if not os.access(output_dir, os.W_OK):
-            print(f"❌ Log directory not writable: {output_dir}")
-            try:
-                import subprocess
+        # Reset all existing loggers to avoid interference
+        for logger_name in logging.root.manager.loggerDict:
+            logger_obj = logging.getLogger(logger_name)
+            logger_obj.handlers = []
+            logger_obj.propagate = False
 
-                # Show detailed directory information
-                print("\nDirectory Details:")
-                subprocess.run(["ls", "-la", str(output_dir)], check=True)
-                print("\nCurrent Process User/Group:")
-                subprocess.run(["id"], check=True)
-            except Exception as e:
-                print(f"Could not check detailed permissions: {e}")
-            sys.exit(1)
+        # Clear root logger handlers
+        logging.root.handlers = []
 
-        # Main logger for system messages
-        logger = logging.getLogger("access_log_generator")
-        logger.setLevel(logging.INFO)
+        # Get rotation settings from config
+        rotation_config = {}
+        if config:
+            rotation_config = config.get("output", {}).get("log_rotation", {})
 
-        # Clear any existing handlers
-        for handler in logger.handlers[:]:
-            logger.removeHandler(handler)
+        rotation_enabled = rotation_config.get("enabled", True)
+        max_size_mb = rotation_config.get("max_size_mb", 1000)  # Default to 1 GB
+        when = rotation_config.get("when", "h")  # Default to hourly
+        interval = rotation_config.get("interval", 1)
+        backup_count = rotation_config.get("backup_count", 5)
+        compress = rotation_config.get("compress", True)
 
-        # Console handler for system messages
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        console_formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
-        console_handler.setFormatter(console_formatter)
-        logger.addHandler(console_handler)
+        # Convert max_size_mb to bytes
+        max_bytes = max_size_mb * 1024 * 1024 if max_size_mb > 0 else 0
 
-        # File handler for system messages
-        system_log = output_dir / "system.log"
-        file_handler = CustomRotatingHandler(
-            system_log,
-            max_bytes=100 * 1024 * 1024,  # 100MB
-            backup_count=7,
-            compress=True,
-        )
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(console_formatter)
-        logger.addHandler(file_handler)
+        # Truncate log files on startup
+        log_files = ["access.log", "error.log", "system.log"]
+        for log_file in log_files:
+            file_path = output_dir / log_file
+            # Truncate the file by opening it in write mode
+            if file_path.exists():
+                with open(file_path, "w") as f:
+                    pass  # Just open and close to truncate
 
-        # Access logger for NCSA compliant logs
-        access_logger = logging.getLogger("access")
-        access_logger.setLevel(logging.INFO)
-        for handler in access_logger.handlers[:]:
-            access_logger.removeHandler(handler)
-        access_handler = CustomRotatingHandler(
-            output_dir / "access.log",
-            max_bytes=500 * 1024 * 1024,  # 500MB
-            backup_count=7,
-            compress=True,
-        )
-        access_handler.setFormatter(logging.Formatter("%(message)s"))
-        access_logger.addHandler(access_handler)
-        access_logger.propagate = False
+        # Set up loggers with appropriate handlers based on rotation settings
+        loggers = {}
+        for logger_name, file_name in [
+            ("access", "access.log"),
+            ("error", "error.log"),
+            ("system", "system.log"),
+        ]:
+            logger = logging.getLogger(f"{logger_name}_log")
+            logger.setLevel(logging.INFO if logger_name != "error" else logging.WARNING)
+            logger.propagate = False
 
-        # Error logger for error logs
-        error_logger = logging.getLogger("error")
-        error_logger.setLevel(logging.ERROR)
-        for handler in error_logger.handlers[:]:
-            error_logger.removeHandler(handler)
-        error_handler = CustomRotatingHandler(
-            output_dir / "error.log",
-            max_bytes=100 * 1024 * 1024,  # 100MB
-            backup_count=7,
-            compress=True,
-        )
-        error_handler.setFormatter(logging.Formatter("%(message)s"))
-        error_logger.addHandler(error_handler)
-        error_logger.propagate = False
+            # Choose handler based on rotation settings
+            if rotation_enabled:
+                if max_bytes > 0:
+                    # Use size-based rotation
+                    handler = logging.handlers.RotatingFileHandler(
+                        filename=output_dir / file_name,
+                        maxBytes=max_bytes,
+                        backupCount=backup_count,
+                        encoding="utf-8",
+                    )
+                elif when:
+                    # Use time-based rotation
+                    handler = logging.handlers.TimedRotatingFileHandler(
+                        filename=output_dir / file_name,
+                        when=when,
+                        interval=interval,
+                        backupCount=backup_count,
+                        encoding="utf-8",
+                    )
+                else:
+                    # Fallback to no rotation
+                    handler = logging.FileHandler(
+                        filename=output_dir / file_name,
+                        encoding="utf-8",
+                    )
+            else:
+                # No rotation
+                handler = logging.FileHandler(
+                    filename=output_dir / file_name,
+                    encoding="utf-8",
+                )
 
-        return logger
+            logger.addHandler(handler)
+
+            # Set formatter
+            formatter = logging.Formatter(
+                "%(message)s"
+                if logger_name == "access"
+                else "%(asctime)s - %(levelname)s - %(message)s"
+            )
+            handler.setFormatter(formatter)
+
+            # Add compression if enabled
+            if (
+                compress
+                and rotation_enabled
+                and isinstance(
+                    handler,
+                    (
+                        logging.handlers.RotatingFileHandler,
+                        logging.handlers.TimedRotatingFileHandler,
+                    ),
+                )
+            ):
+                # Add compression to rotated logs
+                def namer(name):
+                    return name + ".gz"
+
+                def rotator(source, dest):
+                    with open(source, "rb") as f_in:
+                        with gzip.open(dest + ".gz", "wb") as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                    os.remove(source)
+
+                handler.namer = namer
+                handler.rotator = rotator
+
+            loggers[logger_name] = logger
+
+        # Configure root logger to use system logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        # Remove any existing handlers
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+        # Add system logger handlers to root logger
+        for handler in loggers["system"].handlers:
+            root_logger.addHandler(handler)
+
+        # Ensure immediate flushing for access log
+        for handler in loggers["access"].handlers:
+            if hasattr(handler, "stream"):
+                handler.stream.flush()
+                if hasattr(handler.stream, "reconfigure"):
+                    handler.stream.reconfigure(write_through=True)
+
+        # Log initial message to system log
+        loggers["system"].info("Logging initialized - all output directed to log files")
+
+        return loggers
 
     except Exception as e:
-        print(f"❌ Failed to setup logging: {e}")
-        import traceback
-
-        traceback.print_exc()
+        print(f"Failed to set up logging: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-class CustomRotatingHandler(TimedRotatingFileHandler):
-    """Custom log handler that combines time and size based rotation with compression"""
-
-    def __init__(
-        self,
-        filename,
-        mode="a",
-        encoding="utf-8",
-        delay=False,
-        max_bytes=100 * 1024 * 1024,
-        backup_count=7,
-        compress=True,
-    ):
-        # Initialize with daily rotation
-        super().__init__(
-            filename,
-            when="midnight",
-            interval=1,
-            backupCount=backup_count,
-            encoding=encoding,
-            delay=delay,
-        )
-        self.maxBytes = max_bytes
-        self.compress = compress
-
-        # Ensure directory exists with correct permissions
-        log_dir = Path(filename).parent
-        if not log_dir.exists():
-            log_dir.mkdir(parents=True, exist_ok=True)
-            os.chmod(log_dir, 0o777)
-
-        # Set file permissions if file exists or after it's created
-        if os.path.exists(filename):
-            os.chmod(filename, 0o666)  # World readable/writable
-        else:
-            # Create file with correct permissions
-            Path(filename).touch(mode=0o666)
-
-    def _open(self):
-        """Override _open to ensure correct permissions on new files"""
-        stream = super()._open()
-        try:
-            os.chmod(self.baseFilename, 0o666)  # World readable/writable
-        except Exception:
-            pass  # Don't fail if we can't set permissions
-        return stream
-
-    def rotate(self, source, dest):
-        """Rotate the file and compress if needed with correct permissions"""
-        if os.path.exists(source):
-            if self.compress:
-                with open(source, "rb") as f_in:
-                    with gzip.open(f"{dest}.gz", "wb") as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                os.remove(source)
-                # Set permissions on compressed file
-                os.chmod(f"{dest}.gz", 0o666)
-            else:
-                shutil.move(source, dest)
-                # Set permissions on rotated file
-                os.chmod(dest, 0o666)
-
-
 class AccessLogGenerator:
-    def __init__(self, config: Dict):
-        """Initialize generator with configuration"""
+    def __init__(self, config: Dict, loggers: Dict[str, logging.Logger]):
+        """Initialize generator with configuration and loggers"""
         self.config = config
+        self.loggers = loggers  # Store the loggers dictionary
         self.output_dir = Path(config["output"]["directory"])
         self.log_file = self.output_dir / "access.log"
         self.rate = config["output"]["rate"]
@@ -425,12 +428,11 @@ class AccessLogGenerator:
             time_range = tuple(map(int, pattern["time"].split("-")))
             self.TRAFFIC_PATTERNS[time_range] = pattern.get("multiplier", 0.1)
 
-        self._log_configuration()
-
     def _log_configuration(self) -> None:
         """Log the configuration settings"""
+        logger = self.loggers["system"]
         logger.info("Starting access log generator with configuration:")
-        logger.info(f"  Output directory: {self.output_dir}")
+        logger.info(f"  Output Directory: {self.output_dir}")
         logger.info(f"  Log file: {self.log_file}")
         logger.info(f"  Rate: {self.rate} logs/second")
         logger.info(f"  Debug mode: {'on' if self.debug else 'off'}")
@@ -649,10 +651,12 @@ class AccessLogGenerator:
                     f.write("test")
                 os.remove(test_file)
             except IOError as e:
+                logger = self.loggers["system"]
                 logger.error(f"Directory not writable: {e}")
                 raise
 
             # Log initialization info to system log instead of access log
+            logger = self.loggers["system"]
             logger.info(
                 f"Access Log Generator started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             )
@@ -662,54 +666,42 @@ class AccessLogGenerator:
             logger.info(f"Pre-warm: {'yes' if self.pre_warm else 'no'}")
 
         except Exception as e:
+            logger = self.loggers["system"]
             logger.critical(f"Initialization failed: {e}")
             sys.exit(1)
 
-    def _write_log_entry(self, entry: str) -> bool:
-        """Write log entry with error handling and retries"""
-        max_retries = 3
+    def _write_log_entry(self, entry: str, max_retries: int = 3) -> bool:
+        """Write a log entry with retry logic"""
         retry_delay = 1  # seconds
 
-        access_logger = logging.getLogger("access")
-        error_logger = logging.getLogger("error")
+        access_logger = self.loggers["access"]
+        system_logger = self.loggers["system"]
 
         for attempt in range(max_retries):
             try:
                 # Write to access log
                 if self.debug:
-                    logger.debug(f"Writing log entry: {entry.strip()}")
+                    system_logger.debug(f"Writing log entry: {entry.strip()}")
 
+                # Write the log entry to access log only
                 access_logger.info(entry.strip())
 
-                # Force flush the handlers
+                # Force immediate flush
                 for handler in access_logger.handlers:
-                    handler.flush()
+                    if hasattr(handler, "stream"):
+                        handler.stream.flush()
 
-                # If entry contains an error status code, log to error log
-                status_codes = self.config.get("status_codes", {})
-                error_codes = [
-                    str(status_codes.get("not_found", 404)),
-                    str(status_codes.get("server_error", 500)),
-                    str(status_codes.get("forbidden", 403)),
-                    str(status_codes.get("unauthorized", 401)),
-                ]
-                if any(f" {code} " in entry for code in error_codes):
-                    error_logger.error(entry.strip())
-                    for handler in error_logger.handlers:
-                        handler.flush()
+                # No longer logging HTTP errors to error.log
+                # They should only go to access.log
 
                 return True
             except Exception as e:
-                logger.warning(
+                system_logger.warning(
                     f"Failed to write log entry (attempt {attempt + 1}/{max_retries}): {e}"
                 )
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(
-                        f"Failed to write log entry after {max_retries} attempts"
-                    )
-                    return False
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+
         return False
 
     def _handle_start_state(self, session_data: Dict) -> Tuple[str, List[str]]:
@@ -732,6 +724,7 @@ class AccessLogGenerator:
         session_data["username"] = username
 
         if self.debug:
+            logger = self.loggers["system"]
             logger.debug(f"User logged in: {username}")
 
         log_entry = self._create_log_entry(
@@ -752,6 +745,7 @@ class AccessLogGenerator:
         next_state = random.choices(possible_states, weights=weights)[0]
 
         if self.debug:
+            logger = self.loggers["system"]
             logger.debug(f"Login -> {next_state}")
 
         return next_state, [log_entry]
@@ -889,6 +883,7 @@ class AccessLogGenerator:
 
                 for log_entry in log_entries:
                     if not self._write_log_entry(log_entry):
+                        logger = self.loggers["system"]
                         logger.warning("Attempting to recover from write failure...")
                         time.sleep(5)
                         try:
@@ -920,6 +915,7 @@ class AccessLogGenerator:
     def _pre_warm_traffic(self) -> None:
         """Simulate 24 hours of traffic with error handling"""
         try:
+            logger = self.loggers["system"]
             logger.info("Pre-warming with 24 hours of simulated traffic...")
             entries_buffer = []  # Buffer for batch writing
             BUFFER_SIZE = 1000  # Flush every 1000 entries
@@ -968,18 +964,17 @@ class AccessLogGenerator:
 
     def _batch_write_entries(self, entries: List[str]) -> None:
         """Write multiple log entries efficiently"""
-        access_logger = logging.getLogger("access")
-        error_logger = logging.getLogger("error")
+        access_logger = self.loggers["access"]
+        system_logger = self.loggers["system"]
 
-        # Write all entries at once
-        access_logger.info("\n".join(e.strip() for e in entries))
+        # Write all entries to access log only
+        for entry in entries:
+            access_logger.info(entry.strip())
 
-        # Write error entries if any
-        error_entries = [
-            e for e in entries if any(f" {code} " in e for code in self.error_codes)
-        ]
-        if error_entries:
-            error_logger.error("\n".join(e.strip() for e in error_entries))
+        # Force flush after batch
+        for handler in access_logger.handlers:
+            if hasattr(handler, "stream"):
+                handler.stream.flush()
 
     def generate_user_session(self) -> Generator[Tuple[str, List[str]], None, None]:
         """Generate a complete user session using state machine"""
@@ -1010,12 +1005,16 @@ class AccessLogGenerator:
                     current_state = next_state
 
     def run(self) -> None:
-        """Main generator loop with precise rate control"""
+        """Run the log generator"""
         try:
             self._initialize_log_file()
-            logger.info(
+            system_logger = self.loggers["system"]
+            system_logger.info(
                 f"Starting log generation. Logs will be written to: {self.log_file}"
             )
+
+            # Start disk space monitoring
+            self.monitor_disk_space(self.output_dir)
 
             if self.pre_warm:
                 self._pre_warm_traffic()
@@ -1043,7 +1042,7 @@ class AccessLogGenerator:
 
                     # Log rate every 10 seconds
                     if int(now) % 10 == 0:
-                        logger.info(
+                        system_logger.info(
                             f"Current rate: {current_rate:.1f} logs/sec, "
                             f"Active sessions: {len(session_generators)}"
                         )
@@ -1055,11 +1054,94 @@ class AccessLogGenerator:
                 time.sleep(max(0, 1.0 / current_rate - 0.001))
 
         except KeyboardInterrupt:
-            logger.info("Shutting down...")
+            system_logger.info("Shutting down...")
         except Exception as e:
-            logger.error(f"Error: {e}")
-            logger.exception("Full traceback:")
+            system_logger.error(f"Error: {e}")
+            system_logger.exception("Full traceback:")
             sys.exit(1)
+
+    def monitor_disk_space(
+        self, output_dir: Path, min_free_gb: float = 1.0, check_interval: int = 300
+    ):
+        """
+        Monitor disk space and delete oldest log files if free space falls below threshold.
+
+        Args:
+            output_dir: Directory containing log files
+            min_free_gb: Minimum free space in GB
+            check_interval: Check interval in seconds (default: 300 = 5 minutes)
+        """
+
+        def _check_disk_space():
+            while True:
+                try:
+                    # Get disk usage statistics
+                    disk_usage = shutil.disk_usage(output_dir)
+                    free_gb = disk_usage.free / (
+                        1024 * 1024 * 1024
+                    )  # Convert bytes to GB
+
+                    # Log current disk space
+                    logger = self.loggers["system"]
+                    logger.info(f"Disk space monitor: {free_gb:.2f}GB free")
+
+                    # If free space is below threshold, delete oldest log files
+                    if free_gb < min_free_gb:
+                        logger.warning(
+                            f"Low disk space: {free_gb:.2f}GB free, need {min_free_gb}GB"
+                        )
+
+                        # Get all log files in the directory
+                        log_files = []
+                        for ext in [".log", ".log.*", ".gz"]:
+                            log_files.extend(output_dir.glob(f"*{ext}"))
+
+                        # Sort by modification time (oldest first)
+                        log_files.sort(key=lambda x: x.stat().st_mtime)
+
+                        # Delete oldest files until we have enough space or no more files
+                        for log_file in log_files:
+                            if free_gb >= min_free_gb:
+                                break
+
+                            file_size_gb = log_file.stat().st_size / (
+                                1024 * 1024 * 1024
+                            )
+                            logger.warning(
+                                f"Deleting old log file: {log_file} ({file_size_gb:.2f}GB)"
+                            )
+
+                            try:
+                                log_file.unlink()
+                                free_gb += file_size_gb
+                            except Exception as e:
+                                logger.error(f"Failed to delete {log_file}: {e}")
+
+                        # Check if we've freed up enough space
+                        disk_usage = shutil.disk_usage(output_dir)
+                        free_gb = disk_usage.free / (1024 * 1024 * 1024)
+                        logger.info(f"After cleanup: {free_gb:.2f}GB free")
+
+                        if free_gb < min_free_gb:
+                            logger.error(
+                                f"Still low on disk space after cleanup: {free_gb:.2f}GB free"
+                            )
+
+                except Exception as e:
+                    logger = self.loggers["system"]
+                    logger.error(f"Error in disk space monitor: {e}")
+
+                # Sleep for the specified interval
+                time.sleep(check_interval)
+
+        # Start the monitoring thread
+        monitor_thread = threading.Thread(target=_check_disk_space, daemon=True)
+        monitor_thread.start()
+        system_logger = self.loggers["system"]
+        system_logger.info(
+            f"Disk space monitor started (min: {min_free_gb}GB, interval: {check_interval}s)"
+        )
+        return monitor_thread
 
 
 def main():
@@ -1076,21 +1158,36 @@ def main():
         help="Override the log directory specified in config",
     )
 
+    parser.add_argument(
+        "--exit",
+        action="store_true",
+        help="Exit immediately - used just for pre-caching dependencies",
+    )
+
     args = parser.parse_args()
+
+    if args.exit:
+        print("Exiting...")
+        return
 
     # Check if we have environment variables for config
     if (
         os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64") is None
         and os.environ.get("LOG_GENERATOR_CONFIG_YAML") is None
     ):
-        # If no environment variables, require config file
-        if args.config is None:
+        # If no environment variables with content, check for path environment variable
+        config_path_env = os.environ.get("LOG_GENERATOR_CONFIG_PATH")
+        if config_path_env:
+            config_path = Path(config_path_env)
+            print(f"Using configuration from LOG_GENERATOR_CONFIG_PATH: {config_path}")
+        elif args.config is None:
             parser.error(
                 "Configuration file is required when not using environment variables"
             )
-        config_path = Path(args.config)
+        else:
+            config_path = Path(args.config)
     else:
-        # Use dummy path when using environment variables
+        # Use dummy path when using environment variables with content
         config_path = Path("dummy_path")
 
     config = load_config(config_path)
@@ -1100,11 +1197,11 @@ def main():
         print(f"Overriding log directory with: {args.log_dir_override}")
         config["output"]["directory"] = args.log_dir_override
 
-    # Initialize logging with possibly overridden directory
-    global logger  # Make logger global
-    logger = setup_logging(Path(config["output"]["directory"]))
+    # Initialize logging with possibly overridden directory and rotation settings
+    loggers = setup_logging(Path(config["output"]["directory"]), config)
 
-    generator = AccessLogGenerator(config)
+    # Pass loggers to the generator
+    generator = AccessLogGenerator(config, loggers)
     generator.run()
 
 

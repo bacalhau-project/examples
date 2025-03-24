@@ -56,6 +56,29 @@ resource "aws_security_group" "sg_1235" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    App = var.app_tag
+  }
+}
+
+resource "aws_security_group" "sg_6001" {
+  name   = "sg_6001"
+  vpc_id = var.vpc_id
+
+
+  ingress {
+    from_port   = 6001
+    to_port     = 6001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0

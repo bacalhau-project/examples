@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/charmbracelet/bubbles/table"
@@ -26,39 +28,62 @@ import (
 )
 
 const (
-	// Increased polling frequency and batch sizes
-	POLL_INTERVAL = 100 * time.Millisecond // Reduced from 500ms
-	MAX_MESSAGES  = 10                     // Maximum allowed by SQS
-	WS_BATCH_SIZE = 100                    // Increased from 50
-	NUM_WORKERS   = 5                      // Number of concurrent polling workers
-	BUFFER_SIZE   = 1000                   // Channel buffer size for message processing
+	// Default values - can be overridden by environment variables
+	DEFAULT_POLL_INTERVAL = 100 * time.Millisecond // Interval between SQS polls
+	DEFAULT_MAX_MESSAGES  = 10                     // Maximum allowed by SQS
+	DEFAULT_WS_BATCH_SIZE = 100                    // Messages to batch for websocket
+	DEFAULT_NUM_WORKERS   = 5                      // Concurrent polling workers
+	DEFAULT_BUFFER_SIZE   = 1000                   // Channel buffer size for messages
+	
+	// Retry parameters for SQS operations
+	MAX_RETRY_ATTEMPTS    = 5                      // Maximum number of retry attempts
+	INITIAL_RETRY_DELAY   = 100 * time.Millisecond // Starting delay for exponential backoff
+	MAX_RETRY_DELAY       = 5 * time.Second        // Maximum retry delay
 )
 
 type Message struct {
+	Id          string `json:"id,omitempty"`          // Used for Cosmos DB
 	VMName      string `json:"vm_name"`
 	ContainerID string `json:"container_id"`
 	IconName    string `json:"icon_name"`
 	Color       string `json:"color"`
 	Timestamp   string `json:"timestamp"`
+	Region      string `json:"region,omitempty"`      // Used for Cosmos DB partitioning
+	Type        string `json:"type,omitempty"`        // Document type for Cosmos DB
+	EventTime   int64  `json:"event_time,omitempty"`  // Unix timestamp for sorting
 }
 
 type model struct {
-	table            table.Model
-	lastPoll         time.Time
-	queueURL         string
-	queueSize        int64
-	totalProcessed   uint64
-	messages         []Message
-	hub              *Hub
-	showConfirmClear bool
-	sqsClient        *sqs.SQS
-	ctx              context.Context
-	cancel           context.CancelFunc
-	lastQueueCheck   time.Time
-	logs             []string
-	maxLogs          int
-	messageChan      chan Message
-	updateLock       sync.Mutex
+	table              table.Model
+	lastPoll           time.Time
+	queueURL           string
+	queueSize          int64
+	totalProcessed     uint64
+	messages           []Message
+	hub                *Hub
+	showConfirmClear   bool
+	sqsClient          *sqs.SQS
+	ctx                context.Context
+	cancel             context.CancelFunc
+	lastQueueCheck     time.Time
+	logs               []string
+	maxLogs            int
+	messageChan        chan Message
+	updateLock         sync.Mutex
+	cosmosClient       *azcosmos.Client
+	cosmosContainer    *azcosmos.ContainerClient
+	cosmosBatchSize    int
+	cosmosEnabled      bool
+	cosmosMessagesLock sync.Mutex
+	cosmosMessages     []Message
+	cosmosWriteTimer   *time.Timer
+	
+	// Configuration from environment
+	pollInterval      time.Duration
+	maxMessages       int64
+	wsBatchSize       int
+	numWorkers        int
+	bufferSize        int
 }
 
 type tickMsg time.Time
@@ -100,7 +125,7 @@ func (mp *messageProcessor) add(msg Message) ([]Message, bool) {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Tick(POLL_INTERVAL, func(t time.Time) tea.Msg {
+	return tea.Tick(m.pollInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -169,13 +194,28 @@ func (m model) View() string {
 			"  Messages Processed: %d\n"+
 			"  Last Poll: %s\n"+
 			"  Queue URL: %s\n"+
-			"  Region: %s\n\n",
+			"  Region: %s\n",
 		m.queueSize,
 		m.totalProcessed,
 		m.lastPoll.Format("15:04:05.000"),
 		m.queueURL,
 		os.Getenv("AWS_REGION"),
 	))
+	
+	if m.cosmosEnabled {
+		s.WriteString(fmt.Sprintf(
+			"Cosmos DB Status:\n"+
+				"  Status: Connected\n"+
+				"  Database: %s\n"+
+				"  Container: %s\n"+
+				"  Batch Size: %d\n\n",
+			os.Getenv("COSMOS_DATABASE"),
+			os.Getenv("COSMOS_CONTAINER"),
+			m.cosmosBatchSize,
+		))
+	} else {
+		s.WriteString("\nCosmos DB: Not configured\n\n")
+	}
 
 	if len(m.messages) > 0 {
 		s.WriteString(fmt.Sprintf("Recent Messages (%d):\n", len(m.messages)))
@@ -206,7 +246,7 @@ func (m model) View() string {
 }
 
 func (m *model) startMessageWorker(workerID int) {
-	mp := newMessageProcessor(WS_BATCH_SIZE, 500*time.Millisecond)
+	mp := newMessageProcessor(m.wsBatchSize, 500*time.Millisecond)
 	m.addLog("Worker %d started", workerID)
 
 	for {
@@ -215,12 +255,14 @@ func (m *model) startMessageWorker(workerID int) {
 			m.addLog("Worker %d shutting down", workerID)
 			return
 		default:
-			messages, err := receiveMessages(m.ctx, m.sqsClient, m.queueURL)
+			messages, err := receiveMessages(m.ctx, m.sqsClient, m.queueURL, m.maxMessages)
 			if err != nil {
 				if !isTransientError(err) {
 					m.addLog("Worker %d error receiving messages: %v", workerID, err)
 				}
-				time.Sleep(POLL_INTERVAL)
+				// Use exponential backoff for errors
+				backoffDuration := calculateBackoff(1, MAX_RETRY_ATTEMPTS)
+				time.Sleep(backoffDuration)
 				continue
 			}
 
@@ -234,6 +276,12 @@ func (m *model) startMessageWorker(workerID int) {
 
 				// Process messages in batches for efficient updates
 				for _, msg := range messages {
+					// Send to Cosmos DB if enabled
+					if m.cosmosEnabled {
+						m.addMessageToCosmosBatch(msg)
+					}
+					
+					// Send to WebSocket UI
 					if batch, shouldUpdate := mp.add(msg); shouldUpdate {
 						if err := m.sendWebSocketUpdate(batch); err != nil {
 							m.addLog("Error sending websocket update: %v", err)
@@ -244,8 +292,13 @@ func (m *model) startMessageWorker(workerID int) {
 				}
 			}
 
-			// Small sleep to prevent tight polling
-			time.Sleep(POLL_INTERVAL / 2)
+			// Small sleep to prevent tight polling, but make it adaptive
+			sleepTime := m.pollInterval / 2
+			if len(messages) == 0 {
+				// If no messages, back off slightly to reduce API calls
+				sleepTime = m.pollInterval
+			}
+			time.Sleep(sleepTime)
 		}
 	}
 }
@@ -280,7 +333,25 @@ func isTransientError(err error) bool {
 		strings.Contains(errStr, "timeout")
 }
 
-func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) ([]Message, error) {
+// calculateBackoff implements exponential backoff for retries
+func calculateBackoff(attempt, maxAttempts int) time.Duration {
+	if attempt >= maxAttempts {
+		return MAX_RETRY_DELAY
+	}
+	
+	// Add jitter to avoid thundering herd problem
+	jitter := time.Duration(rand.Int63n(100)) * time.Millisecond
+	backoff := INITIAL_RETRY_DELAY * time.Duration(1<<uint(attempt)) + jitter
+	
+	if backoff > MAX_RETRY_DELAY {
+		return MAX_RETRY_DELAY
+	}
+	
+	return backoff
+}
+
+// receiveMessages retrieves messages from SQS with retry logic
+func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string, maxMessages int64) ([]Message, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -292,7 +363,7 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(queueURL),
-		MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+		MaxNumberOfMessages: aws.Int64(maxMessages),
 		WaitTimeSeconds:     aws.Int64(0),
 		AttributeNames: []*string{
 			aws.String("All"),
@@ -307,18 +378,40 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 		input.ReceiveRequestAttemptId = aws.String(fmt.Sprintf("attempt-%d", time.Now().UnixNano()))
 	}
 
-	result, err := sqsClient.ReceiveMessage(input)
-	if err != nil {
-		if isTransientError(err) {
-			return nil, nil
+	// Use retry with exponential backoff for receiving messages
+	var result *sqs.ReceiveMessageOutput
+	var err error
+	
+	for attempt := 0; attempt < MAX_RETRY_ATTEMPTS; attempt++ {
+		result, err = sqsClient.ReceiveMessageWithContext(ctx, input)
+		if err == nil {
+			break // Success
 		}
-		return nil, fmt.Errorf("failed to receive messages: %v", err)
+		
+		if !isTransientError(err) {
+			return nil, fmt.Errorf("failed to receive messages: %v", err)
+		}
+		
+		// Only retry on transient errors
+		backoffDuration := calculateBackoff(attempt, MAX_RETRY_ATTEMPTS)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoffDuration):
+			// Continue with retry
+		}
+	}
+	
+	// If we exhausted all retries
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive messages after %d attempts: %v", MAX_RETRY_ATTEMPTS, err)
 	}
 
 	if len(result.Messages) == 0 {
 		return nil, nil
 	}
 
+	// Sort messages by sent timestamp
 	sort.Slice(result.Messages, func(i, j int) bool {
 		iTime, _ := strconv.ParseInt(*result.Messages[i].Attributes["SentTimestamp"], 10, 64)
 		jTime, _ := strconv.ParseInt(*result.Messages[j].Attributes["SentTimestamp"], 10, 64)
@@ -343,23 +436,131 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string) (
 		deleteEntries = append(deleteEntries, entry)
 	}
 
+	// Delete messages with retry logic
 	if len(deleteEntries) > 0 {
 		deleteInput := &sqs.DeleteMessageBatchInput{
 			QueueUrl: aws.String(queueURL),
 			Entries:  deleteEntries,
 		}
-		_, err := sqsClient.DeleteMessageBatch(deleteInput)
-		if err != nil {
-			log.Printf("Error batch deleting messages: %v", err)
+		
+		// Retry deletion a few times if needed
+		for attempt := 0; attempt < MAX_RETRY_ATTEMPTS; attempt++ {
+			_, err := sqsClient.DeleteMessageBatchWithContext(ctx, deleteInput)
+			if err == nil {
+				break // Success
+			}
+			
+			// Only retry on transient errors
+			if !isTransientError(err) {
+				log.Printf("Error batch deleting messages: %v", err)
+				break
+			}
+			
+			backoffDuration := calculateBackoff(attempt, MAX_RETRY_ATTEMPTS)
+			select {
+			case <-ctx.Done():
+				return messages, nil // Return messages even if deletion failed
+			case <-time.After(backoffDuration):
+				// Continue with retry
+			}
 		}
 	}
 
 	return messages, nil
 }
 
+// loadConfiguration loads and validates runtime configuration
+func loadConfiguration() (time.Duration, int64, int, int, int, error) {
+	// Load POLL_INTERVAL from environment or use default
+	pollIntervalStr := os.Getenv("POLL_INTERVAL")
+	var pollInterval time.Duration
+	if pollIntervalStr != "" {
+		var err error
+		pollInterval, err = time.ParseDuration(pollIntervalStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid POLL_INTERVAL format (e.g. 100ms, 1s): %v", err)
+		}
+		if pollInterval < 10*time.Millisecond {
+			return 0, 0, 0, 0, 0, fmt.Errorf("POLL_INTERVAL too small (min 10ms)")
+		}
+	} else {
+		pollInterval = DEFAULT_POLL_INTERVAL
+	}
+	
+	// Load MAX_MESSAGES from environment or use default
+	maxMessagesStr := os.Getenv("MAX_MESSAGES")
+	var maxMessages int64 = DEFAULT_MAX_MESSAGES
+	if maxMessagesStr != "" {
+		var err error
+		maxMessages64, err := strconv.ParseInt(maxMessagesStr, 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid MAX_MESSAGES value: %v", err)
+		}
+		if maxMessages64 < 1 || maxMessages64 > 10 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("MAX_MESSAGES must be between 1 and 10")
+		}
+		maxMessages = maxMessages64
+	}
+	
+	// Load WS_BATCH_SIZE from environment or use default
+	wsBatchSizeStr := os.Getenv("WS_BATCH_SIZE")
+	var wsBatchSize int = DEFAULT_WS_BATCH_SIZE
+	if wsBatchSizeStr != "" {
+		var err error
+		wsBatchSize, err = strconv.Atoi(wsBatchSizeStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid WS_BATCH_SIZE value: %v", err)
+		}
+		if wsBatchSize < 1 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("WS_BATCH_SIZE must be at least 1")
+		}
+	}
+	
+	// Load NUM_WORKERS from environment or use default
+	numWorkersStr := os.Getenv("NUM_WORKERS")
+	var numWorkers int = DEFAULT_NUM_WORKERS
+	if numWorkersStr != "" {
+		var err error
+		numWorkers, err = strconv.Atoi(numWorkersStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid NUM_WORKERS value: %v", err)
+		}
+		if numWorkers < 1 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("NUM_WORKERS must be at least 1")
+		}
+	}
+	
+	// Load BUFFER_SIZE from environment or use default
+	bufferSizeStr := os.Getenv("BUFFER_SIZE")
+	var bufferSize int = DEFAULT_BUFFER_SIZE
+	if bufferSizeStr != "" {
+		var err error
+		bufferSize, err = strconv.Atoi(bufferSizeStr)
+		if err != nil {
+			return 0, 0, 0, 0, 0, fmt.Errorf("invalid BUFFER_SIZE value: %v", err)
+		}
+		if bufferSize < 10 {
+			return 0, 0, 0, 0, 0, fmt.Errorf("BUFFER_SIZE must be at least 10")
+		}
+	}
+	
+	return pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, nil
+}
+
 func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub *Hub) model {
+	// Load configuration from environment
+	pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, err := loadConfiguration()
+	if err != nil {
+		log.Printf("Warning: Error loading configuration: %v, using defaults", err)
+		pollInterval = DEFAULT_POLL_INTERVAL
+		maxMessages = DEFAULT_MAX_MESSAGES
+		wsBatchSize = DEFAULT_WS_BATCH_SIZE
+		numWorkers = DEFAULT_NUM_WORKERS
+		bufferSize = DEFAULT_BUFFER_SIZE
+	}
+
 	// Validate queue exists and permissions
-	_, err := sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
+	_, err = sqsClient.GetQueueAttributes(&sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(queueURL),
 		AttributeNames: []*string{
 			aws.String("QueueArn"),
@@ -388,40 +589,102 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 
 	modelCtx, cancel := context.WithCancel(ctx)
 	m := model{
-		table:          t,
-		queueURL:       queueURL,
-		hub:            hub,
-		lastPoll:       time.Now(),
-		sqsClient:      sqsClient,
-		ctx:            modelCtx,
-		cancel:         cancel,
-		lastQueueCheck: time.Time{},
-		maxLogs:        1000,
-		logs:           make([]string, 0, 1000),
-		messageChan:    make(chan Message, BUFFER_SIZE),
+		table:           t,
+		queueURL:        queueURL,
+		hub:             hub,
+		lastPoll:        time.Now(),
+		sqsClient:       sqsClient,
+		ctx:             modelCtx,
+		cancel:          cancel,
+		lastQueueCheck:  time.Time{},
+		maxLogs:         1000,
+		logs:            make([]string, 0, 1000),
+		messageChan:     make(chan Message, bufferSize),
+		cosmosEnabled:   false,
+		cosmosBatchSize: 100,
+		cosmosMessages:  make([]Message, 0, 100),
+		
+		// Configuration
+		pollInterval:    pollInterval,
+		maxMessages:     maxMessages,
+		wsBatchSize:     wsBatchSize,
+		numWorkers:      numWorkers,
+		bufferSize:      bufferSize,
 	}
 
 	// Add initial logs
 	m.addLog("Starting SQS Queue Monitor...")
 	m.addLog("Queue URL: %s", queueURL)
 	m.addLog("Region: %s", os.Getenv("AWS_REGION"))
+	m.addLog("Configuration: poll=%v, workers=%d, maxMsg=%d, wsBatch=%d", 
+		pollInterval, numWorkers, maxMessages, wsBatchSize)
+	
 	if strings.HasSuffix(queueURL, ".fifo") {
 		m.addLog("FIFO queue detected - using FIFO-specific handling")
 	}
+	
+	// Initialize Cosmos DB client if config is provided
+	if client, enabled, err := initCosmosClient(modelCtx); err != nil {
+		m.addLog("Failed to initialize Cosmos DB client: %v", err)
+	} else if enabled {
+		m.cosmosClient = client
+		m.cosmosEnabled = true
+		m.addLog("Cosmos DB client initialized successfully")
+		
+		// Get container
+		if container, err := getCosmosContainer(client, modelCtx); err != nil {
+			m.addLog("Failed to get Cosmos DB container: %v", err)
+			m.cosmosEnabled = false
+		} else {
+			m.cosmosContainer = container
+			m.addLog("Connected to Cosmos DB container %s in database %s",
+				os.Getenv("COSMOS_CONTAINER"), os.Getenv("COSMOS_DATABASE"))
+		}
+	}
+	
+	// Set batch size from environment if provided
+	if batchSizeStr := os.Getenv("COSMOS_BATCH_SIZE"); batchSizeStr != "" {
+		if batchSize, err := strconv.Atoi(batchSizeStr); err == nil && batchSize > 0 {
+			m.cosmosBatchSize = batchSize
+			m.addLog("Cosmos DB batch size set to %d", batchSize)
+		}
+	}
 
 	// Start multiple polling workers
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		workerID := i
 		go m.startMessageWorker(workerID)
 	}
 
 	// Start background queue size checker
 	go m.backgroundQueueSizeChecker()
+	
+	// Start a background goroutine to periodically flush cosmos messages
+	if m.cosmosEnabled {
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			
+			for {
+				select {
+				case <-modelCtx.Done():
+					// Flush any remaining messages before shutdown
+					m.flushCosmosBatch()
+					return
+				case <-ticker.C:
+					m.flushCosmosBatch()
+				}
+			}
+		}()
+	}
 
 	return m
 }
 
 func main() {
+	// Initialize random seed for jitter
+	rand.Seed(time.Now().UnixNano())
+	
 	if err := loadEnvConfig(); err != nil {
 		log.Fatalf("\nEnvironment configuration error: %v\n", err)
 	}
@@ -466,9 +729,83 @@ func main() {
 	}
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		// Direct access to model instance
+		serveWs(hub, w, r, &m)
 	})
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	
+	// First check if we have a dashboard directory, use it if it exists
+	if _, err := os.Stat("dashboard/out"); err == nil {
+		// Serve Next.js static export
+		m.addLog("Serving Next.js dashboard from dashboard/out directory")
+		http.Handle("/", http.FileServer(http.Dir("dashboard/out")))
+	} else if _, err := os.Stat("static"); err == nil {
+		// Fall back to the old static HTML if dashboard isn't built
+		m.addLog("Serving static HTML dashboard from static directory")
+		http.Handle("/", http.FileServer(http.Dir("static")))
+	} else {
+		m.addLog("No dashboard found, serving minimal status page")
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write([]byte(`
+				<html>
+					<head>
+						<title>Event Puller</title>
+						<meta http-equiv="refresh" content="5">
+						<style>
+							body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+							.status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+							.running { background-color: #d4edda; color: #155724; }
+							.error { background-color: #f8d7da; color: #721c24; }
+						</style>
+					</head>
+					<body>
+						<h1>Event Puller</h1>
+						<div class="status running">
+							<h3>Service Status: Running</h3>
+							<p>Event Puller is running but no dashboard is available.</p>
+							<p>Connect to the WebSocket API at ws://` + r.Host + `/ws</p>
+							<p>or use the Terminal UI on the server.</p>
+						</div>
+						<p>Page auto-refreshes every 5 seconds</p>
+					</body>
+				</html>
+			`))
+		})
+	}
+
+	// Handle CLI actions via HTTP for dashboard communication
+	http.HandleFunc("/api/actions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		
+		var action struct {
+			Action string `json:"action"`
+		}
+		
+		if err := json.NewDecoder(r.Body).Decode(&action); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		
+		switch action.Action {
+		case "clearQueue":
+			go clearQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(map[string]string{"status": "queue clear started"})
+		case "purgeQueue":
+			err := purgeQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "queue purged"})
+		default:
+			http.Error(w, "Unknown action", http.StatusBadRequest)
+		}
+	})
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -517,7 +854,7 @@ func loadEnvConfig() error {
 		}
 		envSource = "Environment loaded from default .env file in current directory"
 	}
-
+	
 	log.SetOutput(io.Discard)
 	log.SetFlags(0)
 
@@ -534,6 +871,14 @@ func loadEnvConfig() error {
 		return fmt.Errorf("\nMissing required environment variables in %s:\n%s\n\nPlease ensure all required variables are set in your environment file",
 			strings.TrimPrefix(envSource, "Environment loaded from "),
 			strings.Join(missing, "\n"))
+	}
+	
+	// Check if Cosmos DB is enabled
+	if os.Getenv("COSMOS_ENDPOINT") != "" && os.Getenv("COSMOS_KEY") != "" && 
+	   os.Getenv("COSMOS_DATABASE") != "" && os.Getenv("COSMOS_CONTAINER") != "" {
+		log.Println("Cosmos DB integration enabled")
+	} else {
+		log.Println("Cosmos DB integration disabled. Set COSMOS_ENDPOINT, COSMOS_KEY, COSMOS_DATABASE, and COSMOS_CONTAINER to enable")
 	}
 
 	return nil
@@ -612,7 +957,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -626,7 +971,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(30),
 					})
@@ -699,7 +1044,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -713,7 +1058,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(30),
 						AttributeNames: []*string{
@@ -803,4 +1148,189 @@ func (m *model) addLog(format string, args ...interface{}) {
 	if len(m.logs) > m.maxLogs {
 		m.logs = m.logs[1:]
 	}
+}
+
+// Initialize Cosmos DB client
+func initCosmosClient(ctx context.Context) (*azcosmos.Client, bool, error) {
+	endpoint := os.Getenv("COSMOS_ENDPOINT")
+	key := os.Getenv("COSMOS_KEY")
+	
+	if endpoint == "" || key == "" {
+		return nil, false, nil
+	}
+	
+	cred, err := azcosmos.NewKeyCredential(key)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create key credential: %v", err)
+	}
+	
+	// Using default client options
+	clientOpts := &azcosmos.ClientOptions{}
+	
+	client, err := azcosmos.NewClientWithKey(endpoint, cred, clientOpts)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create cosmos client: %v", err)
+	}
+	
+	return client, true, nil
+}
+
+// Get a container client for Cosmos DB
+func getCosmosContainer(client *azcosmos.Client, ctx context.Context) (*azcosmos.ContainerClient, error) {
+	databaseName := os.Getenv("COSMOS_DATABASE")
+	containerName := os.Getenv("COSMOS_CONTAINER")
+	
+	if databaseName == "" || containerName == "" {
+		return nil, fmt.Errorf("COSMOS_DATABASE and COSMOS_CONTAINER must be set")
+	}
+	
+	database, err := client.NewDatabase(databaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database: %v", err)
+	}
+	
+	container, err := database.NewContainer(containerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container: %v", err)
+	}
+	
+	return container, nil
+}
+
+// addMessageToCosmosBatch adds a message to the batch for Cosmos DB
+func (m *model) addMessageToCosmosBatch(msg Message) {
+	if !m.cosmosEnabled {
+		return
+	}
+	
+	// Add unique ID and timestamp for Cosmos if not present
+	if msg.Id == "" {
+		msg.Id = fmt.Sprintf("%s-%s-%d", msg.ContainerID, msg.VMName, time.Now().UnixNano())
+	}
+	
+	if msg.EventTime == 0 {
+		msg.EventTime = time.Now().UnixNano()
+	}
+	
+	// Set the type and region for partitioning
+	msg.Type = "event"
+	
+	// Use Azure region if available, otherwise default to "unknown"
+	if msg.Region == "" {
+		msg.Region = os.Getenv("AZURE_REGION")
+		if msg.Region == "" {
+			msg.Region = "unknown"
+		}
+	}
+	
+	m.cosmosMessagesLock.Lock()
+	defer m.cosmosMessagesLock.Unlock()
+	
+	m.cosmosMessages = append(m.cosmosMessages, msg)
+	
+	// If batch size threshold is reached, trigger immediate write
+	if len(m.cosmosMessages) >= m.cosmosBatchSize {
+		// Reset timer
+		if m.cosmosWriteTimer != nil {
+			m.cosmosWriteTimer.Stop()
+		}
+		
+		// Make a copy of the batch
+		batchToWrite := make([]Message, len(m.cosmosMessages))
+		copy(batchToWrite, m.cosmosMessages)
+		m.cosmosMessages = nil
+		
+		// Write the batch asynchronously
+		go m.writeCosmosBatch(batchToWrite)
+	} else if m.cosmosWriteTimer == nil && len(m.cosmosMessages) > 0 {
+		// Start timer for a delayed write if not already running
+		m.cosmosWriteTimer = time.AfterFunc(2*time.Second, func() {
+			m.flushCosmosBatch()
+		})
+	}
+}
+
+// flushCosmosBatch writes any pending messages to Cosmos DB
+func (m *model) flushCosmosBatch() {
+	m.cosmosMessagesLock.Lock()
+	
+	if len(m.cosmosMessages) == 0 {
+		m.cosmosMessagesLock.Unlock()
+		return
+	}
+	
+	// Make a copy of the batch
+	batchToWrite := make([]Message, len(m.cosmosMessages))
+	copy(batchToWrite, m.cosmosMessages)
+	m.cosmosMessages = nil
+	
+	// Reset timer
+	if m.cosmosWriteTimer != nil {
+		m.cosmosWriteTimer.Stop()
+		m.cosmosWriteTimer = nil
+	}
+	
+	m.cosmosMessagesLock.Unlock()
+	
+	// Write the batch
+	go m.writeCosmosBatch(batchToWrite)
+}
+
+// writeCosmosBatch writes a batch of messages to Cosmos DB
+func (m *model) writeCosmosBatch(messages []Message) {
+	if !m.cosmosEnabled || m.cosmosContainer == nil || len(messages) == 0 {
+		return
+	}
+	
+	startTime := time.Now()
+	m.addLog("Writing batch of %d messages to Cosmos DB", len(messages))
+	
+	var successCount, errorCount int
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+	// Use a semaphore to limit concurrent writes
+	semaphore := make(chan struct{}, 10)
+	
+	for _, msg := range messages {
+		wg.Add(1)
+		semaphore <- struct{}{} // Acquire semaphore slot
+		
+		go func(message Message) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Release semaphore slot
+			
+			// Convert message to JSON
+			jsonData, err := json.Marshal(message)
+			if err != nil {
+				mutex.Lock()
+				errorCount++
+				mutex.Unlock()
+				m.addLog("Error marshaling message: %v", err)
+				return
+			}
+			
+			// Create the partition key
+			partitionKey := azcosmos.NewPartitionKeyString(message.Region)
+			
+			// Create the item
+			_, err = m.cosmosContainer.CreateItem(m.ctx, partitionKey, jsonData, nil)
+			if err != nil {
+				mutex.Lock()
+				errorCount++
+				mutex.Unlock()
+				m.addLog("Error writing to Cosmos DB: %v", err)
+				return
+			}
+			
+			mutex.Lock()
+			successCount++
+			mutex.Unlock()
+		}(msg)
+	}
+	
+	wg.Wait()
+	
+	duration := time.Since(startTime)
+	m.addLog("Cosmos DB write complete: %d successful, %d failed in %v", 
+		successCount, errorCount, duration)
 }

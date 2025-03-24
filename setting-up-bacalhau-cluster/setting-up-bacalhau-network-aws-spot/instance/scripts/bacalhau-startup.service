@@ -1,0 +1,17 @@
+[Unit]
+Description=Bacalhau Startup Script
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=BACALHAU_DATA_DIR=/bacalhau_data
+Environment=BACALHAU_NODE_DIR=/bacalhau_node
+ExecStart=uv run -s /usr/local/bin/startup.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

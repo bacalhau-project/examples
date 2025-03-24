@@ -1,0 +1,38 @@
+Tasks:
+  - Engine:
+      Params:
+        Image: ghcr.io/bacalhau-project/postgres-uploader:202502261946
+        WorkingDirectory: ""
+        Entrypoint:
+          - /bin/bash
+          - -c
+          - |
+            echo "$CONFIG_FILE_B64" | base64 -d > /tmp/config.yaml && \
+            echo "$PYTHON_FILE_B64" | base64 -d > /tmp/process.py && \
+            uv run -s /tmp/process.py
+        EnvironmentVariables:
+          - CONFIG_PATH=/tmp/config.yaml
+          - CONFIG_FILE_B64={{ .config_file_b64 }}
+          - INPUT_FILE=/var/log/app/access.log
+          - CHUNK_SIZE=500000
+          - PYTHON_FILE_B64={{ .python_file_b64 }}
+      Type: docker
+    Name: postgres-log-uploader
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/bacalhau_data"
+            ReadWrite: true
+        Target: "/var/log/app"
+    Publisher:
+      Type: "local"
+      Params:
+        TargetPath: "/bacalhau_data"
+    Network:
+      Type: Full
+    Resources:
+      CPU: 500m
+      Memory: 1500Mi
+    Timeouts: {}
+Type: ops

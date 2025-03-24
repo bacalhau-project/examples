@@ -20,121 +20,121 @@ spec:
     singular: bacalhaujob
   scope: Namespaced
   versions:
-  - additionalPrinterColumns:
-    - description: ID of the BacalhauJob
-      jsonPath: .status.jobID
-      name: JobID
-      type: string
-    - description: Last time the status was checked
-      jsonPath: .status.lastPolled
-      name: LastPolled
-      type: string
-    - description: Latest status of the BacalhauJob
-      jsonPath: .status.jobState
-      name: JobState
-      type: string
-    - description: Is BacalhauJob in its terminated state
-      jsonPath: .status.terminated
-      name: Terminated
-      type: boolean
-    name: v1
-    schema:
-      openAPIV3Schema:
-        description: BacalhauJob is the Schema for the jobs API
-        properties:
-          apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-            type: string
-          executions:
-            items:
+    - additionalPrinterColumns:
+        - description: ID of the BacalhauJob
+          jsonPath: .status.jobID
+          name: JobID
+          type: string
+        - description: Last time the status was checked
+          jsonPath: .status.lastPolled
+          name: LastPolled
+          type: string
+        - description: Latest status of the BacalhauJob
+          jsonPath: .status.jobState
+          name: JobState
+          type: string
+        - description: Is BacalhauJob in its terminated state
+          jsonPath: .status.terminated
+          name: Terminated
+          type: boolean
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: BacalhauJob is the Schema for the jobs API
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            executions:
+              items:
+                properties:
+                  id:
+                    type: string
+                  logs:
+                    items:
+                      type: string
+                    type: array
+                  stderror:
+                    type: string
+                  stdoutput:
+                    type: string
+                type: object
+              type: array
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
               properties:
-                id:
-                  type: string
-                logs:
+                constraints:
+                  items:
+                    properties:
+                      key:
+                        type: string
+                      operator:
+                        type: string
+                      values:
+                        items:
+                          type: string
+                        type: array
+                    required:
+                      - key
+                      - operator
+                    type: object
+                  type: array
+                count:
+                  type: integer
+                entrypoint:
                   items:
                     type: string
                   type: array
-                stderror:
+                image:
                   type: string
-                stdoutput:
+                type:
                   type: string
               type: object
-            type: array
-          kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-            type: string
-          metadata:
-            type: object
-          spec:
-            properties:
-              constraints:
-                items:
-                  properties:
-                    key:
-                      type: string
-                    operator:
-                      type: string
-                    values:
-                      items:
+            status:
+              description: BacalhauJobStatus defines the observed state of BacalhauJob
+              properties:
+                executions:
+                  items:
+                    properties:
+                      id:
                         type: string
-                      type: array
-                  required:
-                  - key
-                  - operator
-                  type: object
-                type: array
-              count:
-                type: integer
-              entrypoint:
-                items:
+                      logs:
+                        items:
+                          type: string
+                        type: array
+                      stderror:
+                        type: string
+                      stdoutput:
+                        type: string
+                    type: object
+                  type: array
+                jobID:
                   type: string
-                type: array
-              image:
-                type: string
-              type:
-                type: string
-            type: object
-          status:
-            description: BacalhauJobStatus defines the observed state of BacalhauJob
-            properties:
-              executions:
-                items:
-                  properties:
-                    id:
-                      type: string
-                    logs:
-                      items:
-                        type: string
-                      type: array
-                    stderror:
-                      type: string
-                    stdoutput:
-                      type: string
-                  type: object
-                type: array
-              jobID:
-                type: string
-              jobState:
-                type: string
-              lastPolled:
-                type: string
-              terminated:
-                type: boolean
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+                jobState:
+                  type: string
+                lastPolled:
+                  type: string
+                terminated:
+                  type: boolean
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -147,97 +147,97 @@ kind: ClusterRole
 metadata:
   name: bacalhau-leader-election-role
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: bacalhau-manager-role
 rules:
-- apiGroups:
-  - core.bacalhau.org
-  resources:
-  - bacalhaujobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - core.bacalhau.org
-  resources:
-  - bacalhaujobs/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - core.bacalhau.org
-  resources:
-  - bacalhaujobs/status
-  verbs:
-  - get
-  - patch
-  - update
+  - apiGroups:
+      - core.bacalhau.org
+    resources:
+      - bacalhaujobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - core.bacalhau.org
+    resources:
+      - bacalhaujobs/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - core.bacalhau.org
+    resources:
+      - bacalhaujobs/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: bacalhau-metrics-reader
 rules:
-- nonResourceURLs:
-  - /metrics
-  verbs:
-  - get
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: bacalhau-proxy-role
 rules:
-- apiGroups:
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups:
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -248,9 +248,9 @@ roleRef:
   kind: ClusterRole
   name: bacalhau-leader-election-role
 subjects:
-- kind: ServiceAccount
-  name: bacalhau-controller-manager
-  namespace: bacalhau-system
+  - kind: ServiceAccount
+    name: bacalhau-controller-manager
+    namespace: bacalhau-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -261,9 +261,9 @@ roleRef:
   kind: ClusterRole
   name: bacalhau-manager-role
 subjects:
-- kind: ServiceAccount
-  name: bacalhau-controller-manager
-  namespace: bacalhau-system
+  - kind: ServiceAccount
+    name: bacalhau-controller-manager
+    namespace: bacalhau-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -274,9 +274,9 @@ roleRef:
   kind: ClusterRole
   name: bacalhau-proxy-role
 subjects:
-- kind: ServiceAccount
-  name: bacalhau-controller-manager
-  namespace: bacalhau-system
+  - kind: ServiceAccount
+    name: bacalhau-controller-manager
+    namespace: bacalhau-system
 ---
 apiVersion: v1
 data:
@@ -315,10 +315,10 @@ metadata:
   namespace: bacalhau-system
 spec:
   ports:
-  - name: https
-    port: 8443
-    protocol: TCP
-    targetPort: https
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: https
   selector:
     control-plane: controller-manager
 ---
@@ -340,50 +340,50 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-      - args:
-        - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
-        - --leader-elect
-        command:
-        - /manager
-        envFrom:
-        - configMapRef:
-            name: bacalhau-api-config
-        image: kdrezewski/bacalhau-job-controller:0.1.0
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        name: job-controller
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 200m
-            memory: 100Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-          protocol: TCP
+        - args:
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address=127.0.0.1:8080
+            - --leader-elect
+          command:
+            - /manager
+          envFrom:
+            - configMapRef:
+                name: bacalhau-api-config
+          image: kdrezewski/bacalhau-job-controller:0.1.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          name: job-controller
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 200m
+              memory: 100Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+        - args:
+            - --secure-listen-address=0.0.0.0:8443
+            - --upstream=http://127.0.0.1:8080/
+            - --logtostderr=true
+            - --v=10
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+          name: kube-rbac-proxy
+          ports:
+            - containerPort: 8443
+              name: https
+              protocol: TCP
       securityContext:
         runAsNonRoot: true
       serviceAccountName: bacalhau-controller-manager

@@ -10,8 +10,8 @@ variable "subnet_cidr" {
 
 variable "auto_subnets" {
   description = "When true GCP will automatically create subnetworks"
-  type    = bool
-  default = true
+  type        = bool
+  default     = true
 }
 
 //
@@ -20,7 +20,7 @@ variable "auto_subnets" {
 variable "egress_tcp_ports" {
   description = "List of TCP ports for egress rules"
   type        = list(string)
-  default     = [
+  default = [
     // Libp2p
     "4001", // ipfs
     "1235", // bacalhau
@@ -31,9 +31,9 @@ variable "egress_tcp_ports" {
 variable "egress_udp_ports" {
   description = "List of UDP ports for egress rules"
   type        = list(string)
-  default     = [
+  default = [
     // HTTP(s)
-    "80",   // webui & otel (TODO switch to HTTPS)
+    "80", // webui & otel (TODO switch to HTTPS)
     "443",
     // ipfs daemon
     "4001",
@@ -55,11 +55,11 @@ variable "egress_source_ranges" {
 variable "ingress_tcp_ports" {
   description = "List of TCP ports for ingress rules"
   type        = list(string)
-  default     = [
+  default = [
     // SSH
     "22",
     // HTTP(s)
-    "80",   // webui & otel (TODO switch to HTTPS)
+    "80", // webui & otel (TODO switch to HTTPS)
     "443",
     // ipfs daemon
     "4001",
@@ -67,6 +67,8 @@ variable "ingress_tcp_ports" {
     "1235",
     // API
     "1234",
+    // Download
+    "6001",
     // Metrics
     "13133",
     "55679",
@@ -82,7 +84,7 @@ variable "ingress_tcp_ports" {
 variable "ingress_udp_ports" {
   description = "List of UDP ports for ingress rules"
   type        = list(string)
-  default     = [
+  default = [
     // Libp2p
     // ipfs daemon
     "4001",

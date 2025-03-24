@@ -1,124 +1,177 @@
-<div align="center">
-  <h1>Fermyon Spin</h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/static/image/logo-dark.png">
-    <img alt="spin logo" src="./docs/static/image/logo.png" width="300" height="128">
-  </picture>
-  <p>Spin is a framework for building, deploying, and running fast, secure, and composable cloud microservices with WebAssembly.</p>
-      <a href="https://github.com/fermyon/spin/actions/workflows/build.yml"><img src="https://github.com/fermyon/spin/actions/workflows/build.yml/badge.svg" alt="build status" /></a>
-      <a href="https://discord.gg/eGN8saYqCk"><img alt="Discord" src="https://img.shields.io/discord/926888690310053918?label=Discord"></a>
-</div>
+# Event Puller
 
-## What is Spin?
+A high-performance SQS queue monitor and visualization tool with Cosmos DB integration.
 
-Spin is an open source framework for building and running fast, secure, and
-composable cloud microservices with WebAssembly. It aims to be the easiest way
-to get started with WebAssembly microservices, and takes advantage of the latest
-developments in the
-[WebAssembly component model](https://github.com/WebAssembly/component-model)
-and [Wasmtime](https://wasmtime.dev/) runtime.
+## 🚀 Features
 
-Spin offers a simple CLI that helps you create, distribute, and execute
-applications, and in the next sections we will learn more about Spin
-applications and how to get started.
+- Real-time processing of AWS SQS queue messages
+- Optimized multi-worker processing for high throughput
+- Terminal UI for server-side monitoring
+- Web dashboard with real-time updates via WebSockets
+- Azure Cosmos DB integration for persistent storage
+- Support for both standard and FIFO SQS queues
+- Batch operations for efficient message handling
+- Docker container support for easy deployment
 
-## Getting started
+## 🛠️ Installation
 
-See the [Install Spin](https://developer.fermyon.com/spin/install) page of the [Spin documentation](https://developer.fermyon.com/spin/index) for a detailed
-guide on installing and configuring Spin, but in short run the following commands:
-```bash
-curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash
-sudo mv ./spin /usr/local/bin/spin
-```
+### Prerequisites
 
-Alternatively, you could [build Spin from source](https://developer.fermyon.com/spin/contributing/).
+- Go 1.20 or higher
+- AWS Account with SQS queue
+- Azure Cosmos DB account (optional)
+- Docker (optional, for containerized deployment)
 
-To get started writing apps, follow the [quickstart guide](https://developer.fermyon.com/spin/quickstart/),
-and then follow the
-[Rust](https://developer.fermyon.com/spin/rust-components/), [JavaScript](https://developer.fermyon.com/spin/javascript-components), [Python](https://developer.fermyon.com/spin/python-components), or [Go](https://developer.fermyon.com/spin/go-components/)
-language guides, and the [guide on writing Spin applications](https://developer.fermyon.com/spin/configuration/).
+### Building from Source
 
-## Usage
-Below is an example of using the `spin` CLI to create a new Spin application.  To run the example you will need to install the `wasm32-wasi` target for Rust.
+Clone the repository and build the application:
 
 ```bash
-$ rustup target add wasm32-wasi
+# Clone the repository
+git clone https://github.com/bacalhau-project/bacalhau-examples.git
+cd bacalhau-examples/utility_containers/event-puller
+
+# Build the binary
+go build -o bin/event-puller
+
+# Run the application
+./bin/event-puller
 ```
 
-First, run the `spin new` command to create a Spin application from a template.
-```bash
-# Create a new Spin application named 'hello-rust' based on the Rust http template, accepting all defaults
-$ spin new --accept-defaults -t http-rust hello-rust
-```
-Running the `spin new` command created a `hello-rust` directory with all the necessary files for your application. Change to the `hello-rust` directory and build the application with `spin build`, then run it locally with `spin up`:
-
-```bash
-# Compile to Wasm by executing the `build` command.
-$ spin build
-Executing the build command for component hello-rust: cargo build --target wasm32-wasi --release
-    Finished release [optimized] target(s) in 0.03s
-Successfully ran the build command for the Spin components.
-
-# Run the application locally.
-$ spin up
-Logging component stdio to ".spin/logs/"
-
-Serving http://127.0.0.1:3000
-Available Routes:
-  hello-rust: http://127.0.0.1:3000 (wildcard)
-```
-
-That's it! Now that the application is running, use your browser or cURL in another shell to try it out:
+### Using Docker
 
 ```bash
-# Send a request to the application.
-$ curl -i 127.0.0.1:3000
-HTTP/1.1 200 OK
-foo: bar
-content-length: 14
-date: Thu, 13 Apr 2023 17:47:24 GMT
+# Pull the latest image
+docker pull bacalhauproject/event-puller:latest
 
-Hello, Fermyon         
+# Run with your environment variables
+docker run -p 8080:8080 \
+  -e AWS_ACCESS_KEY_ID=your_key \
+  -e AWS_SECRET_ACCESS_KEY=your_secret \
+  -e AWS_REGION=your_region \
+  -e SQS_QUEUE_URL=your_queue_url \
+  bacalhauproject/event-puller:latest
 ```
-You can make the app do more by editting the `src/lib.rs` file in the `hello-rust` directory using your favorite editor or IDE. To learn more about writing Spin applications see [Writing Applications](https://developer.fermyon.com/spin/writing-apps) in the Spin documentation.  To learn how to publish and distribute your application see the [Publishing and Distribution](https://developer.fermyon.com/spin/distributing-apps) guide in the Spin documentation.
 
-For more information on the cli commands and subcommands see the [CLI Reference](https://developer.fermyon.com/common/cli-reference).
+## ⚙️ Configuration
 
-## Language Support for Spin Features
+### Environment Variables
 
-The table below summarizes the [feature support](https://developer.fermyon.com/spin/language-support-overview) in each of the language SDKs.
+Create a `.env` file with the following variables:
 
-| Feature | Rust SDK Supported? | TypeScript SDK Supported? | Python SDK Supported? | Tiny Go SDK Supported? | C# SDK Supported? |
-|-----|-----|-----|-----|-----|-----|
-| **Triggers** |
-| [HTTP](https://developer.fermyon.com/spin/http-trigger) | Supported | Supported | Supported | Supported | Supported |
-| [Redis](https://developer.fermyon.com/spin/redis-trigger) | Supported | Not Supported | Supported | Supported | Not Supported |
-| **APIs** |
-| [Outbound HTTP](https://developer.fermyon.com/spin/rust-components.md#sending-outbound-http-requests) | Supported | Supported | Supported | Supported | Supported |
-| [Configuration Variables](https://developer.fermyon.com/spin/variables) | Supported | Supported | Supported | Supported | Supported |
-| [Key Value Storage](https://developer.fermyon.com/spin/kv-store-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| [SQLite Storage](https://developer.fermyon.com/spin/sqlite-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| [MySQL](https://developer.fermyon.com/spin/rdbms-storage#using-mysql-and-postgresql-from-applications) | Supported | Supported | Not Supported | Supported | Not Supported |
-| [PostgreSQL](https://developer.fermyon.com/spin/rdbms-storage#using-mysql-and-postgresql-from-applications) | Supported | Supported | Not Supported | Supported | Supported |
-| [Outbound Redis](https://developer.fermyon.com/spin/rust-components.md#storing-data-in-redis-from-rust-components) | Supported | Supported | Supported | Supported | Supported |
-| [Serverless AI](https://developer.fermyon.com/spin/serverless-ai-api-guide) | Supported | Supported | Supported | Supported | Not Supported |
-| **Extensibility** |
-| [Authoring Custom Triggers](https://developer.fermyon.com/spin/extending-and-embedding) | Supported | Not Supported | Not Supported | Not Supported | Not Supported |
+```env
+# Required AWS Variables
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=us-east-1
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789012/your-queue
 
-## Getting Involved and Contributing
+# Optional Cosmos DB Variables
+COSMOS_ENDPOINT=https://your-account.documents.azure.com:443/
+COSMOS_KEY=your_cosmos_key
+COSMOS_DATABASE=your_database_name
+COSMOS_CONTAINER=your_container_name
+COSMOS_BATCH_SIZE=100
+AZURE_REGION=eastus
+```
 
-We are delighted that you are interested in making Spin better! Thank you!
+### Building the Dashboard
 
-Each Monday at 2:30om UTC and 9:00pm UTC (alternating), we meet to discuss Spin issues, roadmap, and ideas in our Spin Project Meetings. Subscribe to this [Google Calendar](https://calendar.google.com/calendar/u/1?cid=c3Bpbi5tYWludGFpbmVyc0BnbWFpbC5jb20) for meeting dates.
+The application includes a Next.js dashboard for visualization:
 
-The [Spin Project Meeting agenda](https://docs.google.com/document/d/1EG392gb8Eg-1ZEPDy18pgFZvMMrdAEybpCSufFXoe00/edit?usp=sharing) is a public document. The document contains a rolling agenda with the date and time of each meeting, the Zoom link, and topics of discussion for the day. You will also find the meeting minutes for each meeting and the link to the recording. If you have something you would like to demo or discuss at the project meeting, we encourage you to add it to the agenda.
+```bash
+# Navigate to the dashboard directory
+cd dashboard
 
-You can find the contributing guide [here](https://developer.fermyon.com/spin/contributing).
+# Install dependencies
+npm install
 
-Fermyon also hosts a Discord server, where we discuss anything Spin: [Discord server](https://discord.gg/eGN8saYqCk).
+# Build for production
+npm run build
+```
 
-## Stay in Touch
-Follow us on Twitter: [@spinframework](https://twitter.com/spinframework)
+## 🔍 Known Issues and Troubleshooting
 
-You can join the Spin community in our [Discord server](https://discord.gg/eGN8saYqCk) where you can ask questions, get help, and show off the cool things you are doing with Spin!
+### SQS Message Processing Issues
 
+**Issue**: Messages aren't being pulled from the SQS queue correctly or processing is slow.
+
+**Diagnosis**:
+1. Check AWS credentials and permissions
+2. Look for errors in the logs related to SQS connectivity
+3. Examine POLL_INTERVAL and NUM_WORKERS configuration
+4. Verify the queue URL is correctly formatted and accessible
+
+**Solution**:
+- Ensure AWS credentials have `sqs:ReceiveMessage`, `sqs:DeleteMessage`, and `sqs:GetQueueAttributes` permissions
+- Increase `NUM_WORKERS` (line 35 in main.go) for higher throughput
+- Add exponential backoff for transient errors
+- Implement better error handling and retry logic
+
+### Cosmos DB Integration Issues
+
+**Issue**: Events aren't being stored in Cosmos DB.
+
+**Diagnosis**:
+1. Check if Cosmos DB integration is enabled in logs
+2. Verify database and container exist
+3. Test connection with the Azure portal
+
+**Solution**:
+- Ensure all Cosmos DB environment variables are set
+- Verify container has the right partition key (typically `/region`)
+- Check `flushCosmosBatch` function for error handling
+- Try adjusting batch size with `COSMOS_BATCH_SIZE` environment variable
+
+### WebSocket Connectivity Issues
+
+**Issue**: Dashboard not receiving real-time updates.
+
+**Solution**:
+- Check for browser console errors
+- Ensure WebSocket server is running on the specified port
+- Verify network firewall rules allow WebSocket connections
+- Use the host query parameter to specify the correct server
+
+## 📊 Dashboard Usage
+
+Access the web dashboard at `http://localhost:8080` when the app is running.
+
+For development, you can run the dashboard separately:
+
+```bash
+cd dashboard
+npm run dev
+```
+
+When accessing the development server, use query parameters to connect to your Event Puller instance:
+
+```
+http://localhost:3000/?host=localhost&port=8080
+```
+
+## 🧪 Testing with Sample Messages
+
+```bash
+# Send a test message
+aws sqs send-message \
+  --queue-url "https://sqs.us-east-1.amazonaws.com/123456789012/your-queue" \
+  --message-body '{
+    "vm_name": "test-vm",
+    "container_id": "container-123",
+    "icon_name": "🚀",
+    "color": "#FF5733",
+    "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'"
+  }'
+```
+
+## 📚 Development Notes
+
+- **Message Processing:** The application uses multiple workers to poll the SQS queue concurrently for maximum throughput.
+- **Websocket Updates:** Messages are batched for efficient WebSocket updates to the dashboard.
+- **Cosmos DB Integration:** Events are written to Cosmos DB in batches for efficiency.
+- **FIFO Queues:** The application handles FIFO queues differently, respecting message order.
+
+## 📝 License
+
+See the [LICENSE](LICENSE) file for details.
