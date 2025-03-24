@@ -12,6 +12,7 @@ image_name := "event-puller"
 timestamp := `date +%Y%m%d%H%M`
 host_port := "8080"
 container_port := "8080"
+env_file := ".env"  # Default env file path
 
 # Build the Go binary
 build_binary:
@@ -20,12 +21,26 @@ build_binary:
     go build -o bin/event-puller
     @echo "✅ Binary built at bin/event-puller"
 
-# Run the binary locally
+# Run the binary locally with environment variables from .env file
+# Usage:
+#   just run_binary                      # Use default .env file
+#   just env_file=custom.env run_binary  # Use custom env file
 run_binary:
     @echo "🚀 Running event-puller locally..."
     just build_binary
+    @if [ ! -f "{{env_file}}" ]; then \
+        if [ "{{env_file}}" = ".env" ] && [ -f ".env.example" ]; then \
+            echo "⚠️  No {{env_file}} file found. Using .env.example as a template..."; \
+            cp .env.example {{env_file}}; \
+            echo "⚠️  Please edit {{env_file}} file with your actual credentials"; \
+        else \
+            echo "❌ Environment file {{env_file}} not found and no template available"; \
+            exit 1; \
+        fi; \
+    fi
     @echo "📋 Press Ctrl+C to stop"
-    ./bin/event-puller
+    @echo "📄 Using environment file: {{env_file}}"
+    ENV_FILE={{env_file}} ./bin/event-puller
 
 # Build the dashboard and the Docker container
 build_container:
@@ -60,26 +75,32 @@ build_container:
     @echo "✅ Container built: {{registry}}/{{organization}}/{{image_name}}:{{timestamp}}"
     @echo "✅ Also tagged as: {{registry}}/{{organization}}/{{image_name}}:latest"
 
-# Run the container locally
+# Run the container locally using local .env file
+# Usage: 
+#   just run_container                                # Use default settings
+#   just env_file=custom.env run_container            # Use custom env file
+#   just host_port=3000 container_port=8080 run_container  # Use custom ports
 run_container: 
     @echo "🚀 Running event-puller in container..."
     @if ! docker image inspect {{registry}}/{{organization}}/{{image_name}}:latest >/dev/null 2>&1; then \
         echo "❌ Container image not found. Building first..."; \
         just build_container; \
     fi
+    @if [ ! -f "{{env_file}}" ]; then \
+        if [ "{{env_file}}" = ".env" ] && [ -f ".env.example" ]; then \
+            echo "⚠️  No {{env_file}} file found. Using .env.example as a template..."; \
+            cp .env.example {{env_file}}; \
+            echo "⚠️  Please edit {{env_file}} file with your actual credentials"; \
+        else \
+            echo "❌ Environment file {{env_file}} not found and no template available"; \
+            exit 1; \
+        fi; \
+    fi
     @echo "📋 Press Ctrl+C to stop"
     @echo "📊 Dashboard will be available at http://localhost:{{host_port}}"
+    @echo "📄 Using environment file: {{env_file}}"
     docker run --rm -p {{host_port}}:{{container_port}} \
-        -e AWS_ACCESS_KEY_ID \
-        -e AWS_SECRET_ACCESS_KEY \
-        -e AWS_REGION \
-        -e SQS_QUEUE_URL \
-        -e NUM_WORKERS \
-        -e POLL_INTERVAL \
-        -e COSMOS_ENDPOINT \
-        -e COSMOS_KEY \
-        -e COSMOS_DATABASE \
-        -e COSMOS_CONTAINER \
+        --env-file {{env_file}} \
         {{registry}}/{{organization}}/{{image_name}}:latest
 
 # Push the container to registry
