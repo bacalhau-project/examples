@@ -13,6 +13,7 @@ timestamp := `date +%Y%m%d%H%M`
 host_port := "8080"
 container_port := "8080"
 env_file := ".env"  # Default env file path
+debug := "false"    # Set to "true" for verbose debugging
 
 # Build the Go binary
 build_binary:
@@ -80,6 +81,7 @@ build_container:
 #   just run_container                                # Use default settings
 #   just env_file=custom.env run_container            # Use custom env file
 #   just host_port=3000 container_port=8080 run_container  # Use custom ports
+#   just debug=true run_container                     # Run with verbose debugging
 run_container: 
     @echo "🚀 Running event-puller in container..."
     @if ! docker image inspect {{registry}}/{{organization}}/{{image_name}}:latest >/dev/null 2>&1; then \
@@ -99,10 +101,37 @@ run_container:
     @echo "📋 Press Ctrl+C to stop"
     @echo "📊 Dashboard will be available at http://localhost:{{host_port}}"
     @echo "📄 Using environment file: {{env_file}}"
+    
+    # Create a simple shell script to extract variables correctly
+    @cat > .extract_vars.sh << 'EOF'
+    #!/bin/sh
+    ENV_FILE="$1"
+    set -a  # Auto-export all variables
+    if [ -f "$ENV_FILE" ]; then
+       . "$ENV_FILE"  # Source the env file
+    fi
+    EOF
+    @chmod +x .extract_vars.sh
+    
+    # Extract all variables from the environment file
+    @eval $(./.extract_vars.sh "{{env_file}}")
+    
+    # When debug is enabled, show what we're doing
+    @if [ "{{debug}}" = "true" ]; then \
+        echo "🔍 Debug info:"; \
+        echo "  AWS_REGION=$${AWS_REGION}"; \
+        echo "  SQS_QUEUE_URL=$${SQS_QUEUE_URL} (truncated)"; \
+        echo "  AWS_ACCESS_KEY_ID=$${AWS_ACCESS_KEY_ID:0:5}... (truncated for security)"; \
+        echo "  Container: {{registry}}/{{organization}}/{{image_name}}:latest"; \
+        echo "  Port mapping: {{host_port}}:{{container_port}}"; \
+    fi
+    
+    # Run with these explicit environment variables
     docker run --rm -p {{host_port}}:{{container_port}} \
-        --env-file {{env_file}} \
-        -v $(pwd)/{{env_file}}:/app/.env \
-        -e ENV_FILE=/app/.env \
+        -e AWS_ACCESS_KEY_ID="$${AWS_ACCESS_KEY_ID}" \
+        -e AWS_SECRET_ACCESS_KEY="$${AWS_SECRET_ACCESS_KEY}" \
+        -e AWS_REGION="$${AWS_REGION}" \
+        -e SQS_QUEUE_URL="$${SQS_QUEUE_URL}" \
         {{registry}}/{{organization}}/{{image_name}}:latest
 
 # Push the container to registry
