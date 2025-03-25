@@ -32,8 +32,8 @@ mkdir -p bin
 TIMESTAMP=$(date +%Y%m%d%H%M)
 
 # Registry configuration
-REGISTRY="docker.io"    
-ORGANIZATION="bacalhauproject"      
+REGISTRY="ghcr.io"    
+ORGANIZATION="bacalhau-project"      
 IMAGE_NAME="event-puller"
 TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:${TIMESTAMP}"
 
