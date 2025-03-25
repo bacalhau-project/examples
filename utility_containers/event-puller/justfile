@@ -6,8 +6,8 @@
 # - just run_container          # Run the Docker container
 
 # Default variables
-registry := "docker.io"
-organization := "bacalhauproject"
+registry := "ghcr.io"
+organization := "bacalhau-project"
 image_name := "event-puller"
 timestamp := `date +%Y%m%d%H%M`
 host_port := "8080"
@@ -43,38 +43,25 @@ run_binary:
     @echo "📄 Using environment file: {{env_file}}"
     ENV_FILE={{env_file}} ./bin/event-puller
 
-# Build the dashboard and the Docker container
+# Build the container
 build_container:
-    @echo "🔨 Building event-puller container..."
-    @# Build dashboard if Node.js is available
-    @if command -v node > /dev/null && command -v npm > /dev/null; then \
-        if [ -d "dashboard" ] && [ -f "dashboard/package.json" ]; then \
-            echo "📊 Building Next.js dashboard..."; \
-            cd dashboard && npm install && npm run build; \
-            cd ..; \
-        else \
-            echo "⚠️  Dashboard directory or package.json not found, skipping dashboard build"; \
-        fi \
-    else \
-        echo "⚠️  Node.js or npm not found, skipping dashboard build"; \
-    fi
-    
-    @# Build binary for Linux
-    @echo "🔧 Building Go binary for container..."
-    CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/event-puller
-    
-    @# Compress with UPX if available
-    @if command -v upx > /dev/null; then \
-        echo "📦 Compressing binary with UPX..."; \
-        upx --best --lzma bin/event-puller; \
-    fi
-    
-    @# Build Docker image
-    @echo "🐳 Building Docker image..."
-    docker build --platform linux/amd64 -t "{{registry}}/{{organization}}/{{image_name}}:{{timestamp}}" .
-    docker tag "{{registry}}/{{organization}}/{{image_name}}:{{timestamp}}" "{{registry}}/{{organization}}/{{image_name}}:latest"
-    @echo "✅ Container built: {{registry}}/{{organization}}/{{image_name}}:{{timestamp}}"
-    @echo "✅ Also tagged as: {{registry}}/{{organization}}/{{image_name}}:latest"
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Create a new builder instance if it doesn't exist
+    docker buildx create --name event-puller-builder --driver docker-container --bootstrap || true
+    docker buildx use event-puller-builder
+
+    # Build and push for multiple platforms
+    docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --tag {{registry}}/{{organization}}/{{image_name}}:{{timestamp}} \
+        --tag {{registry}}/{{organization}}/{{image_name}}:latest \
+        --push \
+        .
+
+    # Clean up
+    docker buildx rm event-puller-builder || true
 
 # Run the container locally using local .env file
 # Usage: 
@@ -82,38 +69,86 @@ build_container:
 #   just env_file=custom.env run_container            # Use custom env file
 #   just host_port=3000 container_port=8080 run_container  # Use custom ports
 #   just debug=true run_container                     # Run with verbose debugging
-run_container: 
-    @echo "🚀 Running event-puller in container..."
-    @if ! docker image inspect {{registry}}/{{organization}}/{{image_name}}:latest >/dev/null 2>&1; then \
-        echo "❌ Container image not found. Building first..."; \
-        just build_container; \
-    fi
-    @if [ ! -f "{{env_file}}" ]; then \
-        if [ "{{env_file}}" = ".env" ] && [ -f ".env.example" ]; then \
-            echo "⚠️  No {{env_file}} file found. Using .env.example as a template..."; \
-            cp .env.example {{env_file}}; \
-            echo "⚠️  Please edit {{env_file}} file with your actual credentials"; \
-        else \
-            echo "❌ Environment file {{env_file}} not found and no template available"; \
-            exit 1; \
-        fi; \
-    fi
-    @echo "📋 Press Ctrl+C to stop"
-    @echo "📊 Dashboard will be available at http://localhost:{{host_port}}"
-    @echo "📄 Using environment file: {{env_file}}"
+run_container *args: 
+    #!/usr/bin/env bash
+    set -euo pipefail
     
-    # When debug is enabled, show what we're doing
-    @if [ "{{debug}}" = "true" ]; then \
-        echo "🔍 Debug info:"; \
-        cat {{env_file}} | grep -v "KEY\\|SECRET\\|PASSWORD" || true; \
-        echo "  Container: {{registry}}/{{organization}}/{{image_name}}:latest"; \
-        echo "  Port mapping: {{host_port}}:{{container_port}}"; \
+    # Default variables
+    registry="{{registry}}"
+    organization="{{organization}}"
+    image_name="{{image_name}}"
+    env_file="{{env_file}}"
+    host_port="{{host_port}}"
+    container_port="{{container_port}}"
+    debug="{{debug}}"
+
+    echo "🚀 Running event-puller in container..."
+
+    # Check if container image exists
+    if ! docker image inspect "${registry}/${organization}/${image_name}:latest" >/dev/null 2>&1; then
+        echo "❌ Container image not found. Building first..."
+        just build_container
     fi
-    
-    # Run the container with the env file using Docker's native support
-    docker run --rm -p {{host_port}}:{{container_port}} \
-        --env-file {{env_file}} \
-        {{registry}}/{{organization}}/{{image_name}}:latest
+
+    # Check for environment file
+    if [ ! -f "${env_file}" ]; then
+        if [ "${env_file}" = ".env" ] && [ -f ".env.example" ]; then
+            echo "⚠️  No ${env_file} file found. Using .env.example as a template..."
+            cp .env.example "${env_file}"
+            echo "⚠️  Please edit ${env_file} file with your actual credentials"
+        else
+            echo "❌ Environment file ${env_file} not found and no template available"
+            exit 1
+        fi
+    fi
+
+    echo "📋 Press Ctrl+C to stop"
+    echo "📊 Dashboard will be available at http://localhost:${host_port}"
+    echo "📄 Using environment file: ${env_file}"
+
+    # Debug output
+    if [ "${debug}" = "true" ]; then
+        echo "🔍 Debug info:"
+        grep -v "KEY\\|SECRET\\|PASSWORD" "${env_file}" || true
+        echo "  Container: ${registry}/${organization}/${image_name}:latest"
+        echo "  Port mapping: ${host_port}:${container_port}"
+    fi
+
+    # Clean up existing container
+    echo "🧹 Cleaning up any existing containers..."
+    docker rm -f event-puller 2>/dev/null || true
+
+    # Run the container
+    echo "🐳 Starting container..."
+    docker run --platform linux/amd64 \
+        -p "${host_port}:${container_port}" \
+        -v "$(pwd)/${env_file}:/app/.env" \
+        -e ENV_FILE=/app/.env \
+        --name event-puller \
+        "${registry}/${organization}/${image_name}:latest" 2>&1 || true
+
+    # Check if container exists
+    if ! docker inspect event-puller >/dev/null 2>&1; then
+        echo "❌ Container not found after running"
+        exit 1
+    fi
+
+    # Show container logs
+    echo "📋 Container logs:"
+    docker logs event-puller 2>&1 || true
+
+    # Get container exit code
+    EXIT_CODE=$(docker inspect event-puller | jq -r '.[0].State.ExitCode')
+    if [ "$EXIT_CODE" = "0" ]; then
+        echo "✅ Container exited successfully"
+    else
+        echo "❌ Container exited with code $EXIT_CODE"
+        docker rm event-puller 2>/dev/null || true
+        exit "$EXIT_CODE"
+    fi
+
+    # Clean up
+    docker rm event-puller 2>/dev/null || true
 
 # Push the container to registry
 push_container:
@@ -140,3 +175,16 @@ dev_dashboard:
         exit 1; \
     fi
     cd dashboard && npm install && npm run dev
+
+test:
+    #!/usr/bin/env bash
+    # Get container exit code
+    EXIT_CODE=$(docker inspect event-puller | jq '.[0].State.ExitCode')
+    if [ "$EXIT_CODE" = "0" ]; then \
+        echo "✅ Container exited successfully"; \
+        exit 0; \
+    else \
+        echo "❌ Container exited with code $EXIT_CODE"; \
+        docker rm event-puller; \
+        exit $EXIT_CODE; \
+    fi
