@@ -1,12 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Database, HardDrive, RefreshCw, Slash, Wifi, WifiOff } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import React, {useEffect, useMemo} from "react";
-import { Node } from "./Node";
-import { DisconnectButton } from "@/components/DisconnectButton";
-import { NetworkLossButton } from "@/components/NetworkLostButton";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {CheckCircle2, Database, RefreshCw, Slash, Wifi, WifiOff} from "lucide-react";
+import {Badge} from "@/components/ui/badge";
+import React, {useMemo} from "react";
+import {Node} from "./Node";
+import {DisconnectButton} from "@/components/DisconnectButton";
+import {NetworkLossButton} from "@/components/NetworkLostButton";
 import {ClearMetadataButton} from "@/components/ClearMetadataButton";
 
 export const getStatusBadge = (status) => {
@@ -46,39 +46,39 @@ export const getStatusBadge = (status) => {
     }
 };
 
-export default function useFetchNodes(setNodes, setLoading) {
-    useEffect(() => {
-        setLoading(true);
-
-        const fetchNodes = async () => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-            try {
-                const res = await fetch("/api/nodes", { signal: controller.signal });
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
-                }
-                const data = await res.json();
-                setNodes(data.output);
-            } catch (error) {
-                if (error.name === "AbortError") {
-                    console.error("Request timed out");
-                } else {
-                    console.error("Fetch error:", error.message);
-                }
-            } finally {
-                clearTimeout(timeoutId);
-                setLoading(false);
-            }
-        };
-
-        fetchNodes();
-        const intervalId = setInterval(fetchNodes, 10000);
-
-        return () => clearInterval(intervalId);
-    }, [setNodes, setLoading]);
-}
+// export default function useFetchNodes(setNodes, setLoading) {
+//     useEffect(() => {
+//         setLoading(true);
+//
+//         const fetchNodes = async () => {
+//             const controller = new AbortController();
+//             const timeoutId = setTimeout(() => controller.abort(), 5000);
+//
+//             try {
+//                 const res = await fetch("/api/nodes", { signal: controller.signal });
+//                 if (!res.ok) {
+//                     throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
+//                 }
+//                 const data = await res.json();
+//                 setNodes(data.output);
+//             } catch (error) {
+//                 if (error.name === "AbortError") {
+//                     console.error("Request timed out");
+//                 } else {
+//                     console.error("Fetch error:", error.message);
+//                 }
+//             } finally {
+//                 clearTimeout(timeoutId);
+//                 setLoading(false);
+//             }
+//         };
+//
+//         fetchNodes();
+//         const intervalId = setInterval(fetchNodes, 10000);
+//
+//         return () => clearInterval(intervalId);
+//     }, [setNodes, setLoading]);
+// }
 
 
 
@@ -142,18 +142,18 @@ export function NodesList({ nodes, filesLength = 0 }) {
                             </Badge>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <div className="mt-4">
-                            <div className="text-sm font-medium mb-2">Network Share</div>
-                            <div className="flex items-center justify-between p-2 border rounded-md">
-                                <div className="flex items-center gap-2">
-                                    <HardDrive className="h-4 w-4 text-muted-foreground"/>
-                                    <span>NFS Share</span>
-                                </div>
-                                <div className="text-sm text-muted-foreground">{filesLength}</div>
-                            </div>
-                        </div>
-                    </div>
+                    {/*<div className="flex flex-col gap-2">*/}
+                    {/*    <div className="mt-4">*/}
+                    {/*        <div className="text-sm font-medium mb-2">Network Share</div>*/}
+                    {/*        <div className="flex items-center justify-between p-2 border rounded-md">*/}
+                    {/*            <div className="flex items-center gap-2">*/}
+                    {/*                <HardDrive className="h-4 w-4 text-muted-foreground"/>*/}
+                    {/*                <span>NFS Share</span>*/}
+                    {/*            </div>*/}
+                    {/*            <div className="text-sm text-muted-foreground">{filesLength}</div>*/}
+                    {/*        </div>*/}
+                    {/*    </div>*/}
+                    {/*</div>*/}
                 </div>
             </CardContent>
         </Card>

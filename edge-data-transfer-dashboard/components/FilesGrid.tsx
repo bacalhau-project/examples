@@ -7,6 +7,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {useFetchFiles} from "@/hooks/useFetchFiles";
 
 interface Job {
     id: number;
@@ -40,7 +41,6 @@ const useNodeMetaData = (nodes: Node[]) => {
                         Info: { NodeID, Labels: { PUBLIC_IP } },
                     } = node;
                     if (PUBLIC_IP) {
-                        // Ustawiamy timeout na 3 sekundy.
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -63,7 +63,7 @@ const useNodeMetaData = (nodes: Node[]) => {
                             if (error.name === "AbortError") {
                                 console.warn(`Request to node ${NodeID} aborted due to timeout.`);
                             } else {
-                                console.error("Error fetching metadata for node", NodeID, error);
+                                // console.error("Error fetching metadata for node", NodeID, error);
                             }
                         }
                     }
@@ -80,13 +80,35 @@ const useNodeMetaData = (nodes: Node[]) => {
     return metaData;
 };
 
+const JobGrid = React.memo(({ jobs, nodeColorsMapping }: { jobs: Job[]; nodeColorsMapping: Record<string, string> }) => {
+    return (
+        <TooltipProvider>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(16px,1fr))] gap-1">
+                {jobs.map((job) => (
+                    <Tooltip key={job.id}>
+                        <TooltipTrigger asChild>
+                            <div
+                                className={`h-4 w-4 ${nodeColorsMapping[job.nodeId]} ${job.metaInvalid ? "border border-blue-500" : ""} cursor-pointer transition-transform hover:scale-150`}
+                            />
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            <p>{job.fileName}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ))}
+            </div>
+        </TooltipProvider>
+    );
+});
+
 const FilesGrid = React.memo(function FilesGrid({
                                                     nodes,
-                                                    files,
                                                 }: {
     nodes: Node[];
-    files: string[];
 }) {
+    const files = useFetchFiles(nodes)
+    // console.log('render')
+
     // 1. Build a list of real node IDs (exclude "Requester")
     const filteredNodeIDs = useMemo(() => {
         return (
@@ -121,10 +143,6 @@ const FilesGrid = React.memo(function FilesGrid({
     // 4. Fetch metadata from each node’s endpoint using the custom hook.
     const metaData = useNodeMetaData(nodes);
 
-    // 5. Build jobs based on files and metadata.
-    // For each file, we check if it exists in one of the node's metadata.
-    // If yes, we assign that real node id; otherwise, the job remains "0" (empty).
-    // If metadata exists for a file but the node id is not in our filtered list, mark it as invalid.
     const jobs = useMemo(() => {
         return files.map((file, index) => {
             let jobNodeId = "0";
@@ -143,51 +161,7 @@ const FilesGrid = React.memo(function FilesGrid({
         });
     }, [files, metaData, filteredNodeIDs]);
 
-    // -----------------------------
-    // Legend Component
-    // -----------------------------
-    const Legend = React.memo(({ nodesList }: { nodesList: string[] }) => {
-        return (
-            <div className="flex flex-wrap gap-4">
-                {nodesList.map((nodeLabel) => (
-                    <div key={nodeLabel} className="flex items-center gap-2">
-                        <div className={`h-4 w-4 ${nodeColorsMapping[nodeLabel === "Empty" ? "0" : nodeLabel]}`} />
-                        <span>{nodeLabel}</span>
-                    </div>
-                ))}
-            </div>
-        );
-    });
 
-    // -----------------------------
-    // JobGrid Component
-    // -----------------------------
-    const JobGrid = React.memo(({ jobs, nodesList }: { jobs: Job[]; nodesList: string[] }) => {
-        return (
-            <TooltipProvider>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(16px,1fr))] gap-1">
-                    {jobs.map((job) => (
-                        <Tooltip key={job.id}>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`h-4 w-4 ${nodeColorsMapping[job.nodeId]} ${
-                                        job.metaInvalid ? "border border-blue-500" : ""
-                                    } cursor-pointer transition-transform hover:scale-150`}
-                                />
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                                    <p>{job.fileName}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </div>
-            </TooltipProvider>
-        );
-    });
-
-    // -----------------------------
-    // Stats Component
-    // -----------------------------
     const Stats = React.memo(({ jobs, nodesList }: { jobs: Job[]; nodesList: string[] }) => {
         const expectedPerNode = jobs.length * 0.2;
 
@@ -232,7 +206,7 @@ const FilesGrid = React.memo(function FilesGrid({
 
     return (
         <div className="space-y-6 p-4">
-            <JobGrid jobs={jobs} nodesList={memoizedNodes} />
+            <JobGrid jobs={jobs} nodeColorsMapping={nodeColorsMapping} />
             <Stats jobs={jobs} nodesList={memoizedNodes} />
         </div>
     );

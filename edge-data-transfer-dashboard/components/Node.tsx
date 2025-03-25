@@ -1,8 +1,6 @@
 import {Server} from "lucide-react";
 import {getStatusBadge} from "@/components/NodesList";
 
-
-
 export const Node = ({node, color}) => {
     if(node.Info.NodeType === 'Requester'){
         return null
