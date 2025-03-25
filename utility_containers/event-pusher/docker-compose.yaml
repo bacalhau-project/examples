@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   event-publisher:
-    image: ghcr.io/bacalhau-project/event-pusher:202503231414
+    image: ghcr.io/bacalhau-project/event-pusher:202503251123
     # Mount the .env file into the container for credentials
     environment:
       - ENV_FILE=/config/.env
