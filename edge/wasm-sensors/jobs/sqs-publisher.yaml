@@ -1,0 +1,22 @@
+name: sqs-publisher
+type: batch
+constraints:
+  - key: type
+    operator: "="
+    values:
+      - "edge"
+tasks:
+  - name: main
+    engine:
+      type: wasm
+      params:
+        entryModule: /app/modules/publisher.wasm
+        entrypoint: "_start"
+        parameters:
+          - "--proxy={{.proxy_url}}"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /app/
+        target: /app/
