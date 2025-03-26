@@ -1,0 +1,21 @@
+Name: test-sqs-proxy
+Type: batch
+Tasks:
+  - Name: curl-sqs-proxy
+    Engine:
+      Type: docker
+      Params:
+        Image: curlimages/curl:latest
+        Entrypoint:
+          [
+            "curl",
+            "-X",
+            "POST",
+            "http://bacalhau-edge-web-services-1:8080/send",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"job_id": "${BACALHAU_JOB_ID}", "timestamp": "$(date -u +''%Y-%m-%dT%H:%M:%SZ'')", "data": {"test": "Hello from Bacalhau job!", "random": "$(openssl rand -hex 4)"}}',
+          ]
+    Network:
+      Type: host

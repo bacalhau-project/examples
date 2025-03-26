@@ -1,0 +1,28 @@
+name: config-updater
+type: ops
+constraints:
+  - key: type
+    operator: "="
+    values:
+      - "edge"
+tasks:
+  - name: main
+    engine:
+      type: wasm
+      params:
+        entryModule: /app/modules/config-updater.wasm
+        entrypoint: "_start"
+        parameters:
+          - "--color={{.color}}"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /app/
+        target: /app/
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /app/config.yaml
+            readWrite: true
+        target: /app/config.yaml
