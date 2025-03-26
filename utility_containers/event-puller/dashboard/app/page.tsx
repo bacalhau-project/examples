@@ -29,13 +29,30 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
-    // Get host from query params or use current hostname
-    const host = searchParams.get('host') || window.location.hostname;
-    const port = searchParams.get('port') || '8080';
-    const wsUrl = `ws://${host}:${port}/ws`;
-    
+    // Get WebSocket URL: Prioritize env var, then query params, then defaults
+    const envWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const hostQuery = searchParams.get('host');
+    const portQuery = searchParams.get('port');
+
+    let wsUrl: string;
+
+    if (envWsUrl) {
+      wsUrl = envWsUrl;
+      console.log(`Using WebSocket URL from environment: ${wsUrl}`);
+    } else if (hostQuery) {
+      const port = portQuery || '8080';
+      wsUrl = `ws://${hostQuery}:${port}/ws`;
+      console.log(`Using WebSocket URL from query params: ${wsUrl}`);
+    } else {
+      // Default for cases where env var and query params are not set
+      // This might happen in production deployments or if .env.local is missing
+      const defaultHost = window.location.hostname;
+      const defaultPort = '8080'; // Assuming backend runs on 8080 by default
+      wsUrl = `ws://${defaultHost}:${defaultPort}/ws`;
+      console.log(`Using default WebSocket URL based on hostname: ${wsUrl}`);
+    }
+
     connectWebSocket(wsUrl);
-    
     return () => {
       if (ws.current) {
         ws.current.close();
