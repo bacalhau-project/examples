@@ -1,0 +1,23 @@
+name: sqs-proxy
+type: service
+constraints:
+  - key: type
+    operator: "="
+    values:
+      - "web-services"
+tasks:
+  - name: main
+    env:
+      AWS_ACCESS_KEY_ID: "env:AWS_ACCESS_KEY_ID"
+      AWS_SECRET_ACCESS_KEY: "env:AWS_SECRET_ACCESS_KEY"
+      AWS_REGION: "us-east-1"
+      SQS_QUEUE_URL: "{{.queue_url}}"
+    engine:
+      type: docker
+      params:
+        image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    network:
+      type: host
+      ports:
+        - name: http
+          static: 8080
