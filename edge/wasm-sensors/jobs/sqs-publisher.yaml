@@ -13,7 +13,7 @@ tasks:
         entryModule: /app/modules/publisher.wasm
         entrypoint: "_start"
         parameters:
-          - "--proxy={{.proxy_url}}"
+          - "--proxy={{.proxy}}"
     inputSources:
       - source:
           type: localDirectory
