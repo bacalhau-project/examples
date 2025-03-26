@@ -50,8 +50,8 @@ Each edge compute node:
 ### Network Diagram
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      bacalhau-edge Network                       │
-│                                                                  │
+│                      bacalhau-edge Network                      │
+│                                                                 │
 │  ┌─────────────┐        ┌──────────────┐     ┌──────────────┐   │
 │  │             │        │              │     │              │   │
 │  │ Orchestrator│◄───────┤ Edge Compute ├────►│ Web Services │   │
@@ -74,7 +74,7 @@ Each edge compute node:
 │                                              │  SQS Puller  │   │
 │                                              │              │   │
 │                                              └──────────────┘   │
-│                                                                  │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
