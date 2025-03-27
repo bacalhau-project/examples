@@ -56,11 +56,11 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: 1
+      replicas: ${REPLICAS:-3}
       resources:
         limits:
           cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
+          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
     networks:
       - bacalhau-network
 
@@ -78,11 +78,11 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: 1
+      replicas: ${REPLICAS:-3}
       resources:
         limits:
           cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
+          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
     networks:
       - bacalhau-network
 
@@ -100,11 +100,11 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: 1
+      replicas: ${REPLICAS:-3}
       resources:
         limits:
           cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
+          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
     networks:
       - bacalhau-network
 

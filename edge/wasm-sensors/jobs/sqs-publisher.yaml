@@ -1,5 +1,6 @@
 name: sqs-publisher-{{.region}}
 type: batch
+count: {{.count}}
 constraints:
   - key: type
     operator: "="
@@ -38,6 +39,6 @@ tasks:
         target: /app/
     resources:
       cpu: "0.001"
-      memory: "4mb"
+      memory: "36mb"
     timeouts:
       queueTimeout: 300
