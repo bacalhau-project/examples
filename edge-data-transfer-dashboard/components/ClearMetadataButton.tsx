@@ -41,7 +41,7 @@ export const ClearMetadataButton = ({ nodes} : {nodes: NodeProps[]}) => {
     };
 
     return (
-        <Button variant="outline" size="sm" onClick={handleClick}>
+        <Button variant="default" size="sm" onClick={handleClick}>
             <FileJson className="h-4 w-4 mr-1" /> Clear metadata
         </Button>
     );

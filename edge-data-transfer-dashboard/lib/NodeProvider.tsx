@@ -28,7 +28,7 @@ export const NodeProvider = ({children}: {children: ReactNode}) => {
             "bg-yellow-500",
             "bg-gray-700",
         ];
-        let mapping: { [key: string]: string } = { "0": "bg-gray-200" };
+        let mapping: { [key: string]: string } = { "0": "bg-white" };
         filteredNodeIDs.forEach((nodeId, i) => {
             mapping[nodeId] = availableColors[i % availableColors.length];
         });

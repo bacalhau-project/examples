@@ -11,6 +11,7 @@ export const Node = ({node, color, jobs}: {node: NodeProps, color: string, jobs:
     if(node.Info?.NodeType === 'Requester'){
         return null
     }
+
     return (
         <div key={nodeLabel} className="flex items-center p-2 rounded-md space-x-4">
             {/* Column 1: Color and Node Label */}

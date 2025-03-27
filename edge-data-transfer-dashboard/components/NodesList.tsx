@@ -48,8 +48,8 @@ export const getStatusBadge = (status: string) => {
 export const FilesProgressBar = ({count, jobsLength} : { count: number, jobsLength: number}) => {
     const progress = jobsLength > 0 ? ((jobsLength - count) / jobsLength) * 100 : 100;
     return (
-        <div className="flex items-center gap-2 w-[590px]">
-            <div className="h-2 w-full max-w-md rounded-full bg-muted">
+        <div className="flex items-center gap-2 w-full ml-10">
+            <div className="h-2 w-full rounded-full bg-muted">
                 <div
                     className={`h-2 rounded-full bg-gray-400`}
                     style={{width: `${progress}%`}}
@@ -82,7 +82,7 @@ export const ProgressBar = ({nodeLabel, color, count, jobsLength} : {nodeLabel: 
                 />
             </div>
             <span className="text-sm text-muted-foreground">
-        {count} jobs ({progress.toFixed(1)}%)
+        {count} files ({progress.toFixed(1)}%)
       </span>
         </div>
     );
@@ -94,20 +94,7 @@ export function NodesList() {
 
     return (
         <Card>
-            <CardHeader className="pb-2">
-                <div className="flex items-center justify-between w-full mb-2">
-                    <CardTitle>Environment Setup</CardTitle>
-                    <div className={"flex flex-row items-center"}>
-                    <div className="text-sm font-medium mr-2">Network Share:</div>
-                    <div className="flex items-center justify-between p-2 gap-3 border rounded-md">
-                        <div className="flex items-center gap-2">
-                            <HardDrive className="h-4 w-4 text-muted-foreground"/>
-                            <span>NFS Share</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">{files.length ?? 0}</div>
-                    </div>
-                    </div>
-                </div>
+            <CardHeader className="pb-1">
                 <div className="flex items-center justify-between w-full">
                     <div className="text-lg font-bold">Source Nodes</div>
                     <div className={"flex-1 flex justify-end"}>
@@ -116,14 +103,13 @@ export function NodesList() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4 w-full">
-
+                <div className="space-y-1 w-full">
                     {nodes?.map((node) => {
                         if (node.Info?.NodeType === "Requester") return null;
                         return (
                             <div className="flex flex-row gap-1 justify-center items-center" key={node.Info?.NodeID}>
                                 <div className="flex-1">
-                                    <Node node={node} color={nodeColorsMapping[node.Info?.NodeID]} jobs={jobs}/>
+                                    <Node node={node} color={nodeColorsMapping[node.Info?.NodeID] ?? 'bg-black'} jobs={jobs}/>
                                 </div>
                             </div>
                                     );

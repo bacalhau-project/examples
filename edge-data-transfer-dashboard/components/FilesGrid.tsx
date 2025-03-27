@@ -14,12 +14,12 @@ interface Job {
 const JobGrid = React.memo(({ jobs, nodeColorsMapping }: { jobs: Job[]; nodeColorsMapping: Record<string, string> }) => {
     return (
         <TooltipProvider>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(15.5px,1fr))] gap-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(15px,1fr))] gap-1">
                 {jobs.map((job) => (
                     <Tooltip key={job.id}>
                         <TooltipTrigger asChild>
                             <div
-                                className={`h-4 w-4 ${nodeColorsMapping[job.nodeId]} ${job.metaInvalid ? "border border-blue-500" : ""} cursor-pointer transition-transform hover:scale-150`}
+                                className={`h-4 w-4 ${nodeColorsMapping[job.nodeId]}  border ${job.nodeId === "0" ? 'border-gray-400' : ''} cursor-pointer transition-transform hover:scale-150`}
                             />
                         </TooltipTrigger>
                         <TooltipContent side="top">
@@ -32,14 +32,14 @@ const JobGrid = React.memo(({ jobs, nodeColorsMapping }: { jobs: Job[]; nodeColo
     );
 });
 
-const FilesGrid = React.memo(function FilesGrid() {
+const FilesGrid = () => {
     const {jobs, nodeColorsMapping} = useJobs()
 
     return (
         <div className="space-y-6 p-4">
-            <JobGrid jobs={jobs} nodeColorsMapping={nodeColorsMapping} />
+            <JobGrid jobs={jobs} nodeColorsMapping={nodeColorsMapping}/>
         </div>
     );
-});
+}
 
 export default FilesGrid;

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
+import {NodeProps} from "@/lib/JobProvider";
 
-export function useFetchFiles(nodes) {
+export function useFetchFiles(nodes: NodeProps[]) {
     const [files, setFiles] = useState([]);
     const fetched = useRef(false);
 
     useEffect(() => {
-        const abortControllers = [];
+        const abortControllers: any[] = [];
 
         const fetchFiles = async () => {
             if (fetched.current) return;
