@@ -240,7 +240,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 6. Disconnect EU region:
 
    ```bash
-   ./demo.sh disconnect "eu"
+   ./demo.sh disconnect_region "eu"
    ```
 
    This will stop the EU deployment.
@@ -256,19 +256,10 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 8. Reconnect EU region:
 
    ```bash
-   ./demo.sh reconnect "eu"
+   ./demo.sh reconnect_region "eu"
    ```
 
    This will restart the EU deployment.
-
-9. Monitor message flow:
-   ```bash
-   ./demo.sh logs
-   ```
-   You should see:
-   - Messages from US nodes (new deployment with purple color and lightning emoji ⚡)
-   - Messages from EU nodes (new deployment with yellow color and battery emoji 🔋)
-   - Messages from AS nodes (green color and light bulb emoji 💡)
 
 This demo shows how to deploy and update the SQS Publisher across different regions, with each region having its own unique visual identity through colors and emojis.
 
