@@ -4,6 +4,9 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 import boto3
 import uvicorn
+from collections import defaultdict
+from typing import Dict, Optional
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -23,11 +26,49 @@ sqs = boto3.client(
 
 QUEUE_URL = os.getenv('SQS_QUEUE_URL')
 
+# Track latest submission time per hostname with thread safety
+latest_submissions: Dict[str, int] = defaultdict(lambda: 0)
+hostname_locks: Dict[str, threading.Lock] = defaultdict(threading.Lock)
+
+def should_process_message(message_body: dict) -> bool:
+    """
+    Determine if a message should be processed based on its submission time and hostname.
+    Returns True if the message should be processed, False if it should be filtered out.
+    Thread-safe implementation using per-hostname locks.
+    """
+    hostname = message_body.get('hostname')
+    job_submission_time = message_body.get('job_submission_time')
+    job_id = message_body.get('job_id', 'unknown')
+    
+    if not hostname or job_submission_time is None:
+        logger.warning(f"Message missing hostname or job_submission_time: {message_body}")
+        return False
+    
+    with hostname_locks[hostname]:
+        # Update latest submission time if this message is newer
+        if job_submission_time > latest_submissions[hostname]:
+            latest_submissions[hostname] = job_submission_time
+            logger.info(f"Updated latest submission time for {hostname} with job {job_id} to {job_submission_time}")
+            return True
+        
+        # If the submission time is the same as the latest submission time, process the message
+        if job_submission_time == latest_submissions[hostname]:
+            return True
+
+        # Filter out messages from older submissions
+        logger.debug(f"Filtering out message from {hostname} (job: {job_id}) with submission time {job_submission_time} (latest: {latest_submissions[hostname]})")
+        return False
+
 @app.post("/send")
 async def send_message(request: Request):
     try:
         # Accept any JSON body
         message_body = await request.json()
+        
+        # Check if we should process this message
+        if not should_process_message(message_body):
+            return {"status": "filtered", "message": "Message filtered due to newer submission"}
+        
         response = sqs.send_message(
             QueueUrl=QUEUE_URL,
             MessageBody=json.dumps(message_body)

@@ -51,45 +51,60 @@ services:
       - ./modules:/app/modules
     environment:
       <<: *common-env-variables
+      REGION: "us"
     depends_on:
       orchestrator:
         condition: service_healthy
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
+          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
     networks:
       - bacalhau-network
 
   edge-eu:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
-    command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
+    command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=eu,type=edge'
     volumes:
       - ./config/compute.yaml:/etc/bacalhau/config.yaml
       - ./modules:/app/modules
     environment:
       <<: *common-env-variables
+      REGION: "eu"
     depends_on:
       orchestrator:
         condition: service_healthy
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
+          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
     networks:
       - bacalhau-network
 
   edge-as:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
-    command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
+    command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=as,type=edge'
     volumes:
       - ./config/compute.yaml:/etc/bacalhau/config.yaml
       - ./modules:/app/modules
     environment:
       <<: *common-env-variables
+      REGION: "as"
     depends_on:
       orchestrator:
         condition: service_healthy
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
+          memory: "200M" # 200MB (enough for 20 jobs at 4MB each, plus overhead)
     networks:
       - bacalhau-network
 

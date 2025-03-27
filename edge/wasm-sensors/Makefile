@@ -62,29 +62,38 @@ push-puller: ## Push the puller Docker image for all architectures
 		--push \
 		-f containers/docker/sqs-puller/Dockerfile containers/docker/sqs-puller
 
-
 ##@ WASM
 
-build-wasm: build-sqs-publisher build-config-updater build-config-reader build-dir-lister
+build-wasm: build-sqs-publisher
+
 build-sqs-publisher: ## Build the SQS publisher WASM module
 	@echo "Building SQS publisher WASM module..."
 	@cd containers/wasm/sqs-publisher && tinygo build -o ../../../network/modules/publisher.wasm -target wasi .
 	@echo "SQS publisher WASM build completed successfully!"
 
-build-config-updater: ## Build the config updater WASM module
-	@echo "Building config updater WASM module..."
-	@cd containers/wasm/config-updater && tinygo build -o ../../../network/modules/config-updater.wasm -target wasi .
-	@echo "Config updater WASM build completed successfully!"
+##@ Legacy WASM
 
-build-config-reader: ## Build the config reader WASM module
-	@echo "Building config reader WASM module..."
-	@cd containers/wasm/config-reader && tinygo build -o ../../../network/modules/config-reader.wasm -target wasi .
-	@echo "Config reader WASM build completed successfully!"
+build-legacy: build-legacy-config-updater build-legacy-config-reader build-legacy-dir-lister build-legacy-sqs-publisher
 
-build-dir-lister: ## Build the directory lister WASM module
-	@echo "Building directory lister WASM module..."
-	@cd containers/wasm/dir-lister && tinygo build -o ../../../network/modules/dir-lister.wasm -target wasi .
-	@echo "Directory lister WASM build completed successfully!"
+build-legacy-config-updater: ## Build the legacy config updater WASM module
+	@echo "Building legacy config updater WASM module..."
+	@cd containers/wasm/legacy/config-updater && tinygo build -o ../../../../network/modules/legacy/config-updater.wasm -target wasi .
+	@echo "Legacy config updater WASM build completed successfully!"
+
+build-legacy-config-reader: ## Build the legacy config reader WASM module
+	@echo "Building legacy config reader WASM module..."
+	@cd containers/wasm/legacy/config-reader && tinygo build -o ../../../../network/modules/legacy/config-reader.wasm -target wasi .
+	@echo "Legacy config reader WASM build completed successfully!"
+
+build-legacy-dir-lister: ## Build the legacy directory lister WASM module
+	@echo "Building legacy directory lister WASM module..."
+	@cd containers/wasm/legacy/dir-lister && tinygo build -o ../../../../network/modules/legacy/dir-lister.wasm -target wasi .
+	@echo "Legacy directory lister WASM build completed successfully!"
+
+build-legacy-sqs-publisher: ## Build the legacy SQS publisher WASM module
+	@echo "Building legacy SQS publisher WASM module..."
+	@cd containers/wasm/legacy/sqs-publisher && tinygo build -o ../../../../network/modules/legacy/sqs-publisher.wasm -target wasi .
+	@echo "Legacy SQS publisher WASM build completed successfully!"
 
 ##@ Development
 

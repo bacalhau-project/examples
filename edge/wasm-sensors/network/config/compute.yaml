@@ -6,6 +6,8 @@ Compute:
   Env:
     AllowList:
       - "AWS_*"
+      - "REGION"
+      - "HOSTNAME"
   AllowListedLocalPaths:
     - "/app/**:rw"
 
