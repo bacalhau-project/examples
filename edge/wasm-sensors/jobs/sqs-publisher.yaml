@@ -1,10 +1,18 @@
-name: sqs-publisher
+name: sqs-publisher-{{.region}}
 type: batch
 constraints:
   - key: type
     operator: "="
     values:
       - "edge"
+  - key: region
+    operator: "="
+    values:
+      - "{{.region}}"
+
+labels:
+  sqs-publisher: "{{.region}}"
+
 tasks:
   - name: main
     engine:
@@ -14,9 +22,22 @@ tasks:
         entrypoint: "_start"
         parameters:
           - "--proxy={{.proxy}}"
+          - '--emoji={{or (index . "emoji") "-1"}}'
+          - '--color={{or (index . "color") "-1"}}'
+          - '--interval={{or (index . "interval") "5"}}'
+          - '--max-messages={{or (index . "max-messages") "0"}}'
+          - "--region={{.region}}"
+          - "--submission-time={{.submission_time}}"
+    env:
+      HOSTNAME: "env:HOSTNAME"
     inputSources:
       - source:
           type: localDirectory
           params:
             sourcePath: /app/
         target: /app/
+    resources:
+      cpu: "0.001"
+      memory: "4mb"
+    timeouts:
+      queueTimeout: 300

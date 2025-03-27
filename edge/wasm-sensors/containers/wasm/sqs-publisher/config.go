@@ -2,72 +2,80 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"sync"
+	"math/rand"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
+// RuntimeConfig holds the runtime configuration
 type RuntimeConfig struct {
-	Color     string
-	RandomOff bool
-	Interval  int
+	ProxyURL       string
+	MaxMessages    int
+	Color          string
+	EmojiIdx       int
+	Interval       int
+	Region         string
+	SubmissionTime time.Time
 }
 
-// RuntimeConfigWatcher handles loading and watching configuration changes
-type RuntimeConfigWatcher struct {
-	config     RuntimeConfig
-	configPath string
-	mu         sync.RWMutex
-	stopChan   chan struct{}
+// Supported emojis
+var supportedEmojis = []string{
+	"🚀", "📡", "💡", "⚡", "🔋", "🛠️", "⚙️", "📱", "🖱️", "⌨️",
+	"🎮", "🎲", "🎯", "🎪", "🎭", "🎨", "🧩", "🎸", "🎹", "🎺",
 }
 
-// NewRuntimeConfigWatcher creates a new runtime config watcher instance
-func NewRuntimeConfigWatcher(configPath string) (*RuntimeConfigWatcher, error) {
-	cm := &RuntimeConfigWatcher{
-		configPath: configPath,
-		stopChan:   make(chan struct{}),
+// NewRuntimeConfig creates a new RuntimeConfig with default values
+func NewRuntimeConfig() *RuntimeConfig {
+	return &RuntimeConfig{
+		MaxMessages:    0,
+		Color:          "#000000",
+		EmojiIdx:       -1,
+		Interval:       5,
+		SubmissionTime: time.Now(),
 	}
-
-	// Set default values from environment variables or use hardcoded defaults
-	defaultColor := os.Getenv("DEFAULT_COLOR")
-	if defaultColor == "" {
-		defaultColor = "#000000"
-	}
-
-	defaultInterval := 5
-	if interval := os.Getenv("DEFAULT_INTERVAL"); interval != "" {
-		if intervalVal, err := fmt.Sscanf(interval, "%d", &defaultInterval); err == nil && intervalVal > 0 {
-			defaultInterval = intervalVal
-		}
-	}
-
-	defaultRandomOff := false
-	if randomOff := os.Getenv("DEFAULT_RANDOM_OFF"); randomOff != "" {
-		defaultRandomOff = randomOff == "true" || randomOff == "1"
-	}
-
-	cm.config = RuntimeConfig{
-		Color:     defaultColor,
-		RandomOff: defaultRandomOff,
-		Interval:  defaultInterval,
-	}
-
-	// Load initial config
-	cm.loadConfig()
-
-	// Start watching for config changes
-	go cm.watchConfig()
-
-	return cm, nil
 }
 
-// GetConfig returns the current configuration
-func (cm *RuntimeConfigWatcher) GetConfig() RuntimeConfig {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-	return cm.config
+// Normalize sets default values and normalizes the configuration
+func (c *RuntimeConfig) Normalize() {
+	// Initialize random seed if needed for color or emoji
+	if c.Color == "-1" || c.EmojiIdx < 0 {
+		rand.Seed(time.Now().UnixNano())
+	}
+
+	// Handle color selection
+	if c.Color == "-1" {
+		c.Color = generateRandomColor()
+	}
+
+	// Handle emoji selection
+	if c.EmojiIdx < 0 || c.EmojiIdx >= len(supportedEmojis) {
+		c.EmojiIdx = rand.Intn(len(supportedEmojis))
+	}
+}
+
+// Validate checks if the configuration is valid
+func (c *RuntimeConfig) Validate() error {
+	// Validate required fields
+	if c.ProxyURL == "" {
+		return fmt.Errorf("proxy URL is required")
+	}
+	if c.Region == "" {
+		return fmt.Errorf("edge region is required")
+	}
+
+	// Validate numeric fields
+	if c.MaxMessages < 0 {
+		return fmt.Errorf("max messages must be greater than or equal to 0")
+	}
+	if c.Interval <= 0 {
+		return fmt.Errorf("interval must be greater than 0")
+	}
+
+	// Validate color format
+	if !isValidHexColor(c.Color) {
+		return fmt.Errorf("invalid hex color code '%s'", c.Color)
+	}
+
+	return nil
 }
 
 // isValidHexColor checks if a string is a valid hex color code
@@ -83,76 +91,11 @@ func isValidHexColor(color string) bool {
 	return true
 }
 
-// loadConfig loads configuration from file and returns true if a new configuration was loaded
-func (cm *RuntimeConfigWatcher) loadConfig() bool {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	// Try to load from config file if it exists
-	if _, err := os.Stat(cm.configPath); err == nil {
-		data, err := os.ReadFile(cm.configPath)
-		if err != nil {
-			fmt.Printf("Warning: Failed to read config file: %v, keeping previous configuration\n", err)
-			return false
-		}
-
-		var fileConfig RuntimeConfig
-		if err := yaml.Unmarshal(data, &fileConfig); err != nil {
-			fmt.Printf("Warning: Failed to parse config file: %v, keeping previous configuration\n", err)
-			return false
-		}
-
-		// Merge file config with defaults
-		if fileConfig.Color != "" {
-			if !isValidHexColor(fileConfig.Color) {
-				fmt.Printf("Warning: Invalid hex color code '%s', keeping previous color\n", fileConfig.Color)
-				return false
-			}
-			cm.config.Color = fileConfig.Color
-		}
-		if fileConfig.Interval > 0 {
-			cm.config.Interval = fileConfig.Interval
-		}
-		cm.config.RandomOff = fileConfig.RandomOff
-		return true
-	} else {
-		// File doesn't exist, keep previous configuration
-		fmt.Printf("Warning: Config file %s does not exist, keeping previous configuration\n", cm.configPath)
-		return false
-	}
-}
-
-// watchConfig continuously monitors the config file for changes
-func (cm *RuntimeConfigWatcher) watchConfig() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	var lastModTime time.Time
-	if info, err := os.Stat(cm.configPath); err == nil {
-		lastModTime = info.ModTime()
-	}
-
-	for {
-		select {
-		case <-cm.stopChan:
-			return
-		case <-ticker.C:
-			info, err := os.Stat(cm.configPath)
-			if err != nil {
-				continue
-			}
-
-			if info.ModTime().After(lastModTime) {
-				if cm.loadConfig() {
-					fmt.Printf("Config reloaded successfully\n")
-				}
-				lastModTime = info.ModTime()
-			}
-		}
-	}
-}
-
-// Stop stops the runtime config watcher
-func (cm *RuntimeConfigWatcher) Stop() {
-	close(cm.stopChan)
+// generateRandomColor generates a random hex color code
+func generateRandomColor() string {
+	// Generate random RGB values
+	r := rand.Intn(256)
+	g := rand.Intn(256)
+	b := rand.Intn(256)
+	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
