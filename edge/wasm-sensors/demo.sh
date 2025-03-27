@@ -12,6 +12,7 @@ NC='\033[0m' # No Color
 
 # Default configuration
 PROXY_URL=${PROXY_URL:-"http://bacalhau-edge-sqs-proxy-1:9090"}
+REPLICAS=${REPLICAS:-3}
 
 # Helper functions
 print_step() {
@@ -54,6 +55,7 @@ print_usage() {
     echo
     echo "Environment variables:"
     echo "  PROXY_URL           SQS proxy URL (default: http://bacalhau-edge-sqs-proxy-1:9090)"
+    echo "  REPLICAS            Number of instances to deploy (default: 3)"
     echo
     echo "Examples:"
     echo "  $0 start_network"
@@ -62,6 +64,7 @@ print_usage() {
     echo "  $0 deploy_interactive"
     echo "  $0 --interactive"
     echo "  PROXY_URL=http://custom-proxy:9090 $0 deploy_us"
+    echo "  REPLICAS=50 $0 deploy_us"
 }
 
 # Get running job IDs for a specific region
@@ -111,6 +114,7 @@ deploy() {
         -V interval="$interval" \
         -V region="$region" \
         -V submission_time="$submission_time" \
+        -V count=$REPLICAS \
         jobs/sqs-publisher.yaml)
     
     print_success "$region region deployed"

@@ -201,6 +201,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 1. Start the network:
 
    ```bash
+   export REPLICAS=3  # Set number of replicas per region
    ./demo.sh start_network
    ```
 
@@ -386,3 +387,31 @@ This should return:
 
 - **Configuration Updates**: Configuration is set at job startup and cannot be changed during execution. To change configuration, you need to stop and redeploy the job.
 - **Direct File Access**: WASM modules have limited filesystem access through Bacalhau.
+
+### Environment Variables
+
+The demo script uses the following environment variables:
+
+- `PROXY_URL`: URL of the SQS proxy service (default: `http://bacalhau-edge-sqs-proxy-1:9090`)
+- `REPLICAS`: Number of edge nodes and job instances per region (default: `3`)
+
+This single `REPLICAS` variable controls both:
+
+- The number of edge nodes per region in the Docker Compose setup
+- The number of job instances deployed per region
+
+You can set these variables before running the demo script:
+
+```bash
+export PROXY_URL="http://custom-proxy:9090"
+export REPLICAS=5
+./demo.sh deploy_us
+```
+
+Or set them inline with the command:
+
+```bash
+PROXY_URL="http://custom-proxy:9090" REPLICAS=5 ./demo.sh deploy_us
+```
+
+Note: When using multiple replicas per region, make sure your system has enough resources to handle the increased load. Each replica will have its own resource limits as defined in the Docker Compose file.
