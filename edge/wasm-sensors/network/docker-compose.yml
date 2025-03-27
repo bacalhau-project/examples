@@ -18,12 +18,20 @@ services:
       - bacalhau-network
     volumes:
       - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: "8G"
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
     healthcheck:
-      test: ["CMD", "bacalhau", "agent", "alive"]
-      interval: 2s
-      timeout: 2s
+      test: ["CMD", "bacalhau", "agent", "alive", "--timeout", "10s"]
+      interval: 30s
+      timeout: 20s
       retries: 10
-      start_period: 5s
+      start_period: 15s
 
   web-services:
     image: ghcr.io/bacalhau-project/bacalhau:latest-dind
@@ -59,8 +67,8 @@ services:
       replicas: ${REPLICAS:-3}
       resources:
         limits:
-          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
+          cpus: "0.03" # 3% of a CPU core
+          memory: "200M" # 200MB per service
     networks:
       - bacalhau-network
 
