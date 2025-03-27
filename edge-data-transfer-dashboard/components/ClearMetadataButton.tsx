@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { FileJson } from "lucide-react";
+import {NodeProps} from "@/lib/JobProvider";
 
-export const ClearMetadataButton = ({ nodes}) => {
+export const ClearMetadataButton = ({ nodes} : {nodes: NodeProps[]}) => {
     const handleClick = async () => {
         try {
             await Promise.all(
@@ -9,7 +10,6 @@ export const ClearMetadataButton = ({ nodes}) => {
                     try {
                         const {
                             Info: {
-                                NodeID,
                                 NodeType,
                                 Labels: { PUBLIC_IP },
                             },

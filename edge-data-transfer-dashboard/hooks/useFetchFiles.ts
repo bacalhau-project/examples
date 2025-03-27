@@ -5,13 +5,12 @@ export function useFetchFiles(nodes) {
     const fetched = useRef(false);
 
     useEffect(() => {
-        let isMounted = true;
         const abortControllers = [];
 
         const fetchFiles = async () => {
             if (fetched.current) return;
 
-            const validNodes = nodes.slice(1).filter(
+            const validNodes = nodes.filter(
                 (node) =>
                     node.Info.NodeType !== "Requester" && node.Info.Labels.PUBLIC_IP
             );
@@ -39,21 +38,21 @@ export function useFetchFiles(nodes) {
 
                     const data = await response.json();
 
-                    if (isMounted && data.files) {
+                    if (data.files) {
                         setFiles(data.files);
                         fetched.current = true;
                         break;
                     }
                 } catch (error) {
                     console.error(
-                        `Error when fetching files on:  ${node.Info.Labels.PUBLIC_IP}:`,
+                        `Error when fetching files on: ${node.Info.Labels.PUBLIC_IP}:`,
                         error
                     );
                 }
             }
         };
 
-        if (nodes.length > 1) {
+        if (nodes.length > 0) {
             fetchFiles();
 
             const interval = setInterval(() => {
@@ -65,7 +64,6 @@ export function useFetchFiles(nodes) {
             }, 100000);
 
             return () => {
-                isMounted = false;
                 clearInterval(interval);
                 abortControllers.forEach((controller) => controller.abort());
             };

@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button } from "@/components/ui/button";
-import { WifiOff } from "lucide-react";
+import React, {useCallback, useEffect, useState} from 'react';
+import {Button} from "@/components/ui/button";
+import {WifiOff} from "lucide-react";
 
-export const NetworkLossButton = ({ node }) => {
-    // Memoizacja IP, przeliczane tylko gdy node się zmienia
-    const ip = useMemo(() => node?.Info?.Labels?.PUBLIC_IP ?? "", [node]);
-
+export const NetworkLossButton = ({ ip }: {ip: string}) => {
     const [isDisconnected, setIsDisconnected] = useState(true);
     const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -44,7 +41,6 @@ export const NetworkLossButton = ({ node }) => {
     const handleClick = useCallback(async () => {
         if (!ip || buttonDisabled) return;
 
-        // Blokowanie przycisku na 3 sekundy
         setButtonDisabled(true);
         const endpoint = isDisconnected ? "open-nfs" : "close-nfs";
 

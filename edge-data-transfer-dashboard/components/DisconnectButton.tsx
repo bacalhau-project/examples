@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Slash } from "lucide-react";
 
-export const DisconnectButton = ({ node }) => {
-    const ip = node?.Info.Labels.PUBLIC_IP ?? '';
-    const isDisconnected = node?.Connection === 'DISCONNECTED';
-
+export const DisconnectButton = ({ ip, isDisconnected }: {ip: string, isDisconnected: boolean}) => {
     const [buttonDisabled, setButtonDisabled] = useState(false);
 
     const handleClick = async (ip: string) => {
@@ -40,13 +37,14 @@ export const DisconnectButton = ({ node }) => {
 
     return (
         <Button
-            variant={"outline"}
+            variant={isDisconnected ? "destructive" : "outline"}
             size="sm"
             onClick={() => handleClick(ip)}
             disabled={buttonDisabled}
+            className={`w-40`}
         >
             <Slash className="h-4 w-4 mr-1" />
-            {isDisconnected ? 'Node Connect' : 'Node Disconnect'}
+            {isDisconnected ? 'Node Reconnect' : 'Node Disconnect'}
         </Button>
     );
 };
