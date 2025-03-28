@@ -27,7 +27,7 @@ services:
           cpus: "2.0"
           memory: "4G"
     healthcheck:
-      test: ["CMD", "bacalhau", "agent", "alive", "--timeout", "10s"]
+      test: ["CMD", "bacalhau", "agent", "alive"]
       interval: 30s
       timeout: 20s
       retries: 10
