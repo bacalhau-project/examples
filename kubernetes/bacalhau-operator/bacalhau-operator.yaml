@@ -75,34 +75,9 @@ spec:
             metadata:
               type: object
             spec:
-              properties:
-                constraints:
-                  items:
-                    properties:
-                      key:
-                        type: string
-                      operator:
-                        type: string
-                      values:
-                        items:
-                          type: string
-                        type: array
-                    required:
-                      - key
-                      - operator
-                    type: object
-                  type: array
-                count:
-                  type: integer
-                entrypoint:
-                  items:
-                    type: string
-                  type: array
-                image:
-                  type: string
-                type:
-                  type: string
               type: object
+              x-kubernetes-preserve-unknown-fields: true
+              description: "Raw Bacalhau job specification"
             status:
               description: BacalhauJobStatus defines the observed state of BacalhauJob
               properties:
@@ -280,7 +255,7 @@ subjects:
 ---
 apiVersion: v1
 data:
-  APIHost: bootstrap.production.bacalhau.org
+  APIHost: "host.minikube.internal"
   APIPort: "1234"
 kind: ConfigMap
 metadata:
@@ -349,7 +324,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: bacalhau-api-config
-          image: kdrezewski/bacalhau-job-controller:0.1.0
+          image: public.ecr.aws/x1f6c4u6/jamil/bacalhau-kube-operator:0.2.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:

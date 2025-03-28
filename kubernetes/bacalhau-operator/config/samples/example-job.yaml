@@ -1,0 +1,21 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: my-job-2
+  namespace: bacalhau-system
+spec:
+  raw:
+    Name: Basic Hello From Kubernetes
+    Type: batch
+    Count: 1
+    Tasks:
+      - Name: main
+        Engine:
+          Type: docker
+          Params:
+            Image: busybox:1.37.0
+            Entrypoint:
+              - /bin/sh
+            Parameters:
+              - "-c"
+              - "echo hello bacalhau world Meow hoof Meow"
