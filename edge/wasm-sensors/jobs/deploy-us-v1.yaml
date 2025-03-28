@@ -1,0 +1,44 @@
+name: sqs-publisher-us
+type: batch
+count: {{ or (index . "REPLICAS") 3 }}
+constraints:
+  - key: type
+    operator: "="
+    values:
+      - "edge"
+  - key: region
+    operator: "="
+    values:
+      - "us"
+
+labels:
+  sqs-publisher: "us"
+
+tasks:
+  - name: main
+    engine:
+      type: wasm
+      params:
+        entryModule: /app/modules/publisher.wasm
+        entrypoint: "_start"
+        parameters:
+          - "--proxy=http://bacalhau-edge-sqs-proxy-1:9090"
+          - "--emoji=-1" # Random icon
+          - "--color=#FF0000" # Red color
+          - "--interval=5"
+          - "--max-messages=0"
+          - "--region=us"
+          - "--submission-time=1"
+    env:
+      HOSTNAME: "env:HOSTNAME"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /app/
+        target: /app/
+    resources:
+      cpu: "0.001"
+      memory: "36mb"
+    timeouts:
+      queueTimeout: 300
