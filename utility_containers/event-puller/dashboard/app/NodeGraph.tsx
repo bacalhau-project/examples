@@ -47,7 +47,7 @@ function LabelNode({ data }: { data: { label: string; color: string } }) {
 
 interface NodeGraphProps {
   isConnected: boolean;
-  setShowConfirm: (show: boolean) => void;
+  setOpenClearQueue: (show: boolean) => void;
   clearQueue: () => void;
   vmStates: Map<string, Message>;
   queueSize: number;
@@ -58,7 +58,7 @@ interface NodeGraphProps {
 
 export default function NodeGraph({
   isConnected,
-  setShowConfirm,
+  setOpenClearQueue,
   clearQueue,
   vmStates,
   queueSize,
@@ -129,12 +129,12 @@ export default function NodeGraph({
             <Badge
               variant={isConnected ? 'default' : 'outline'}
               className={`${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-              onClick={() => setShowConfirm(true)}
+              onClick={() => setOpenClearQueue(true)}
             >
               {isConnected ? 'Connected' : 'Disconnected'}
             </Badge>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto hidden items-center gap-4 md:flex">
             <div className="flex items-center gap-2">
               <span className="text-sm">Unique VMs:</span>
               <Badge>{vmStates.size}</Badge>
@@ -165,24 +165,24 @@ export default function NodeGraph({
           setHighlightedRegion={setHighlightedRegion}
           regions={regions}
           selectedNode={selectedNode}
-          setShowConfirm={setShowConfirm}
+          setOpenClearQueue={setOpenClearQueue}
         />
       </aside>
 
       {/* Region legend floating at the bottom */}
-      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 transform flex-wrap justify-center gap-3 rounded-lg bg-black/50 px-4 py-2 backdrop-blur-xl">
+      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 transform flex-wrap justify-center gap-3 rounded-lg bg-white/50 px-4 py-2 backdrop-blur-xl dark:bg-slate-500/50">
         {Object.entries(regions).map(([region, color]) => (
           <div key={region} className="flex items-center gap-2">
             <div
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: color as string }}
             ></div>
-            <span className="text-xs font-semibold text-gray-800 dark:text-white">{region}</span>
+            <span className="text-xs font-semibold">{region}</span>
           </div>
         ))}
 
         {Object.keys(regions).length === 0 && (
-          <span className="text-xs font-semibold text-gray-800 dark:text-white">No regions</span>
+          <span className="text-xs font-semibold">No regions</span>
         )}
       </div>
 
@@ -192,7 +192,7 @@ export default function NodeGraph({
       </div>
 
       {/* Clear queue modal */}
-      {showConfirm && <ClearQueueModal setShowConfirm={setShowConfirm} clearQueue={clearQueue} />}
+      <ClearQueueModal open={showConfirm} setOpen={setOpenClearQueue} clearQueue={clearQueue} />
     </div>
   );
 }
