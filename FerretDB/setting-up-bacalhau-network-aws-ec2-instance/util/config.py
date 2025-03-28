@@ -56,13 +56,13 @@ class Config(collections.OrderedDict):
 
         if scripts_provider_name == "default":
             logging.debug(
-                f"region: {region_name}, node: {node_idx + 1}, arch: {region_cfg.get("architecture", "x86_64")}, class: ScriptsProvider")
+                f"region: {region_name}, node: {node_idx + 1}, arch: {region_cfg.get('architecture', 'x86_64')}, class: ScriptsProvider")
             return ScriptsProvider(self)
 
         module_name = f"instance.{scripts_provider_name.lower()}.scripts_provider"
         class_name = f"{scripts_provider_name.capitalize()}ScriptsProvider"
         logging.debug(
-            f"region: {region_name}, node: {node_idx + 1}, arch: {region_cfg.get("architecture", "x86_64")}, class: {class_name}")
+            f"region: {region_name}, node: {node_idx + 1}, arch: {region_cfg.get('architecture', 'x86_64')}, class: {class_name}")
         try:
             module = import_module(module_name)
             cls = getattr(module, class_name)

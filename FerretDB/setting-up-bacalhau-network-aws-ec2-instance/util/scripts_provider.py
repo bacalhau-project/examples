@@ -18,18 +18,12 @@ class ScriptsProvider:
             content = file.read()
         return content
 
-    @staticmethod
-    def encode_file_to_base64(file_path):
-        with open(file_path, "rb") as file:
-            encoded_content = base64.b64encode(file.read()).decode("utf-8")
-        return encoded_content
-
     def create_bacalhau_config(self):
         values = {
             "bacalhau_token": self.config.get_token(),
             "tls": "true" if self.config.get_tls() else "false"
         }
-        with open(self._file_path("config", "config-template.yaml"), "r") as file:
+        with open(self._file_path("config", "config-template.yaml"), "r", newline="\n") as file:
             bacalhau_config = file.read()
 
         for key, value in values.items():
@@ -42,10 +36,19 @@ class ScriptsProvider:
     def tar_and_encode_scripts(self):
         memory_file = io.BytesIO()
         script_dir = self._file_path("scripts")
+
         with tarfile.open(fileobj=memory_file, mode="w:gz") as tar:
             for script_file in sorted(os.listdir(script_dir)):
                 script_path = os.path.join(script_dir, script_file)
-                tar.add(script_path, arcname=script_file)
+
+                with open(script_path, 'r', newline='') as f:
+                    content = f.read().replace('\r\n', '\n').replace('\r', '\n')
+
+                temp_file = io.BytesIO(content.encode('utf-8'))
+                tarinfo = tarfile.TarInfo(name=script_file)
+                tarinfo.size = len(temp_file.getvalue())
+
+                tar.addfile(tarinfo, fileobj=temp_file)
 
         memory_file.seek(0)
         return base64.b64encode(memory_file.getvalue()).decode()
@@ -61,7 +64,7 @@ class ScriptsProvider:
             "bacalhau_config_file": self.create_bacalhau_config(),
         }
 
-        with open(self._file_path("cloud-init", "init-vm-template.yml"), "r") as file:
+        with open(self._file_path("cloud-init", "init-vm-template.yml"), "r", newline="\n") as file:
             cloud_init_script = file.read()
 
         for key, value in values.items():

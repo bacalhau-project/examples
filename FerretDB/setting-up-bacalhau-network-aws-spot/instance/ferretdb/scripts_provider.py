@@ -19,7 +19,7 @@ class FerretdbScriptsProvider(ScriptsProvider):
                 self.get_ssh_public_key(self.config.get_public_ssh_key_path()).encode()).decode("utf-8")
         }
 
-        with open(self._file_path("cloud-init", "init-vm-template.yml"), "r") as file:
+        with open(self._file_path("cloud-init", "init-vm-template.yml"), "r", newline="\n") as file:
             cloud_init_script = file.read()
 
         for key, value in values.items():
