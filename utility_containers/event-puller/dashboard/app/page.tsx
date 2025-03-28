@@ -126,7 +126,7 @@ function DashboardContent() {
   return (
     <NodeGraph
       isConnected={isConnected}
-      setShowConfirm={setShowConfirm}
+      setOpenClearQueue={setShowConfirm}
       clearQueue={clearQueue}
       vmStates={vmStates}
       queueSize={queueSize}
