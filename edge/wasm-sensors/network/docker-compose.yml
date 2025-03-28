@@ -131,7 +131,7 @@ services:
       - "9090:9090"
 
   sqs-puller:
-    build: ../../../utility_containers/event-puller
+    image: ghcr.io/bacalhau-project/event-puller:latest
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"

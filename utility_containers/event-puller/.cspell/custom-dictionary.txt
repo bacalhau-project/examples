@@ -21,5 +21,6 @@ ldflags
 LEGA
 lipgloss
 lzma
+mattn
 qrcode
 termui
