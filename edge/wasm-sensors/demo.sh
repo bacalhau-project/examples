@@ -11,7 +11,6 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default configuration
-PROXY_URL=${PROXY_URL:-"http://bacalhau-edge-sqs-proxy-1:9090"}
 REPLICAS=${REPLICAS:-3}
 
 # Helper functions
@@ -37,14 +36,7 @@ print_usage() {
     echo "Commands:"
     echo "  start_network          Start the Bacalhau network"
     echo "  stop_network          Stop the Bacalhau network"
-    echo "  deploy_all            Deploy to all regions"
-    echo "  deploy_us             Deploy to US region"
-    echo "  deploy_eu             Deploy to EU region"
-    echo "  deploy_as             Deploy to AS region"
-    echo "  deploy_interactive    Deploy with interactive configuration"
-    echo "  deploy               Deploy with raw configuration"
     echo "  stop_all_jobs        Stop all running jobs"
-    echo "  deploy_new_config    Deploy with new configuration"
     echo "  disconnect_region    Disconnect a specific region"
     echo "  reconnect_region     Reconnect a specific region"
     echo "  status               Show current status"
@@ -53,18 +45,10 @@ print_usage() {
     echo "  --interactive        Run in interactive menu mode"
     echo "  --help              Show this help message"
     echo
-    echo "Environment variables:"
-    echo "  PROXY_URL           SQS proxy URL (default: http://bacalhau-edge-sqs-proxy-1:9090)"
-    echo "  REPLICAS            Number of instances to deploy (default: 3)"
-    echo
     echo "Examples:"
     echo "  $0 start_network"
     echo "  $0 stop_network"
-    echo "  $0 deploy_us"
-    echo "  $0 deploy_interactive"
-    echo "  $0 --interactive"
-    echo "  PROXY_URL=http://custom-proxy:9090 $0 deploy_us"
-    echo "  REPLICAS=50 $0 deploy_us"
+    echo "  $0 disconnect_region eu"
 }
 
 # Get running job IDs for a specific region
@@ -77,50 +61,6 @@ get_running_jobs() {
 # Ensure we're in the right directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
-
-# Common deploy function
-deploy() {
-    if [ -z "$1" ]; then
-        print_error "Region is required"
-        print_usage
-        exit 1
-    fi
-
-    local region=$1
-    local color=${2:-"#FF0000"}  # Default to red if not provided
-    local emoji=${3:-"0"}        # Default to 0 if not provided
-    local interval=${4:-5}       # Default to 5 seconds if not provided
-
-    print_step "Deploying to $region region"
-
-    # Stop existing job if it exists
-    local existing_jobs=$(get_running_jobs "$region")
-    if [ ! -z "$existing_jobs" ]; then
-        echo "$existing_jobs" | while read -r job_id; do
-            bacalhau job stop --quiet "$job_id" >/dev/null 2>&1
-        done
-    fi
-
-    # Get current Unix timestamp
-    local submission_time=$(date +%s)
-
-    # Deploy new job
-    local job_id=$(bacalhau job run \
-        --wait=false \
-        --id-only \
-        -V proxy="$PROXY_URL" \
-        -V color="$color" \
-        -V emoji="$emoji" \
-        -V interval="$interval" \
-        -V region="$region" \
-        -V submission_time="$submission_time" \
-        -V count=$REPLICAS \
-        jobs/sqs-publisher.yaml)
-    
-    print_success "$region region deployed"
-    print_info "To check job status, run: "
-    echo -e "bacalhau job describe $job_id"
-}
 
 # Step functions
 start_network() {
@@ -138,39 +78,6 @@ stop_network() {
     docker compose down
     cd ..
     print_success "Network stopped"
-}
-
-deploy_us() {
-    # Red color and rocket emoji 🚀
-    deploy "us" "#FF0000" "0"
-}
-
-deploy_eu() {
-    # Blue color and satellite emoji 📡
-    deploy "eu" "#0000FF" "1"
-}
-
-deploy_as() {
-    # Green color and light bulb emoji 💡
-    deploy "as" "#00FF00" "2"
-}
-
-deploy_all() {
-    print_step "Deploying to all regions"
-    deploy_us
-    deploy_eu
-    deploy_as
-    print_success "All regions deployed"
-}
-
-deploy_interactive() {
-    read -p "Enter region (us/eu/as): " region
-    read -p "Enter color (hex or -1 for random): " color
-    read -p "Enter emoji index (-1 for random): " emoji
-    read -p "Enter interval in seconds (default 5): " interval
-    interval=${interval:-5}
-    
-    deploy "$region" "$color" "$emoji" "$interval"
 }
 
 stop_all_jobs() {
@@ -212,15 +119,9 @@ show_menu() {
     echo -e "\n${BLUE}Available commands:${NC}"
     echo "1) Start network"
     echo "2) Stop network"
-    echo "3) Deploy to all regions"
-    echo "4) Deploy to US region"
-    echo "5) Deploy to EU region"
-    echo "6) Deploy to AS region"
-    echo "7) Deploy interactive configuration"
-    echo "8) Deploy with raw configuration"
-    echo "9) Stop all jobs"
-    echo "10) Disconnect region"
-    echo "11) Reconnect region"
+    echo "3) Stop all jobs"
+    echo "4) Disconnect region"
+    echo "5) Reconnect region"
     echo "q) Quit"
     echo
 }
@@ -241,15 +142,15 @@ if [ "$1" = "--interactive" ]; then
         case $cmd in
             1) start_network ;;
             2) stop_network ;;
-            3) deploy_all ;;
-            4) deploy_us ;;
-            5) deploy_eu ;;
-            6) deploy_as ;;
-            7) deploy_interactive ;;
-            8) deploy "$2" "$3" "$4" ;;
-            9) stop_all_jobs ;;
-            10) disconnect_region ;;
-            11) reconnect_region ;;
+            3) stop_all_jobs ;;
+            4) 
+                read -p "Enter region to disconnect (us/eu/as): " region
+                disconnect_region "$region" 
+                ;;
+            5) 
+                read -p "Enter region to reconnect (us/eu/as): " region
+                reconnect_region "$region" 
+                ;;
             q|Q) 
                 print_info "Exiting..."
                 exit 0
@@ -267,12 +168,6 @@ else
     case "$1" in
         start_network) start_network ;;
         stop_network) stop_network ;;
-        deploy_all) deploy_all ;;
-        deploy_us) deploy_us ;;
-        deploy_eu) deploy_eu ;;
-        deploy_as) deploy_as ;;
-        deploy_interactive) deploy_interactive ;;
-        deploy) deploy "$2" "$3" "$4" ;;
         stop_all_jobs) stop_all_jobs ;;
         disconnect_region) disconnect_region "$2" ;;
         reconnect_region) reconnect_region "$2" ;;
