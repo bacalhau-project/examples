@@ -1,0 +1,1254 @@
+{
+  "available_regions": [
+    "ap-northeast-3",
+    "eu-north-1",
+    "sa-east-1",
+    "eu-west-3",
+    "ap-southeast-1",
+    "us-west-1",
+    "ap-south-1",
+    "ap-northeast-2",
+    "ap-northeast-1",
+    "eu-central-1",
+    "ap-southeast-2",
+    "eu-west-2",
+    "us-east-2",
+    "ca-central-1",
+    "us-west-2",
+    "eu-west-1",
+    "us-east-1"
+  ],
+  "region_details": {
+    "ap-northeast-3": {
+      "region": "ap-northeast-3",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "t3.medium",
+          "vcpus": 2,
+          "memory_gib": 4.0,
+          "spot_price": 0.0198
+        },
+        {
+          "instance_type": "t4g.medium",
+          "vcpus": 2,
+          "memory_gib": 4.0,
+          "spot_price": 0.0298
+        },
+        {
+          "instance_type": "t3.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0413
+        },
+        {
+          "instance_type": "t2.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0485
+        },
+        {
+          "instance_type": "m5d.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0557
+        },
+        {
+          "instance_type": "m6g.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.073
+        },
+        {
+          "instance_type": "t3.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0806
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0905
+        },
+        {
+          "instance_type": "m5.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0916
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1057
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "t3.medium",
+        "vcpus": 2,
+        "memory_gib": 4.0,
+        "spot_price": 0.0198
+      }
+    },
+    "eu-north-1": {
+      "region": "eu-north-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "c5d.large",
+          "vcpus": 2,
+          "memory_gib": 4.0,
+          "spot_price": 0.0243
+        },
+        {
+          "instance_type": "m7g.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0245
+        },
+        {
+          "instance_type": "c6i.large",
+          "vcpus": 2,
+          "memory_gib": 4.0,
+          "spot_price": 0.0307
+        },
+        {
+          "instance_type": "c5n.large",
+          "vcpus": 2,
+          "memory_gib": 5.2,
+          "spot_price": 0.0309
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0509
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0527
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2149
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.289
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.338
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.4684
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "c5d.large",
+        "vcpus": 2,
+        "memory_gib": 4.0,
+        "spot_price": 0.0243
+      }
+    },
+    "sa-east-1": {
+      "region": "sa-east-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0457
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0703
+        },
+        {
+          "instance_type": "m5zn.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.1193
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1361
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1642
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2402
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4847
+        },
+        {
+          "instance_type": "m5zn.6xlarge",
+          "vcpus": 24,
+          "memory_gib": 96.0,
+          "spot_price": 0.5793
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.6749
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.8541
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0457
+      }
+    },
+    "eu-west-3": {
+      "region": "eu-west-3",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m5ad.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0514
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.084
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0944
+        },
+        {
+          "instance_type": "t3a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1312
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1353
+        },
+        {
+          "instance_type": "t3.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1597
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1684
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.254
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3445
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.5308
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m5ad.large",
+        "vcpus": 2,
+        "memory_gib": 8.0,
+        "spot_price": 0.0514
+      }
+    },
+    "ap-southeast-1": {
+      "region": "ap-southeast-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m5dn.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.057
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0764
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.106
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1279
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.3485
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.4423
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4517
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4811
+        },
+        {
+          "instance_type": "m5dn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.5408
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.9276
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m5dn.large",
+        "vcpus": 2,
+        "memory_gib": 8.0,
+        "spot_price": 0.057
+      }
+    },
+    "us-west-1": {
+      "region": "us-west-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m5zn.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.058
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0586
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0701
+        },
+        {
+          "instance_type": "t3a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1101
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1223
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1975
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.3331
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3454
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3799
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4594
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m5zn.large",
+        "vcpus": 2,
+        "memory_gib": 8.0,
+        "spot_price": 0.058
+      }
+    },
+    "ap-south-1": {
+      "region": "ap-south-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0621
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0865
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.0955
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1338
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.1545
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2201
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.5622
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.5912
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.9426
+        },
+        {
+          "instance_type": "m5ad.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.0168
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0621
+      }
+    },
+    "ap-northeast-2": {
+      "region": "ap-northeast-2",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m5zn.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0655
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0677
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0789
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1064
+        },
+        {
+          "instance_type": "t3a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1081
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1801
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2644
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2695
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3167
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4854
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m5zn.large",
+        "vcpus": 2,
+        "memory_gib": 8.0,
+        "spot_price": 0.0655
+      }
+    },
+    "ap-northeast-1": {
+      "region": "ap-northeast-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m5dn.large",
+          "vcpus": 2,
+          "memory_gib": 8.0,
+          "spot_price": 0.0709
+        },
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0901
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1224
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1479
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1926
+        },
+        {
+          "instance_type": "m5dn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2556
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3369
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.3438
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.5805
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.8606
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m5dn.large",
+        "vcpus": 2,
+        "memory_gib": 8.0,
+        "spot_price": 0.0709
+      }
+    },
+    "eu-central-1": {
+      "region": "eu-central-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0716
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1164
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1818
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.226
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3702
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.4034
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.5208
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.6029
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.9943
+        },
+        {
+          "instance_type": "m5dn.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 2.1319
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0716
+      }
+    },
+    "ap-southeast-2": {
+      "region": "ap-southeast-2",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0741
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1075
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1449
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2158
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3673
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.415
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4162
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.6925
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.8595
+        },
+        {
+          "instance_type": "m5ad.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.5639
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0741
+      }
+    },
+    "eu-west-2": {
+      "region": "eu-west-2",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0746
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0882
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1399
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2428
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2923
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.5546
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.5879
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.6965
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.7973
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.8046
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0746
+      }
+    },
+    "us-east-2": {
+      "region": "us-east-2",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0766
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0819
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.0937
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1703
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2513
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3794
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.5876
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.6747
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.7906
+        },
+        {
+          "instance_type": "m5dn.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.0693
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0766
+      }
+    },
+    "ca-central-1": {
+      "region": "ca-central-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0781
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0856
+        },
+        {
+          "instance_type": "t3a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1293
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1599
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1845
+        },
+        {
+          "instance_type": "m5a.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2958
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2965
+        },
+        {
+          "instance_type": "m5ad.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.4745
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.6354
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.8273
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0781
+      }
+    },
+    "us-west-2": {
+      "region": "us-west-2",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0826
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0832
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1103
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1676
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.2346
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.2742
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.6193
+        },
+        {
+          "instance_type": "m5a.16xlarge",
+          "vcpus": 64,
+          "memory_gib": 256.0,
+          "spot_price": 1.0728
+        },
+        {
+          "instance_type": "m5ad.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.1702
+        },
+        {
+          "instance_type": "m5n.16xlarge",
+          "vcpus": 64,
+          "memory_gib": 256.0,
+          "spot_price": 1.3766
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0826
+      }
+    },
+    "eu-west-1": {
+      "region": "eu-west-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.091
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1126
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1821
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.187
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.3205
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3457
+        },
+        {
+          "instance_type": "m5.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.8306
+        },
+        {
+          "instance_type": "m5d.8xlarge",
+          "vcpus": 32,
+          "memory_gib": 128.0,
+          "spot_price": 0.9543
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.134
+        },
+        {
+          "instance_type": "m5ad.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.1971
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.091
+      }
+    },
+    "us-east-1": {
+      "region": "us-east-1",
+      "available": true,
+      "instances": [
+        {
+          "instance_type": "m6gd.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.0928
+        },
+        {
+          "instance_type": "t2.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.0945
+        },
+        {
+          "instance_type": "m5d.xlarge",
+          "vcpus": 4,
+          "memory_gib": 16.0,
+          "spot_price": 0.1165
+        },
+        {
+          "instance_type": "m5a.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.1572
+        },
+        {
+          "instance_type": "m6gd.4xlarge",
+          "vcpus": 16,
+          "memory_gib": 64.0,
+          "spot_price": 0.3785
+        },
+        {
+          "instance_type": "m5zn.2xlarge",
+          "vcpus": 8,
+          "memory_gib": 32.0,
+          "spot_price": 0.4328
+        },
+        {
+          "instance_type": "m6gd.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 0.7786
+        },
+        {
+          "instance_type": "m5a.16xlarge",
+          "vcpus": 64,
+          "memory_gib": 256.0,
+          "spot_price": 1.0773
+        },
+        {
+          "instance_type": "m5ad.12xlarge",
+          "vcpus": 48,
+          "memory_gib": 192.0,
+          "spot_price": 1.3283
+        },
+        {
+          "instance_type": "m5n.16xlarge",
+          "vcpus": 64,
+          "memory_gib": 256.0,
+          "spot_price": 1.5341
+        }
+      ],
+      "cheapest_instance": {
+        "instance_type": "m6gd.xlarge",
+        "vcpus": 4,
+        "memory_gib": 16.0,
+        "spot_price": 0.0928
+      }
+    }
+  },
+  "all_regions_checked": 17,
+  "available_regions_count": 17,
+  "min_requirements": {
+    "vcpu": 2,
+    "memory_gib": 2
+  },
+  "timestamp": "2025-03-25 11:29:42 UTC"
+}
