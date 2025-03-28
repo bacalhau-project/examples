@@ -4,9 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
-import Stats from './components/Stats';
-import Footer from './components/Footer';
-import Visualization from './components/Visualization';
+import NodeGraph from './NodeGraph';
 
 export interface Message {
   container_id: string;
@@ -25,32 +23,7 @@ interface UpdateData {
 
 function DashboardContent() {
   const [isConnected, setIsConnected] = useState(false);
-  const [vmStates, setVmStates] = useState<Map<string, Message>>(
-    new Map([
-      [
-        'placeholder1',
-        {
-          container_id: 'container1',
-          vm_name: 'vmname1',
-          icon_name: '🚀',
-          color: '#00ff00',
-          timestamp: 'test',
-          region: 'us-east-1',
-        },
-      ],
-      [
-        'placeholder2',
-        {
-          container_id: 'container2',
-          vm_name: 'vmname2',
-          icon_name: '🔥',
-          color: '#0000ff',
-          timestamp: 'test',
-          region: 'us-east-2',
-        },
-      ],
-    ]),
-  );
+  const [vmStates, setVmStates] = useState<Map<string, Message>>(new Map());
 
   const [messageCount, setMessageCount] = useState(0);
   const [queueSize, setQueueSize] = useState(0);
@@ -151,73 +124,22 @@ function DashboardContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100 text-gray-900">
-      <div className="flex items-center justify-between bg-white p-4 shadow-md">
-        <h1 className="text-xl font-bold md:text-2xl">Event Puller Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <div
-            className={`px-3 py-1 text-sm ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-          >
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </div>
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="cursor-pointer bg-red-600 px-2 py-1 text-sm text-white transition-colors hover:bg-red-700"
-          >
-            Clear Queue
-          </button>
-        </div>
-      </div>
-
-      {showConfirm && <ClearQueueModal setShowConfirm={setShowConfirm} clearQueue={clearQueue} />}
-
-      <Stats
-        vmStates={vmStates}
-        queueSize={queueSize}
-        messageCount={messageCount}
-        lastPoll={lastPoll}
-      />
-
-      <Visualization vmStates={vmStates} />
-
-      <Footer isConnected={isConnected} />
-    </div>
-  );
-}
-
-interface ClearQueueModalProps {
-  setShowConfirm: (show: boolean) => void;
-  clearQueue: () => void;
-}
-
-function ClearQueueModal({ setShowConfirm, clearQueue }: ClearQueueModalProps) {
-  return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-bold">Confirm Queue Clear</h2>
-        <p className="mb-6">Are you sure you want to clear the queue? This cannot be undone.</p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => setShowConfirm(false)}
-            className="cursor-pointer rounded border border-gray-300 px-4 py-2 hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={clearQueue}
-            className="cursor-pointer rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-          >
-            Clear Queue
-          </button>
-        </div>
-      </div>
-    </div>
+    <NodeGraph
+      isConnected={isConnected}
+      setShowConfirm={setShowConfirm}
+      clearQueue={clearQueue}
+      vmStates={vmStates}
+      queueSize={queueSize}
+      messageCount={messageCount}
+      lastPoll={lastPoll}
+      showConfirm={showConfirm}
+    />
   );
 }
 
 // Use Next.js dynamic import with SSR disabled to avoid hydration issues
-const Dashboard = dynamic(() => Promise.resolve(DashboardContent), {
+const Page = dynamic(() => Promise.resolve(DashboardContent), {
   ssr: false,
 });
 
-export default Dashboard;
+export default Page;
