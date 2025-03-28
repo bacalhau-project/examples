@@ -208,7 +208,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 2. Deploy to US region with red color and rocket emoji:
 
    ```bash
-   ./demo.sh deploy "us" "#FF0000" 0
+   bacalhau job run -E "REPLICAS" jobs/deploy-us-v1.yaml
    ```
 
    This will deploy the SQS Publisher to US edge nodes with red color and rocket emoji 🚀.
@@ -216,7 +216,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 3. Deploy to EU region with blue color and satellite emoji:
 
    ```bash
-   ./demo.sh deploy "eu" "#0000FF" 1
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-eu-v1.yaml
    ```
 
    This will deploy the SQS Publisher to EU edge nodes with blue color and satellite emoji 📡.
@@ -224,7 +224,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 4. Deploy to AS region with green color and light bulb emoji:
 
    ```bash
-   ./demo.sh deploy "as" "#00FF00" 2
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-as-v1.yaml
    ```
 
    This will deploy the SQS Publisher to AS edge nodes with green color and light bulb emoji 💡.
@@ -232,7 +232,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 5. Update US deployment with new configuration (purple color and lightning emoji):
 
    ```bash
-   ./demo.sh deploy "us" "#800080" 3
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-us-v2.yaml
    ```
 
    This will deploy a new version of the SQS Publisher to US nodes with purple color and lightning emoji ⚡.
@@ -248,7 +248,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 7. Deploy new configuration to EU (yellow color and battery emoji):
 
    ```bash
-   ./demo.sh deploy "eu" "#FFFF00" 4
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-eu-v2.yaml
    ```
 
    This will deploy a new version of the SQS Publisher to EU nodes with yellow color and battery emoji 🔋.
@@ -381,28 +381,15 @@ This should return:
 
 ### Environment Variables
 
-The demo script uses the following environment variables:
+When working with the job templates directly, you can use the following variables:
 
-- `PROXY_URL`: URL of the SQS proxy service (default: `http://bacalhau-edge-sqs-proxy-1:9090`)
-- `REPLICAS`: Number of edge nodes and job instances per region (default: `3`)
+- `REPLICAS`: Number of job instances to deploy (default: `3`)
 
-This single `REPLICAS` variable controls both:
-
-- The number of edge nodes per region in the Docker Compose setup
-- The number of job instances deployed per region
-
-You can set these variables before running the demo script:
+You can set this variable when running the job using the -E flag:
 
 ```bash
-export PROXY_URL="http://custom-proxy:9090"
-export REPLICAS=5
-./demo.sh deploy_us
+# Deploy with 5 replicas
+bacalhau job run -E "REPLICAS=5" jobs/deploy-us-v1.yaml
 ```
 
-Or set them inline with the command:
-
-```bash
-PROXY_URL="http://custom-proxy:9090" REPLICAS=5 ./demo.sh deploy_us
-```
-
-Note: When using multiple replicas per region, make sure your system has enough resources to handle the increased load. Each replica will have its own resource limits as defined in the Docker Compose file.
+If you're using the Docker Compose network, make sure your system has enough resources to handle the load when using multiple replicas. Each replica will have its own resource limits as defined in the job YAML files.
