@@ -45,15 +45,18 @@ const (
 )
 
 type Message struct {
-	Id          string `json:"id,omitempty"` // Used for Cosmos DB
-	VMName      string `json:"vm_name"`
-	ContainerID string `json:"container_id"`
-	IconName    string `json:"icon_name"`
-	Color       string `json:"color"`
-	Timestamp   string `json:"timestamp"`
-	Region      string `json:"region,omitempty"`     // Used for Cosmos DB partitioning
-	Type        string `json:"type,omitempty"`       // Document type for Cosmos DB
-	EventTime   int64  `json:"event_time,omitempty"` // Unix timestamp for sorting
+	Id                string `json:"id,omitempty"` // Used for Cosmos DB
+	JobID             string `json:"job_id"`
+	ExecutionID       string `json:"execution_id"`
+	Hostname          string `json:"hostname"`
+	JobSubmissionTime int64  `json:"job_submission_time"`
+	IconName          string `json:"icon_name"`
+	Timestamp         string `json:"timestamp"`
+	Color             string `json:"color"`
+	Sequence          int    `json:"sequence"`
+	Region            string `json:"region,omitempty"`     // Used for Cosmos DB partitioning
+	Type              string `json:"type,omitempty"`       // Document type for Cosmos DB
+	EventTime         int64  `json:"event_time,omitempty"` // Unix timestamp for sorting
 }
 
 type model struct {
@@ -705,7 +708,7 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	}
 
 	columns := []table.Column{
-		{Title: "VM Name", Width: 15},
+		{Title: "Hostname", Width: 15},
 		{Title: "Container", Width: 12},
 		{Title: "Icon", Width: 8},
 		{Title: "Color", Width: 8},
@@ -1536,7 +1539,7 @@ func (m *model) addMessageToCosmosBatch(msg Message) {
 
 	// Add unique ID and timestamp for Cosmos if not present
 	if msg.Id == "" {
-		msg.Id = fmt.Sprintf("%s-%s-%d", msg.ContainerID, msg.VMName, time.Now().UnixNano())
+		msg.Id = fmt.Sprintf("%s-%s-%d", msg.Id, msg.Hostname, time.Now().UnixNano())
 	}
 
 	if msg.EventTime == 0 {

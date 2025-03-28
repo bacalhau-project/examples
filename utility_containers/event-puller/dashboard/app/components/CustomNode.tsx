@@ -10,7 +10,7 @@ interface CustomNodeProps {
 export function CustomNode({ data }: CustomNodeProps) {
   return (
     <div
-      className={`relative flex items-center justify-center rounded-full bg-gray-300 ${data.isUpdated ? 'animate-pulse' : ''}`}
+      className={`relative flex cursor-pointer items-center justify-center rounded-full bg-gray-300 ${data.isUpdated ? 'animate-pulse' : ''}`}
       style={{
         width: `38px`,
         height: `38px`,

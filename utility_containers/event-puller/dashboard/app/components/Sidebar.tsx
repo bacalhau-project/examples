@@ -76,7 +76,7 @@ export default function Sidebar({
           <div className="space-y-2">
             <div>
               <span className="text-sm font-medium">Name:</span>
-              <span className="ml-2 text-sm">{selectedNode.data.vm_name}</span>
+              <span className="ml-2 text-sm">{selectedNode.data.hostname}</span>
             </div>
             <div>
               <span className="text-sm font-medium">Region:</span>
