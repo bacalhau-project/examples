@@ -131,15 +131,20 @@ services:
       - "9090:9090"
 
   sqs-puller:
-    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-puller:latest
+    build: ../../../utility_containers/event-puller
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
       AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
       AWS_REGION: "us-east-1"
       SQS_QUEUE_URL: "$SQS_QUEUE_URL"
+      ENV_FILE: /app/.env
+    volumes:
+      - ./.env:/app/.env
     networks:
       - bacalhau-network
+    ports:
+      - "8080:8080"
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
