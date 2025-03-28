@@ -122,7 +122,7 @@ services:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
       AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "us-east-1"
+      AWS_REGION: "$AWS_REGION"
       SQS_QUEUE_URL: "$SQS_QUEUE_URL"
       BACALHAU_PORT_http: "9090"
     networks:
@@ -136,7 +136,7 @@ services:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
       AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "us-east-1"
+      AWS_REGION: "$AWS_REGION"
       SQS_QUEUE_URL: "$SQS_QUEUE_URL"
       ENV_FILE: /app/.env
     volumes:
