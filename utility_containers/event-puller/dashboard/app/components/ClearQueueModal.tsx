@@ -25,10 +25,10 @@ export default function ClearQueueModal({ open, setOpen, clearQueue }: ClearQueu
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">
             Cancel
           </Button>
-          <Button variant="destructive" onClick={clearQueue}>
+          <Button variant="destructive" onClick={clearQueue} className="cursor-pointer">
             Clear Queue
           </Button>
         </DialogFooter>

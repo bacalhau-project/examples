@@ -17,13 +17,9 @@ import { CustomNode } from '@/components/CustomNode';
 import { getContrastTextColor } from '@/lib/utils';
 import { ModeToggle } from '@/components/ModeToggle';
 
-export interface NodeData {
-  vm_name: string;
-  region: string;
-  icon_name: string;
+export interface NodeData extends Message {
   label?: string;
   isUpdated?: boolean;
-  color?: string;
 }
 
 interface Node extends FlowNode {
@@ -86,7 +82,6 @@ export default function NodeGraph({
     prevVmStatesRef.current = new Map(vmStates);
 
     if (newUpdatedNodes.size > 0) {
-      console.log('2');
       setUpdatedNodes(newUpdatedNodes);
 
       // Not the best way to do this, but it works for now
@@ -129,7 +124,6 @@ export default function NodeGraph({
             <Badge
               variant={isConnected ? 'default' : 'outline'}
               className={`${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-              onClick={() => setOpenClearQueue(true)}
             >
               {isConnected ? 'Connected' : 'Disconnected'}
             </Badge>
@@ -266,14 +260,14 @@ function Flow({
         const col = Math.floor(i / rows);
         const row = i % rows;
         const shouldHide = highlightedRegion && vm.region !== highlightedRegion;
-        const isUpdated = updatedNodes.has(vm.vm_name);
+        const isUpdated = updatedNodes.has(vm.hostname);
 
         initialNodes.push({
-          id: vm.vm_name,
+          id: vm.hostname,
           type: 'custom',
           data: {
             ...vm,
-            label: vm.vm_name,
+            label: vm.hostname,
             isUpdated, // Pass the update state to the custom node
           },
           position: {

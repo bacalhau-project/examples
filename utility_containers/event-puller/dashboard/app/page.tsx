@@ -7,11 +7,14 @@ import dynamic from 'next/dynamic';
 import NodeGraph from './NodeGraph';
 
 export interface Message {
-  container_id: string;
-  vm_name: string;
+  job_id: string;
+  execution_id: string;
+  hostname: string;
+  job_submission_time: string;
   icon_name: string;
-  color: string;
   timestamp: string;
+  color: string;
+  sequence: number;
   region: string;
 }
 
@@ -103,7 +106,7 @@ function DashboardContent() {
             const updatedStates = new Map(prevStates);
             data.messages.forEach((msg) => {
               // Use vm_name as the key instead of container_id
-              updatedStates.set(msg.vm_name, msg);
+              updatedStates.set(msg.hostname, msg);
             });
             return updatedStates;
           });
