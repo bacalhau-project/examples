@@ -11,7 +11,7 @@ import sqlite3
 from pymongo import MongoClient
 
 def fetch_and_sync():
-    conn = sqlite3.connect("/bacalhau_data/sensor_data.db")
+    conn = sqlite3.connect("/app/data/sensor_data.db")
     cursor = conn.cursor()
 
     try:
@@ -24,7 +24,7 @@ def fetch_and_sync():
             return
 
         # Connect to MongoDB
-        mongodb_uri = os.getenv("MONGODB_URI", "mongodb://username:password@18.185.179.178:27017")
+        mongodb_uri = os.getenv("MONGODB_URI", "")
         database_name = os.getenv("DATABASE_NAME", "postgres")
         collection_name = os.getenv("COLLECTION_NAME", "sensor_readings")
 
@@ -46,7 +46,7 @@ def fetch_and_sync():
             batch = documents[i:i + batch_size]
             result = collection.insert_many(batch)
             total_inserted += len(result.inserted_ids)
-
+        
         print(f"Inserted {total_inserted} records into MongoDB.")
 
         # Mark the records as synced

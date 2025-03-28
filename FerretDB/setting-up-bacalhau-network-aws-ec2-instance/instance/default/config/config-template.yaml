@@ -1,0 +1,14 @@
+NameProvider: puuid
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators: ${orchestrators_list}
+  Auth:
+    Token: ${bacalhau_token}
+  TLS:
+    RequireTLS: ${tls}
+  AllowListedLocalPaths:
+    - /bacalhau_data:rw
+JobAdmissionControl:
+  AcceptNetworkedJobs: true

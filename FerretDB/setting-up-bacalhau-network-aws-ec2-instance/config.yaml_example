@@ -1,0 +1,37 @@
+max_instances: 4
+username: bacalhau-runner
+public_ssh_key_path: /home/bacalhau-runner/.ssh/id_rsa.pub
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      cloud-init-scripts: "bacalhauorchestrator" # override cloud-init-scripts (it must be the existing folder instance/xxxx with custom implementation of scripts_provider
+      node_count: 1
+      spot: false # override set on-demand instance instead of spot (spot is default)
+      tags: orchestrator_node # custom tags for node, allows to search i.e. public IP later (will be displayed with 'list' action)
+
+  - eu-central-1:
+      image: auto
+      architecture: x86_64
+      cloud-init-scripts: "ferretdb" # override cloud-init-scripts (it must be the existing folder instance/xxxx with custom implementation of scripts_provider
+      machine_type: t2.micro
+      node_count: 1
+      spot: true # make a spot instance by default; false will create on demand instance
+      tags: some_additional_tag,another_one
+
+  - eu-central-1:  # even next spot within the same region but with different architecture and cloud-init-scripts
+      image: auto
+      architecture: arm64
+      machine_type: t4g.micro
+      node_count: 1
+
+  - eu-west-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.micro
+      node_count: auto

@@ -1,0 +1,15 @@
+[Unit]
+Description=Health Check Web Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/uv run /usr/local/bin/healthz-web-server.py
+WorkingDirectory=/usr/local/bin
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

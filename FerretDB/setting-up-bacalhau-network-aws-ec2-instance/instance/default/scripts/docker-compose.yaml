@@ -22,14 +22,9 @@ services:
       - type: bind
         source: /bacalhau_data
         target: /bacalhau_data
-    networks:
-      - bacalhau-network
     healthcheck:
       test: ["CMD", "curl", "-f", "localhost:1234"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-networks:
-  bacalhau-network:
