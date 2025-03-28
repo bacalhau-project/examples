@@ -50,6 +50,7 @@ docker run -p 8080:8080 \
   -e AWS_SECRET_ACCESS_KEY=your_secret \
   -e AWS_REGION=your_region \
   -e SQS_QUEUE_URL=your_queue_url \
+  -v $(pwd)/.env:/app/.env \ # Mount .env file with configuration
   bacalhau-project/event-puller:latest
 ```
 
@@ -101,6 +102,8 @@ npm install
 # Build for production
 npm run build
 ```
+
+To configure certain aspects of the dashboard see `constants.ts`.
 
 ## 🔍 Known Issues and Troubleshooting
 
@@ -160,6 +163,16 @@ When accessing the development server, use query parameters to connect to your E
 
 ```
 http://localhost:3000/?host=localhost&port=8080
+```
+
+Format code
+```sh
+npm run format
+```
+
+Lint code
+```sh
+npm run lint
 ```
 
 ## 🧪 Testing with Sample Messages
