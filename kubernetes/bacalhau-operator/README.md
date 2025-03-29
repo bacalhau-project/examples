@@ -15,7 +15,7 @@ This will create bacalhau namespace, deploy job controller and needed CRDs.
 
 * Create a Job CR, a samples can be found at config/samples
 ```bash
-kubectl create -f config/samples/job_simple_hello_world.yaml
+kubectl create -f config/samples/pass-through-spec/job_simple_hello_world.yaml
 ````
 
 * Check status of the job
