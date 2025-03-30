@@ -1485,7 +1485,7 @@ func (m *model) addLog(format string, args ...interface{}) {
 }
 
 // Initialize Cosmos DB client
-func initCosmosClient(_ context.Context) (*azcosmos.Client, bool, error) {
+func initCosmosClient(ctx context.Context) (*azcosmos.Client, bool, error) {
 	endpoint := os.Getenv("COSMOS_ENDPOINT")
 	key := os.Getenv("COSMOS_KEY")
 
@@ -1510,7 +1510,7 @@ func initCosmosClient(_ context.Context) (*azcosmos.Client, bool, error) {
 }
 
 // Get a container client for Cosmos DB
-func getCosmosContainer(client *azcosmos.Client, _ context.Context) (*azcosmos.ContainerClient, error) {
+func getCosmosContainer(client *azcosmos.Client, ctx context.Context) (*azcosmos.ContainerClient, error) {
 	databaseName := os.Getenv("COSMOS_DATABASE")
 	containerName := os.Getenv("COSMOS_CONTAINER")
 
