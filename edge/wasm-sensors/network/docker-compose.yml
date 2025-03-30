@@ -10,12 +10,8 @@ services:
     hostname: orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
-    ports:
-      - "8438:8438"
-      - "1234:1234"
-      - "4222:4222"
-    networks:
-      - bacalhau-network
+    # Using host network mode
+    network_mode: "host"
     volumes:
       - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
     deploy:
@@ -44,8 +40,7 @@ services:
       orchestrator:
         condition: service_healthy
     privileged: true
-    networks:
-      - bacalhau-network
+    network_mode: "host"
 
   edge-us:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -65,8 +60,7 @@ services:
         limits:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
-    networks:
-      - bacalhau-network
+    network_mode: "host"
 
   edge-eu:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -86,8 +80,7 @@ services:
         limits:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
-    networks:
-      - bacalhau-network
+    network_mode: "host"
 
   edge-as:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -102,8 +95,12 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
-    networks:
-      - bacalhau-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.03" # 3% of a CPU core
+          memory: "200M" # 200MB per service
+    network_mode: "host"
 
   sqs-proxy:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
@@ -114,10 +111,8 @@ services:
       AWS_REGION: "${AWS_REGION}"
       SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
       BACALHAU_PORT_http: "9090"
-    networks:
-      - bacalhau-network
-    ports:
-      - "9090:9090"
+    # Using host network mode
+    network_mode: "host"
 
   sqs-puller:
     image: ghcr.io/bacalhau-project/event-puller:latest
@@ -130,10 +125,8 @@ services:
       ENV_FILE: /app/.env
     volumes:
       - ./.env:/app/.env
-    networks:
-      - bacalhau-network
-    ports:
-      - "8080:8080"
+    # Using host network mode
+    network_mode: "host"
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -144,11 +137,6 @@ services:
     stop_grace_period: 3s
     environment:
       <<: *common-env-variables
-      BACALHAU_API_HOST: orchestrator
     depends_on:
       - orchestrator
-    networks:
-      - bacalhau-network
-
-networks:
-  bacalhau-network:
+    network_mode: "host"
