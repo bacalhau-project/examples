@@ -150,7 +150,7 @@ start_network() {
     # Start core services first
     # We always start orchestrator and web services before edge nodes
     print_info "Starting core services..."
-    docker compose up -d orchestrator web-services sqs-proxy sqs-puller
+    docker compose up -d orchestrator web-services sqs-proxy-us sqs-proxy-eu sqs-proxy-as sqs-puller
 
     # Wait for orchestrator to be healthy
     # This is critical - we must have a running orchestrator before any edge nodes start

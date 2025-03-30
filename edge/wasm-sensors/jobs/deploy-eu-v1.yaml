@@ -22,7 +22,7 @@ tasks:
         entryModule: /app/modules/publisher.wasm
         entrypoint: "_start"
         parameters:
-          - "--proxy=http://host.docker.internal:9090"
+          - "--proxy=http://host.docker.internal:9092"
           - "--emoji=-1" # Random icon
           - "--color=#0000FF" # Blue color
           - "--interval=5"

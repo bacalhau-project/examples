@@ -132,7 +132,7 @@ services:
         soft: 4096
         hard: 4096
 
-  sqs-proxy:
+  sqs-proxy-us:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
     environment:
       <<: *common-env-variables
@@ -140,8 +140,53 @@ services:
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_REGION: "${AWS_REGION}"
       SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
-      BACALHAU_PORT_http: "9090"
+      BACALHAU_PORT_http: "9091"
     network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  sqs-proxy-eu:
+    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    environment:
+      <<: *common-env-variables
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      BACALHAU_PORT_http: "9092"
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  sqs-proxy-as:
+    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    environment:
+      <<: *common-env-variables
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      BACALHAU_PORT_http: "9093"
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
     ulimits:
       nofile:
         soft: 65536
