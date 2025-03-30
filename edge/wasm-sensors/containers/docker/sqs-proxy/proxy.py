@@ -18,10 +18,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# AWS SQS client setup
+# AWS SQS client setup with connection pooling
 sqs = boto3.client(
     'sqs',
-    region_name=os.getenv('AWS_REGION', 'us-east-1')
+    region_name=os.getenv('AWS_REGION', 'us-east-1'),
+    config=boto3.session.Config(
+        max_pool_connections=100,  # Key improvement: connection pooling
+        connect_timeout=5,
+        read_timeout=10
+    )
 )
 
 QUEUE_URL = os.getenv('SQS_QUEUE_URL')
@@ -92,4 +97,4 @@ if __name__ == "__main__":
 
     # Use Bacalhau port if available, otherwise default to 8080
     port = int(os.getenv('BACALHAU_PORT_http', '8080'))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("proxy:app", host="0.0.0.0", port=port)

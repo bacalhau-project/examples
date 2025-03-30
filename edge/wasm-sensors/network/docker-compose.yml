@@ -134,6 +134,7 @@ services:
 
   sqs-proxy-us:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9091
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -154,6 +155,7 @@ services:
 
   sqs-proxy-eu:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9092
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -174,6 +176,7 @@ services:
 
   sqs-proxy-as:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9093
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
