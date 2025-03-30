@@ -1,0 +1,15 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+  Env:
+    AllowList:
+      - "AWS_*"
+      - "REGION"
+      - "HOSTNAME"
+  AllowListedLocalPaths:
+    - "/app/**:rw"
+
+UpdateConfig:
+  Interval: 0 
