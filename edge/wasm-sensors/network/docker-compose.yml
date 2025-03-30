@@ -141,10 +141,7 @@ services:
       AWS_REGION: "${AWS_REGION}"
       SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
       BACALHAU_PORT_http: "9090"
-    networks:
-      - bacalhau-network
-    ports:
-      - "9090:9090"
+    network_mode: "host"
     ulimits:
       nofile:
         soft: 65536
@@ -161,10 +158,7 @@ services:
       ENV_FILE: /app/.env
     volumes:
       - ./.env:/app/.env
-    networks:
-      - bacalhau-network
-    ports:
-      - "8080:8080"
+    network_mode: "host"
     ulimits:
       nofile:
         soft: 65536

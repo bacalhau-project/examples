@@ -22,7 +22,7 @@ tasks:
         entryModule: /app/modules/publisher.wasm
         entrypoint: "_start"
         parameters:
-          - "--proxy=http://bacalhau-edge-sqs-proxy-1:9090"
+          - "--proxy=http://host.docker.internal:9090"
           - "--emoji=-1" # Random icon
           - "--color=#00FF00" # Green color
           - "--interval=5"
