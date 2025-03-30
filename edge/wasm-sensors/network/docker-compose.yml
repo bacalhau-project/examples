@@ -41,8 +41,8 @@ services:
       - ./config/compute.yaml:/etc/bacalhau/config.yaml
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -53,7 +53,7 @@ services:
   edge-us:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
-    command: -c 'mkdir -p /app && bacalhau devstack --computes 10 --orchestrators 0 -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
+    command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
     volumes:
       - ./config/compute.yaml:/etc/bacalhau/config.yaml
       - ./modules:/app/modules
@@ -63,12 +63,6 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
-    deploy:
-      replicas: ${REPLICAS:-3}
-      resources:
-        limits:
-          cpus: "0.03" # 3% of a CPU core
-          memory: "200M" # 200MB per service
     networks:
       - bacalhau-network
 
@@ -85,12 +79,6 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
-    deploy:
-      replicas: ${REPLICAS:-3}
-      resources:
-        limits:
-          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
     networks:
       - bacalhau-network
 
@@ -107,12 +95,6 @@ services:
     depends_on:
       orchestrator:
         condition: service_healthy
-    deploy:
-      replicas: ${REPLICAS:-3}
-      resources:
-        limits:
-          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
     networks:
       - bacalhau-network
 
@@ -120,10 +102,10 @@ services:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "$AWS_REGION"
-      SQS_QUEUE_URL: "$SQS_QUEUE_URL"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
       BACALHAU_PORT_http: "9090"
     networks:
       - bacalhau-network
@@ -134,10 +116,10 @@ services:
     image: ghcr.io/bacalhau-project/event-puller:latest
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "$AWS_REGION"
-      SQS_QUEUE_URL: "$SQS_QUEUE_URL"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
       ENV_FILE: /app/.env
     volumes:
       - ./.env:/app/.env
