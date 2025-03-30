@@ -46,6 +46,8 @@ services:
     privileged: true
     networks:
       - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ulimits:
       nofile:
         soft: 65536
