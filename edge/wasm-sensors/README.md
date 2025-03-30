@@ -208,7 +208,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 2. Deploy to US region with red color and rocket emoji:
 
    ```bash
-   bacalhau job run -E "REPLICAS" jobs/deploy-us-v1.yaml
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-us-v1.yaml
    ```
 
    This will deploy the SQS Publisher to US edge nodes with red color and rocket emoji 🚀.
