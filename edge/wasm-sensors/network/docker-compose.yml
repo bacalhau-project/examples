@@ -2,7 +2,7 @@ name: bacalhau-edge
 
 x-common-env-variables: &common-env-variables
   BACALHAU_DISABLEANALYTICS: true
-  LOG_LEVEL: debug
+  LOG_LEVEL: info
 
 services:
   orchestrator:
