@@ -1,6 +1,0 @@
-Orchestrator:
-  Enabled: true
-WebUI:
-  Enabled: true
-UpdateConfig:
-  Interval: 0
