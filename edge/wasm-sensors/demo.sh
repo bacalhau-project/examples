@@ -6,7 +6,7 @@
 # It provides functionality to start/stop the network, disconnect/reconnect regions, and manage jobs.
 #
 # Key features:
-# - Sequential provisioning of edge nodes to prevent overwhelming the orchestrator
+# - Batch provisioning of edge nodes to prevent overwhelming the orchestrator
 # - Controlled reconnection of regions for fault tolerance testing
 # - Preservation of container and node identities during disconnection/reconnection
 #
@@ -22,16 +22,17 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default configuration
-REPLICAS=${REPLICAS:-3}            # Default number of replicas if not specified
-US_REPLICAS=${US_REPLICAS:-$REPLICAS}     # US region can be overridden separately
-EU_REPLICAS=${EU_REPLICAS:-$REPLICAS}     # EU region can be overridden separately
-AS_REPLICAS=${AS_REPLICAS:-$REPLICAS}     # AS region can be overridden separately
+REPLICAS=${REPLICAS:-3}                # Default number of replicas if not specified
+US_REPLICAS=${US_REPLICAS:-$REPLICAS}  # US region can be overridden separately
+EU_REPLICAS=${EU_REPLICAS:-$REPLICAS}  # EU region can be overridden separately
+AS_REPLICAS=${AS_REPLICAS:-$REPLICAS}  # AS region can be overridden separately
 
-# Timing for sequential operations (milliseconds)
-# - Provisioning needs a small delay to prevent overwhelming the orchestrator's registration process
-# - Reconnection uses a different delay as restarting is typically faster than initial creation
-MS_BETWEEN_NODES=${MS_BETWEEN_NODES:-100}          # Default delay for node provisioning
-MS_BETWEEN_RECONNECT=${MS_BETWEEN_RECONNECT:-250}  # Default delay for node reconnection (higher as starting existing containers is much faster than creating new ones)
+# Batch size for operations
+BATCH_SIZE=${BATCH_SIZE:-10}           # How many nodes to provision at once
+
+# Timing for reconnection operations (milliseconds)
+# - Reconnection uses a delay as restarting is typically faster than initial creation
+MS_BETWEEN_RECONNECT=${MS_BETWEEN_RECONNECT:-250}  # Default delay for node reconnection
 
 # Helper functions
 print_step() {
@@ -60,11 +61,11 @@ print_usage() {
     echo "Usage: $0 [command] [options]"
     echo
     echo "Commands:"
-    echo "  start_network        Start the Bacalhau network (with sequential provisioning)"
+    echo "  start_network        Start the Bacalhau network with batch provisioning"
     echo "  stop_network         Stop the Bacalhau network"
     echo "  stop_all_jobs        Stop all running jobs"
     echo "  disconnect_region    Disconnect a specific region"
-    echo "  reconnect_region     Reconnect a specific region (with sequential restart)"
+    echo "  reconnect_region     Reconnect a specific region with batch processing"
     echo "  status               Show current status"
     echo
     echo "Options:"
@@ -76,12 +77,12 @@ print_usage() {
     echo "  US_REPLICAS          Number of replicas for US region"
     echo "  EU_REPLICAS          Number of replicas for EU region"
     echo "  AS_REPLICAS          Number of replicas for AS region"
-    echo "  MS_BETWEEN_NODES     Milliseconds to wait between node startups (default: 100)"
+    echo "  BATCH_SIZE           Number of nodes to provision in parallel (default: 10)"
     echo "  MS_BETWEEN_RECONNECT Milliseconds to wait between node reconnections (default: 250)"
     echo
     echo "Examples:"
     echo "  $0 start_network"
-    echo "  REPLICAS=10 $0 start_network"
+    echo "  REPLICAS=10 BATCH_SIZE=8 $0 start_network"
     echo "  US_REPLICAS=5 EU_REPLICAS=8 AS_REPLICAS=7 $0 start_network"
 }
 
@@ -96,7 +97,7 @@ get_running_jobs() {
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-# Show progress indicator for sequential provisioning
+# Show progress indicator for batch provisioning
 show_progress() {
   local region=$1
   local current=$2
@@ -106,32 +107,33 @@ show_progress() {
   printf "\r${BLUE}[%s] Provisioning: %3d%% (%d/%d nodes)${NC}" "$region" "$percent" "$current" "$total"
 }
 
-# Provision nodes for a region sequentially
+# Provision nodes for a region using batches
 provision_region() {
   local region=$1
   local node_count=$2
 
   print_step "Provisioning $region region ($node_count nodes)"
 
-  # We provision nodes sequentially (one at a time) for two important reasons:
-  # 1. To prevent overwhelming the orchestrator with many simultaneous registration requests,
-  #    which can cause connection failures or timeout issues in large deployments
-  # 2. To allow for graceful node registration, especially important when running many nodes
-  #    on the same host where resource contention could occur during startup
+  # We provision nodes in batches to balance between:
+  # 1. Not overwhelming the orchestrator with too many simultaneous registration requests
+  # 2. Taking advantage of parallelism to speed up deployment
+  # 3. Maintaining a controlled load on the host system's resources
 
-  for i in $(seq 1 $node_count); do
-    # Scale up by one node at a time
-    # This is much gentler on the orchestrator than starting all nodes at once
-    docker compose -f network/docker-compose.yml up -d --scale edge-$region=$i edge-$region &>/dev/null
-
-    # Show progress
-    show_progress $region $i $node_count
-
-    # Wait before provisioning the next node to allow time for registration
-    # This delay is critical to ensure each node fully registers before the next one starts
-    if [ $i -lt $node_count ]; then
-      ms_sleep $MS_BETWEEN_NODES
+  local current=0
+  while [ $current -lt $node_count ]; do
+    # Calculate next batch target (either BATCH_SIZE more or the total, whichever is smaller)
+    local target=$((current + BATCH_SIZE))
+    if [ $target -gt $node_count ]; then
+      target=$node_count
     fi
+
+    # Scale up to the target number using docker compose scale
+    # This is more efficient than creating nodes one by one
+    docker compose -f network/docker-compose.yml up -d --scale edge-$region=$target edge-$region &>/dev/null
+
+    # Update progress
+    current=$target
+    show_progress $region $current $node_count
   done
 
   echo
@@ -139,7 +141,7 @@ provision_region() {
 }
 
 start_network() {
-    print_step "Starting Bacalhau network with sequential node provisioning"
+    print_step "Starting Bacalhau network with batch node provisioning"
 
     # Clean up existing network
     cd network
@@ -162,9 +164,9 @@ start_network() {
 
     # Calculate total nodes
     TOTAL_NODES=$((US_REPLICAS + EU_REPLICAS + AS_REPLICAS))
-    print_info "Total target: $TOTAL_NODES nodes across all regions"
+    print_info "Total target: $TOTAL_NODES nodes across all regions (batch size: $BATCH_SIZE)"
 
-    # Provision each region sequentially
+    # Provision each region in sequence
     # The order (US, EU, AS) matters if you're demonstrating geographic distribution
     cd ..
     provision_region "us" $US_REPLICAS
@@ -235,7 +237,7 @@ reconnect_region() {
         read -p "Enter region to reconnect (us/eu/as): " region
     fi
 
-    print_step "Reconnecting $region region with sequential restart"
+    print_step "Reconnecting $region region with batch restart"
 
     # Find all stopped containers for this region
     local container_ids=($(docker ps -a -q --filter "name=edge-${region}" --filter "status=exited"))
@@ -248,32 +250,41 @@ reconnect_region() {
 
     print_info "Found $total_containers stopped containers for $region region"
 
-    # We restart containers one-by-one rather than using 'docker-compose up --scale' for several reasons:
-    # 1. We want to preserve each container's exact identity and node ID
-    # 2. Sequential restart prevents overwhelming the orchestrator with simultaneous reconnections
-    # 3. We can show a precise progress indicator
-    # 4. This approach maintains the distributed system's state more accurately
+    # We restart containers in batches to balance between:
+    # 1. Preserving each container's exact identity and node ID
+    # 2. Preventing overwhelming the orchestrator with simultaneous reconnections
+    # 3. Taking advantage of parallelism to speed up reconnection
 
-    # Start containers one by one
+    # Reconnect containers in batches
     local current=0
-    for container_id in "${container_ids[@]}"; do
-        current=$((current + 1))
+    while [ $current -lt $total_containers ]; do
+        # Calculate end of this batch
+        local batch_end=$((current + BATCH_SIZE))
+        if [ $batch_end -gt $total_containers ]; then
+            batch_end=$total_containers
+        fi
 
-        # Start this specific container
-        # Using 'docker start' maintains the container's identity, including its
-        # hostname, environment variables, and most importantly, its Bacalhau node ID
-        docker start "$container_id" &>/dev/null
+        # Start containers in this batch in parallel
+        local batch_pids=()
+        for i in $(seq $current $((batch_end - 1))); do
+            docker start "${container_ids[$i]}" &>/dev/null &
+            batch_pids+=($!)
+        done
 
-        # Show progress
+        # Wait for all containers in this batch to start
+        for pid in "${batch_pids[@]}"; do
+            wait $pid
+        done
+
+        # Update progress
+        current=$batch_end
         printf "\r${BLUE}[$region] Restarting: %3d%% (%d/%d containers)${NC}" \
             $((current * 100 / total_containers)) $current $total_containers
 
-        # Wait between container starts
-        # The delay is higher for reconnection than initial provisioning because:
-        # 1. Starting existing containers is much faster than creating new ones
-        # 2. We need to ensure each node properly reconnects to the orchestrator
+        # Wait a short time between batches to prevent overwhelming the orchestrator
+        # Only wait if we have more containers to start
         if [ $current -lt $total_containers ]; then
-            ms_sleep $MS_BETWEEN_RECONNECT  # Using the reconnection-specific delay
+            ms_sleep $MS_BETWEEN_RECONNECT
         fi
     done
 
