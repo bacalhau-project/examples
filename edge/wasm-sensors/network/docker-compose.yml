@@ -2,7 +2,7 @@ name: bacalhau-edge
 
 x-common-env-variables: &common-env-variables
   BACALHAU_DISABLEANALYTICS: true
-  LOG_LEVEL: debug
+  LOG_LEVEL: info
 
 services:
   orchestrator:
@@ -10,19 +10,12 @@ services:
     hostname: orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
-    ports:
-      - "8438:8438"
-      - "1234:1234"
-      - "4222:4222"
-    networks:
-      - bacalhau-network
+    # Using host network mode
+    network_mode: "host"
     volumes:
       - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
     deploy:
       resources:
-        limits:
-          cpus: "4.0"
-          memory: "8G"
         reservations:
           cpus: "2.0"
           memory: "4G"
@@ -32,6 +25,10 @@ services:
       timeout: 20s
       retries: 10
       start_period: 15s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   web-services:
     image: ghcr.io/bacalhau-project/bacalhau:latest-dind
@@ -41,14 +38,20 @@ services:
       - ./config/compute.yaml:/etc/bacalhau/config.yaml
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
     depends_on:
       orchestrator:
         condition: service_healthy
     privileged: true
     networks:
-      - bacalhau-network
+      - bacalhau-network-core
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   edge-us:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -64,13 +67,18 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: ${REPLICAS:-3}
       resources:
         limits:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-us
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
 
   edge-eu:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -86,13 +94,18 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: ${REPLICAS:-3}
       resources:
         limits:
-          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
+          cpus: "0.03" # 3% of a CPU core
+          memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-eu
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
 
   edge-as:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -108,38 +121,98 @@ services:
       orchestrator:
         condition: service_healthy
     deploy:
-      replicas: ${REPLICAS:-3}
       resources:
         limits:
-          cpus: "0.1" # 10% of a CPU core (enough for 20 jobs at 0.001 each)
-          memory: "400M" # 400MB (enough for 10 jobs at 36MB each, plus overhead)
+          cpus: "0.03" # 3% of a CPU core
+          memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-as
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
 
-  sqs-proxy:
+  sqs-proxy-us:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9091
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "us-east-1"
-      SQS_QUEUE_URL: "$SQS_QUEUE_URL"
-      BACALHAU_PORT_http: "9090"
-    networks:
-      - bacalhau-network
-    ports:
-      - "9090:9090"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      BACALHAU_PORT_http: "9091"
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  sqs-proxy-eu:
+    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9092
+    environment:
+      <<: *common-env-variables
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      BACALHAU_PORT_http: "9092"
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  sqs-proxy-as:
+    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
+    command: gunicorn proxy:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:9093
+    environment:
+      <<: *common-env-variables
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      BACALHAU_PORT_http: "9093"
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   sqs-puller:
-    image: ghcr.io/bacalhau-project/wasm-sensors-sqs-puller:latest
+    image: ghcr.io/bacalhau-project/event-puller:latest
     environment:
       <<: *common-env-variables
-      AWS_ACCESS_KEY_ID: "$AWS_ACCESS_KEY_ID"
-      AWS_SECRET_ACCESS_KEY: "$AWS_SECRET_ACCESS_KEY"
-      AWS_REGION: "us-east-1"
-      SQS_QUEUE_URL: "$SQS_QUEUE_URL"
-    networks:
-      - bacalhau-network
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "${AWS_REGION}"
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL}"
+      ENV_FILE: /app/.env
+    volumes:
+      - ./.env:/app/.env
+    network_mode: "host"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -150,11 +223,33 @@ services:
     stop_grace_period: 3s
     environment:
       <<: *common-env-variables
-      BACALHAU_API_HOST: orchestrator
+      # Point to orchestrator on host network
+      BACALHAU_API_HOST: "host.docker.internal"
     depends_on:
       - orchestrator
     networks:
-      - bacalhau-network
+      - bacalhau-network-core
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
 
 networks:
-  bacalhau-network:
+  bacalhau-network-us:
+    ipam:
+      config:
+        - subnet: 172.24.0.0/20
+  bacalhau-network-eu:
+    ipam:
+      config:
+        - subnet: 172.25.0.0/20
+  bacalhau-network-as:
+    ipam:
+      config:
+        - subnet: 172.26.0.0/20
+  bacalhau-network-core:
+    ipam:
+      config:
+        - subnet: 172.27.0.0/24

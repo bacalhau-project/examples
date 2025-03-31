@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import ReactFlow, {
+import {
   Controls,
   Background,
   useNodesState,
@@ -7,6 +7,7 @@ import ReactFlow, {
   Node as FlowNode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dynamic from 'next/dynamic';
 
 import { Message } from '@/page';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +18,9 @@ import { CustomNode } from '@/components/CustomNode';
 import { getContrastTextColor } from '@/lib/utils';
 import { ModeToggle } from '@/components/ModeToggle';
 
-export interface NodeData {
-  vm_name: string;
-  region: string;
-  icon_name: string;
+export interface NodeData extends Message {
   label?: string;
   isUpdated?: boolean;
-  color?: string;
 }
 
 interface Node extends FlowNode {
@@ -47,7 +44,7 @@ function LabelNode({ data }: { data: { label: string; color: string } }) {
 
 interface NodeGraphProps {
   isConnected: boolean;
-  setShowConfirm: (show: boolean) => void;
+  setOpenClearQueue: (show: boolean) => void;
   clearQueue: () => void;
   vmStates: Map<string, Message>;
   queueSize: number;
@@ -56,9 +53,25 @@ interface NodeGraphProps {
   showConfirm: boolean;
 }
 
-export default function NodeGraph({
+const ReactFlowComponent = dynamic(() => import('reactflow').then((mod) => mod.ReactFlow), {
+  ssr: false,
+});
+
+const FlowComponent = dynamic(() => Promise.resolve(Flow), {
+  ssr: false,
+});
+
+const NodeGraphComponent = dynamic(() => Promise.resolve(NodeGraph), {
+  ssr: false,
+});
+
+export default function NodeGraphWrapper(props: NodeGraphProps) {
+  return <NodeGraphComponent {...props} />;
+}
+
+export function NodeGraph({
   isConnected,
-  setShowConfirm,
+  setOpenClearQueue,
   clearQueue,
   vmStates,
   queueSize,
@@ -67,7 +80,7 @@ export default function NodeGraph({
   showConfirm,
 }: NodeGraphProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [highlightedRegion, setHighlightedRegion] = useState(null);
+  const [highlightedRegion, setHighlightedRegion] = useState<string | null>(null);
   const [updatedNodes, setUpdatedNodes] = useState<Set<string>>(new Set());
   const prevVmStatesRef = useRef<Map<string, Message>>(new Map());
 
@@ -86,7 +99,6 @@ export default function NodeGraph({
     prevVmStatesRef.current = new Map(vmStates);
 
     if (newUpdatedNodes.size > 0) {
-      console.log('2');
       setUpdatedNodes(newUpdatedNodes);
 
       // Not the best way to do this, but it works for now
@@ -99,8 +111,7 @@ export default function NodeGraph({
       return () => clearTimeout(timeoutId);
     }
   }, [vmStates]);
-
-  const regions = Array.from(vmStates.values()).reduce((acc, vm) => {
+  const regions = Array.from(vmStates.values()).reduce<Record<string, string>>((acc, vm) => {
     acc[vm.region] = vm.color;
     return acc;
   }, {});
@@ -111,7 +122,7 @@ export default function NodeGraph({
     <div className="fixed inset-0 overflow-hidden bg-white dark:bg-black">
       <div className="absolute inset-0">
         <ReactFlowProvider>
-          <Flow
+          <FlowComponent
             nodes={nodes}
             onNodeSelect={setSelectedNode}
             highlightedRegion={highlightedRegion}
@@ -129,12 +140,11 @@ export default function NodeGraph({
             <Badge
               variant={isConnected ? 'default' : 'outline'}
               className={`${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-              onClick={() => setShowConfirm(true)}
             >
               {isConnected ? 'Connected' : 'Disconnected'}
             </Badge>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto hidden items-center gap-4 md:flex">
             <div className="flex items-center gap-2">
               <span className="text-sm">Unique VMs:</span>
               <Badge>{vmStates.size}</Badge>
@@ -165,24 +175,24 @@ export default function NodeGraph({
           setHighlightedRegion={setHighlightedRegion}
           regions={regions}
           selectedNode={selectedNode}
-          setShowConfirm={setShowConfirm}
+          setOpenClearQueue={setOpenClearQueue}
         />
       </aside>
 
       {/* Region legend floating at the bottom */}
-      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 transform flex-wrap justify-center gap-3 rounded-lg bg-black/50 px-4 py-2 backdrop-blur-xl">
+      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 transform flex-wrap justify-center gap-3 rounded-lg bg-white/50 px-4 py-2 backdrop-blur-xl dark:bg-slate-500/50">
         {Object.entries(regions).map(([region, color]) => (
           <div key={region} className="flex items-center gap-2">
             <div
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: color as string }}
             ></div>
-            <span className="text-xs font-semibold text-gray-800 dark:text-white">{region}</span>
+            <span className="text-xs font-semibold">{region}</span>
           </div>
         ))}
 
         {Object.keys(regions).length === 0 && (
-          <span className="text-xs font-semibold text-gray-800 dark:text-white">No regions</span>
+          <span className="text-xs font-semibold">No regions</span>
         )}
       </div>
 
@@ -192,7 +202,7 @@ export default function NodeGraph({
       </div>
 
       {/* Clear queue modal */}
-      {showConfirm && <ClearQueueModal setShowConfirm={setShowConfirm} clearQueue={clearQueue} />}
+      <ClearQueueModal open={showConfirm} setOpen={setOpenClearQueue} clearQueue={clearQueue} />
     </div>
   );
 }
@@ -218,7 +228,7 @@ function Flow({
   );
 
   const onNodeClick = useCallback(
-    (_event, node) => {
+    (_event: React.MouseEvent, node: Node) => {
       onNodeSelect(node);
     },
     [onNodeSelect],
@@ -233,7 +243,7 @@ function Flow({
       return acc;
     }, {});
 
-    const initialNodes = [];
+    const initialNodes: FlowNode[] = [];
     let currentX = 0;
 
     Object.entries(nodesByRegion).forEach(([region, regionNodes]) => {
@@ -266,14 +276,14 @@ function Flow({
         const col = Math.floor(i / rows);
         const row = i % rows;
         const shouldHide = highlightedRegion && vm.region !== highlightedRegion;
-        const isUpdated = updatedNodes.has(vm.vm_name);
+        const isUpdated = updatedNodes.has(vm.hostname);
 
         initialNodes.push({
-          id: vm.vm_name,
+          id: vm.hostname,
           type: 'custom',
           data: {
             ...vm,
-            label: vm.vm_name,
+            label: vm.hostname,
             isUpdated, // Pass the update state to the custom node
           },
           position: {
@@ -293,7 +303,7 @@ function Flow({
   }, [nodes, setRfNodes, highlightedRegion, updatedNodes]);
 
   return (
-    <ReactFlow
+    <ReactFlowComponent
       attributionPosition="top-right"
       onNodeClick={onNodeClick}
       nodes={rfNodes}
@@ -307,6 +317,6 @@ function Flow({
     >
       <Controls />
       <Background />
-    </ReactFlow>
+    </ReactFlowComponent>
   );
 }

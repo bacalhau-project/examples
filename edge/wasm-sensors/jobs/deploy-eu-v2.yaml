@@ -1,0 +1,44 @@
+name: sqs-publisher-eu
+type: batch
+count: {{ or (index . "REPLICAS") 3 }}
+constraints:
+  - key: type
+    operator: "="
+    values:
+      - "edge"
+  - key: region
+    operator: "="
+    values:
+      - "eu"
+
+labels:
+  sqs-publisher: "eu"
+
+tasks:
+  - name: main
+    engine:
+      type: wasm
+      params:
+        entryModule: /app/modules/publisher.wasm
+        entrypoint: "_start"
+        parameters:
+          - "--proxy=http://host.docker.internal:9092"
+          - "--emoji=-1" # Random icon
+          - "--color=#FFFF00" # Yellow color
+          - "--interval=5"
+          - "--max-messages=0"
+          - "--region=eu"
+          - "--submission-time=2"
+    env:
+      HOSTNAME: "env:HOSTNAME"
+    inputSources:
+      - source:
+          type: localDirectory
+          params:
+            sourcePath: /app/
+        target: /app/
+    resources:
+      cpu: "0.001"
+      memory: "36mb"
+    timeouts:
+      queueTimeout: 300

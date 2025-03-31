@@ -14,7 +14,7 @@ interface SidebarProps {
   setHighlightedRegion: (region: string | null) => void;
   regions: Record<string, string>;
   selectedNode: Node | null;
-  setShowConfirm: (show: boolean) => void;
+  setOpenClearQueue: (show: boolean) => void;
 }
 
 export default function Sidebar({
@@ -22,7 +22,7 @@ export default function Sidebar({
   setHighlightedRegion,
   regions,
   selectedNode,
-  setShowConfirm,
+  setOpenClearQueue,
 }: SidebarProps) {
   return (
     <>
@@ -63,7 +63,7 @@ export default function Sidebar({
             size="sm"
             className="cursor-pointer"
             variant="destructive"
-            onClick={() => setShowConfirm(true)}
+            onClick={() => setOpenClearQueue(true)}
           >
             Clear Queue
           </Button>
@@ -76,7 +76,7 @@ export default function Sidebar({
           <div className="space-y-2">
             <div>
               <span className="text-sm font-medium">Name:</span>
-              <span className="ml-2 text-sm">{selectedNode.data.vm_name}</span>
+              <span className="ml-2 text-sm">{selectedNode.data.hostname}</span>
             </div>
             <div>
               <span className="text-sm font-medium">Region:</span>

@@ -10,6 +10,7 @@ The WASM Sensors project demonstrates:
 2. **Configuration Management** - Methods to update and manage configuration of running applications
 3. **Message Queue Integration** - Use of SQS for reliable message passing between components
 4. **Hybrid Deployment Model** - Mix of WebAssembly modules for edge and Docker containers for central services
+5. **Large-Scale Deployment** - Support for high-density node deployments across multiple regions
 
 ## 🏗️ Bacalhau Network Layout
 
@@ -19,6 +20,7 @@ The Docker Compose network setup establishes a comprehensive Bacalhau environmen
 
 - Central coordinator for the Bacalhau network
 - Manages job scheduling and distribution
+- Uses host network mode for optimal performance
 - Exposes NATS port (4222) for communication with compute nodes
 - Exposes WebUI port (8438) for monitoring and management
 
@@ -35,6 +37,7 @@ Each edge compute node:
 - Is labeled with its region and type (e.g., `region=us,type=edge`)
 - Has access to WASM modules from the host system
 - Connects to the orchestrator for job coordination
+- Is provisioned in batches or all at once depending on configuration
 
 ### Web Services Compute Node
 
@@ -45,7 +48,11 @@ Each edge compute node:
 
 ### Supporting Services
 
-- **SQS Proxy**: Direct service running on port 9090
+- **Region-Specific SQS Proxies**:
+   - **sqs-proxy-us**: Direct service running on port 9091 (host network)
+   - **sqs-proxy-eu**: Direct service running on port 9092 (host network)
+   - **sqs-proxy-as**: Direct service running on port 9093 (host network)
+   - Each proxy uses multiple workers for improved throughput
 - **SQS Puller**: Direct service processing messages from SQS
 
 ### Client Node
@@ -57,33 +64,34 @@ Each edge compute node:
 ### Network Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      bacalhau-edge Network                      │
-│                                                                 │
-│  ┌─────────────┐        ┌──────────────┐     ┌──────────────┐   │
-│  │             │        │              │     │              │   │
-│  │ Orchestrator│◄───────┤ Edge Compute ├────►│ Web Services │   │
-│  │   (4222)    │        │    Nodes     │     │    Node      │   │
-│  │             │        │              │     │              │   │
-│  └─────────────┘        └──────────────┘     └──────────────┘   │
-│        ▲                                            ▲           │
-│        │                                            │           │
-│        │                                            │           │
-│  ┌─────┴─────┐                               ┌──────┴───────┐   │
-│  │           │                               │              │   │
-│  │  Client   │                               │  SQS Proxy   │   │
-│  │           │                               │  (8080/9090) │   │
-│  └───────────┘                               └──────────────┘   │
-│                                                     ▲           │
-│                                                     │           │
-│                                                     ▼           │
-│                                              ┌──────────────┐   │
-│                                              │              │   │
-│                                              │  SQS Puller  │   │
-│                                              │              │   │
-│                                              └──────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        bacalhau-edge Network                             │
+│                                                                         │
+│  ┌─────────────┐        ┌──────────────┐     ┌──────────────┐           │
+│  │             │        │              │     │              │           │
+│  │ Orchestrator│◄───────┤ Edge Compute ├────►│ Web Services │           │
+│  │(Host network)│        │    Nodes     │     │    Node      │           │
+│  │             │        │              │     │              │           │
+│  └─────────────┘        └──────────────┘     └──────────────┘           │
+│        ▲                                            ▲                   │
+│        │                                            │                   │
+│        │                                            │                   │
+│  ┌─────┴─────┐       ┌───────────────┐      ┌──────┴───────┐           │
+│  │           │       │               │      │              │           │
+│  │  Client   │       │  SQS Pullers  │      │  SQS Proxies │           │
+│  │           │       │(Host network) │      │(Host network)│           │
+│  └───────────┘       └───────────────┘      └──────────────┘           │
+│                                                    │                    │
+│                                                    │                    │
+│                                                    ▼                    │
+│                                      ┌──────────────────────────┐       │
+│                                      │                          │       │
+│                                      │  Region-Specific Proxies │       │
+│                                      │  US: 9091, EU: 9092, AS: 9093 │       │
+│                                      │                          │       │
+│                                      └──────────────────────────┘       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🧩 Components
@@ -128,6 +136,19 @@ The SQS Publisher sends messages with the following JSON schema:
 - **sequence**: Incrementing counter for each message sent by this publisher instance
 - **region**: AWS region read from the REGION environment variable
 
+### Region-Specific SQS Proxies
+
+The network now implements region-specific SQS proxies to improve scalability:
+
+- **sqs-proxy-us**: Serves US region nodes on port 9091
+- **sqs-proxy-eu**: Serves EU region nodes on port 9092
+- **sqs-proxy-as**: Serves AS region nodes on port 9093
+
+Each proxy:
+- Uses Gunicorn with 4 worker processes for better throughput
+- Runs in host network mode for optimal performance
+- Has dedicated system resources
+
 ### Legacy Implementation
 
 The `legacy` directory contains an initial implementation attempt to support updating configuration files at runtime using WebAssembly. This approach was ultimately not pursued due to limitations with the current wazero-based executor. Instead, we now use direct job configuration updates.
@@ -148,9 +169,12 @@ The SQS Proxy is a FastAPI application that:
 - Provides a health check endpoint
 - Can be deployed either as a Bacalhau service job or alongside the Docker Compose setup
 
-**Important Note**: The SQS Proxy URL varies depending on the deployment method:
+**Important Note**: The SQS Proxy URL varies depending on the deployment method and region:
 
-- When deployed via Docker Compose: `http://bacalhau-edge-sqs-proxy-1:9090`
+- When deployed via Docker Compose:
+   - US region: `http://host.docker.internal:9091`
+   - EU region: `http://host.docker.internal:9092`
+   - AS region: `http://host.docker.internal:9093`
 - When deployed as a Bacalhau service job: `http://bacalhau-edge-web-services-1:8080`
 
 Make sure to use the appropriate URL when deploying the SQS Publisher jobs.
@@ -175,6 +199,24 @@ Like the SQS Proxy, it can be deployed either as a Bacalhau service job or along
 - [Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation)
 - AWS account with SQS access
 
+### Host System Optimization
+
+For large-scale deployments, run the optimization script to configure your host system:
+
+```bash
+sudo bash optimize-for-containers.sh
+```
+
+This script performs the following optimizations:
+
+- Increases file descriptor limits for containers
+- Adjusts kernel parameters for high-density networking
+- Optimizes connection tracking and memory settings
+- Configures Docker daemon for improved concurrency
+- Properly sizes ARP caches and TCP buffers
+
+A reboot is recommended after running the script.
+
 ### Initial Setup
 
 1. Clone the repository:
@@ -194,6 +236,37 @@ Like the SQS Proxy, it can be deployed either as a Bacalhau service job or along
 
    Edit `network/.env` and add your AWS credentials and SQS queue URL.
 
+### Provisioning Mode Options
+
+The demo script supports two provisioning modes for edge nodes:
+
+1. **Batch Mode** (default): Provisions nodes gradually in batches to prevent overwhelming the system
+   ```bash
+   # Default batch mode (10 nodes at a time)
+   ./demo.sh start_network
+   
+   # Custom batch size
+   BATCH_SIZE=25 ./demo.sh start_network
+   ```
+
+2. **All-at-Once Mode**: Provisions all nodes simultaneously for faster deployment
+   ```bash
+   # Provision all nodes at once
+   ALL_AT_ONCE=true ./demo.sh start_network
+   
+   # Useful for large-scale deployments
+   ALL_AT_ONCE=true REPLICAS=500 ./demo.sh start_network
+   ```
+
+The same options apply when reconnecting a region:
+```bash
+# Reconnect with default batch approach
+./demo.sh reconnect_region eu
+
+# Reconnect all at once (faster but more resource intensive)
+ALL_AT_ONCE=true ./demo.sh reconnect_region eu
+```
+
 ### Complete Demo Scenario
 
 This scenario demonstrates the message flow and deployment behavior across different regions:
@@ -205,10 +278,14 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    ./demo.sh start_network
    ```
 
+   The network will start in stages:
+   - Core services (orchestrator, web-services, sqs-proxies) start first
+    - Edge nodes are then provisioned according to the selected mode (batch or all-at-once)
+
 2. Deploy to US region with red color and rocket emoji:
 
    ```bash
-   ./demo.sh deploy "us" "#FF0000" 0
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-us-v1.yaml
    ```
 
    This will deploy the SQS Publisher to US edge nodes with red color and rocket emoji 🚀.
@@ -216,7 +293,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 3. Deploy to EU region with blue color and satellite emoji:
 
    ```bash
-   ./demo.sh deploy "eu" "#0000FF" 1
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-eu-v1.yaml
    ```
 
    This will deploy the SQS Publisher to EU edge nodes with blue color and satellite emoji 📡.
@@ -224,7 +301,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 4. Deploy to AS region with green color and light bulb emoji:
 
    ```bash
-   ./demo.sh deploy "as" "#00FF00" 2
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-as-v1.yaml
    ```
 
    This will deploy the SQS Publisher to AS edge nodes with green color and light bulb emoji 💡.
@@ -232,7 +309,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 5. Update US deployment with new configuration (purple color and lightning emoji):
 
    ```bash
-   ./demo.sh deploy "us" "#800080" 3
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-us-v2.yaml
    ```
 
    This will deploy a new version of the SQS Publisher to US nodes with purple color and lightning emoji ⚡.
@@ -243,12 +320,12 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    ./demo.sh disconnect_region "eu"
    ```
 
-   This will stop the EU deployment.
+   This will stop the EU deployment while preserving container identity.
 
 7. Deploy new configuration to EU (yellow color and battery emoji):
 
    ```bash
-   ./demo.sh deploy "eu" "#FFFF00" 4
+   bacalhau job run -E "REPLICAS" --id-only --wait=false jobs/deploy-eu-v2.yaml
    ```
 
    This will deploy a new version of the SQS Publisher to EU nodes with yellow color and battery emoji 🔋.
@@ -259,7 +336,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    ./demo.sh reconnect_region "eu"
    ```
 
-   This will restart the EU deployment.
+   This will restart the EU deployment using the configured provisioning approach (batch or all-at-once).
 
 This demo shows how to deploy and update the SQS Publisher across different regions, with each region having its own unique visual identity through colors and emojis.
 
@@ -267,9 +344,11 @@ This demo shows how to deploy and update the SQS Publisher across different regi
 
 #### Option 1: Deploy using Docker Compose Services
 
-The provided Docker Compose file already includes the SQS Proxy and SQS Puller services, running on ports:
+The provided Docker Compose file already includes region-specific SQS Proxies and SQS Puller services, running on ports:
 
-- SQS Proxy: `9090`
+- SQS Proxy US: `9091`
+- SQS Proxy EU: `9092`
+- SQS Proxy AS: `9093`
 - SQS Puller: logs to Docker Compose logs
 
 #### Option 2: Deploy using Bacalhau Service Jobs
@@ -288,14 +367,17 @@ bacalhau job run -V queue_url=wasm-sensors-demo jobs/sqs-puller.yaml
 
 ### Deploy the SQS Publisher to Edge Nodes
 
-Deploy the SQS Publisher WebAssembly module targeting the Docker Compose SQS Proxy:
+Deploy the SQS Publisher WebAssembly module targeting the region-specific Docker Compose SQS Proxy:
 
 ```bash
-# With specific color and emoji
-bacalhau job run -V proxy=http://bacalhau-edge-sqs-proxy-1:9090 -V color="#FF5733" -V emoji=0 jobs/sqs-publisher.yaml
+# US region with specific color and emoji
+bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 jobs/sqs-publisher.yaml
 
-# With random color and emoji
-bacalhau job run -V proxy=http://bacalhau-edge-sqs-proxy-1:9090 -V color="-1" -V emoji=-1 jobs/sqs-publisher.yaml
+# EU region with random color and emoji
+bacalhau job run -V proxy=http://host.docker.internal:9092 -V color="-1" -V emoji=-1 jobs/sqs-publisher.yaml
+
+# AS region with specific color and emoji
+bacalhau job run -V proxy=http://host.docker.internal:9093 -V color="#33FF57" -V emoji=2 jobs/sqs-publisher.yaml
 ```
 
 To target the Bacalhau service job SQS Proxy instead:
@@ -344,23 +426,41 @@ make push
 
 ### Testing the SQS Proxy
 
-You can test the SQS Proxy with a simple curl command:
+You can test the region-specific SQS Proxies with simple curl commands:
 
 ```bash
-curl -X POST http://localhost:9090/send \
+# US region proxy
+curl -X POST http://localhost:9091/send \
   -H "Content-Type: application/json" \
-  -d '{"timestamp":"2025-03-26T12:00:00Z","data":{"test":"Hello from curl!"}}'
+  -d '{"timestamp":"2025-03-26T12:00:00Z","data":{"test":"Hello from US!"}}'
+
+# EU region proxy
+curl -X POST http://localhost:9092/send \
+  -H "Content-Type: application/json" \
+  -d '{"timestamp":"2025-03-26T12:00:00Z","data":{"test":"Hello from EU!"}}'
+
+# AS region proxy
+curl -X POST http://localhost:9093/send \
+  -H "Content-Type: application/json" \
+  -d '{"timestamp":"2025-03-26T12:00:00Z","data":{"test":"Hello from AS!"}}'
 ```
 
 ### Health Check
 
-To verify the SQS Proxy is running properly:
+To verify the SQS Proxies are running properly:
 
 ```bash
-curl http://localhost:9090/health
+# US region health check
+curl http://localhost:9091/health
+
+# EU region health check
+curl http://localhost:9092/health
+
+# AS region health check
+curl http://localhost:9093/health
 ```
 
-This should return:
+Each should return:
 
 ```json
 { "status": "healthy" }
@@ -369,40 +469,75 @@ This should return:
 ## 🔄 Message Flow
 
 1. SQS Publisher generates a message with configuration-based parameters
-2. Message is sent as JSON to the SQS Proxy via HTTP POST
+2. Message is sent as JSON to the region-specific SQS Proxy via HTTP POST
 3. SQS Proxy forwards the message to Amazon SQS
 4. SQS Puller retrieves the message from Amazon SQS
 5. SQS Puller processes the message (currently logs to stdout)
+
+## 🔢 Scaling Considerations
+
+The updated system architecture supports large-scale deployments with several optimizations:
+
+- **Flexible Provisioning Modes**: Choose between batch provisioning or all-at-once deployment
+- **Host Network Mode**: Critical services use host network mode for optimal performance
+- **Multiple Workers**: Each SQS Proxy uses Gunicorn with 4 worker processes
+- **Region-Specific Proxies**: Traffic is distributed across region-specific proxies
+- **Controlled Reconnection**: Nodes are reconnected with controlled delays to prevent flood
+- **Resource Limits**: Edge nodes have specified CPU and memory limits
+- **File Descriptor Limits**: All services have appropriate ulimit settings
+
+To further tune the scaling parameters:
+
+```bash
+# For gradual provisioning with larger batches
+export BATCH_SIZE=50
+./demo.sh start_network
+
+# For all-at-once rapid provisioning (large deployments)
+export ALL_AT_ONCE=true
+export REPLICAS=500 
+./demo.sh start_network
+
+# Region-specific configuration
+export US_REPLICAS=100
+export EU_REPLICAS=200
+export AS_REPLICAS=300
+export ALL_AT_ONCE=true
+./demo.sh start_network
+
+# Control reconnection timing for batch mode
+export MS_BETWEEN_RECONNECT=500
+./demo.sh reconnect_region eu
+```
 
 ## ⚠️ Known Limitations
 
 - **Configuration Updates**: Configuration is set at job startup and cannot be changed during execution. To change configuration, you need to stop and redeploy the job.
 - **Direct File Access**: WASM modules have limited filesystem access through Bacalhau.
+- **Network Performance**: At extremely high node counts (>500), you may need additional host optimizations.
+- **All-at-Once Mode**: When using all-at-once mode for very large deployments (1000+ nodes), ensure your host is properly optimized using the provided script.
 
 ### Environment Variables
 
-The demo script uses the following environment variables:
+When working with the job templates directly, you can use the following variables:
 
-- `PROXY_URL`: URL of the SQS proxy service (default: `http://bacalhau-edge-sqs-proxy-1:9090`)
-- `REPLICAS`: Number of edge nodes and job instances per region (default: `3`)
+- `REPLICAS`: Number of job instances to deploy per region (default: `3`)
+- `US_REPLICAS`, `EU_REPLICAS`, `AS_REPLICAS`: Region-specific override for replica count
+- `BATCH_SIZE`: Number of nodes to provision in parallel (default: `10`)
+- `MS_BETWEEN_RECONNECT`: Milliseconds to wait between node reconnections (default: `250`)
+- `ALL_AT_ONCE`: Set to 'true' to enable all-at-once provisioning/reconnection (default: `false`)
 
-This single `REPLICAS` variable controls both:
-
-- The number of edge nodes per region in the Docker Compose setup
-- The number of job instances deployed per region
-
-You can set these variables before running the demo script:
+You can set these variables when running the job or starting the network:
 
 ```bash
-export PROXY_URL="http://custom-proxy:9090"
-export REPLICAS=5
-./demo.sh deploy_us
+# Deploy with 5 replicas
+bacalhau job run -E "REPLICAS=5" jobs/deploy-us-v1.yaml
+
+# Start network with custom configuration
+REPLICAS=100 BATCH_SIZE=10 ./demo.sh start_network
+
+# Start network with all-at-once mode for large deployments
+ALL_AT_ONCE=true REPLICAS=500 ./demo.sh start_network
 ```
 
-Or set them inline with the command:
-
-```bash
-PROXY_URL="http://custom-proxy:9090" REPLICAS=5 ./demo.sh deploy_us
-```
-
-Note: When using multiple replicas per region, make sure your system has enough resources to handle the increased load. Each replica will have its own resource limits as defined in the Docker Compose file.
+If you're using the Docker Compose network, make sure your system has enough resources to handle the load when using multiple replicas. Each replica will have its own resource limits as defined in the job YAML files.

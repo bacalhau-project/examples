@@ -2,7 +2,7 @@ NameProvider: hostname
 Compute:
   Enabled: true
   Orchestrators:
-    - orchestrator:4222
+    - host.docker.internal:4222
   Env:
     AllowList:
       - "AWS_*"

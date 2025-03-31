@@ -7,11 +7,14 @@ import dynamic from 'next/dynamic';
 import NodeGraph from './NodeGraph';
 
 export interface Message {
-  container_id: string;
-  vm_name: string;
+  job_id: string;
+  execution_id: string;
+  hostname: string;
+  job_submission_time: string;
   icon_name: string;
-  color: string;
   timestamp: string;
+  color: string;
+  sequence: number;
   region: string;
 }
 
@@ -72,16 +75,18 @@ function DashboardContent() {
     }
 
     try {
+      console.log('Attempting to connect to WebSocket:', url);
       ws.current = new WebSocket(url);
 
       ws.current.onopen = () => {
         setIsConnected(true);
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
       };
 
-      ws.current.onclose = () => {
+      ws.current.onclose = (event) => {
         setIsConnected(false);
-        console.log('WebSocket disconnected, reconnecting in 5s...');
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log('Reconnecting in 5s...');
         setTimeout(() => connectWebSocket(url), 5000);
       };
 
@@ -89,30 +94,70 @@ function DashboardContent() {
         console.error('WebSocket error:', error);
       };
 
-      ws.current.onmessage = (event) => {
-        console.log('Received message:', event.data);
+      // Add message queue to handle high-frequency updates
+      let messageQueue: UpdateData[] = [];
+      let isProcessing = false;
+      let processingTimeout: NodeJS.Timeout | null = null;
+
+      const processMessageQueue = () => {
+        if (messageQueue.length === 0 || isProcessing) {
+          return;
+        }
+
+        isProcessing = true;
+        const batch = messageQueue;
+        messageQueue = [];
 
         try {
-          const data: UpdateData = JSON.parse(event.data);
-          setLastPoll(data.last_poll);
-          setMessageCount((prev) => prev + data.messages.length);
-          setQueueSize(data.queue_size);
+          setLastPoll(batch[batch.length - 1].last_poll);
+          setMessageCount(
+            (prev) => prev + batch.reduce((acc, data) => acc + data.messages.length, 0),
+          );
+          setQueueSize(batch[batch.length - 1].queue_size);
 
-          // Update VM states with new messages - using vm_name as the unique key
+          // Update VM states with new messages
           setVmStates((prevStates) => {
             const updatedStates = new Map(prevStates);
-            data.messages.forEach((msg) => {
-              // Use vm_name as the key instead of container_id
-              updatedStates.set(msg.vm_name, msg);
+            batch.forEach((data) => {
+              data.messages.forEach((msg) => {
+                // Use a fallback identifier if hostname is empty
+                const identifier =
+                  msg.hostname || `${msg.region}-${msg.icon_name}-${msg.timestamp}`;
+                updatedStates.set(identifier, { ...msg, hostname: identifier });
+              });
             });
             return updatedStates;
           });
+        } catch (error) {
+          console.error('Error processing message batch:', error);
+        } finally {
+          isProcessing = false;
+        }
+      };
+
+      // Override the onmessage handler to use the queue
+      ws.current.onmessage = (event) => {
+        try {
+          console.log('Raw WebSocket message received:', event.data);
+          const data: UpdateData = JSON.parse(event.data);
+          console.log('Parsed WebSocket message:', data);
+          messageQueue.push(data);
+
+          // Clear any existing timeout
+          if (processingTimeout) {
+            clearTimeout(processingTimeout);
+          }
+
+          // Set a new timeout to process the queue
+          processingTimeout = setTimeout(processMessageQueue, 100);
         } catch (error) {
           console.error('Error parsing message:', error);
         }
       };
     } catch (error) {
       console.error('Error creating WebSocket:', error);
+      // Attempt to reconnect after error
+      setTimeout(() => connectWebSocket(url), 5000);
     }
   };
 
@@ -126,7 +171,7 @@ function DashboardContent() {
   return (
     <NodeGraph
       isConnected={isConnected}
-      setShowConfirm={setShowConfirm}
+      setOpenClearQueue={setShowConfirm}
       clearQueue={clearQueue}
       vmStates={vmStates}
       queueSize={queueSize}

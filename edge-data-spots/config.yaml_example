@@ -1,0 +1,21 @@
+max_instances: 3
+username: bacalhau-runner
+public_ssh_key_path: ~/.ssh/id_rsa.pub
+private_ssh_key_path: ~/.ssh/id_rsa
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+  - eu-central-1:
+      image: auto
+      machine_type: t2.micro
+      node_count: auto
+  - eu-west-1:
+      image: auto
+      machine_type: t2.micro
+      node_count: auto
+  - eu-west-2:
+      image: auto
+      machine_type: t2.micro
+      node_count: auto
