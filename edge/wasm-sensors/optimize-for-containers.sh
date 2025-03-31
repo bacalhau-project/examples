@@ -77,8 +77,6 @@ cat << EOF > /etc/docker/daemon.json
   "default-address-pools": [
     {"base": "172.17.0.0/12", "size": 26}
   ],
-  "mtu": 1450,                            // Add an MTU setting
-  "iptables": false,                      // Reduce iptables overhead
   "log-driver": "local",
   "log-opts": {
     "max-size": "100m",
