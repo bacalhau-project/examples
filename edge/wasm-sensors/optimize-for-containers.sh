@@ -75,12 +75,12 @@ mkdir -p /etc/docker
 cat << EOF > /etc/docker/daemon.json
 {
   "default-address-pools": [
-    {"base": "172.17.0.0/12", "size": 26}
+    {"base": "172.20.0.0/16", "size": 20}
   ],
   "log-driver": "local",
   "log-opts": {
-    "max-size": "100m",
-    "max-file": "5"
+    "max-size": "10m",
+    "max-file": "3"
   },
   "default-ulimits": {
     "nofile": {
@@ -89,6 +89,7 @@ cat << EOF > /etc/docker/daemon.json
       "Soft": 1048576
     }
   },
+  "mtu": 1450,
   "dns": ["8.8.8.8", "8.8.4.4"],
   "max-concurrent-downloads": 10,
   "max-concurrent-uploads": 10

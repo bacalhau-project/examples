@@ -117,7 +117,7 @@ provision_region() {
   local region=$1
   local node_count=$2
 
-  print_step "Provisioning $region region ($node_count nodes)"
+  print_step "Provisioning $region region ($node_count nodes) with $([ "$ALL_AT_ONCE" = "true" ] && echo "all-at-once" || echo "batch") approach"
 
   if [ "$ALL_AT_ONCE" = "true" ]; then
     # Provision all nodes at once using docker compose scale
@@ -155,7 +155,7 @@ start_network() {
     print_step "Starting Bacalhau network with $([ "$ALL_AT_ONCE" = "true" ] && echo "all-at-once" || echo "batch") provisioning"
 
     # Clean up existing network
-    cd network
+    cd "$SCRIPT_DIR/network"
     docker compose down
 
     # Start core services first
@@ -181,24 +181,28 @@ start_network() {
 
       # When ALL_AT_ONCE is true, we can provision all regions in a single command
       print_info "Provisioning all regions simultaneously..."
-      cd network
       docker compose up -d \
         --scale edge-us=$US_REPLICAS \
         --scale edge-eu=$EU_REPLICAS \
-        --scale edge-as=$AS_REPLICAS
-      cd ..
+        --scale edge-as=$AS_REPLICAS \
+        edge-us edge-eu edge-as
 
       print_success "All regions provisioned simultaneously"
     else
       print_info "Total target: $TOTAL_NODES nodes across all regions (batch size: $BATCH_SIZE)"
 
+      # Return to the script directory first, since provision_region expects to be there
+      cd "$SCRIPT_DIR"
+
       # Provision each region in sequence
       # The order (US, EU, AS) matters if you're demonstrating geographic distribution
-      cd ..
       provision_region "us" $US_REPLICAS
       provision_region "eu" $EU_REPLICAS
       provision_region "as" $AS_REPLICAS
     fi
+
+    # Ensure we're back in the script directory
+    cd "$SCRIPT_DIR"
 
     # Show summary
     print_step "Deployment Complete"
@@ -217,9 +221,9 @@ start_network() {
 
 stop_network() {
     print_step "Stopping Bacalhau network..."
-    cd network
+    cd "$SCRIPT_DIR/network"
     docker compose down
-    cd ..
+    cd "$SCRIPT_DIR"
     print_success "Network stopped"
 }
 
@@ -251,7 +255,7 @@ disconnect_region() {
     # - Maintaining node identity is important for the Bacalhau network to recognize
     #   returning nodes rather than treating them as completely new nodes
     print_info "Stopping all edge-$region containers..."
-    docker compose -f network/docker-compose.yml stop edge-$region
+    docker compose -f "$SCRIPT_DIR/network/docker-compose.yml" stop edge-$region
 
     # Count how many containers were stopped
     local container_count=$(docker ps -a -q --filter "name=edge-${region}" --filter "status=exited" | wc -l)

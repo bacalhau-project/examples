@@ -238,22 +238,18 @@ services:
 
 networks:
   bacalhau-network-us:
-    # Network for US region
     ipam:
       config:
-        - subnet: 172.28.0.0/24
+        - subnet: 172.20.0.0/20  # Provides ~4,000 addresses
   bacalhau-network-eu:
-    # Network for EU region
     ipam:
       config:
-        - subnet: 172.28.1.0/24
+        - subnet: 172.21.0.0/20  # Provides ~4,000 addresses
   bacalhau-network-as:
-    # Network for AS region
     ipam:
       config:
-        - subnet: 172.28.2.0/24
+        - subnet: 172.22.0.0/20  # Provides ~4,000 addresses
   bacalhau-network-core:
-    # Network for core services
     ipam:
       config:
-        - subnet: 172.28.3.0/24
+        - subnet: 172.23.0.0/24  # Core needs fewer addresses
