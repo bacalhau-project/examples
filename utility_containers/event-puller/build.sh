@@ -21,72 +21,111 @@ error() {
     exit 1
 }
 
+# Parse arguments
+PUSH=false
+ARCH=""
+for arg in "$@"; do
+    case $arg in
+        --push)
+            PUSH=true
+            ;;
+        --arch=*)
+            ARCH="${arg#*=}"
+            ;;
+        *)
+            error "Unknown argument: $arg"
+            ;;
+    esac
+done
+
 # Check if required commands exist
 command -v go >/dev/null 2>&1 || error "go is required but not installed"
-command -v docker >/dev/null 2>&1 || error "docker is required but not installed"
+command -v node >/dev/null 2>&1 || error "node is required but not installed"
+command -v npm >/dev/null 2>&1 || error "npm is required but not installed"
+
+# Only check for docker if we're pushing
+if [ "$PUSH" = true ]; then
+    command -v docker >/dev/null 2>&1 || error "docker is required but not installed"
+fi
 
 # Create bin directory if it doesn't exist
 mkdir -p bin
 
-# Generate timestamp for tag
-TIMESTAMP=$(date +%Y%m%d%H%M)
+# Detect system architecture if not specified
+if [ -z "$ARCH" ]; then
+    case "$(uname -m)" in
+        x86_64)
+            ARCH="amd64"
+            ;;
+        aarch64|arm64)
+            ARCH="arm64"
+            ;;
+        *)
+            error "Unsupported architecture: $(uname -m)"
+            ;;
+    esac
+fi
 
-# Registry configuration
-REGISTRY="ghcr.io"    
-ORGANIZATION="bacalhau-project"      
-IMAGE_NAME="event-puller"
-TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:${TIMESTAMP}"
+# Set build environment variables
+export GOOS="darwin"
+export GOARCH="$ARCH"
+export CGO_ENABLED=0
 
-# Build the dashboard if Node.js is available
-if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    log "Building Next.js dashboard..."
+# Build the dashboard (now mandatory)
+log "Building dashboard..."
+cd dashboard
+npm install
+npm run build
+cd ..
+
+# Build the Go binary
+log "Building binary for ${GOOS}/${GOARCH}..."
+go build -o bin/event-puller \
+    -ldflags="-s -w" \
+    -trimpath \
+    ./main.go
+
+# Verify the binary
+if [ ! -f "bin/event-puller" ]; then
+    error "Binary was not created"
+fi
+
+# Check binary architecture
+BINARY_ARCH=$(file bin/event-puller | awk '{print $NF}')
+log "Binary architecture: ${BINARY_ARCH}"
+
+log "Build complete! You can now run ./bin/event-puller"
+
+# If --push is specified, build and push the Docker image
+if [ "$PUSH" = true ]; then
+    log "Building multi-architecture Docker image..."
     
-    # Check if dashboard directory exists and has package.json
-    if [ -d "dashboard" ] && [ -f "dashboard/package.json" ]; then
-        # Go to dashboard directory
-        cd dashboard
-        
-        # Install dependencies
-        log "Installing dashboard dependencies..."
-        npm install || warn "Failed to install dashboard dependencies, continuing with build"
-        
-        # Build the dashboard
-        log "Building the dashboard..."
-        npm run build || warn "Failed to build dashboard, continuing with build"
-        
-        # Export as static site if export script exists
-        if grep -q "\"export\"" package.json; then
-            log "Exporting dashboard as static site..."
-            npm run export || warn "Failed to export dashboard, continuing with build"
-        fi
-        
-        # Return to parent directory
-        cd ..
-    else
-        warn "Dashboard directory or package.json not found, skipping dashboard build"
+    # Create and use a new builder instance if it doesn't exist
+    if ! docker buildx inspect multiarch-builder >/dev/null 2>&1; then
+        log "Creating new buildx builder..."
+        docker buildx create --name multiarch-builder --driver docker-container --bootstrap
     fi
-else
-    warn "Node.js or npm not found, skipping dashboard build"
+    docker buildx use multiarch-builder
+
+    # Generate timestamp for tag
+    TIMESTAMP=$(date +%Y%m%d%H%M)
+    
+    # Registry configuration
+    REGISTRY="ghcr.io"    
+    ORGANIZATION="bacalhau-project"      
+    IMAGE_NAME="event-puller"
+    TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:${TIMESTAMP}"
+    LATEST_TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:latest"
+
+    # Build and push multi-architecture image
+    log "Building and pushing for amd64 and arm64..."
+    docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --tag "${TAG}" \
+        --tag "${LATEST_TAG}" \
+        --push \
+        .
+
+    log "Successfully built and pushed ${TAG}"
+    log "Also tagged and pushed as ${LATEST_TAG}"
 fi
-
-log "Building binary with Go..."
-CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/event-puller . || error "Failed to build with Go"
-
-if command -v upx >/dev/null 2>&1; then
-  log "Compressing binary with UPX..."
-  upx --best --lzma bin/event-puller || error "Failed to compress binary"
-fi
-
-log "Building Docker image..."
-docker build --platform linux/amd64 -t "${TAG}" . || error "Failed to build Docker image"
-
-log "Pushing image to registry..."
-docker push "${TAG}" || error "Failed to push Docker image"
-
-# Tag as latest
-LATEST_TAG="${REGISTRY}/${ORGANIZATION}/${IMAGE_NAME}:latest"
-docker tag "${TAG}" "${LATEST_TAG}"
-docker push "${LATEST_TAG}"
-
-log "Successfully built and pushed ${TAG}"
-log "Also tagged and pushed as ${LATEST_TAG}"

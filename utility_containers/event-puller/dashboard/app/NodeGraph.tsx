@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import ReactFlow, {
+import {
   Controls,
   Background,
   useNodesState,
@@ -7,6 +7,7 @@ import ReactFlow, {
   Node as FlowNode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dynamic from 'next/dynamic';
 
 import { Message } from '@/page';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +53,23 @@ interface NodeGraphProps {
   showConfirm: boolean;
 }
 
-export default function NodeGraph({
+const ReactFlowComponent = dynamic(() => import('reactflow').then((mod) => mod.ReactFlow), {
+  ssr: false,
+});
+
+const FlowComponent = dynamic(() => Promise.resolve(Flow), {
+  ssr: false,
+});
+
+const NodeGraphComponent = dynamic(() => Promise.resolve(NodeGraph), {
+  ssr: false,
+});
+
+export default function NodeGraphWrapper(props: NodeGraphProps) {
+  return <NodeGraphComponent {...props} />;
+}
+
+export function NodeGraph({
   isConnected,
   setOpenClearQueue,
   clearQueue,
@@ -63,7 +80,7 @@ export default function NodeGraph({
   showConfirm,
 }: NodeGraphProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [highlightedRegion, setHighlightedRegion] = useState(null);
+  const [highlightedRegion, setHighlightedRegion] = useState<string | null>(null);
   const [updatedNodes, setUpdatedNodes] = useState<Set<string>>(new Set());
   const prevVmStatesRef = useRef<Map<string, Message>>(new Map());
 
@@ -94,8 +111,7 @@ export default function NodeGraph({
       return () => clearTimeout(timeoutId);
     }
   }, [vmStates]);
-
-  const regions = Array.from(vmStates.values()).reduce((acc, vm) => {
+  const regions = Array.from(vmStates.values()).reduce<Record<string, string>>((acc, vm) => {
     acc[vm.region] = vm.color;
     return acc;
   }, {});
@@ -106,7 +122,7 @@ export default function NodeGraph({
     <div className="fixed inset-0 overflow-hidden bg-white dark:bg-black">
       <div className="absolute inset-0">
         <ReactFlowProvider>
-          <Flow
+          <FlowComponent
             nodes={nodes}
             onNodeSelect={setSelectedNode}
             highlightedRegion={highlightedRegion}
@@ -212,7 +228,7 @@ function Flow({
   );
 
   const onNodeClick = useCallback(
-    (_event, node) => {
+    (_event: React.MouseEvent, node: Node) => {
       onNodeSelect(node);
     },
     [onNodeSelect],
@@ -227,7 +243,7 @@ function Flow({
       return acc;
     }, {});
 
-    const initialNodes = [];
+    const initialNodes: FlowNode[] = [];
     let currentX = 0;
 
     Object.entries(nodesByRegion).forEach(([region, regionNodes]) => {
@@ -287,7 +303,7 @@ function Flow({
   }, [nodes, setRfNodes, highlightedRegion, updatedNodes]);
 
   return (
-    <ReactFlow
+    <ReactFlowComponent
       attributionPosition="top-right"
       onNodeClick={onNodeClick}
       nodes={rfNodes}
@@ -301,6 +317,6 @@ function Flow({
     >
       <Controls />
       <Background />
-    </ReactFlow>
+    </ReactFlowComponent>
   );
 }
