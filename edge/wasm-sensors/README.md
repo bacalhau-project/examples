@@ -37,7 +37,7 @@ Each edge compute node:
 - Is labeled with its region and type (e.g., `region=us,type=edge`)
 - Has access to WASM modules from the host system
 - Connects to the orchestrator for job coordination
-- Is provisioned in batches to prevent overwhelming the orchestrator
+- Is provisioned in batches or all at once depending on configuration
 
 ### Web Services Compute Node
 
@@ -236,6 +236,37 @@ A reboot is recommended after running the script.
 
    Edit `network/.env` and add your AWS credentials and SQS queue URL.
 
+### Provisioning Mode Options
+
+The demo script supports two provisioning modes for edge nodes:
+
+1. **Batch Mode** (default): Provisions nodes gradually in batches to prevent overwhelming the system
+   ```bash
+   # Default batch mode (10 nodes at a time)
+   ./demo.sh start_network
+   
+   # Custom batch size
+   BATCH_SIZE=25 ./demo.sh start_network
+   ```
+
+2. **All-at-Once Mode**: Provisions all nodes simultaneously for faster deployment
+   ```bash
+   # Provision all nodes at once
+   ALL_AT_ONCE=true ./demo.sh start_network
+   
+   # Useful for large-scale deployments
+   ALL_AT_ONCE=true REPLICAS=500 ./demo.sh start_network
+   ```
+
+The same options apply when reconnecting a region:
+```bash
+# Reconnect with default batch approach
+./demo.sh reconnect_region eu
+
+# Reconnect all at once (faster but more resource intensive)
+ALL_AT_ONCE=true ./demo.sh reconnect_region eu
+```
+
 ### Complete Demo Scenario
 
 This scenario demonstrates the message flow and deployment behavior across different regions:
@@ -249,8 +280,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 
    The network will start in stages:
    - Core services (orchestrator, web-services, sqs-proxies) start first
-   - Edge nodes are then provisioned in batches to prevent overwhelming the orchestrator
-   - Each region is provisioned sequentially for controlled deployment
+    - Edge nodes are then provisioned according to the selected mode (batch or all-at-once)
 
 2. Deploy to US region with red color and rocket emoji:
 
@@ -306,7 +336,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    ./demo.sh reconnect_region "eu"
    ```
 
-   This will restart the EU deployment in controlled batches, maintaining node identity.
+   This will restart the EU deployment using the configured provisioning approach (batch or all-at-once).
 
 This demo shows how to deploy and update the SQS Publisher across different regions, with each region having its own unique visual identity through colors and emojis.
 
@@ -448,7 +478,7 @@ Each should return:
 
 The updated system architecture supports large-scale deployments with several optimizations:
 
-- **Batch Provisioning**: Nodes are provisioned in controlled batches (default 10 at a time)
+- **Flexible Provisioning Modes**: Choose between batch provisioning or all-at-once deployment
 - **Host Network Mode**: Critical services use host network mode for optimal performance
 - **Multiple Workers**: Each SQS Proxy uses Gunicorn with 4 worker processes
 - **Region-Specific Proxies**: Traffic is distributed across region-specific proxies
@@ -459,19 +489,25 @@ The updated system architecture supports large-scale deployments with several op
 To further tune the scaling parameters:
 
 ```bash
-# Set larger batch size for faster provisioning (with more capable hardware)
-export BATCH_SIZE=25
-
-# Customize region-specific node counts
-export US_REPLICAS=30
-export EU_REPLICAS=20
-export AS_REPLICAS=15
-
-# Control reconnection timing (milliseconds between batches)
-export MS_BETWEEN_RECONNECT=500
-
-# Start the network with all customizations
+# For gradual provisioning with larger batches
+export BATCH_SIZE=50
 ./demo.sh start_network
+
+# For all-at-once rapid provisioning (large deployments)
+export ALL_AT_ONCE=true
+export REPLICAS=500 
+./demo.sh start_network
+
+# Region-specific configuration
+export US_REPLICAS=100
+export EU_REPLICAS=200
+export AS_REPLICAS=300
+export ALL_AT_ONCE=true
+./demo.sh start_network
+
+# Control reconnection timing for batch mode
+export MS_BETWEEN_RECONNECT=500
+./demo.sh reconnect_region eu
 ```
 
 ## ⚠️ Known Limitations
@@ -479,6 +515,7 @@ export MS_BETWEEN_RECONNECT=500
 - **Configuration Updates**: Configuration is set at job startup and cannot be changed during execution. To change configuration, you need to stop and redeploy the job.
 - **Direct File Access**: WASM modules have limited filesystem access through Bacalhau.
 - **Network Performance**: At extremely high node counts (>500), you may need additional host optimizations.
+- **All-at-Once Mode**: When using all-at-once mode for very large deployments (1000+ nodes), ensure your host is properly optimized using the provided script.
 
 ### Environment Variables
 
@@ -488,6 +525,7 @@ When working with the job templates directly, you can use the following variable
 - `US_REPLICAS`, `EU_REPLICAS`, `AS_REPLICAS`: Region-specific override for replica count
 - `BATCH_SIZE`: Number of nodes to provision in parallel (default: `10`)
 - `MS_BETWEEN_RECONNECT`: Milliseconds to wait between node reconnections (default: `250`)
+- `ALL_AT_ONCE`: Set to 'true' to enable all-at-once provisioning/reconnection (default: `false`)
 
 You can set these variables when running the job or starting the network:
 
@@ -496,7 +534,10 @@ You can set these variables when running the job or starting the network:
 bacalhau job run -E "REPLICAS=5" jobs/deploy-us-v1.yaml
 
 # Start network with custom configuration
-REPLICAS=10 BATCH_SIZE=8 ./demo.sh start_network
+REPLICAS=100 BATCH_SIZE=10 ./demo.sh start_network
+
+# Start network with all-at-once mode for large deployments
+ALL_AT_ONCE=true REPLICAS=500 ./demo.sh start_network
 ```
 
 If you're using the Docker Compose network, make sure your system has enough resources to handle the load when using multiple replicas. Each replica will have its own resource limits as defined in the job YAML files.
