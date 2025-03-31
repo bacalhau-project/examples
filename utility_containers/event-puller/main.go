@@ -7,13 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -44,15 +42,18 @@ const (
 )
 
 type Message struct {
-	Id          string `json:"id,omitempty"` // Used for Cosmos DB
-	VMName      string `json:"vm_name"`
-	ContainerID string `json:"container_id"`
-	IconName    string `json:"icon_name"`
-	Color       string `json:"color"`
-	Timestamp   string `json:"timestamp"`
-	Region      string `json:"region,omitempty"`     // Used for Cosmos DB partitioning
-	Type        string `json:"type,omitempty"`       // Document type for Cosmos DB
-	EventTime   int64  `json:"event_time,omitempty"` // Unix timestamp for sorting
+	Id                string `json:"id,omitempty"` // Used for Cosmos DB, will be auto-generated
+	JobID             string `json:"job_id"`
+	ExecutionID       string `json:"execution_id"`
+	Hostname          string `json:"hostname"`
+	JobSubmissionTime int64  `json:"job_submission_time"`
+	IconName          string `json:"icon_name"`
+	Timestamp         string `json:"timestamp"`
+	Color             string `json:"color"`
+	Sequence          int    `json:"sequence"`
+	Region            string `json:"region,omitempty"`     // Used for Cosmos DB partitioning
+	Type              string `json:"type,omitempty"`       // Document type for Cosmos DB
+	EventTime         int64  `json:"event_time,omitempty"` // Unix timestamp for sorting
 }
 
 type model struct {
@@ -120,6 +121,7 @@ func (mp *messageProcessor) add(msg Message) ([]Message, bool) {
 	defer mp.updateLock.Unlock()
 
 	mp.messages = append(mp.messages, msg)
+	log.Printf("Message processor: Added message for %s, current batch size: %d", msg.Hostname, len(mp.messages))
 
 	shouldUpdate := len(mp.messages) >= mp.batchSize ||
 		(len(mp.messages) > 0 && time.Since(mp.lastUpdate) >= mp.maxInterval)
@@ -128,6 +130,7 @@ func (mp *messageProcessor) add(msg Message) ([]Message, bool) {
 		batch := mp.messages
 		mp.messages = make([]Message, 0, mp.batchSize)
 		mp.lastUpdate = time.Now()
+		log.Printf("Message processor: Sending batch of %d messages", len(batch))
 		return batch, true
 	}
 
@@ -190,7 +193,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	if m.showConfirmClear {
 		return "⚠️  Are you sure you want to clear the queue? This cannot be undone.\nPress 'y' to confirm or 'n' to cancel\n"
 	}
@@ -241,9 +244,6 @@ func (m model) View() string {
 	s.WriteString("'t' - Clear messages older than 1 hour\n")
 	s.WriteString("'q' - Quit\n")
 
-	s.WriteString("\nOperation Logs (last 10):\n")
-	s.WriteString("──────────────────────────────────────────────────────────\n")
-
 	startIdx := len(m.logs)
 	if startIdx > 10 {
 		startIdx = len(m.logs) - 10
@@ -256,8 +256,8 @@ func (m model) View() string {
 }
 
 func (m *model) startMessageWorker(workerID int) {
-	mp := newMessageProcessor(WS_BATCH_SIZE, 500*time.Millisecond)
-	m.addLog("Worker %d started", workerID)
+	mp := newMessageProcessor(m.wsBatchSize, 500*time.Millisecond)
+	log.Printf("Worker %d started", workerID)
 
 	// Use a counter to limit frequent error logging
 	errorCount := 0
@@ -270,7 +270,7 @@ func (m *model) startMessageWorker(workerID int) {
 	for {
 		select {
 		case <-m.ctx.Done():
-			m.addLog("Worker %d shutting down", workerID)
+			log.Printf("Worker %d shutting down", workerID)
 			return
 		default:
 			messages, err := receiveMessages(m.ctx, m.sqsClient, m.queueURL, m.maxMessages, m.sqsWaitTime, m.sqsVisibility, m.maxRetryAttempts, m.initialRetryDelay, m.maxRetryDelay)
@@ -281,7 +281,7 @@ func (m *model) startMessageWorker(workerID int) {
 				// Log credential errors with rate limiting
 				if isCredentialError {
 					if time.Since(lastCredentialErrorTime) > credentialErrorInterval {
-						m.addLog("Worker %d authentication error: AWS credentials are invalid or expired", workerID)
+						log.Printf("Worker %d authentication error: AWS credentials are invalid or expired", workerID)
 						lastCredentialErrorTime = time.Now()
 					}
 					// Use a longer backoff for credential errors
@@ -292,11 +292,11 @@ func (m *model) startMessageWorker(workerID int) {
 				// For other non-transient errors, log with rate limiting
 				if !isTransientError(err) {
 					if errorCount < maxErrorLogging {
-						m.addLog("Worker %d error receiving messages: %v", workerID, err)
+						log.Printf("Worker %d error receiving messages: %v", workerID, err)
 						errorCount++
 
 						if errorCount == maxErrorLogging {
-							m.addLog("Worker %d: Too many errors, suppressing further error logs", workerID)
+							log.Printf("Worker %d: Too many errors, suppressing further error logs", workerID)
 						}
 					}
 				}
@@ -320,7 +320,7 @@ func (m *model) startMessageWorker(workerID int) {
 				// Increment message count for periodic logging
 				m.incrementMessageCount(len(messages))
 
-				m.addLog("Worker %d received %d messages", workerID, len(messages))
+				log.Printf("Worker %d received %d messages", workerID, len(messages))
 
 				// Process messages in batches for efficient updates
 				for _, msg := range messages {
@@ -332,9 +332,9 @@ func (m *model) startMessageWorker(workerID int) {
 					// Send to WebSocket UI
 					if batch, shouldUpdate := mp.add(msg); shouldUpdate {
 						if err := m.sendWebSocketUpdate(batch); err != nil {
-							m.addLog("Error sending websocket update: %v", err)
+							log.Printf("Error sending websocket update: %v", err)
 						} else {
-							m.addLog("Sent websocket update with %d messages", len(batch))
+							log.Printf("Sent websocket update with %d messages", len(batch))
 						}
 					}
 				}
@@ -351,10 +351,12 @@ func (m *model) sendWebSocketUpdate(messages []Message) error {
 		Messages  []Message `json:"messages"`
 		LastPoll  string    `json:"last_poll"`
 		QueueSize int       `json:"queue_size"`
+		BatchSize int       `json:"batch_size"`
 	}{
 		Messages:  messages,
 		LastPoll:  m.lastPoll.Format("15:04:05.000"),
 		QueueSize: int(m.queueSize),
+		BatchSize: m.cosmosBatchSize,
 	}
 
 	jsonData, err := json.Marshal(update)
@@ -362,6 +364,7 @@ func (m *model) sendWebSocketUpdate(messages []Message) error {
 		return fmt.Errorf("failed to marshal update: %v", err)
 	}
 
+	log.Printf("Sending WebSocket update with %d messages: %s", len(messages), string(jsonData))
 	m.hub.broadcast <- jsonData
 	return nil
 }
@@ -659,7 +662,7 @@ func loadConfiguration() (time.Duration, int64, int, int, int, int, time.Duratio
 	return pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, maxRetryAttempts, initialRetryDelay, maxRetryDelay, sqsVisibility, sqsWaitTime, nil
 }
 
-func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub *Hub) model {
+func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub *Hub) *model {
 	// Load configuration from environment
 	pollInterval, maxMessages, wsBatchSize, numWorkers, bufferSize, maxRetryAttempts, initialRetryDelay, maxRetryDelay, sqsVisibility, sqsWaitTime, err := loadConfiguration()
 	if err != nil {
@@ -707,23 +710,23 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	)
 
 	modelCtx, cancel := context.WithCancel(ctx)
-	m := model{
-		table:            t,
-		queueURL:         queueURL,
-		hub:              hub,
-		lastPoll:         time.Now(),
-		sqsClient:        sqsClient,
-		ctx:              modelCtx,
-		cancel:           cancel,
-		lastQueueCheck:   time.Time{},
-		maxLogs:          1000,
-		logs:             make([]string, 0, 1000),
-		messageChan:      make(chan Message, bufferSize),
-		cosmosEnabled:    false,
-		cosmosBatchSize:  100,
-		cosmosMessages:   make([]Message, 0, 100),
-		messageCount:     0,
-		lastCountLog:     time.Now(),
+	m := &model{
+		table:           t,
+		queueURL:        queueURL,
+		hub:             hub,
+		lastPoll:        time.Now(),
+		sqsClient:       sqsClient,
+		ctx:             modelCtx,
+		cancel:          cancel,
+		lastQueueCheck:  time.Time{},
+		maxLogs:         1000,
+		logs:            make([]string, 0, 1000),
+		messageChan:     make(chan Message, bufferSize),
+		cosmosEnabled:   false,
+		cosmosBatchSize: 100,
+		cosmosMessages:  make([]Message, 0, 100),
+		messageCount:    0,
+		lastCountLog:    time.Now(),
 
 		// Configuration
 		pollInterval:      pollInterval,
@@ -808,85 +811,99 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 }
 
 func main() {
-	// Set up logging immediately
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetOutput(os.Stderr)
-	log.Println("Starting event-puller application...")
-
-	// Print some system information
-	log.Println("System information:")
-	log.Printf("  Working directory: %s", getWorkingDirectory())
-	log.Printf("  Container: %t", runningInContainer())
-	log.Printf("  UID/GID: %d/%d", os.Getuid(), os.Getgid())
-
-	// Initialize random seed for jitter
-	rand.Seed(time.Now().UnixNano())
-	log.Println("Random seed initialized")
-
-	// Load environment configuration with better error handling
-	log.Println("Loading environment configuration...")
+	// Load environment variables from .env file if it exists
 	if err := loadEnvConfig(); err != nil {
-		log.Printf("CRITICAL ERROR: Environment configuration failed: %v", err)
-		log.Fatalf("\nEnvironment configuration error: %v\n", err)
+		log.Fatal("Error loading environment variables:", err)
 	}
-	log.Println("Environment configuration loaded successfully")
 
+	// Create a context that can be cancelled
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	log.Println("Signal handlers configured")
-
-	queueURL := os.Getenv("SQS_QUEUE_URL")
-	region := os.Getenv("AWS_REGION")
-
-	// Configure AWS Session with optimized settings
-	awsConfig := &aws.Config{
-		Region: aws.String(region),
-		HTTPClient: &http.Client{
-			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 100,
-				IdleConnTimeout:     90 * time.Second,
-			},
-			Timeout: 10 * time.Second,
-		},
-	}
-
-	sess, err := session.NewSession(awsConfig)
+	// Initialize Cosmos DB client if configured
+	cosmosClient, cosmosEnabled, err := initCosmosClient(ctx)
 	if err != nil {
-		log.Fatalf("Failed to create AWS session: %v\n", err)
+		log.Printf("Warning: Failed to initialize Cosmos DB client: %v", err)
 	}
 
+	// Get Cosmos DB container if enabled
+	var cosmosContainer *azcosmos.ContainerClient
+	if cosmosEnabled {
+		cosmosContainer, err = getCosmosContainer(cosmosClient, ctx)
+		if err != nil {
+			log.Printf("Warning: Failed to get Cosmos DB container: %v", err)
+			cosmosEnabled = false
+		}
+	}
+
+	// Create a new AWS session
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	// Create SQS client
 	sqsClient := sqs.New(sess)
+
+	// Get queue URL from environment variable
+	queueURL := os.Getenv("SQS_QUEUE_URL")
+	if queueURL == "" {
+		log.Fatal("SQS_QUEUE_URL environment variable is required")
+	}
+
+	// Create hub for WebSocket connections
 	hub := newHub()
 	go hub.run()
 
+	// Create and initialize the model
 	m := initialModel(ctx, queueURL, sqsClient, hub)
+	m.cosmosClient = cosmosClient
+	m.cosmosContainer = cosmosContainer
+	m.cosmosEnabled = cosmosEnabled
 
-	// Configure websocket server with optimized settings
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: http.DefaultServeMux,
+	// Start background queue size checker
+	go m.backgroundQueueSizeChecker()
+
+	// Start message workers
+	for i := 0; i < m.numWorkers; i++ {
+		go m.startMessageWorker(i)
 	}
 
+	// Set up WebSocket endpoint with the new context
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		// Direct access to model instance
-		serveWs(hub, w, r, &m)
+		// Add CORS headers for WebSocket
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		serveWs(hub, w, r, m)
 	})
 
 	// First check if we have a dashboard directory, use it if it exists
-	if _, err := os.Stat("dashboard/out"); err == nil {
-		// Serve Next.js static export
-		m.addLog("Serving Next.js dashboard from dashboard/out directory")
-		http.Handle("/", http.FileServer(http.Dir("dashboard/out")))
-	} else if _, err := os.Stat("static"); err == nil {
-		// Fall back to the old static HTML if dashboard isn't built
-		m.addLog("Serving static HTML dashboard from static directory")
-		http.Handle("/", http.FileServer(http.Dir("static")))
+	dashboardPath := filepath.Join("dashboard", "out")
+	if _, err := os.Stat(dashboardPath); err == nil {
+		// Serve Next.js dashboard from dashboard/out directory
+		m.addLog("Serving Next.js dashboard from %s directory", dashboardPath)
+		fs := http.FileServer(http.Dir(dashboardPath))
+		http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Add CORS headers
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+			// Check if the file exists
+			path := filepath.Join(dashboardPath, r.URL.Path)
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				// If file doesn't exist, serve index.html
+				r.URL.Path = "/"
+			}
+
+			fs.ServeHTTP(w, r)
+		}))
 	} else {
-		m.addLog("No dashboard found, serving minimal status page")
+		m.addLog("No dashboard found at %s, serving minimal status page", dashboardPath)
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			w.Write([]byte(`
@@ -934,11 +951,11 @@ func main() {
 
 		switch action.Action {
 		case "clearQueue":
-			go clearQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			go clearQueue(m.ctx, m, m.sqsClient, m.queueURL)
 			w.WriteHeader(http.StatusAccepted)
 			json.NewEncoder(w).Encode(map[string]string{"status": "queue clear started"})
 		case "purgeQueue":
-			err := purgeQueue(m.ctx, &m, m.sqsClient, m.queueURL)
+			err := purgeQueue(m.ctx, m, m.sqsClient, m.queueURL)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -950,23 +967,16 @@ func main() {
 		}
 	})
 
+	// Start the HTTP server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Starting HTTP server on port %s", port)
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			m.addLog("WebSocket server error: %v", err)
-		}
-	}()
-
-	go func() {
-		sig := <-sigChan
-		m.addLog("Received signal %v, initiating shutdown...", sig)
-		cancel()
-
-		// Graceful shutdown of HTTP server
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer shutdownCancel()
-
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			m.addLog("Error during server shutdown: %v", err)
+		if err := http.ListenAndServe(":"+port, nil); err != nil {
+			log.Fatalf("Error starting HTTP server: %v", err)
 		}
 	}()
 
@@ -996,7 +1006,7 @@ func main() {
 		}
 	} else {
 		// In terminal mode, run the bubbletea program
-		p := tea.NewProgram(&m, tea.WithAltScreen())
+		p := tea.NewProgram(m, tea.WithAltScreen())
 		if _, err := p.Run(); err != nil {
 			log.Fatalf("Error running program: %v\n", err)
 		}
@@ -1006,7 +1016,15 @@ func main() {
 func loadEnvConfig() error {
 	// Enable standard logging to see diagnostics
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetOutput(os.Stderr)
+
+	// Create debug.log file with append mode
+	debugLog, err := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open debug.log: %v", err)
+	}
+
+	// Set log output to only debug.log
+	log.SetOutput(debugLog)
 
 	log.Println("Starting environment configuration...")
 	envFile := os.Getenv("ENV_FILE")
@@ -1334,7 +1352,8 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 
 						localDeleted += len(entries)
 						if localDeleted%1000 == 0 {
-							m.addLog("Worker %d has deleted %d messages", workerID, localDeleted)
+							m.addLog("Worker %d has deleted %d messages",
+								workerID, localDeleted)
 						}
 					}
 				}
@@ -1463,6 +1482,7 @@ func (m *model) addLog(format string, args ...interface{}) {
 	m.updateLock.Lock()
 	defer m.updateLock.Unlock()
 
+	// Only store logs in memory for display, don't write to file
 	m.logs = append(m.logs, logLine)
 	if len(m.logs) > m.maxLogs {
 		m.logs = m.logs[1:]
@@ -1483,7 +1503,7 @@ func initCosmosClient(ctx context.Context) (*azcosmos.Client, bool, error) {
 		return nil, false, fmt.Errorf("failed to create key credential: %v", err)
 	}
 
-	// Using default client options
+	// Enable bulk operations in client options
 	clientOpts := &azcosmos.ClientOptions{}
 
 	client, err := azcosmos.NewClientWithKey(endpoint, cred, clientOpts)
@@ -1522,11 +1542,7 @@ func (m *model) addMessageToCosmosBatch(msg Message) {
 		return
 	}
 
-	// Add unique ID and timestamp for Cosmos if not present
-	if msg.Id == "" {
-		msg.Id = fmt.Sprintf("%s-%s-%d", msg.ContainerID, msg.VMName, time.Now().UnixNano())
-	}
-
+	// Set event time if not present
 	if msg.EventTime == 0 {
 		msg.EventTime = time.Now().UnixNano()
 	}
@@ -1549,11 +1565,6 @@ func (m *model) addMessageToCosmosBatch(msg Message) {
 
 	// If batch size threshold is reached, trigger immediate write
 	if len(m.cosmosMessages) >= m.cosmosBatchSize {
-		// Reset timer
-		if m.cosmosWriteTimer != nil {
-			m.cosmosWriteTimer.Stop()
-		}
-
 		// Make a copy of the batch
 		batchToWrite := make([]Message, len(m.cosmosMessages))
 		copy(batchToWrite, m.cosmosMessages)
@@ -1561,11 +1572,6 @@ func (m *model) addMessageToCosmosBatch(msg Message) {
 
 		// Write the batch asynchronously
 		go m.writeCosmosBatch(batchToWrite)
-	} else if m.cosmosWriteTimer == nil && len(m.cosmosMessages) > 0 {
-		// Start timer for a delayed write if not already running
-		m.cosmosWriteTimer = time.AfterFunc(2*time.Second, func() {
-			m.flushCosmosBatch()
-		})
 	}
 }
 
@@ -1583,12 +1589,6 @@ func (m *model) flushCosmosBatch() {
 	copy(batchToWrite, m.cosmosMessages)
 	m.cosmosMessages = nil
 
-	// Reset timer
-	if m.cosmosWriteTimer != nil {
-		m.cosmosWriteTimer.Stop()
-		m.cosmosWriteTimer = nil
-	}
-
 	m.cosmosMessagesLock.Unlock()
 
 	// Write the batch
@@ -1602,55 +1602,100 @@ func (m *model) writeCosmosBatch(messages []Message) {
 	}
 
 	startTime := time.Now()
-	m.addLog("Writing batch of %d messages to Cosmos DB", len(messages))
+	log.Printf("Writing batch of %d messages to Cosmos DB", len(messages))
+
+	// Group messages by region for batch operations
+	messagesByRegion := make(map[string][]Message)
+	for _, msg := range messages {
+		region := msg.Region
+		if region == "" {
+			region = "unknown"
+		}
+		messagesByRegion[region] = append(messagesByRegion[region], msg)
+	}
 
 	var successCount, errorCount int
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
-	// Use a semaphore to limit concurrent writes
-	semaphore := make(chan struct{}, 10)
 
-	for _, msg := range messages {
+	// Process each region's messages in a separate goroutine
+	for region, regionMessages := range messagesByRegion {
 		wg.Add(1)
-		semaphore <- struct{}{} // Acquire semaphore slot
-
-		go func(message Message) {
+		go func(r string, msgs []Message) {
 			defer wg.Done()
-			defer func() { <-semaphore }() // Release semaphore slot
 
-			// Convert message to JSON
-			jsonData, err := json.Marshal(message)
-			if err != nil {
-				mutex.Lock()
-				errorCount++
-				mutex.Unlock()
-				m.addLog("Error marshaling message: %v", err)
-				return
+			// Process messages in chunks of 100 for better rate limiting
+			chunkSize := 100
+			for i := 0; i < len(msgs); i += chunkSize {
+				end := i + chunkSize
+				if end > len(msgs) {
+					end = len(msgs)
+				}
+				chunk := msgs[i:end]
+
+				// Create the partition key
+				partitionKey := azcosmos.NewPartitionKeyString(r)
+
+				// Process each message in the chunk
+				for _, msg := range chunk {
+					// Generate a unique ID if not present
+					if msg.Id == "" {
+						msg.Id = fmt.Sprintf("%d-%s-%d", time.Now().UnixNano(), msg.Hostname, rand.Int63())
+					}
+
+					jsonData, err := json.Marshal(msg)
+					if err != nil {
+						log.Printf("Error marshaling message: %v", err)
+						mutex.Lock()
+						errorCount++
+						mutex.Unlock()
+						continue
+					}
+
+					// Create the item with retry logic for rate limits
+					maxRetries := 3
+					for attempt := 0; attempt < maxRetries; attempt++ {
+						_, err = m.cosmosContainer.CreateItem(m.ctx, partitionKey, jsonData, nil)
+						if err == nil {
+							mutex.Lock()
+							successCount++
+							mutex.Unlock()
+							break
+						}
+
+						// Check if it's a rate limit error
+						if strings.Contains(err.Error(), "TooManyRequests") {
+							// Exponential backoff: 2^attempt seconds
+							backoff := time.Duration(1<<uint(attempt)) * time.Second
+							log.Printf("Rate limit hit, waiting %v before retry", backoff)
+							time.Sleep(backoff)
+							continue
+						}
+
+						// For other errors, log and count as failed
+						log.Printf("Error in batch operation: %v", err)
+						mutex.Lock()
+						errorCount++
+						mutex.Unlock()
+						break
+					}
+
+					// Add a small delay between individual writes to prevent rate limiting
+					time.Sleep(50 * time.Millisecond)
+				}
+
+				// Rate limit: wait 2 seconds between chunks
+				if end < len(msgs) {
+					time.Sleep(2 * time.Second)
+				}
 			}
-
-			// Create the partition key
-			partitionKey := azcosmos.NewPartitionKeyString(message.Region)
-
-			// Create the item
-			_, err = m.cosmosContainer.CreateItem(m.ctx, partitionKey, jsonData, nil)
-			if err != nil {
-				mutex.Lock()
-				errorCount++
-				mutex.Unlock()
-				m.addLog("Error writing to Cosmos DB: %v", err)
-				return
-			}
-
-			mutex.Lock()
-			successCount++
-			mutex.Unlock()
-		}(msg)
+		}(region, regionMessages)
 	}
 
 	wg.Wait()
 
 	duration := time.Since(startTime)
-	m.addLog("Cosmos DB write complete: %d successful, %d failed in %v",
+	log.Printf("Cosmos DB write complete: %d successful, %d failed in %v",
 		successCount, errorCount, duration)
 }
 
@@ -1693,5 +1738,25 @@ func (m *model) incrementMessageCount(count int) {
 		log.Printf("Messages pulled in last 5 seconds: %d (Total: %d)", m.messageCount, m.totalProcessed)
 		m.messageCount = 0
 		m.lastCountLog = time.Now()
+	}
+}
+
+// Add new function to handle WebSocket commands
+func (m *model) handleWebSocketCommand(cmd struct {
+	Command   string `json:"command"`
+	BatchSize int    `json:"batch_size,omitempty"`
+}) error {
+	switch cmd.Command {
+	case "updateBatchSize":
+		if cmd.BatchSize > 0 {
+			m.cosmosMessagesLock.Lock()
+			m.cosmosBatchSize = cmd.BatchSize
+			m.cosmosMessagesLock.Unlock()
+			m.addLog("Updated Cosmos DB batch size to %d", cmd.BatchSize)
+			return nil
+		}
+		return fmt.Errorf("invalid batch size: %d", cmd.BatchSize)
+	default:
+		return fmt.Errorf("unknown command: %s", cmd.Command)
 	}
 }
