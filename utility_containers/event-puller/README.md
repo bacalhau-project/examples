@@ -42,7 +42,7 @@ go build -o bin/event-puller
 
 ```bash
 # Pull the latest image
-docker pull bacalhauproject/event-puller:latest
+docker pull bacalhau-project/event-puller:latest
 
 # Run with your environment variables
 docker run -p 8080:8080 \
@@ -50,7 +50,8 @@ docker run -p 8080:8080 \
   -e AWS_SECRET_ACCESS_KEY=your_secret \
   -e AWS_REGION=your_region \
   -e SQS_QUEUE_URL=your_queue_url \
-  bacalhauproject/event-puller:latest
+  -v $(pwd)/.env:/app/.env \ # Mount .env file with configuration
+  bacalhau-project/event-puller:latest
 ```
 
 ## ⚙️ Configuration
@@ -65,6 +66,18 @@ AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 AWS_REGION=us-east-1
 SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123456789012/your-queue
+
+# SQS Configuration Options
+POLL_INTERVAL=100ms             # Time between SQS polls (default: 100ms)
+MAX_MESSAGES=10                 # Maximum messages per poll (default: 10, max: 10)
+NUM_WORKERS=5                   # Number of concurrent SQS polling workers (default: 5)
+WS_BATCH_SIZE=100               # WebSocket message batch size (default: 100)
+BUFFER_SIZE=1000                # Message channel buffer size (default: 1000)
+MAX_RETRY_ATTEMPTS=5            # Maximum retry attempts for SQS operations (default: 5)
+INITIAL_RETRY_DELAY=100ms       # Initial retry delay for exponential backoff (default: 100ms)
+MAX_RETRY_DELAY=5s              # Maximum retry delay (default: 5s)
+SQS_VISIBILITY_TIMEOUT=30       # Visibility timeout for received messages (default: 30 seconds)
+SQS_WAIT_TIME=0                 # SQS long polling wait time (default: 0, max: 20 seconds)
 
 # Optional Cosmos DB Variables
 COSMOS_ENDPOINT=https://your-account.documents.azure.com:443/
@@ -90,6 +103,8 @@ npm install
 npm run build
 ```
 
+To configure certain aspects of the dashboard see `constants.ts`.
+
 ## 🔍 Known Issues and Troubleshooting
 
 ### SQS Message Processing Issues
@@ -104,9 +119,9 @@ npm run build
 
 **Solution**:
 - Ensure AWS credentials have `sqs:ReceiveMessage`, `sqs:DeleteMessage`, and `sqs:GetQueueAttributes` permissions
-- Increase `NUM_WORKERS` (line 35 in main.go) for higher throughput
-- Add exponential backoff for transient errors
-- Implement better error handling and retry logic
+- Increase `NUM_WORKERS` environment variable for higher throughput
+- Adjust `POLL_INTERVAL` or `SQS_WAIT_TIME` for better polling behavior 
+- Adjust `MAX_RETRY_ATTEMPTS`, `INITIAL_RETRY_DELAY`, and `MAX_RETRY_DELAY` for better error handling
 
 ### Cosmos DB Integration Issues
 
@@ -148,6 +163,16 @@ When accessing the development server, use query parameters to connect to your E
 
 ```
 http://localhost:3000/?host=localhost&port=8080
+```
+
+Format code
+```sh
+npm run format
+```
+
+Lint code
+```sh
+npm run lint
 ```
 
 ## 🧪 Testing with Sample Messages

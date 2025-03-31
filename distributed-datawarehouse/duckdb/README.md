@@ -154,8 +154,11 @@ Each approach has its benefits:
 ```bash
 # Clone and start the multi-region environment
 git clone https://github.com/bacalhau-project/examples.git
-cd examples/setting-up-bacalhau-cluster/docker-compose/multi-region
+cd distributed-datawarehouse/duckdb/network
 docker compose up -d
+
+# Move to the jobs directory
+cd ../jobs
 ```
 
 ### Generate Sample Data
