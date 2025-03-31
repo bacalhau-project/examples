@@ -240,16 +240,16 @@ networks:
   bacalhau-network-us:
     ipam:
       config:
-        - subnet: 172.20.0.0/20  # Provides ~4,000 addresses
+        - subnet: 172.24.0.0/20
   bacalhau-network-eu:
     ipam:
       config:
-        - subnet: 172.21.0.0/20  # Provides ~4,000 addresses
+        - subnet: 172.25.0.0/20
   bacalhau-network-as:
     ipam:
       config:
-        - subnet: 172.22.0.0/20  # Provides ~4,000 addresses
+        - subnet: 172.26.0.0/20
   bacalhau-network-core:
     ipam:
       config:
-        - subnet: 172.23.0.0/24  # Core needs fewer addresses
+        - subnet: 172.27.0.0/24
