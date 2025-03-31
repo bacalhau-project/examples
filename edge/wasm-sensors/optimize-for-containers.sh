@@ -25,7 +25,7 @@ fs.file-max = 2097152
 fs.nr_open = 2097152
 
 # Network connection tracking
-net.netfilter.nf_conntrack_max = 1048576
+net.netfilter.nf_conntrack_max = 2097152
 net.netfilter.nf_conntrack_tcp_timeout_established = 86400
 net.netfilter.nf_conntrack_tcp_timeout_close_wait = 30
 net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 30
@@ -46,15 +46,19 @@ net.ipv4.ip_local_port_range = 1024 65535
 # Memory optimizations for networking
 net.ipv4.tcp_mem = 786432 1048576 1572864
 net.ipv4.udp_mem = 65536 131072 262144
-net.core.rmem_max = 67108864
-net.core.wmem_max = 67108864
+net.core.rmem_max = 134217728
+net.core.wmem_max = 134217728
 net.ipv4.tcp_rmem = 4096 87380 33554432
 net.ipv4.tcp_wmem = 4096 65536 33554432
 
 # ARP cache sizing
-net.ipv4.neigh.default.gc_thresh1 = 4096
-net.ipv4.neigh.default.gc_thresh2 = 8192
-net.ipv4.neigh.default.gc_thresh3 = 16384
+net.ipv4.neigh.default.gc_thresh1 = 16384
+net.ipv4.neigh.default.gc_thresh2 = 32768
+net.ipv4.neigh.default.gc_thresh3 = 65536
+
+net.unix.max_dgram_qlen = 512
+net.core.netdev_budget = 600
+net.core.netdev_budget_usecs = 20000
 
 # VM overcommit settings - good for containers
 vm.overcommit_memory = 1
@@ -71,8 +75,10 @@ mkdir -p /etc/docker
 cat << EOF > /etc/docker/daemon.json
 {
   "default-address-pools": [
-    {"base": "172.17.0.0/12", "size": 24}
+    {"base": "172.17.0.0/12", "size": 26}
   ],
+  "mtu": 1450,                            // Add an MTU setting
+  "iptables": false,                      // Reduce iptables overhead
   "log-driver": "local",
   "log-opts": {
     "max-size": "100m",

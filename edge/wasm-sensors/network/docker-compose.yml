@@ -45,7 +45,7 @@ services:
         condition: service_healthy
     privileged: true
     networks:
-      - bacalhau-network
+      - bacalhau-network-core
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ulimits:
@@ -72,7 +72,7 @@ services:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-us
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ulimits:
@@ -99,7 +99,7 @@ services:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-eu
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ulimits:
@@ -126,7 +126,7 @@ services:
           cpus: "0.03" # 3% of a CPU core
           memory: "200M" # 200MB per service
     networks:
-      - bacalhau-network
+      - bacalhau-network-as
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ulimits:
@@ -228,7 +228,7 @@ services:
     depends_on:
       - orchestrator
     networks:
-      - bacalhau-network
+      - bacalhau-network-core
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ulimits:
@@ -237,9 +237,23 @@ services:
         hard: 4096
 
 networks:
-  bacalhau-network:
-    # Increase subnet size to accommodate many containers
+  bacalhau-network-us:
+    # Network for US region
     ipam:
       config:
-        - subnet: 172.28.0.0/16
-          ip_range: 172.28.0.0/16
+        - subnet: 172.28.0.0/24
+  bacalhau-network-eu:
+    # Network for EU region
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
+  bacalhau-network-as:
+    # Network for AS region
+    ipam:
+      config:
+        - subnet: 172.28.2.0/24
+  bacalhau-network-core:
+    # Network for core services
+    ipam:
+      config:
+        - subnet: 172.28.3.0/24
