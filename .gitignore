@@ -57,3 +57,6 @@ queuing/job/.flox
 event-puller/*.json
 event-pusher/*.json
 **/vendor/**
+
+*.specstory*
+*debug.log*
