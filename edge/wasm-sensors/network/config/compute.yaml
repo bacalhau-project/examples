@@ -2,7 +2,7 @@ NameProvider: hostname
 Compute:
   Enabled: true
   Orchestrators:
-    - 20.82.178.246:4222
+    - host.docker.internal:4222
   Env:
     AllowList:
       - "AWS_*"
@@ -12,4 +12,4 @@ Compute:
     - "/app/**:rw"
 
 UpdateConfig:
-  Interval: 0
+  Interval: 0 
