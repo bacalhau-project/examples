@@ -49,7 +49,7 @@ push: push-docker
 push-docker: push-proxy push-puller
 
 push-proxy: ## Push the proxy Docker image for all architectures
-	docker buildx build --platform linux/amd64,linux/arm64 \
+	docker buildx build --no-cache --platform linux/amd64,linux/arm64 \
 		-t $(PROXY_FULL_NAME):$(VERSION) \
 		-t $(PROXY_FULL_NAME):latest \
 		--push \
