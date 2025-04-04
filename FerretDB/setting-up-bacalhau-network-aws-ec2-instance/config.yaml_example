@@ -1,0 +1,70 @@
+max_instances: 7
+username: bacalhau-runner
+public_ssh_key_path: /home/bacalhau-runner/.ssh/id_rsa.pub
+orchestrators:
+  - nats://<your_orchestrator_url>:4222
+token: <your_bacalhau_network_token>
+tls: true
+regions:
+#  - eu-central-1:
+#      image: auto
+#      architecture: arm64
+#      machine_type: t4g.small
+#      cloud-init-scripts: "bacalhauorchestrator"  # override cloud-init-scripts (it must be the existing folder instance/xxxx with custom implementation of scripts_provider
+#      node_count: 1
+#      spot: false  # override instance type; spot is default
+#      tags: orchestrator_node
+
+  - eu-central-1:
+      image: auto
+      architecture: x86_64
+      machine_type: t2.small
+      cloud-init-scripts: "ferretdb"
+      spot: true
+      node_count: 1
+      tags: ferretdb_node
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      node_count: 1
+      tags: bacalhau_node
+      env:  #  additional environment variables passed to instance (saved in /etc/environment file)
+        - SENSOR_LOCATION=50.025629,8.561904  # for FerretDB demo this will be used as sensor location override var
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      node_count: 1
+      tags: bacalhau_node
+      env:
+        - SENSOR_LOCATION=50.073460,8.636113
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      node_count: 1
+      tags: bacalhau_node
+      env:
+        - SENSOR_LOCATION=50.165737,8.798075
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      node_count: 1
+      tags: bacalhau_node
+      env:
+        - SENSOR_LOCATION=50.206599,8.645260
+
+  - eu-central-1:
+      image: auto
+      architecture: arm64
+      machine_type: t4g.small
+      node_count: 1
+      tags: bacalhau_node
+      env:
+        - SENSOR_LOCATION=50.152505,8.590329

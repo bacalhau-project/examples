@@ -1,0 +1,86 @@
+#cloud-config
+
+write_files:
+  - path: /tmp/scripts.tar.gz
+    encoding: base64
+    content: ${compressed_scripts}
+    permissions: '0600'
+
+users:
+  - name: ${username}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ${public_ssh_key}
+    groups: docker
+
+package_update: true
+package_upgrade: true
+
+runcmd:
+  - mkdir -p /tmp/exs
+  - tar -xzf /tmp/scripts.tar.gz -C /tmp/exs
+  - |
+    all_packages="curl gnupg2 jq"
+    if command -v dnf >/dev/null 2>&1; then
+      dnf install --allowerasing -y $all_packages
+    elif command -v apt >/dev/null 2>&1; then
+      apt update
+      apt install -y $all_packages
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y $all_packages
+    else
+      echo "Unsupported package manager"
+      exit 1
+    fi
+
+  - |
+    for ev in ${additional_env_vars}
+    do
+      echo $ev >> /etc/environment
+    done
+
+  # Install Docker
+  - mv /tmp/exs/install-docker.sh /root/install-docker.sh
+  - chmod 755 /root/install-docker.sh
+  - /root/install-docker.sh
+
+  # Ensure the authorized key is added to the user
+  - mkdir -p /home/${username}/.ssh
+  - echo "${public_ssh_key}" | base64 -d >> /home/${username}/.ssh/authorized_keys
+  - chown -R ${username}:${username} /home/${username}/.ssh
+  - chmod 0600 /home/${username}/.ssh/authorized_keys
+
+  # Create necessary directories first
+  - mkdir -p /ferretdb /etc/systemd/system /usr/local/bin
+
+  # Write files after directories are created
+  - mv /tmp/exs/ferret-startup.service /etc/systemd/system/ferret-startup.service
+  - mv /tmp/exs/startup.sh /usr/local/bin/startup.sh
+  - mv /tmp/exs/docker-compose.yaml /ferretdb/docker-compose.yaml
+
+  # Set correct permissions
+  - chmod 0600 /etc/systemd/system/ferret-startup.service
+  - chmod 0700 /usr/local/bin/startup.sh
+
+  # Set ownership
+  - chown -R ${username}:${username} /ferretdb
+
+  # Add user to docker group
+  - usermod -aG docker ${username}
+
+  # Configure Docker to start on boot
+  - systemctl enable docker.service
+  - systemctl enable containerd.service
+
+  # Start services
+  - systemctl daemon-reload
+  - systemctl enable docker
+  - systemctl start docker
+  - systemctl enable ferret-startup.service
+  - systemctl start ferret-startup.service
+
+power_state:
+  mode: reboot
+  timeout: 1800
+  condition: True
