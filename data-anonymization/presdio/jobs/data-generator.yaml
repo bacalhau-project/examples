@@ -1,0 +1,57 @@
+# Run with: bacalhau job run -V Region=eu data-generator.yaml
+Name: Transaction Data Generator
+Type: batch
+Count: 1
+Namespace: demo
+Constraints:
+  - Key: region
+    Operator: ==
+    Values:
+      - "{{.Region}}"
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: "ubuntu:latest"
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - "-c"
+          - |
+            for i in {1..30}; do
+              cat << EOF > /data/confidential_memo_${i}.txt
+            CONFIDENTIAL MEMO
+            Date: 2024-03-20
+            
+            From: John Smith (email: john.smith@company.com)
+            To: Sarah Johnson
+            Phone: (555) 123-4567
+            SSN: 123-45-6789
+            
+            Dear Sarah,
+            
+            Please contact our client Robert Williams at robert.w@client.com or 
+            call his office number 212-555-9999. His credit card number is 
+            4532-1234-5678-9012 and his address is 123 Main St, New York, NY 10001.
+            
+            Best regards,
+            John
+            EOF
+            done
+            echo "Created 30 confidential memos files:"
+            ls -l /data/
+    Publisher:
+      Type: s3
+      Params:
+        Bucket: my-bucket
+        Key: "confidential-memos/{nodeID}/"
+        Endpoint: "http://storage-local:9000"
+        Region: storage-region
+        Encoding: plain
+    ResultPaths:
+      - Name: data
+        Path: /data
+    Resources:
+      CPU: "1"
+      Memory: "1gb"
