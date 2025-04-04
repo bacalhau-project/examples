@@ -5,6 +5,11 @@ This project aims to use Kubernetes as controlplane with [Bacalhau](https://docs
 ## Project is based on Harsh Thakur's operator https://github.com/RealHarshThakur/bacalhau-operator. 
 ## It was updated and expanded by Krzysztof Dreżewski
 
+## Note: Minikube
+Please note that the easiest setup to test this operator locally, is to install [Minikube](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fhomebrew) with the [docker driver](https://minikube.sigs.k8s.io/docs/drivers/docker/) . 
+Please note that the `bacalhau-operator.yaml` defaults `APIHost` to `host.minikube.internal` where it expects the Orchestrator API server to be listening on the host. You can change the APIHost to any value that suites your setup.
+
+
 ## Installation of the operator
 ```bash
 kubectl apply -f bacalhau-operator.yaml
@@ -15,7 +20,7 @@ This will create bacalhau namespace, deploy job controller and needed CRDs.
 
 * Create a Job CR, a samples can be found at config/samples
 ```bash
-kubectl create -f config/samples/job_simple_hello_world.yaml
+kubectl create -f config/samples/pass-through-spec/job_simple_hello_world.yaml
 ````
 
 * Check status of the job
