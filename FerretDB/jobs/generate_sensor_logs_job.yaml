@@ -1,0 +1,47 @@
+Name: Generate sensor logs
+Type: daemon
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/sensor-log-generator:2503120914
+        EnvironmentVariables:
+          - CONFIG={{.config}}
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - |
+            echo $CONFIG | base64 -d > /app/data/sensor_config.yaml
+            source /app/data/node-info
+            source /app/environment
+            export SENSOR_ID="${INSTANCE_ID}"
+            export SENSOR_LOCATION="${SENSOR_LOCATION}"
+            export SENSOR_CONFIG=/app/data/sensor_config.yaml
+            /app/start.sh --config=/app/data/sensor_config.yaml
+    Resources:
+      Memory: 256mb
+    Constraints:
+      - Key: Architecture
+        Operator: '='
+        Values:
+          - arm64
+    InputSources:
+      - Target: /app/data
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /bacalhau_data
+            readWrite: true
+      - Target: /app/environment
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /etc/environment
+
+# https://blog.bacalhau.org/p/introducing-new-job-types-new-horizons
+
+##
+# Note: Daemon job runs docker container that is NOT STOPPED, even after job itself is.
+##
