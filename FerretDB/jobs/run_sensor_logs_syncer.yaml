@@ -1,0 +1,38 @@
+Name: Run designated python script in loop until stop flag is present
+Type: daemon
+Tasks:
+  - Name: script_loop
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+        EnvironmentVariables:
+          - LOOP_SCRIPT={{.loop_code}}
+          - SCRIPT={{.code}}
+          - MONGODB_URI={{.mongodb_uri}}
+        Entrypoint:
+          - /usr/bin/bash
+        Parameters:
+          - -c
+          - |
+            echo $LOOP_SCRIPT | base64 -d > /app/data/loop_script.sh
+            chmod +x /app/data/loop_script.sh
+            echo $SCRIPT | base64 -d > /app/data/sync.py
+            chmod +x /app/data/sync.py
+            /app/data/loop_script.sh
+    Network:
+      Type: Host
+    Resources:
+      Memory: "256mb"
+    Constraints:
+      - Key: Architecture
+        Operator: '='
+        Values:
+          - arm64
+    InputSources:
+      - Target: /app/data
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /bacalhau_data
+            readWrite: true
