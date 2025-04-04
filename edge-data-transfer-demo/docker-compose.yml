@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./edge-data-transfer-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      BACALHAU_TOKEN: ${BACALHAU_TOKEN}
+      BACALHAU_API_HOST: ${BACALHAU_API_HOST}
+      BACALHAU_API_TLS_USETLS: ${BACALHAU_API_TLS_USETLS}
