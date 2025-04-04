@@ -1,0 +1,27 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: hello-world-on-amd64-1
+  namespace: bacalhau-system
+spec:
+  raw:
+    Name: hello world on amd64 1
+    Type: batch
+    Count: 2
+    Constraints:
+      - Key: Architecture
+        Operator: "="
+        Values:
+          - amd64
+    Tasks:
+      - Name: main
+        Engine:
+          Type: docker
+          Params:
+            Image: "alpine:latest"
+            Entrypoint:
+              - /bin/sh
+            Parameters:
+              - "-c"
+              - |
+                echo hello world from amd64
