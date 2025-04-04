@@ -1,0 +1,4 @@
+fastapi==0.109.2
+uvicorn==0.27.1
+boto3==1.34.34
+gunicorn>=20.1.0

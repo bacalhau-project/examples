@@ -55,34 +55,37 @@ type Generator interface {
 
 // DefaultGenerator is the standard implementation of Generator
 type DefaultGenerator struct {
-	Emojis []string
+	Emojis      []string
+	ContainerID string
 }
 
 // NewDefaultGenerator creates a new DefaultGenerator with default emojis
 func NewDefaultGenerator() *DefaultGenerator {
+	const chars = "0123456789abcdef"
+	result := make([]byte, 8)
+	for i := range result {
+		result[i] = chars[rand.Intn(len(chars))]
+	}
+
 	return &DefaultGenerator{
-		Emojis: DefaultEmojis(),
+		Emojis:      DefaultEmojis(),
+		ContainerID: string(result),
 	}
 }
 
-// GenerateContainerID creates a container ID (random or fixed based on randomOff)
+// GenerateContainerID returns the container ID (random or fixed based on randomOff)
 func (g *DefaultGenerator) GenerateContainerID(randomOff bool) string {
-	const chars = "0123456789abcdef"
-	result := make([]byte, 8)
-
 	if randomOff {
 		// Use a fixed pattern when randomness is off
+		const chars = "0123456789abcdef"
+		result := make([]byte, 8)
 		for i := range result {
 			result[i] = chars[i%len(chars)]
 		}
-	} else {
-		// Use deterministic pattern for testing
-		for i := range result {
-			result[i] = chars[(i+5)%len(chars)]
-		}
+		return string(result)
 	}
-
-	return string(result)
+	// Return the pre-generated random container ID
+	return g.ContainerID
 }
 
 // GetRandomIcon selects an emoji from the list (random or fixed based on randomOff)
