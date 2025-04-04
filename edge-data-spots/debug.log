@@ -1,0 +1,23 @@
+2025-03-27 16:43:10,664 - INFO - Starting with action: create, verbose: False
+2025-03-27 16:43:10,664 - INFO - Set AWS API timeout to 30 seconds
+2025-03-27 16:43:10,664 - INFO - Set task: 'Creating Spot Instances' with target: 5
+2025-03-27 16:43:10,664 - INFO - Checking AWS credentials validity...
+2025-03-27 16:43:19,278 - INFO - AWS credentials are valid
+2025-03-27 16:43:19,280 - INFO - Initiating create_spot_instances
+2025-03-27 16:43:19,280 - INFO - Starting spot instance creation - target: 5 instances
+2025-03-27 16:43:19,280 - INFO - Creating instances in batches of 10 regions
+2025-03-27 16:43:19,281 - INFO - Processing batch 1/1 with 1 regions
+2025-03-27 16:43:19,281 - INFO - Creating 5 spot instances in region: eu-north-1
+2025-03-27 16:44:21,885 - INFO - Successfully created 5 instances in eu-north-1
+2025-03-27 16:44:21,886 - INFO - Batch 1 created 5 instances
+2025-03-27 16:44:21,886 - INFO - All batches processed, created 5 instances across all regions
+2025-03-27 16:44:21,886 - INFO - Ensuring all instances have received public IP addresses...
+2025-03-27 16:44:21,886 - INFO - Waiting for public IP addresses (timeout: 300s)
+2025-03-27 16:44:21,886 - INFO - Waiting for 0 instances to complete (0 spot requests still pending, 0 awaiting IPs)
+2025-03-27 16:44:21,886 - INFO - All instances processed - 5 successfully provisioned with public IPs
+2025-03-27 16:44:21,886 - INFO - All instances have been successfully created with public IPs
+2025-03-27 16:44:21,886 - INFO - Displaying final table with 5 nodes
+2025-03-27 16:44:22,088 - INFO - Adding 0 new and updating 5 existing machines
+2025-03-27 16:44:22,094 - INFO - Saved 5 machine records to MACHINES.json
+2025-03-27 16:44:22,094 - INFO - Creation completed: 5 instances created, 0 fully provisioned
+2025-03-27 16:44:27,166 - INFO - Main execution completed
