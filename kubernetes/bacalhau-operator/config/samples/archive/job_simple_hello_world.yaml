@@ -2,7 +2,7 @@ apiVersion: core.bacalhau.org/v1
 kind: BacalhauJob
 metadata:
   name: simple-hello-world-1
-  namespace: bacalhau
+  namespace: bacalhau-system
 spec:
   entrypoint: 
     - "echo"
