@@ -18,16 +18,14 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // BacalhauJobSpec defines the desired state of BacalhauJob
-
 type BacalhauJobSpec struct {
-	Image       string                  `json:"image,omitempty"`
-	Entrypoint  []string                `json:"entrypoint,omitempty"`
-	Count       int                     `json:"count,omitempty"`
-	Type        string                  `json:"type,omitempty"`
-	Constraints []BacalhauJobConstraint `json:"constraints,omitempty"`
+	// Raw is the complete Bacalhau job specification
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Raw runtime.RawExtension `json:"raw,omitempty"`
 }
 
 type BacalhauJobConstraint struct {

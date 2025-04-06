@@ -1,0 +1,22 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: simple-hello-world-1
+  namespace: bacalhau-system
+spec:
+  raw:
+    Name: hello world happy path
+    Type: batch
+    Count: 2
+    Tasks:
+      - Name: main
+        Engine:
+          Type: docker
+          Params:
+            Image: "alpine:latest"
+            Entrypoint:
+              - /bin/sh
+            Parameters:
+              - "-c"
+              - |
+                echo hello world happy path

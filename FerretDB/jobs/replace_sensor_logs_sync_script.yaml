@@ -1,0 +1,33 @@
+Name: Cleanup sensor data in FerretDB
+Type: ops
+Tasks:
+  - Name: replace-sync-script
+    Engine:
+      Type: docker
+      Params:
+        Image: bash:devel-alpine3.21
+        EnvironmentVariables:
+          - SCRIPT={{.code}}
+        Entrypoint:
+          - /usr/local/bin/bash
+        Parameters:
+          - -c
+          - |
+            echo $SCRIPT | base64 -d > /app/data/sync.py
+            chmod +x /app/data/sync.py
+    Network:
+      Type: Host
+    Resources:
+      Memory: "128mb"
+    Constraints:
+      - Key: Architecture
+        Operator: '='
+        Values:
+          - arm64
+    InputSources:
+      - Target: /app/data
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /bacalhau_data
+            readWrite: true
