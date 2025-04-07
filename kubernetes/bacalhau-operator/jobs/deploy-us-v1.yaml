@@ -1,0 +1,49 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: us-v1
+  namespace: bacalhau-system
+spec:
+  raw:
+    name: sqs-publisher-us
+    type: batch
+    count: 300
+    constraints:
+      - key: type
+        operator: "="
+        values:
+          - "edge"
+      - key: region
+        operator: "="
+        values:
+          - "us"
+    labels:
+      sqs-publisher: "us"
+    tasks:
+      - name: main
+        engine:
+          type: wasm
+          params:
+            entryModule: /app/modules/publisher.wasm
+            entrypoint: "_start"
+            parameters:
+              - "--proxy=http://host.docker.internal:9091"
+              - "--emoji=-1" # Random icon
+              - "--color=#FF0000" # Red color
+              - "--interval=5"
+              - "--max-messages=0"
+              - "--region=us"
+              - "--submission-time=1"
+        env:
+          HOSTNAME: "env:HOSTNAME"
+        inputSources:
+          - source:
+              type: localDirectory
+              params:
+                sourcePath: /app/
+            target: /app/
+        resources:
+          cpu: "0.001"
+          memory: "36mb"
+        timeouts:
+          queueTimeout: 300

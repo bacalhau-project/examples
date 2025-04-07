@@ -1,0 +1,22 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: uname-on-three-nodes-1
+  namespace: bacalhau-system
+spec:
+  raw:
+    Name: uname on three nodes 1
+    Type: batch
+    Count: 3
+    Tasks:
+      - Name: main
+        Engine:
+          Type: docker
+          Params:
+            Image: "alpine:latest"
+            Entrypoint:
+              - /bin/sh
+            Parameters:
+              - "-c"
+              - |
+                uname -a
