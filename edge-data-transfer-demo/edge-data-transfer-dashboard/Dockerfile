@@ -32,4 +32,4 @@ ENV BACALHAU_API_HOST \
 EXPOSE 3000
 
 # Start command with Bacalhau check and Next.js app
-CMD echo "$BACALHAU_TOKEN" | bacalhau node list && npm start
+CMD echo "$BACALHAU_TOKEN" | bacalhau node list && npm run start -- -H 0.0.0.0
