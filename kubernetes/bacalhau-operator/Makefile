@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= kdrezewski/bacalhau-job-controller:0.1.0
+IMG ?= public.ecr.aws/x1f6c4u6/jamil/bacalhau-kube-operator:0.2.0
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 # CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -108,8 +108,8 @@ define go-get-tool
 set -e ;\
 TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
-$(PROJECT_DIR)/bin/go mod init tmp ;\
+go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin $(PROJECT_DIR)/bin/go install $(2) ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 }
 endef

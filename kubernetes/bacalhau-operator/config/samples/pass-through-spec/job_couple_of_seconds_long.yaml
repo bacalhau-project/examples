@@ -1,0 +1,25 @@
+apiVersion: core.bacalhau.org/v1
+kind: BacalhauJob
+metadata:
+  name: couple-of-seconds-long-1
+  namespace: bacalhau-system
+spec:
+  raw:
+    Name: couple of seconds long 1
+    Type: batch
+    Count: 1
+    Tasks:
+      - Name: main
+        Engine:
+          Type: docker
+          Params:
+            Image: "alpine:latest"
+            Entrypoint:
+              - /bin/sh
+            Parameters:
+              - "-c"
+              - |
+                for i in $(seq 1 6); do
+                  echo "."; 
+                  sleep 5; 
+                done
