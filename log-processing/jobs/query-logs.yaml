@@ -1,31 +1,19 @@
-Name: Query logs
+Name: Query logs - 5xx status codes
 Type: ops
-Count: 1
 Tasks:
   - Name: main
     Engine:
       Type: docker
       Params:
-        Image: "alpine:3.17"
-        Entrypoint:
-          - "sh"
+        Image: ghcr.io/bacalhau-project/nginx-access-log-query:1.0.0
         Parameters:
-          - "-c"
-          - |
-            apk add --no-cache jq &&
-            jq -r 'select(.status == 404)
-                  | [.time_local, .remote_addr, .request]
-                  | @tsv' /app/output/application.log
-
-    # Network specifies networking requirements.  
-    # Here our job will have full access to the network
-    Network:
-      Type: Full
+          - --query
+          - SELECT status FROM logs WHERE status LIKE '5__'
 
     # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
     # Here we are mounting the logs directory to /app/output
     InputSources:
-      - Target: /app/output
+      - Target: /logs
         Source:
           Type: localDirectory
           Params:

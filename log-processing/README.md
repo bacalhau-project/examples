@@ -13,11 +13,12 @@ To address these varied needs, especially in real-time scenarios, many organizat
 
 ## Solution: Distributed Log Orchestration with Bacalhau
 Rather than forwarding all logs to a monolithic platform, Bacalhau allows you to:
- - Deploy **daemon jobs** that continuously collect, filter, and compress logs right where they’re generated
+ - Deploy **daemon jobs** that continuously collect, filter, and compress logs right where they’re generated, allowing you to **fork at the source** for tailored processing paths
  - Send aggregated data to real-time analytics platforms for quick insights
  - Store full, raw logs in inexpensive storage (e.g., S3) for compliance, deep-dive, and batch analytics
  - Query logs directly on compute nodes for immediate troubleshooting
  - Scale quickly on multiple nodes, either on-prem or across different clouds, with minimal manual intervention
+ - **Leverage idle or dedicated query fleets to process historical data** stored in cheap object storage, enabling flexible, on-demand analytics without tying up primary compute resources
 
 **Key Advantages**:
  - Substantial bandwidth and cost savings
@@ -27,33 +28,188 @@ Rather than forwarding all logs to a monolithic platform, Bacalhau allows you to
 
 ## Run This Example
 
+```
+                   +--------------------------+
+                   |      Docker Compose      |
+                   +-------------+------------+
+                                 |
+   +-----------------------------+--------------------------------+  +---------------------+
+   |                      Bacalhau Network                        |  |  Orchestrator Node  |
+   |                                                              |  |   (Expanso Cloud)   |
+   |  +----------------+  +----------------+  +----------------+  |  +----------+----------+
+   |  | Compute Node 1 |  | Compute Node 2 |  | Compute Node 3 |  |             |
+   |  +----------------+  +----------------+  +----------------+  +-------------+
+   |             \              |              /                  |
+   |              \             |             /                   |
+   |               \            |            /                    |
+   |          +-----v-----------v-----------v-----+               |
+   |          |         Storage (MinIO)            |              |
+   |          +-----------------+------------------+              |
+   |                            |                                 |
+   |                     +------v-------+                         |
+   |                     |  OpenSearch  |                         |
+   |                     +------+-------+                         |
+   |                            |                                 |
+   |               +------------v-----------+                     |     
+   |               |  OpenSearch Dashboard  |                     |
+   |               +------------------------+                     |
+   |                                                              |
+   +--------------------------------------------------------------+
+```
+
 ### Prerequisites
 - Docker and Docker Compose
 - [Expanso Cloud](https://cloud.expanso.io) account
+- [Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation)
 
 ### 1. Create an Orchestrator
-Use [Expanso Cloud](https://www.cloud.expanso.io/) to create a new Bacalhau network (a managed orchestrator node). Name it however you like.
+Use [Expanso Cloud](https://www.cloud.expanso.io/) to create a new Bacalhau network (a managed orchestrator node). Name it however you like. Once created, it will appear in the left-hand side menu bar or under **Networks**.
 
 ### 2. Spin Up and Connect Compute Node
 1. Under _"+ Node"_ in your new network, obtain the token and NATS URL from the platform.
 2. In this directory, update `compute.yaml` with the relevant token and NATS URL replacing all instances of `<TODO>`. If necessary, change the number of compute nodes you want to run under `services.compute.deploy.replicas` in `docker-compose.yml`.
 
-3. Start the environment:
+3. We will be using the Bacalhau CLI throughout this example to interact with the network. Enable Bacalhau CLI usage for your network by choosing "_Enable CLI Access_" on the network overview page on Expanso Cloud. This will provide us with the API key environment variable to connect to the orchestrator.
+
+4. Start the environment:
    ```bash
    docker compose up
    ```
    This command will spin up Bacalhau compute nodes, a storage (MinIO) node and OpenSearch nodes.
 
+After a couple of moments you should see the compute nodes in your Expanso Cloud network. You can also run `bacalhau node list` to see the nodes connected to your network.
+
+🎉 Congrats! You now have a Bacalhau network set up with compute nodes and storage.
+
 ### 3. Generate Logs
-In the Expanso Cloud dashboard, go to **Network > _YourNetwork_ > Jobs**, create a new job from file, use `generate-logs.yaml` and run it. This [daemon](https://docs.bacalhau.org/cli-api/specifications/job/type#daemon-jobs) job will run on all compute nodes and generate logs for this example. Once submitted you should be redirected to the Job page. Here you can see its status, history and executions. Under the executions tab you should see one execution per node.
+
+This [daemon](https://docs.bacalhau.org/cli-api/specifications/job/type#daemon-jobs) job will run on all compute nodes and generate logs for this example.
+
+The generated logs follow a structured JSON schema that includes fields capturing detailed request metadata, response metadata and contextual details. Example log:
+
+```
+{
+  "event": {
+    "original": "{\"remote_addr\": \"5.210.15.164\", \"remote_user\": \"-\", \"time_local\": \"2025-04-08T21:58:08\", \"http_method\": \"GET\", \"request\": \"/image/64456/productModel/200x200\", \"http_version\": \"HTTP/1.1\", \"status\": 200, \"body_bytes_sent\": 6920, \"http_referer\": \"https://example.com\", \"http_user_agent\": \"Mozilla/5.0 ...\"}"
+  },
+  "status": 200,
+  "remote_user": "-",
+  "http_version": "HTTP/1.1",
+  "http_referer": "https://example.com",
+  "tags": [
+    "raw_log"
+  ],
+  "http_method": "GET",
+  "@timestamp": "2025-04-08T21:58:08.000Z",
+  "remote_addr": "5.210.15.164",
+  "log": {
+    "file": {
+      "path": "/app/logs/application.log"
+    }
+  },
+  "request": "/image/64456/productModel/200x200",
+  "host": {
+    "name": "3acb60a09356"
+  },
+  "time_local": "2025-04-08T21:58:08",
+  "body_bytes_sent": 6920,
+  "http_user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 12_1_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1",
+  "@version": "1"
+}
+```
+
+#### Run with Expanso Cloud
+
+In the Expanso Cloud dashboard, go to **Network > _YourNetwork_ > Jobs > New Job**, create a new job from file, use `generate-logs.yaml` and run it.  Once submitted you should be redirected to the Job page. Here you can see its status, history and executions. Under the executions tab you should see one execution per node.
+
+#### Run with CLI
+```bash
+bacalhau run job jobs/generate-logs.yaml
+```
 
 ### 4. Run the Logstash Job
-In Expanso Cloud, go to **Network > _YourNetwork_ > Jobs**, create or upload the job `logstash.yaml` and run it. This is another [daemon](https://docs.bacalhau.org/cli-api/specifications/job/type#daemon-jobs) job that will collect logs, writing aggregated logs to OpenSearch, and storing raw logs in MinIO. After a few minutes, verify logs are being collected by checking your logs bucket at `localhost:9001` (username and password configured in `docker-compose.yml`) and your OpenSearch dashboard at `localhost:5601`.
+
+Logstash is a powerful tool for processing and transforming logs. This is another [daemon](https://docs.bacalhau.org/cli-api/specifications/job/type#daemon-jobs) job that will:
+
+- Collect and compress logs from the compute nodes and forward them every hour to the specified S3 bucket. This is great for archival and deep-dive analysis.
+- Push aggregated metrics to OpenSearch every `AGGREGATE_DURATION` seconds.
+
+You can learn more about our Logstash pipeline configuration and aggregation implementation in `logstash/`. These are a subset of the aggregated metrics published to OpenSearch:
+
+- Request Counts: Grouped by HTTP status codes.
+- Top IPs: Top 10 source IPs by request count.
+- Geo Sources: Top 10 geographic locations by request count.
+- User Agents: Top 10 user agents by request count.
+- Popular APIs & Pages: Top 10 most-hit APIs and pages.
+- Gone Pages: Top 10 requested but non-existent pages.
+- Unauthorized IPs: Top 10 IPs failing authentication.
+- Throttled IPs: Top 10 IPs getting rate-limited.
+- Data Volume: Total data transmitted in bytes.
+
+This gives you real-time insights into traffic patterns, performance issues, and potential security risks. All of this is visible through your OpenSearch dashboards.
+
+#### Run with Expanso Cloud
+
+In Expanso Cloud, go to **Network > _YourNetwork_ > Jobs**, create or upload the job `logstash.yaml` and run it.
+
+#### Run with CLI
+```bash
+bacalhau run job jobs/logstash.yaml
+```
+
+After a few minutes, verify logs are being collected by checking your logs bucket at `localhost:9001` (username and password configured in `docker-compose.yml`) and your OpenSearch dashboard at `localhost:5601`.
+
+View the logstash logs with:
+```bash
+bacalhau job logs <job_id>
+```
 
 ### 5. Query Logs directly on Compute Node
 In cases where you need to query logs immediately due to an incident or alert, Bacalhau [ops](https://docs.bacalhau.org/cli-api/specifications/job/type#ops-jobs) jobs can help you filter logs on the compute node itself since recent logs might not be available in the centralized storage yet.
 
-Upload and run the job `query-logs.yaml` to filter logs for specific HTTP statuses (for example, 404 errors) right on the compute nodes. The results will be stored in MinIO.
+#### Run with Expanso Cloud
+
+Upload and run the job `query-logs.yaml` to filter logs for 5xx HTTP statuses right on the compute nodes.
+
+#### Run with CLI
+```bash
+bacalhau run job jobs/query-logs.yaml
+```
+
+#### Results
+To view the results, you can either download the published job results from MinIO at `localhost:9001` or use the Bacalhau CLI.
+
+```bash
+bacalhau job describe <job_id>
+```
+This will show you the standard output of the job with the filtered results.
+
+### 6. Querying historical logs
+
+Historic log analysis often treads a fine line between accessibility and cost-effectiveness. Typically real-time metrics and aggregated data do the trick, but sometimes a deep dive into raw logs is necessary for comprehensive batch analysis or detailed troubleshooting. However, constantly streaming all raw logs to platforms like Splunk or ElasticSearch can be prohibitively expensive and operationally cumbersome.
+
+To address this, we will use Bacalhau's batch jobs to query older logs that are no longer stored on the host itself but stored in MinIO. This allows us to run queries on the logs without needing to stream all logs to a centralized platform.
+
+#### Run with Expanso Cloud
+
+To streamline this process, we will first create a reusable job template in Expanso Cloud for repeated batch queries against historical data. Navigate to **Templates > New** on Expanso Cloud to begin. Upload the job `top-referring-sites.yaml` to open it in the editor. On the right-hand side you'll see the variables detected in the template - namely `bucket`, `region` and `date`. Click 'Save' and name the template "_Top Referring Sites_".
+
+To run a query using this template, go to **Network > _YourNetwork_ > Jobs > New Job** and select the template you just created. You'll be prompted to provide values for the variables before execution. For `bucket` use `logs-bucket`, for `region` use `us-east-1` and for `date` use whatever date you want to query or a range such as `2025-01-*`. If you're uncertain which dates to query, you can inspect available folders in MinIO by visiting `localhost:9001`.
+
+#### Run with CLI
+Using templates in the CLI is straightforward. All you need to do is run the following command, replacing the variables with your desired values:
+
+```bash
+bacalhau run job jobs/top-referring-sites.yaml --template-vars "bucket=logs-bucket,region=us-east-1,date=2025-*"
+```
+
+#### Results
+
+Once the job has completed use the Bacalhau CLI to view the results:
+```bash
+bacalhau job describe <job_id>
+```
+This will show you the standard output of the job with the filtered results.
 
 ## Additional Resources
  - [__Job Types__](https://docs.bacalhau.org/cli-api/specifications/job/type) 
