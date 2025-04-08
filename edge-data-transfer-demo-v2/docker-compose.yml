@@ -1,0 +1,16 @@
+services:
+  backend:
+    build:
+      context: ./edge-data-spots
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+
+  frontend:
+    build:
+      context: ./edge-data-transfer-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
