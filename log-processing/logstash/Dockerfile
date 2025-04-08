@@ -11,4 +11,3 @@ RUN rm /usr/share/logstash/pipeline/*
 COPY filters /logstash/filters
 COPY templates /logstash/templates
 COPY pipeline /usr/share/logstash/pipeline
-

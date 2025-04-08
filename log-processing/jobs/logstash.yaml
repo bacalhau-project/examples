@@ -5,7 +5,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: markkuhn/nginx-access-log-agent:1.0.0
+        Image: ghcr.io/bacalhau-project/nginx-access-log-agent:1.0.0
         EnvironmentVariables:
           - OPENSEARCH_ENDPOINT=http://opensearch:9200/
           - S3_BUCKET=logs-bucket
