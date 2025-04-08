@@ -1,0 +1,5 @@
+# Exclude everything except what's needed
+*
+!scripts/
+!Dockerfile
+!build_container.sh 

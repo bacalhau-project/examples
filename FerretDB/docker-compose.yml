@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./sensor-monitoring-dashboard
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+        MONGODB_IP: ${MONGODB_IP:-127.0.0.1}
+    ports:
+      - "3000:3000"
