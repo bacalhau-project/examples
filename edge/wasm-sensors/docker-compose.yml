@@ -13,7 +13,7 @@ services:
     # Using host network mode
     network_mode: "host"
     volumes:
-      - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+      - ./resources/config/orchestrator.yaml:/etc/bacalhau/config.yaml
     deploy:
       resources:
         reservations:
@@ -35,7 +35,7 @@ services:
     hostname: web-services
     command: serve -c /etc/bacalhau/config.yaml -c labels=type=web-services
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -58,8 +58,8 @@ services:
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "us"
@@ -85,8 +85,8 @@ services:
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=eu,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "eu"
@@ -112,8 +112,8 @@ services:
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=as,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "as"
