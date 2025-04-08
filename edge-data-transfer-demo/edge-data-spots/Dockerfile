@@ -1,22 +1,21 @@
-FROM ubuntu:22.04
+FROM ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
 WORKDIR /backend
 
-RUN apt-get update
-RUN apt-get install python3 python3-pip curl unzip mc vim nano openssh-client -y
-RUN pip install uv
-RUN curl -sL https://get.bacalhau.org/install.sh | bash
+ARG BUILD_DATE
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
 
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-RUN unzip awscliv2.zip
-RUN ./aws/install
+RUN apk update && apk add --no-cache \
+    python3 \
+    py3-pip \
+    curl \
+    unzip \
+    mc \
+    vim \
+    nano \
+    openssh-client
 
-ENV BACALHAU_API_HOST \
-    BACALHAU_API_TLS_USETLS \
-    BACALHAU_TOKEN
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-COPY . . 
+COPY scripts/ ./
 
 RUN ssh-keygen -t rsa -b 4096 -N "" -f /root/.ssh/id_rsa
-
-
-CMD ["sleep", "infinity"]
