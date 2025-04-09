@@ -63,14 +63,22 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    # Make sure the network is stopped before starting
    docker compose down
    
-   # Start with 3 replicas per region
-   docker compose up -d --scale edge-us=3 --scale edge-eu=3 --scale edge-as=3
-   
-   # For large-scale deployment (e.g., 300 replicas per region)
+   # Option 1: Start with all 300 replicas per region at once
+   # This is faster to execute but may put significant load on your system
    docker compose up -d --scale edge-us=300 --scale edge-eu=300 --scale edge-as=300
    
-   # You can watch the joining of compute nodes on a separate terminal using 
+   # Monitor node joining in a separate terminal window with either approach
    watch -n 5 "bacalhau node list --labels type=edge --show labels --wide --hide-header --no-style | grep -o 'region=[a-z]*' | sort | uniq -c"
+   
+   # Option 2: Start small and scale gradually (potentially more stable)
+   # Scale up gradually in batches of 100 per region
+   docker compose up -d --scale edge-us=100 --scale edge-eu=100 --scale edge-as=100
+   
+   # Wait for nodes to join and stabilize, then add more
+   docker compose up -d --scale edge-us=200 --scale edge-eu=200 --scale edge-as=200
+   
+   # Final scaling to reach target of 300 per region
+   docker compose up -d --scale edge-us=300 --scale edge-eu=300 --scale edge-as=300
    ```
 
    This command starts all services, including:
