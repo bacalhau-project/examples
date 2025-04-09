@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-// Initialize random seed for the package
-func init() {
-	// Explicitly seed the random number generator with current time
-	rand.Seed(time.Now().UnixNano())
-}
-
 // RuntimeConfig holds the runtime configuration
 type RuntimeConfig struct {
 	ProxyURL       string
@@ -77,17 +71,26 @@ func NewRuntimeConfig() *RuntimeConfig {
 
 // Normalize sets default values and normalizes the configuration
 func (c *RuntimeConfig) Normalize() {
-	// Handle color selection
+	// For WebAssembly environments, we need a better random seed
+	// Use a combination of values to get better entropy
+	seed := time.Now().UnixNano()
+
+	// Create a dedicated random generator for this configuration
+	source := rand.NewSource(seed)
+	rng := rand.New(source)
+
+	// Handle color selection - once per config
 	if c.Color == "-1" {
-		c.Color = generateRandomColor()
+		// Generate random RGB values with our dedicated random source
+		r := rng.Intn(256)
+		g := rng.Intn(256)
+		b := rng.Intn(256)
+		c.Color = fmt.Sprintf("#%02x%02x%02x", r, g, b)
 	}
 
-	// Handle emoji selection
+	// Handle emoji selection - once per config
 	if c.EmojiIdx < 0 || c.EmojiIdx >= len(supportedEmojis) {
-		// Re-seed the random number generator each time to ensure different values
-		// This is especially important in WebAssembly environments
-		rand.Seed(time.Now().UnixNano())
-		c.EmojiIdx = rand.Intn(len(supportedEmojis))
+		c.EmojiIdx = rng.Intn(len(supportedEmojis))
 	}
 }
 
@@ -128,16 +131,4 @@ func isValidHexColor(color string) bool {
 		}
 	}
 	return true
-}
-
-// generateRandomColor generates a random hex color code
-func generateRandomColor() string {
-	// Re-seed before generating a random color
-	rand.Seed(time.Now().UnixNano())
-
-	// Generate random RGB values
-	r := rand.Intn(256)
-	g := rand.Intn(256)
-	b := rand.Intn(256)
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
