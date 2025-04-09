@@ -131,15 +131,6 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    docker compose unpause edge-eu
    ```
 
-### Deploying SQS Publishers with Custom Configurations
-
-```bash
-# US region - with specified color and emoji
-bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 -V count=3 jobs/sqs-publisher.yaml
-
-# For large-scale deployments
-bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 -V count=300 jobs/sqs-publisher.yaml
-```
 
 ## 📊 Health Checks and Testing
 
@@ -191,20 +182,6 @@ docker compose unpause edge-eu
 docker compose up -d --scale edge-us=150
 ```
 
-### Managing Jobs
-
-```bash
-# List running jobs
-bacalhau job list --labels "sqs-publisher=us" --limit 100
-
-# Stop specific jobs
-bacalhau job stop <job-id>
-
-# Stop all jobs for a region
-for job_id in $(bacalhau job list --labels "sqs-publisher=us" --limit 100 --output json | jq -r '.[] | select(.State.StateType != "Completed" and .State.StateType != "Stopped" and .State.StateType != "Failed") | .ID'); do
-  bacalhau job stop --quiet "$job_id"
-done
-```
 
 ## Troubleshooting
 
