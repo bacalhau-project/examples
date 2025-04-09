@@ -4,6 +4,11 @@ x-common-env-variables: &common-env-variables
   BACALHAU_DISABLEANALYTICS: true
   LOG_LEVEL: info
 
+# Common logging configuration to disable logs
+x-logging-driver: &logging-driver
+  logging:
+    driver: "none"
+
 services:
   orchestrator:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -13,7 +18,7 @@ services:
     # Using host network mode
     network_mode: "host"
     volumes:
-      - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+      - ./resources/config/orchestrator.yaml:/etc/bacalhau/config.yaml
     deploy:
       resources:
         reservations:
@@ -29,13 +34,14 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    # Orchestrator keeps logging enabled
 
   web-services:
     image: ghcr.io/bacalhau-project/bacalhau:latest-dind
     hostname: web-services
     command: serve -c /etc/bacalhau/config.yaml -c labels=type=web-services
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
     environment:
       <<: *common-env-variables
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -52,14 +58,15 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    <<: *logging-driver
 
   edge-us:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=us,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "us"
@@ -79,14 +86,15 @@ services:
       nofile:
         soft: 4096
         hard: 4096
+    <<: *logging-driver
 
   edge-eu:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=eu,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "eu"
@@ -106,14 +114,15 @@ services:
       nofile:
         soft: 4096
         hard: 4096
+    <<: *logging-driver
 
   edge-as:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: sh
     command: -c 'mkdir -p /app && bacalhau serve -c /etc/bacalhau/config.yaml -c labels=region=as,type=edge'
     volumes:
-      - ./config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./modules:/app/modules
+      - ./resources/config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./resources/modules:/app/modules
     environment:
       <<: *common-env-variables
       REGION: "as"
@@ -133,6 +142,7 @@ services:
       nofile:
         soft: 4096
         hard: 4096
+    <<: *logging-driver
 
   sqs-proxy-us:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
@@ -154,6 +164,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    <<: *logging-driver
 
   sqs-proxy-eu:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
@@ -175,6 +186,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    <<: *logging-driver
 
   sqs-proxy-as:
     image: ghcr.io/bacalhau-project/wasm-sensors-sqs-proxy:latest
@@ -196,6 +208,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    <<: *logging-driver
 
   sqs-puller:
     image: ghcr.io/bacalhau-project/event-puller:latest
@@ -213,6 +226,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    <<: *logging-driver
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
@@ -235,6 +249,7 @@ services:
       nofile:
         soft: 4096
         hard: 4096
+    <<: *logging-driver
 
 networks:
   bacalhau-network-us:
