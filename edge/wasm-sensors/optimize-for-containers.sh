@@ -80,7 +80,7 @@ cat << EOF > /etc/docker/daemon.json
   "log-driver": "local",
   "log-opts": {
     "max-size": "10m",
-    "max-file": "3"
+    "max-file": "1"
   },
   "default-ulimits": {
     "nofile": {
