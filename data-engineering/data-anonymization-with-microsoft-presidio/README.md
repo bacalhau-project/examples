@@ -111,7 +111,7 @@ In a separate directory, clone this repository:
 
 ```shell
 git clone https://github.com/bacalhau-project/examples.git
-cd examples/data-anonymization/presdio
+cd examples/data-engineering/data-anonymization-with-microsoft-presidio
 ```
 
 ### Generate Fake Sensitive Data
