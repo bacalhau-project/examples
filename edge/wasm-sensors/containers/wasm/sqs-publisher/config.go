@@ -36,11 +36,6 @@ func NewRuntimeConfig() *RuntimeConfig {
 
 // Normalize sets default values and normalizes the configuration
 func (c *RuntimeConfig) Normalize() {
-	// Initialize random seed if needed for color or emoji
-	if c.Color == "-1" || c.EmojiIdx < 0 {
-		rand.Seed(time.Now().UnixNano())
-	}
-
 	// Handle color selection
 	if c.Color == "-1" {
 		c.Color = generateRandomColor()

@@ -64,16 +64,13 @@ This scenario demonstrates the message flow and deployment behavior across diffe
    docker compose down
    
    # Start with 3 replicas per region
-   docker compose up -d \
-     --scale edge-us=3 \
-     --scale edge-eu=3 \
-     --scale edge-as=3
+   docker compose up -d --scale edge-us=3 --scale edge-eu=3 --scale edge-as=3
    
-   # For large-scale deployment (e.g., 400 replicas per region)
-   docker compose up -d \
-     --scale edge-us=400 \
-     --scale edge-eu=400 \
-     --scale edge-as=400
+   # For large-scale deployment (e.g., 300 replicas per region)
+   docker compose up -d --scale edge-us=300 --scale edge-eu=300 --scale edge-as=300
+   
+   # You can watch the joining of compute nodes on a separate terminal using 
+   watch -n 5 "bacalhau node list --labels type=edge --show labels --wide --hide-header --no-style | grep -o 'region=[a-z]*' | sort | uniq -c"
    ```
 
    This command starts all services, including:
@@ -85,45 +82,45 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 2. Deploy to US region with red color and rocket emoji:
 
    ```bash
-   bacalhau job run -V count=3 --id-only --wait=false jobs/deploy-us-v1.yaml
+   bacalhau job run -V count=300 --id-only --wait=false jobs/deploy-us-v1.yaml
    ```
 
 3. Deploy to EU region with blue color and satellite emoji:
 
    ```bash
-   bacalhau job run -V count=3 --id-only --wait=false jobs/deploy-eu-v1.yaml
+   bacalhau job run -V count=300 --id-only --wait=false jobs/deploy-eu-v1.yaml
    ```
 
 4. Deploy to AS region with green color and light bulb emoji:
 
    ```bash
-   bacalhau job run -V count=3 --id-only --wait=false jobs/deploy-as-v1.yaml
+   bacalhau job run -V count=300 --id-only --wait=false jobs/deploy-as-v1.yaml
    ```
 
 5. Update US deployment with new configuration (purple color and lightning emoji):
 
    ```bash
-   bacalhau job run -V count=3 --id-only --wait=false jobs/deploy-us-v2.yaml
+   bacalhau job run -V count=300 --id-only --wait=false jobs/deploy-us-v2.yaml
    ```
 
 6. Disconnect (stop) the EU region:
 
    ```bash
    # Stop all edge-eu containers without removing them
-   docker compose stop edge-eu
+   docker compose pause edge-eu
    ```
 
 7. Deploy new configuration to EU (yellow color and battery emoji):
 
    ```bash
-   bacalhau job run -V count=3 --id-only --wait=false jobs/deploy-eu-v2.yaml
+   bacalhau job run -V count=300 --id-only --wait=false jobs/deploy-eu-v2.yaml
    ```
 
 8. Reconnect (restart) the EU region:
 
    ```bash
    # Restart all stopped edge-eu containers
-   docker compose start edge-eu
+   docker compose unpause edge-eu
    ```
 
 ### Deploying SQS Publishers with Custom Configurations
@@ -133,7 +130,7 @@ This scenario demonstrates the message flow and deployment behavior across diffe
 bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 -V count=3 jobs/sqs-publisher.yaml
 
 # For large-scale deployments
-bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 -V count=400 jobs/sqs-publisher.yaml
+bacalhau job run -V proxy=http://host.docker.internal:9091 -V color="#FF5733" -V emoji=0 -V count=300 jobs/sqs-publisher.yaml
 ```
 
 ## 📊 Health Checks and Testing
@@ -177,10 +174,10 @@ docker compose down
 
 ```bash
 # Stop a specific region
-docker compose stop edge-eu
+docker compose pause edge-eu
 
 # Restart a stopped region
-docker compose start edge-eu
+docker compose unpause edge-eu
 
 # Scale a region up or down
 docker compose up -d --scale edge-us=150
