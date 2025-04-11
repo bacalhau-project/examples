@@ -47,9 +47,8 @@ Ensure the following TCP ports are free:
 
 - **3010** – Frontend
 - **8438** – Bacalhau Web Interface
-- **1234, 4222** – Bacalhau Orchestrator
 - **27217** – FerretDB (optional external access)
-- **9000, 9001** – MinIO (internal and web interface)
+- **9001** – MinIO Web interface
 - **Docker subnet `172.28.0.0/16`** must also be available.
 
 > ⚠️ **Note:** FerretDB/PostgreSQL does not currently offer a Docker image for the ARM64 architecture.
@@ -175,6 +174,17 @@ docker compose up
 *(Remove the `-d` flag to stay attached and view colored logs.)*
 
 - If the frontend map is blank, ensure `.env` exists and includes your Google Maps API key.
+
+
+- If docker is complaining about overlapping network that already exists, try to prune networks that are not used anymore:
+```bash
+docker network prune
+```
+
+- If there are docker containers present that have the same names, try to prune them also:
+```bash
+docker container prune
+```
 
 ---
 
