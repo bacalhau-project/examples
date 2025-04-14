@@ -1,0 +1,24 @@
+# Sensor Configuration
+
+# Default reading parameters that can be overridden by environment variables
+readings:
+  readings_per_second: 1
+  anomaly_probability: 0.05
+  temperature_mean: 65.0
+  temperature_stddev: 5.0
+  vibration_mean: 2.5
+  vibration_stddev: 1.0
+  voltage_mean: 12.0
+  voltage_stddev: 0.5
+
+# Database settings
+database:
+  path: "/app/data/sensor_data.db"
+  batch_size: 100
+  max_rows: 100000
+  
+# Logging settings
+logging:
+  level: "INFO"
+  file: "/app/data/sensor_simulator.log"
+  console: true
