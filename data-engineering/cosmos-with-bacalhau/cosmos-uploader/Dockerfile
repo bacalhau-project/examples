@@ -1,34 +1,27 @@
-FROM python:3.11-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv for faster package installation
-RUN pip install uv
+# syntax=docker/dockerfile:1.4
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 # Set working directory
-WORKDIR /app
+WORKDIR /cosmos-uploader
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy csproj and restore dependencies
+COPY *.csproj .
+RUN dotnet restore
 
-# Install dependencies
-RUN uv pip install -r requirements.txt
-
-# Copy source code
+# Copy all source files and build
 COPY . .
+RUN dotnet publish -c Release -o /app
 
-# Make entrypoint script executable
-RUN chmod +x entrypoint.sh
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+WORKDIR /app
+COPY --from=build /app .
 
-# Set entrypoint
+# Create a wrapper script that will handle dotnet execution with args
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'echo "Starting CosmosUploader with arguments: $@"' >> /app/entrypoint.sh && \
+    echo 'exec dotnet CosmosUploader.dll "$@"' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+# Set entrypoint to use our wrapper script
 ENTRYPOINT ["/app/entrypoint.sh"]
