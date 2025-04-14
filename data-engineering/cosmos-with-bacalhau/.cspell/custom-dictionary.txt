@@ -13,6 +13,7 @@ IWUSR
 levelname
 makedirs
 multiarch
+Newtonsoft
 psql
 psycopg
 pyyaml
