@@ -1,4 +1,5 @@
-Name: Query logs - 5xx status codes
+# If your site serves files, identify the most downloaded ones.
+Name: Most Downloaded Files
 Type: ops
 Tasks:
   - Name: main
@@ -8,7 +9,13 @@ Tasks:
         Image: ghcr.io/bacalhau-project/nginx-access-log-query:1.0.0
         Parameters:
           - --query
-          - SELECT status FROM logs WHERE status LIKE '5__'
+          - >
+            SELECT request, COUNT(*) AS error_count
+            FROM logs
+            WHERE status = 404
+            GROUP BY request
+            ORDER BY error_count DESC
+            LIMIT 10;
 
     # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
     # Here we are mounting the logs directory to /app/output
@@ -19,13 +26,3 @@ Tasks:
           Params:
             SourcePath: /data/log-processing/logs
             ReadWrite: true
-
-    # Publisher specifies where the results of the task should be published - S3, IPFS, Local or none
-    # Here we are publishing the results to the MinIO "logs-bucket" bucket
-    Publisher:
-      Type: "s3"
-      Params:
-        Bucket: "logs-bucket"
-        Key: "jobs/{jobID}/{executionID}"
-        Endpoint: "http://storage:9000"
-        Region: "us-east-1"

@@ -12,6 +12,45 @@ Organizations juggling high data volumes often face these hurdles:
 To address these varied needs, especially in real-time scenarios, many organizations resort to streaming all logs to a centralized platform or data warehouse. While this method can work, it often leads to spiraling costs and slower insights.
 
 ## Solution: Distributed Log Orchestration with Bacalhau
+
+Bacalhau is a distributed compute framework that offers efficient log processing solutions, enhancing current platforms. Its strength lies in its adaptable job orchestration. Let's explore its multi-job approach.
+
+### Job Types
+
+#### 1. Daemon Jobs:
+
+- **Purpose**: Bacalhau agents run continuously on the nodes doing the work (e.g., website, database, middleware, etc), auto-deployed by the orchestrator.
+
+- **Function:** These jobs handle logs at the source, aggregate, and compress them. They then send aggregated logs periodically to platforms like Kafka or Kinesis, or suitable logging services. Every hour, raw logs intended for archiving or batch processing are compressed and moved to places like S3.
+
+#### 2. Service Jobs:
+
+- **Purpose**: Handle continuous intermediate processing like log aggregation, basic statistics, deduplication, and issue detection. They run on a specified number of nodes, with Bacalhau ensuring their optimal performance and health.
+
+- **Function:** Continuous log processing and integration with logging services for instant insights, e.g., Splunk.
+
+#### 3. Batch Jobs:
+
+- **Purpose**: Executed on-demand on a designated number of nodes, with Bacalhau managing node selection, monitoring and failover.
+
+- **Function:** Operates intermittently on data in S3, focusing on in-depth investigations without moving the data, turning nodes into a distributed data warehouse.
+
+#### 4. Ops Jobs:
+
+- **Purpose**: Similar to batch jobs but spanning all nodes matching job selection criteria.
+
+- **Function:** Ideal for urgent investigations where time is critical. End users are granted limited, yet direct access to logs on host machines, avoiding any S3 transfer delays and ensuring rapid insights.
+
+Bacalhau is designed for global reach and reliability. Here's a snapshot of its worldwide log solution.
+
+1. **Local Log Transfers**: Daemon jobs swiftly send logs to close-by storages like regional S3 or MinIO. These jobs stay active, even without Bacalhau connection, safeguarding data during outages.
+
+2. **Regional Log Handling**: Autonomous service jobs in each region channel logs can transmit to regional logging entities for localized insights, a global logging platform for an overarching perspective, or a combination of both.
+
+3. **Smart Batch Operations**: Bacalhau guides batch jobs to nearby data sources, cutting network costs and streamlining global tasks.
+
+4. **Ops Job Flexibility**: Based on permissions, operators can target specific hosts, regions, or the entire network for queries.
+
 Rather than forwarding all logs to a monolithic platform, Bacalhau allows you to:
  - Deploy **daemon jobs** that continuously collect, filter, and compress logs right where they’re generated, allowing you to **fork at the source** for tailored processing paths
  - Send aggregated data to real-time analytics platforms for quick insights
@@ -169,20 +208,19 @@ In cases where you need to query logs immediately due to an incident or alert, B
 
 #### Run with Expanso Cloud
 
-Upload and run the job `query-logs.yaml` to filter logs for 5xx HTTP statuses right on the compute nodes.
+Upload and run a job from the `jobs/queries/basic` directory. We will be running job `error-analysis.yaml` to filter logs for 404 errors right on the compute nodes.
 
 #### Run with CLI
 ```bash
-bacalhau run job jobs/query-logs.yaml
+bacalhau run job jobs/queries/basic/error-analysis.yaml
 ```
 
 #### Results
-To view the results, you can either download the published job results from MinIO at `localhost:9001` or use the Bacalhau CLI.
 
 ```bash
 bacalhau job describe <job_id>
 ```
-This will show you the standard output of the job with the filtered results.
+This will show you the head of the standard output of the job with the filtered results.
 
 ### 6. Querying historical logs
 
@@ -192,15 +230,15 @@ To address this, we will use Bacalhau's batch jobs to query older logs that are 
 
 #### Run with Expanso Cloud
 
-To streamline this process, we will first create a reusable job template in Expanso Cloud for repeated batch queries against historical data. Navigate to **Templates > New** on Expanso Cloud to begin. Upload the job `top-referring-sites.yaml` to open it in the editor. On the right-hand side you'll see the variables detected in the template - namely `bucket`, `region` and `date`. Click 'Save' and name the template "_Top Referring Sites_".
+To streamline this process, we will first create a reusable job template in Expanso Cloud for repeated batch queries against historical data. Navigate to **Templates > New** on Expanso Cloud to begin. Upload the job `jobs/queries/deep-dive/top-referring-sites.yaml` to open it in the editor. On the right-hand side you'll see the variables detected in the template - namely `region` and `date`. Click 'Save' and name the template "_Top Referring Sites_".
 
-To run a query using this template, go to **Network > _YourNetwork_ > Jobs > New Job** and select the template you just created. You'll be prompted to provide values for the variables before execution. For `bucket` use `logs-bucket`, for `region` use `us-east-1` and for `date` use whatever date you want to query or a range such as `2025-01-*`. If you're uncertain which dates to query, you can inspect available folders in MinIO by visiting `localhost:9001`.
+To run a query using this template, go to **Network > _YourNetwork_ > Jobs > New Job** and select the template you just created. You'll be prompted to provide values for the variables before execution. For `region` use `us-east-1` and for `date` use whatever date you want to query or a range such as `2025-01-*`. If you're uncertain which dates to query, you can inspect available folders in MinIO by visiting `localhost:9001`.
 
 #### Run with CLI
 Using templates in the CLI is straightforward. All you need to do is run the following command, replacing the variables with your desired values:
 
 ```bash
-bacalhau run job jobs/top-referring-sites.yaml --template-vars "bucket=logs-bucket,region=us-east-1,date=2025-*"
+bacalhau run job jobs/queries/deep-dive/top-referring-sites.yaml --template-vars "region=us-east-1,date=2025-*"
 ```
 
 #### Results

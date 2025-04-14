@@ -66,5 +66,17 @@ services:
     depends_on:
       - opensearch
 
+  dashboard-init:
+    image: curlimages/curl:8.5.0
+    command: >
+      sh -c 'until curl -s -f http://dashboard:5601/api/status | grep green > /dev/null; do echo "Waiting for OpenSearch Dashboards"; sleep 2; done && curl -X POST "http://dashboard:5601/api/saved_objects/_import?overwrite=true" -H "osd-xsrf: true" -F "file=@/dashboard.ndjson"'
+    volumes:
+      - ./opensearch/dashboard.ndjson:/dashboard.ndjson:ro
+    depends_on:
+      dashboard:
+        condition: service_started
+    networks:
+      - bacalhau-network
+
 networks:
   bacalhau-network:
