@@ -1,117 +1,132 @@
-#!/usr/bin/env python3
+#!/usr/bin/env uv run -s
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "azure-cosmos",
+#     "azure-cosmos>=4.5.0",
 #     "pyyaml",
 # ]
 # ///
 
+"""
+Query tool for CosmosDB to check sensor data uploads
+"""
+
 import argparse
-import datetime
 import json
-import time
+import os
 
 import yaml
 from azure.cosmos import CosmosClient, PartitionKey
 
 
-def read_config(config_path: str) -> dict:
-    """Read configuration from YAML file."""
-    with open(config_path) as f:
+def load_config(config_path):
+    """Load configuration from a YAML file"""
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-
-    # Validate required fields
-    if "cosmos" not in config:
-        raise ValueError("Missing 'cosmos' section in config")
-
-    required_fields = ["endpoint", "key", "database_name", "container_name"]
-    missing = [f for f in required_fields if f not in config["cosmos"]]
-    if missing:
-        raise ValueError(f"Missing required Cosmos DB fields: {', '.join(missing)}")
-
-    return config["cosmos"]
+    return config
 
 
-def query_database(
-    config: dict, query: str, json_output: bool = False, max_item_count: int = 100
-):
-    try:
-        # Connect to the Cosmos DB account
-        client = CosmosClient(
-            url=config["endpoint"],
-            credential=config["key"],
-            connection_mode=config.get("connection", {}).get("mode", "direct"),
-            connection_protocol=config.get("connection", {}).get("protocol", "Https"),
-        )
+def query_cosmosdb(endpoint, key, database_name, container_name, query, verbose=False):
+    """Query CosmosDB and return results"""
+    # Initialize the Cosmos client
+    client = CosmosClient(endpoint, credential=key)
 
-        # Get database and container
-        database = client.get_database_client(config["database_name"])
-        container = database.get_container_client(config["container_name"])
+    # Get the database and container
+    database = client.get_database_client(database_name)
+    container = database.get_container_client(container_name)
 
-        # Execute the query
-        start_time = time.time()
-        query_iterable = container.query_items(
-            query=query,
-            enable_cross_partition_query=True,
-            max_item_count=max_item_count,
-        )
+    if verbose:
+        print(f"Connected to {endpoint}")
+        print(f"Database: {database_name}")
+        print(f"Container: {container_name}")
+        print(f"Executing query: {query}")
 
-        # Fetch all results
-        results = list(query_iterable)
-        end_time = time.time()
+    # Execute the query
+    items = list(container.query_items(query=query, enable_cross_partition_query=True))
 
-        # Calculate request charge (RUs)
-        request_charge = query_iterable.response_headers.get("x-ms-request-charge", 0)
+    return items
 
-        if json_output:
-            # Convert results to JSON
-            for item in results:
-                # Convert any non-serializable types to strings
-                for key, value in item.items():
-                    if isinstance(value, datetime.datetime):
-                        item[key] = value.isoformat()
 
-            # Add metadata
-            metadata = {
-                "count": len(results),
-                "query_time_ms": round((end_time - start_time) * 1000, 2),
-                "request_charge": float(request_charge),
-            }
+def count_items(endpoint, key, database_name, container_name):
+    """Count items in the container"""
+    client = CosmosClient(endpoint, credential=key)
+    database = client.get_database_client(database_name)
+    container = database.get_container_client(container_name)
 
-            # Print JSON with metadata
-            print(json.dumps({"metadata": metadata, "results": results}))
-        else:
-            # Print results in standard format
-            print(
-                f"Query executed in {round((end_time - start_time) * 1000, 2)} ms, consumed {request_charge} RUs"
-            )
-            print(f"Found {len(results)} results:")
-            for item in results:
-                print(json.dumps(item, indent=2))
+    count_query = "SELECT VALUE COUNT(1) FROM c"
+    items = list(
+        container.query_items(query=count_query, enable_cross_partition_query=True)
+    )
+    if items:
+        return items[0]
+    return 0
 
-    except Exception as error:
-        if json_output:
-            print(json.dumps({"error": str(error)}))
-        else:
-            print(f"Error querying Cosmos DB: {error}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Query CosmosDB")
+    parser.add_argument("--config", required=True, help="Path to the config file")
+    parser.add_argument(
+        "--query", default="SELECT * FROM c LIMIT 10", help="SQL query to execute"
+    )
+    parser.add_argument(
+        "--count", action="store_true", help="Count documents instead of querying"
+    )
+    parser.add_argument("--city", help="Filter by city (partition key)")
+    parser.add_argument("--sensor", help="Filter by sensor ID")
+    parser.add_argument("--limit", type=int, default=10, help="Limit number of results")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    args = parser.parse_args()
+
+    # Load configuration
+    config = load_config(args.config)
+
+    # Extract Cosmos DB configuration
+    endpoint = config.get("cosmos", {}).get("endpoint")
+    key = config.get("cosmos", {}).get("key")
+    database_name = config.get("cosmos", {}).get("database_name")
+    container_name = config.get("cosmos", {}).get("container_name")
+
+    # Check for environment variable overrides
+    endpoint = os.environ.get("COSMOS_ENDPOINT", endpoint)
+    key = os.environ.get("COSMOS_KEY", key)
+    database_name = os.environ.get("COSMOS_DATABASE", database_name)
+    container_name = os.environ.get("COSMOS_CONTAINER", container_name)
+
+    if not all([endpoint, key, database_name, container_name]):
+        print("Error: Missing Cosmos DB configuration values")
+        return
+
+    if args.count:
+        # Count items
+        count = count_items(endpoint, key, database_name, container_name)
+        print(f"Total documents: {count}")
+        return
+
+    # Build query if not provided
+    query = args.query
+    if args.query == "SELECT * FROM c LIMIT 10" and (
+        args.city or args.sensor or args.limit != 10
+    ):
+        # Build custom query
+        query = "SELECT * FROM c WHERE 1=1"
+        if args.city:
+            query += f" AND c.city = '{args.city}'"
+        if args.sensor:
+            query += f" AND c.sensorId = '{args.sensor}'"
+        query += f" LIMIT {args.limit}"
+
+    # Execute query
+    items = query_cosmosdb(
+        endpoint, key, database_name, container_name, query, args.verbose
+    )
+
+    # Display results
+    if args.verbose:
+        print(f"Found {len(items)} items")
+
+    for item in items:
+        print(json.dumps(item, indent=2))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Query Azure Cosmos DB")
-    parser.add_argument("--config", help="Path to config.yaml file", required=True)
-    parser.add_argument("--query", help="SQL query to execute", required=True)
-    parser.add_argument(
-        "--json", help="Output results in JSON format", action="store_true"
-    )
-    parser.add_argument(
-        "--max-items",
-        help="Maximum number of items to return per page",
-        type=int,
-        default=100,
-    )
-    args = parser.parse_args()
-
-    # Read config and execute query
-    config = read_config(args.config)
-    query_database(config, args.query, args.json, args.max_items)
+    main()

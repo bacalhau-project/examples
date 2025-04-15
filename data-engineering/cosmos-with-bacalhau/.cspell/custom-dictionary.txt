@@ -13,10 +13,12 @@ IWUSR
 levelname
 makedirs
 multiarch
+Newtonsoft
 psql
 psycopg
 pyyaml
 readwrite
 referer
+Sproc
 UNLOGGED
 venv
