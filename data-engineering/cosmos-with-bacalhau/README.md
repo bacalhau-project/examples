@@ -26,13 +26,82 @@ The C# implementation of the CosmosDB uploader provides:
 - Docker and Docker Compose
 - .NET SDK 7.0 or later (for local development)
 - Azure Cosmos DB account
+- Bash 4.0 or later (for sensor-manager.sh)
 
 ### Configuration
 
 1. Create a config.yaml file in the config directory based on the example.yaml template
-2. Update the Cosmos DB connection details in docker-compose.yml
+2. Update the Cosmos DB connection details in docker-compose.yml or set them as environment variables:
+   ```bash
+   export COSMOS_ENDPOINT="your-cosmos-endpoint"
+   export COSMOS_KEY="your-cosmos-key"
+   export COSMOS_DATABASE="SensorData"
+   export COSMOS_CONTAINER="SensorReadings"
+   ```
 
-### Running the System
+### Using the Sensor Manager
+
+The project includes a unified management script `sensor-manager.sh` that handles all aspects of the sensor simulation and Cosmos DB integration:
+
+```bash
+# Make the script executable
+chmod +x sensor-manager.sh
+
+# Start the sensor simulation
+./sensor-manager.sh start
+
+# View logs from all containers
+./sensor-manager.sh logs
+
+# Monitor sensor status and data uploads
+./sensor-manager.sh monitor
+
+# Query SQLite databases
+./sensor-manager.sh query --all
+./sensor-manager.sh query Amsterdam 1
+
+# Run system diagnostics
+./sensor-manager.sh diagnostics
+
+# Stop all containers
+./sensor-manager.sh stop
+
+# Clean up Cosmos DB data
+./sensor-manager.sh clean
+
+# Force cleanup of all containers
+./sensor-manager.sh cleanup
+```
+
+#### Advanced Usage
+
+The sensor manager supports various configuration options:
+
+```bash
+# Start with custom configuration
+SENSORS_PER_CITY=10 ./sensor-manager.sh start
+
+# Start without rebuilding the uploader image
+./sensor-manager.sh start --no-rebuild
+
+# Start with a custom project name
+./sensor-manager.sh start --project-name my-sensors
+
+# Clean Cosmos DB with dry run
+./sensor-manager.sh clean --dry-run
+
+# Monitor without colors
+./sensor-manager.sh monitor --plain
+```
+
+For a complete list of commands and options, run:
+```bash
+./sensor-manager.sh help
+```
+
+### Manual Docker Compose Usage
+
+While the sensor manager is the recommended way to run the system, you can also use Docker Compose directly:
 
 ```bash
 # Build the CosmosDB uploader application and Docker image
