@@ -240,6 +240,9 @@ function start_sensors() {
   export ANOMALY_PROBABILITY=${ANOMALY_PROBABILITY:-0.05}
   export UPLOAD_INTERVAL=${UPLOAD_INTERVAL:-30}
   export ARCHIVE_FORMAT=${ARCHIVE_FORMAT:-"Parquet"}
+  # CONFIG_FILE is the path of the config file relative to the /app/config directory in the container
+  # This will be used as: /app/config/${CONFIG_FILE} in the container
+  # Do not include any leading slashes or "config/" in this value
   export CONFIG_FILE=${CONFIG_FILE:-"config.yaml"}
 
   # Load environment variables
@@ -312,8 +315,26 @@ function start_sensors() {
   echo "$PROJECT_NAME" > .current-project-name
   CURRENT_PROJECT_NAME="$PROJECT_NAME"
 
-  # Step 8: Start the containers
-  echo -e "${BOLD}Step 8: Starting containers for all cities...${RESET}"
+  # Step 8: Verify Docker Compose configuration
+  echo -e "${BOLD}Step 8: Verifying docker-compose.yml configuration...${RESET}"
+  echo "Using CONFIG_FILE=$CONFIG_FILE"
+  
+  # Check if the config file exists
+  if [ ! -f "config/$CONFIG_FILE" ]; then
+    echo -e "${RED}WARNING: Config file config/$CONFIG_FILE does not exist!${RESET}"
+    echo "This may cause containers to fail on startup."
+    read -p "Continue anyway? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "Aborting startup."
+      exit 1
+    fi
+  else
+    echo -e "${GREEN}Config file found. Ready to start containers.${RESET}"
+  fi
+  
+  # Step 9: Start the containers
+  echo -e "${BOLD}Step 9: Starting containers for all cities...${RESET}"
   $COMPOSE_CMD up -d
   
   # Wait for containers to start up
@@ -423,7 +444,7 @@ function clean_cosmos() {
   # Parse command line arguments
   local DRY_RUN=false
   local CONFIRM=false
-  local CONFIG_PATH="config/config.yaml"
+  local CONFIG_PATH="config/${CONFIG_FILE:-config.yaml}"
   
   while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -720,11 +741,43 @@ function run_diagnostics() {
     # Check if file exists and has data
     if [ -f "$db" ]; then
       size=$(du -h "$db" | cut -f1)
-      count=$(sqlite3 "$db" "SELECT COUNT(*) FROM sensor_readings 2>/dev/null" 2>/dev/null || echo "Error")
+      
+      # First check if sqlite3 is available
+      if ! command -v sqlite3 &> /dev/null; then
+        echo "  - Size: $size"
+        echo "  - Records: ${YELLOW}sqlite3 command not available${RESET}"
+        continue
+      fi
+      
+      # Check if the file is a valid SQLite database
+      if ! sqlite3 "$db" ".tables" &> /dev/null; then
+        echo "  - Size: $size"
+        echo "  - Records: ${YELLOW}Not a valid SQLite database or still initializing${RESET}"
+        continue
+      fi
+      
+      # Check if the sensor_readings table exists
+      if ! sqlite3 "$db" ".tables" 2>/dev/null | grep -q "sensor_readings"; then
+        echo "  - Size: $size"
+        echo "  - Records: ${YELLOW}Table 'sensor_readings' not found${RESET}"
+        continue
+      fi
+      
+      # Now try to count the records
+      count=$(sqlite3 "$db" "SELECT COUNT(*) FROM sensor_readings" 2>/dev/null || echo "${RED}Error accessing table${RESET}")
+      
       echo "  - Size: $size"
-      echo "  - Records: $count"
+      if [[ "$count" =~ ^[0-9]+$ ]]; then
+        if [ "$count" -eq 0 ]; then
+          echo "  - Records: ${YELLOW}0 (empty)${RESET}"
+        else
+          echo "  - Records: ${GREEN}$count${RESET}"
+        fi
+      else
+        echo "  - Records: $count"
+      fi
     else
-      echo "  - Not found or empty"
+      echo "  - ${RED}Not found or empty${RESET}"
     fi
   done
   
