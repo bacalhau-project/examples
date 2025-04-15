@@ -98,7 +98,7 @@ EOF
   cat >> $OUTPUT_FILE << EOF
   # Uploader for ${CITY}
   uploader-${NORMALIZED_CITY}:
-    image: cosmos-uploader:latest
+    image: ghcr.io/bacalhau-project/cosmos-uploader:latest
     container_name: uploader-${NORMALIZED_CITY}
     depends_on:
 ${depends_list}
@@ -115,7 +115,7 @@ ${depends_list}
       - ./config:/app/config
       - ./data:/app/data
       - ./archive/${NORMALIZED_CITY}:/app/archive
-    command: --config /app/config/${CONFIG_FILE} --sqlite /app/data --continuous --interval ${UPLOAD_INTERVAL} --archive-path /app/archive
+    command: ["--config", "/app/config/${CONFIG_FILE}", "--sqlite", "/app/data", "--continuous", "--interval", "${UPLOAD_INTERVAL}", "--archive-path", "/app/archive"]
     restart: unless-stopped
 
 EOF
