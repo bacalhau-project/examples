@@ -53,6 +53,23 @@ docker logs uploader-amsterdam -f
 docker-compose logs -f uploader-amsterdam uploader-beijing uploader-berlin uploader-cairo uploader-chicago
 ```
 
+## Querying Cosmos DB
+
+The project includes a tool to query Cosmos DB directly from the command line, which is useful for verifying that data is being uploaded correctly:
+
+```bash
+# Query the last 5 documents from Amsterdam
+./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --city Amsterdam --limit 5
+
+# Count all documents in the database
+./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --count
+
+# Run a custom query
+./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --query "SELECT * FROM c WHERE c.temperature > 25.0 LIMIT 10"
+```
+
+See [cosmos-query-tool.md](docs/cosmos-query-tool.md) for detailed documentation.
+
 ## Setting Up Azure Cosmos DB
 
 ### Setting Environment Variables

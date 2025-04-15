@@ -19,5 +19,6 @@ psycopg
 pyyaml
 readwrite
 referer
+Sproc
 UNLOGGED
 venv
