@@ -474,158 +474,22 @@ function clean_cosmos() {
     fi
   fi
   
-  # Run Python bulk delete script
-  python3 -c "
-import os
-from azure.cosmos import CosmosClient, PartitionKey
-
-# Get Cosmos DB connection details from environment variables
-endpoint = os.environ.get('COSMOS_ENDPOINT')
-key = os.environ.get('COSMOS_KEY')
-database_name = os.environ.get('COSMOS_DATABASE', 'SensorData')
-container_name = os.environ.get('COSMOS_CONTAINER', 'SensorReadings')
-dry_run = $([ "$DRY_RUN" = true ] && echo "True" || echo "False")
-
-print(f'Connecting to Cosmos DB: {endpoint}')
-print(f'Database: {database_name}')
-print(f'Container: {container_name}')
-if dry_run:
-    print('DRY RUN MODE - No data will be deleted')
-
-# Connect to Cosmos DB
-client = CosmosClient(endpoint, key)
-database = client.get_database_client(database_name)
-container = database.get_container_client(container_name)
-
-def clean_container():
-    # First, get all the partition key values (cities)
-    print('Finding all partition key values...')
-    query = 'SELECT DISTINCT c.city FROM c'
-    cities = list(container.query_items(query=query, enable_cross_partition_query=True))
-    
-    if not cities:
-        print('No data found in the container.')
-        return
-    
-    # For each city (partition key), call the bulk delete stored procedure
-    total_deleted = 0
-    cities_count = len(cities)
-    print(f'Found {cities_count} partition key values. Starting deletion...')
-    
-    for i, city_record in enumerate(cities):
-        city = city_record['city']
-        partition_key = city
-        
-        try:
-            if dry_run:
-                # In dry run mode, just count the documents
-                query = f'SELECT VALUE COUNT(1) FROM c WHERE c.city = \"{city}\"'
-                count_results = list(container.query_items(
-                    query=query,
-                    enable_cross_partition_query=False,
-                    partition_key=partition_key
-                ))
-                count = count_results[0] if count_results else 0
-                print(f'Would delete {count} documents for city={city}')
-                total_deleted += count
-            else:
-                # Execute the stored procedure with the partition key value
-                result = container.scripts.execute_stored_procedure(
-                    sproc='bulkDeleteSproc',
-                    partition_key=partition_key,
-                    params=[partition_key]
-                )
-                deleted = result.get('deleted', 0)
-                total_deleted += deleted
-                print(f'Processed partition {i+1}/{cities_count} (city={city}): Deleted {deleted} documents')
-        except Exception as e:
-            if 'Resource with name \\\'bulkDeleteSproc\\\' not found' in str(e):
-                print(f'Stored procedure not found. Creating it first...')
-                # Create the stored procedure and try again
-                create_sproc()
-                try:
-                    if not dry_run:
-                        result = container.scripts.execute_stored_procedure(
-                            sproc='bulkDeleteSproc',
-                            partition_key=partition_key,
-                            params=[partition_key]
-                        )
-                        deleted = result.get('deleted', 0)
-                        total_deleted += deleted
-                        print(f'Processed partition {i+1}/{cities_count} (city={city}): Deleted {deleted} documents')
-                except Exception as e2:
-                    print(f'Error processing partition {city} after creating sproc: {str(e2)}')
-            else:
-                print(f'Error processing partition {city}: {str(e)}')
-    
-    print(f'Done. Total documents {"would be" if dry_run else ""} deleted: {total_deleted}')
-
-# Create or update the bulk delete stored procedure
-def create_sproc():
-    sproc_body = '''
-function bulkDeleteSproc(partitionKeyValue) {
-    // Validate input
-    if (!partitionKeyValue) {
-        throw new Error('Partition key value must be provided');
-    }
-    
-    // Query to get document IDs in this partition
-    var query = 'SELECT c.id FROM c WHERE c.city = @city';
-    var parameters = [{name: '@city', value: partitionKeyValue}];
-    
-    // Get document IDs for this partition
-    var response = __.queryDocuments(__.getSelfLink(), query, parameters);
-    
-    // Initialize counter
-    var deleted = 0;
-    
-    // Process the results and delete each document
-    if (response.hasMoreResults) {
-        while (response.hasMoreResults) {
-            // Get a batch of results
-            var batch = response.executeNext();
-            for (var i = 0; i < batch.length; i++) {
-                // Get document link and delete the document
-                var docLink = __.getAltLink() + '/docs/' + batch[i].id;
-                var deleted_result = __.deleteDocument(docLink, {});
-                deleted++;
-            }
-        }
-    }
-    
-    // Return the number of documents deleted
-    return { deleted: deleted };
-}
-'''
-
-    try:
-        print(f'Creating bulk delete stored procedure...')
-        container.scripts.create_stored_procedure(
-            id='bulkDeleteSproc',
-            body=sproc_body
-        )
-        print('Stored procedure created successfully.')
-    except Exception as e:
-        if 'Resource with specified id already exists' in str(e):
-            print('Stored procedure already exists, replacing it...')
-            container.scripts.replace_stored_procedure(
-                id='bulkDeleteSproc',
-                body=sproc_body
-            )
-            print('Stored procedure replaced successfully.')
-        else:
-            print(f'Error creating stored procedure: {str(e)}')
-            exit(1)
-
-# Create the sproc first
-create_sproc()
-
-# Run the cleanup
-clean_container()
-" || {
+  # Build the command with appropriate options
+  cmd_options=""
+  if [ "$DRY_RUN" = true ]; then
+    cmd_options="$cmd_options --dry-run"
+  fi
+  
+  # Always pass the config file - this is the main change to read credentials from config
+  cmd_options="$cmd_options --config $CONFIG_PATH"
+  
+  echo -e "${CYAN}Executing: utility_scripts/bulk_delete_cosmos.py $cmd_options${RESET}"
+  
+  # Run Python bulk delete script with uv run -s
+  utility_scripts/bulk_delete_cosmos.py $cmd_options || {
     echo -e "${RED}Error: Failed to run bulk delete script.${RESET}"
-    echo "Make sure python3 and azure-cosmos are installed."
-    echo "Run: pip install azure-cosmos pyyaml"
+    echo "Make sure uv is installed and azure-cosmos package is available."
+    echo "Run: uv pip install azure-cosmos pyyaml"
     exit 1
   }
   
@@ -1091,7 +955,7 @@ function show_help() {
   echo "      Resets services with fixed configuration (stops, regenerates config, starts)"
   echo ""
   echo "  clean [--dry-run] [--yes] [--config PATH]"
-  echo "      Deletes all data from Cosmos DB"
+  echo "      Deletes all data from Cosmos DB using the bulk delete utility script"
   echo ""
   echo "  build [--tag VERSION] [--no-tag]"
   echo "      Builds the CosmosUploader image"
