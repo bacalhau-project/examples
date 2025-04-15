@@ -1,0 +1,180 @@
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+  FERRETDB_URI: "mongodb://username:password@172.28.0.100:27017/postgres"
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
+
+x-sensor-template: &sensor-template
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
+    entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
+    command: >
+      "env >> /etc/environment &&
+      mkdir -p /mnt/data &&
+      bacalhau serve -c /etc/bacalhau/config.yaml"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+      ferretdb:
+        condition: service_started
+    privileged: true
+    restart: on-failure
+    volumes:
+      - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+    networks:
+      - ferret-demo-net
+
+services:
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    container_name: ferret-demo-orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    ports:
+      - "8438:8438"
+    volumes:
+      - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - ferret-demo-net
+
+
+  postgres:
+    image: ghcr.io/ferretdb/postgres-documentdb:17-0.102.0-ferretdb-2.1.0
+    container_name: ferret-demo-postgres
+#     WARNING: This image is probably only for x86_64 ####
+#    platform: linux/amd64
+    restart: on-failure
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    networks:
+      - ferret-demo-net
+
+  ferretdb:
+    image: ghcr.io/ferretdb/ferretdb:2.1.0
+    container_name: ferret-demo-ferretdb
+    restart: on-failure
+    ports:
+      - 27217:27017
+    environment:
+      - FERRETDB_POSTGRESQL_URL=postgres://username:password@postgres:5432/postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/debug/livez"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      ferret-demo-net:
+        ipv4_address: 172.28.0.100
+
+  storage:
+    image: quay.io/minio/minio
+    container_name: ferret-demo-storage
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - ferret-demo-net
+
+  sensor1:
+    container_name: ferret-demo-sensor1
+    environment:
+      <<: *common-env-variables
+      SENSOR_LOCATION: "52.163727,20.947274"
+      SENSOR_ID: "Warsaw-1"
+    <<: *sensor-template
+
+  sensor2:
+    container_name: ferret-demo-sensor2
+    environment:
+      <<: *common-env-variables
+      SENSOR_LOCATION: "50.057266,8.563769"
+      SENSOR_ID: "Frankfurt-1"
+    <<: *sensor-template
+
+  sensor3:
+    container_name: ferret-demo-sensor3
+    environment:
+      <<: *common-env-variables
+      SENSOR_LOCATION: "47.356790,8.505521"
+      SENSOR_ID: "Zurich-1"
+    <<: *sensor-template
+
+  sensor4:
+    container_name: ferret-demo-sensor4
+    environment:
+      <<: *common-env-variables
+      SENSOR_LOCATION: "47.610083,-122.328678"
+      SENSOR_ID: "Seattle-1"
+    <<: *sensor-template
+
+  sensor5:
+    container_name: ferret-demo-sensor5
+    environment:
+      <<: *common-env-variables
+      SENSOR_LOCATION: "51.485097,-0.214456"
+      SENSOR_ID: "London-1"
+    <<: *sensor-template
+
+  frontend:
+    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-sensor-monitoring-dashboard:2504101425
+    container_name: ferret-demo-frontend
+    environment:
+      <<: *common-env-variables
+    ports:
+      - "3010:3000"
+    depends_on:
+      ferretdb:
+        condition: service_started
+    networks:
+      - ferret-demo-net
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    container_name: ferret-demo-client
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    volumes:
+      - ./scripts:/scripts
+      - ./jobs:/jobs
+      - ./1_run_generate_sensor_logs_job.sh:/1_run_generate_sensor_logs_job.sh
+      - ./2_run_sync_sensor_logs_job.sh:/2_run_sync_sensor_logs_job.sh
+      - ./3_replace_sync_sensor_logs_script.sh:/3_replace_sync_sensor_logs_script.sh
+      - ./4_run_cleanup_whole_mongodb_job.sh:/4_run_cleanup_whole_mongodb_job.sh
+    depends_on:
+      - orchestrator
+    networks:
+      - ferret-demo-net
+
+networks:
+  ferret-demo-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
