@@ -1,0 +1,24 @@
+#!/bin/sh
+
+set -e
+
+apk add --no-cache s3fs-fuse py3-pip
+pip install --break-system-packages flask flask_cors gunicorn
+
+mkdir -p /mnt/data /bacalhau_data/ /bacalhau_data/metadata
+
+cp /scripts/generate.py /bacalhau_data/generate.py
+cp /scripts/metadata.sh /bacalhau_data/metadata.sh
+
+echo "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" > /etc/passwd-s3fs
+chmod 600 /etc/passwd-s3fs
+
+s3fs my-bucket /mnt/data -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty
+
+gunicorn --chdir /scripts healthz-web-server:app -b 0.0.0.0:9123 -w 8 --log-level critical &
+
+echo "ok" > /mnt/data/.healthcheck
+
+IP=$(hostname -i | awk '{print $1}')
+echo "Starting bacalhau with IP=$IP"
+bacalhau serve -c /etc/bacalhau/config.yaml -c "LABELS=PUBLIC_IP=$IP"

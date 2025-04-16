@@ -1,0 +1,17 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+  AllowListedLocalPaths:
+    - /bacalhau_data:rw
+    - /scripts:rw
+    - /mnt/data:rw
+    - /etc/environment:ro
+UpdateConfig:
+  Interval: 0
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
+  Heartbeat:
+    Interval: 1s
+    InfoUpdateInterval: 10s
