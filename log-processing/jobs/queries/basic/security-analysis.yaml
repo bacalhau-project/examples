@@ -1,0 +1,28 @@
+# Find IPs with an unusually high number of requests,
+# which could indicate a potential security threat or a bot
+Name: Suspicious Activity
+Type: ops
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/nginx-access-log-query:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT remote_addr, COUNT(*) AS request_count
+            FROM logs
+            GROUP BY remote_addr
+            HAVING request_count > 100
+            ORDER BY request_count DESC;
+
+    # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
+    # Here we are mounting the logs directory to /app/output
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-processing/logs
+            ReadWrite: true
