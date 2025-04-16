@@ -4,7 +4,9 @@ import sqlite3
 import time
 from datetime import datetime
 from functools import wraps
+from typing import Dict, List, Optional
 
+import numpy as np
 import requests
 
 
@@ -53,88 +55,273 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
 
 
 class SensorDatabase:
-    def __init__(
-        self, db_path="sensor_data.db", max_retries=3, retry_delay=1.0, batch_size=100
-    ):
-        """Initialize the database connection and create tables if they don't exist.
+    def __init__(self, db_path: str):
+        """Initialize the sensor database.
 
         Args:
             db_path: Path to the SQLite database file
-            max_retries: Maximum number of retry attempts for database operations
-            retry_delay: Delay between retries in seconds
-            batch_size: Maximum number of readings to insert in a single batch
         """
         self.db_path = db_path
-        self.conn = None
-        self.cursor = None
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
-        self.batch_size = batch_size
-        self.batch_buffer = []
-        self.last_batch_time = time.time()
-        self.batch_timeout = 5.0  # Seconds before a batch is automatically committed
+        self.logger = logging.getLogger("SensorDatabase")
 
-        # Performance metrics
-        self.insert_count = 0
-        self.batch_insert_count = 0
-        self.total_insert_time = 0
-        self.total_batch_time = 0
-
-        # Check if database file exists and try to validate it
+        # Check if old database exists and needs to be removed
         if os.path.exists(self.db_path) and self.db_path != ":memory:":
             try:
-                # Try to connect and check schema
-                temp_conn = sqlite3.connect(self.db_path)
-                temp_cursor = temp_conn.cursor()
-
-                # Check if the synced column exists
-                temp_cursor.execute("PRAGMA table_info(sensor_readings)")
-                columns = [info[1] for info in temp_cursor.fetchall()]
-
+                # Try to connect to the database and check for the synced column
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA table_info(sensor_readings)")
+                columns = [column[1] for column in cursor.fetchall()]
                 if "synced" not in columns:
-                    logging.warning(
-                        f"Existing database schema is outdated (missing 'synced' column). Removing old database."
+                    self.logger.warning(
+                        "Old database schema detected. Removing old database file."
                     )
-                    temp_conn.close()
+                    conn.close()
                     os.remove(self.db_path)
-                    logging.info(f"Removed outdated database file: {self.db_path}")
                 else:
-                    temp_conn.close()
-            except sqlite3.Error as e:
-                logging.warning(
-                    f"Error validating existing database: {e}. Removing old database."
-                )
-                try:
-                    if os.path.exists(self.db_path):
-                        os.remove(self.db_path)
-                        logging.info(
-                            f"Removed problematic database file: {self.db_path}"
-                        )
-                except Exception as remove_error:
-                    logging.error(f"Failed to remove database file: {remove_error}")
+                    conn.close()
+            except Exception as e:
+                self.logger.error(f"Error checking database schema: {e}")
+                if os.path.exists(self.db_path):
+                    os.remove(self.db_path)
 
-        # Try to connect to the database with retries
-        for attempt in range(self.max_retries + 1):
-            try:
-                self.connect()
-                self.create_tables()
-                break
-            except sqlite3.Error as e:
-                if attempt < self.max_retries:
-                    logging.warning(
-                        f"Database connection failed (attempt {attempt + 1}/{self.max_retries + 1}): {e}. "
-                        f"Retrying in {self.retry_delay} seconds..."
-                    )
-                    time.sleep(self.retry_delay)
-                else:
-                    logging.error(
-                        f"Database connection failed after {self.max_retries + 1} attempts: {e}"
-                    )
-                    # Create a fallback in-memory database as a last resort
-                    logging.warning("Creating in-memory database as fallback")
-                    self.db_path = ":memory:"
-                    self.connect()
-                    self.create_tables()
+        # Create database directory if it doesn't exist
+        if self.db_path != ":memory:":
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+
+        # Initialize database
+        self._init_db()
+
+    def _init_db(self):
+        """Initialize the database schema."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Create sensor_readings table
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS sensor_readings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL,
+                    sensor_id TEXT,
+                    temperature REAL,
+                    vibration REAL,
+                    voltage REAL,
+                    status_code INTEGER,
+                    anomaly_flag INTEGER,
+                    anomaly_type TEXT,
+                    firmware_version TEXT,
+                    model TEXT,
+                    manufacturer TEXT,
+                    location TEXT,
+                    synced INTEGER DEFAULT 0
+                )
+                """
+            )
+
+            # Create indexes
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_sensor_id ON sensor_readings(sensor_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_synced ON sensor_readings(synced)"
+            )
+
+            conn.commit()
+            conn.close()
+            self.logger.info("Database initialized successfully")
+        except Exception as e:
+            self.logger.error(f"Error initializing database: {e}")
+            raise
+
+    def store_reading(
+        self,
+        sensor_id: str,
+        temperature: float,
+        vibration: float,
+        voltage: float,
+        status_code: int,
+        anomaly_flag: bool,
+        anomaly_type: Optional[str],
+        firmware_version: str,
+        model: str,
+        manufacturer: str,
+        location: str,
+    ):
+        """Store a sensor reading in the database.
+
+        Args:
+            sensor_id: ID of the sensor
+            temperature: Temperature reading
+            vibration: Vibration reading
+            voltage: Voltage reading
+            status_code: Status code
+            anomaly_flag: Whether this reading is an anomaly
+            anomaly_type: Type of anomaly if any
+            firmware_version: Firmware version of the sensor
+            model: Model of the sensor
+            manufacturer: Manufacturer of the sensor
+            location: Location of the sensor
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO sensor_readings (
+                    timestamp, sensor_id, temperature, vibration, voltage,
+                    status_code, anomaly_flag, anomaly_type, firmware_version,
+                    model, manufacturer, location, synced
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    time.time(),
+                    sensor_id,
+                    temperature,
+                    vibration,
+                    voltage,
+                    status_code,
+                    int(anomaly_flag),
+                    anomaly_type,
+                    firmware_version,
+                    model,
+                    manufacturer,
+                    location,
+                    0,  # synced = False
+                ),
+            )
+
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            self.logger.error(f"Error storing reading: {e}")
+            raise
+
+    def get_unsynced_readings(self, limit: int = 1000) -> List[Dict]:
+        """Get readings that haven't been synced yet.
+
+        Args:
+            limit: Maximum number of readings to return
+
+        Returns:
+            List of dictionaries containing the readings
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                SELECT * FROM sensor_readings
+                WHERE synced = 0
+                ORDER BY timestamp ASC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+
+            columns = [description[0] for description in cursor.description]
+            readings = []
+            for row in cursor.fetchall():
+                reading = dict(zip(columns, row))
+                reading["anomaly_flag"] = bool(reading["anomaly_flag"])
+                readings.append(reading)
+
+            conn.close()
+            return readings
+        except Exception as e:
+            self.logger.error(f"Error getting unsynced readings: {e}")
+            return []
+
+    def mark_readings_as_synced(self, reading_ids: List[int]):
+        """Mark readings as synced.
+
+        Args:
+            reading_ids: List of reading IDs to mark as synced
+        """
+        if not reading_ids:
+            return
+
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            placeholders = ",".join("?" * len(reading_ids))
+            cursor.execute(
+                f"""
+                UPDATE sensor_readings
+                SET synced = 1
+                WHERE id IN ({placeholders})
+                """,
+                reading_ids,
+            )
+
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            self.logger.error(f"Error marking readings as synced: {e}")
+            raise
+
+    def get_reading_stats(self) -> Dict:
+        """Get statistics about the readings in the database.
+
+        Returns:
+            Dictionary containing statistics
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Get total readings
+            cursor.execute("SELECT COUNT(*) FROM sensor_readings")
+            total_readings = cursor.fetchone()[0]
+
+            # Get unsynced readings
+            cursor.execute("SELECT COUNT(*) FROM sensor_readings WHERE synced = 0")
+            unsynced_readings = cursor.fetchone()[0]
+
+            # Get anomaly statistics
+            cursor.execute(
+                """
+                SELECT anomaly_type, COUNT(*)
+                FROM sensor_readings
+                WHERE anomaly_flag = 1
+                GROUP BY anomaly_type
+                """
+            )
+            anomaly_stats = dict(cursor.fetchall())
+
+            # Get sensor statistics
+            cursor.execute(
+                """
+                SELECT sensor_id, COUNT(*)
+                FROM sensor_readings
+                GROUP BY sensor_id
+                """
+            )
+            sensor_stats = dict(cursor.fetchall())
+
+            conn.close()
+
+            return {
+                "total_readings": total_readings,
+                "unsynced_readings": unsynced_readings,
+                "anomaly_stats": anomaly_stats,
+                "sensor_stats": sensor_stats,
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting reading stats: {e}")
+            return {
+                "total_readings": 0,
+                "unsynced_readings": 0,
+                "anomaly_stats": {},
+                "sensor_stats": {},
+            }
 
     def connect(self):
         """Establish connection to the SQLite database."""
