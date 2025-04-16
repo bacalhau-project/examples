@@ -546,4 +546,352 @@ Run the test with:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Anomaly Types and Configuration
+
+The simulator supports several types of anomalies, each with different characteristics and configuration options. Here's how to configure them:
+
+### Anomaly Types
+
+1. **Spike Anomalies**
+   - Sudden, short-lived extreme values
+   - Configuration:
+     ```yaml
+     anomalies:
+       types:
+         spike:
+           enabled: true
+           weight: 0.4  # Higher weight means more likely to occur
+     ```
+   - Characteristics:
+     - Temperature spikes are more common in firmware 1.3 (60% chance)
+     - Firmware 1.3 has more severe spikes (1.8-3.5x normal vs 1.5-3.0x)
+     - Can be positive or negative spikes
+
+2. **Trend Anomalies**
+   - Gradual shifts away from normal operation
+   - Configuration:
+     ```yaml
+     anomalies:
+       types:
+         trend:
+           enabled: true
+           weight: 0.2
+           duration_seconds: 300  # 5 minutes
+     ```
+   - Characteristics:
+     - Can reach up to 50% increase/decrease by the end of the duration
+     - Progress is calculated based on elapsed time vs. configured duration
+
+3. **Pattern Anomalies**
+   - Changes in the normal pattern of readings
+   - Configuration:
+     ```yaml
+     anomalies:
+       types:
+         pattern:
+           enabled: true
+           weight: 0.1
+           duration_seconds: 600  # 10 minutes
+     ```
+   - Characteristics:
+     - Applies sinusoidal patterns to temperature and vibration
+     - Creates opposite patterns between parameters
+     - Amplitude is 20% of the normal value
+
+4. **Missing Data Anomalies**
+   - Simulated sensor outages
+   - Configuration:
+     ```yaml
+     anomalies:
+       types:
+         missing_data:
+           enabled: true
+           weight: 0.1
+           duration_seconds: 30  # 30 seconds
+     ```
+   - Characteristics:
+     - Simply returns None instead of a reading
+     - Simulates complete sensor outage or communication failure
+
+5. **Noise Anomalies**
+   - Increased random variation in readings
+   - Configuration:
+     ```yaml
+     anomalies:
+       types:
+         noise:
+           enabled: true
+           weight: 0.2
+           duration_seconds: 180  # 3 minutes
+     ```
+   - Characteristics:
+     - Firmware 1.3 has 15% noise factor vs. 10% for other versions
+     - VibrationPlus sensors have 50% more vibration noise
+
+### Configuring Zero Anomalies
+
+To run the simulator with zero anomalies, you can use one of these approaches:
+
+1. **Disable All Anomalies**
+   ```yaml
+   anomalies:
+     enabled: false
+   ```
+
+2. **Use Optimal Sensor Configuration**
+   ```yaml
+   sensor:
+     firmware_version: "1.4"  # 30% lower anomaly probability
+     manufacturer: "DataSense"  # 20% fewer anomalies
+     model: "TempVibe-3000"  # More stable model
+   ```
+
+3. **Set Minimum Probability**
+   ```yaml
+   anomalies:
+     enabled: true
+     probability: 0.0  # Set base probability to zero
+     types:
+       spike:
+         enabled: false
+       trend:
+         enabled: false
+       pattern:
+         enabled: false
+       missing_data:
+         enabled: false
+       noise:
+         enabled: false
+   ```
+
+### Example: Zero Anomaly Configuration
+
+Here's a complete configuration that will result in zero anomalies:
+
+```yaml
+sensor:
+  id: "SENSOR001"
+  type: "temperature_vibration"
+  location: "Factory A - Machine 1"
+  manufacturer: "DataSense"  # 20% fewer anomalies
+  model: "TempVibe-3000"    # More stable model
+  firmware_version: "1.4"   # 30% lower anomaly probability
+
+anomalies:
+  enabled: false  # Disable all anomalies
+  probability: 0.0
+  types:
+    spike:
+      enabled: false
+      weight: 0.0
+    trend:
+      enabled: false
+      weight: 0.0
+    pattern:
+      enabled: false
+      weight: 0.0
+    missing_data:
+      enabled: false
+      weight: 0.0
+    noise:
+      enabled: false
+      weight: 0.0
+
+normal_parameters:
+  temperature:
+    mean: 65.0
+    std_dev: 2.0
+    min: 50.0
+    max: 80.0
+  vibration:
+    mean: 2.5
+    std_dev: 0.5
+    min: 0.1
+    max: 10.0
+  voltage:
+    mean: 12.0
+    std_dev: 0.1
+    min: 11.5
+    max: 12.5
+```
+
+This configuration:
+1. Uses firmware 1.4 which has 30% lower anomaly probability
+2. Uses DataSense manufacturer which has 20% fewer anomalies
+3. Uses TempVibe-3000 model which is more stable
+4. Explicitly disables all anomaly types
+5. Sets the base anomaly probability to 0
+
+## Random Location Generation and Scaling
+
+The simulator supports random location generation and easy scaling through configuration:
+
+### Random Location Configuration
+
+```yaml
+random_location:
+  enabled: true
+  number_of_cities: 10
+  gps_variation: 100  # meters
+  cities_file: "cities.json"  # Optional path to custom cities file
+```
+
+This configuration will:
+1. Randomly select a city from the built-in list or custom file
+2. Generate a random GPS coordinate within the specified variation
+3. Format the location as "City, Country (lat, lon)"
+
+### Replica Scaling
+
+To run multiple instances of the simulator with different random locations:
+
+```yaml
+replicas:
+  count: 5  # Number of instances to run
+  prefix: "SENSOR"  # Prefix for sensor IDs
+  start_index: 1    # Starting index for sensor IDs
+```
+
+This will create 5 sensors with IDs like:
+- SENSOR_1
+- SENSOR_2
+- SENSOR_3
+- SENSOR_4
+- SENSOR_5
+
+Each sensor will have a unique random location.
+
+### Example Configuration
+
+Here's a complete example that sets up 10 sensors with random locations:
+
+```yaml
+sensor:
+  type: "temperature_vibration"
+  manufacturer: "SensorTech"
+  model: "TempVibe-2000"
+  firmware_version: "1.4"
+
+random_location:
+  enabled: true
+  number_of_cities: 10
+  gps_variation: 100
+
+replicas:
+  count: 10
+  prefix: "SENSOR"
+  start_index: 1
+
+anomalies:
+  enabled: true
+  probability: 0.05
+  types:
+    spike:
+      enabled: true
+      weight: 0.4
+    trend:
+      enabled: true
+      weight: 0.2
+    pattern:
+      enabled: true
+      weight: 0.1
+    missing_data:
+      enabled: true
+      weight: 0.1
+    noise:
+      enabled: true
+      weight: 0.2
+
+normal_parameters:
+  temperature:
+    mean: 65.0
+    std_dev: 2.0
+    min: 50.0
+    max: 80.0
+  vibration:
+    mean: 2.5
+    std_dev: 0.5
+    min: 0.1
+    max: 10.0
+  voltage:
+    mean: 12.0
+    std_dev: 0.1
+    min: 11.5
+    max: 12.5
+```
+
+### Running with Random Locations
+
+1. Using Docker:
+```bash
+docker run -d \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  -v $(pwd)/cities.json:/app/cities.json \
+  -v $(pwd)/data:/app/data \
+  sensor-simulator
+```
+
+2. Using Docker Compose (for multiple replicas):
+```yaml
+version: '3'
+services:
+  sensor-simulator:
+    image: sensor-simulator
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./cities.json:/app/cities.json
+      - ./data:/app/data
+    environment:
+      - REPLICAS=5
+    deploy:
+      replicas: 5
+```
+
+### Custom Cities File
+
+You can provide your own cities file in JSON format:
+```json
+[
+  {
+    "city": "New York",
+    "country": "USA",
+    "latitude": 40.7128,
+    "longitude": -74.0060
+  },
+  {
+    "city": "London",
+    "country": "UK",
+    "latitude": 51.5074,
+    "longitude": -0.1278
+  }
+  // ... more cities
+]
+```
+
+### Querying by Location
+
+You can analyze data by location using SQL queries:
+
+```sql
+-- Get readings by city
+SELECT 
+  location,
+  COUNT(*) as readings,
+  AVG(temperature) as avg_temperature,
+  AVG(vibration) as avg_vibration
+FROM sensor_readings
+GROUP BY location
+ORDER BY readings DESC;
+
+-- Get anomaly rates by location
+SELECT 
+  location,
+  COUNT(*) as total_readings,
+  SUM(CASE WHEN anomaly_flag = 1 THEN 1 ELSE 0 END) as anomalies,
+  ROUND(100.0 * SUM(CASE WHEN anomaly_flag = 1 THEN 1 ELSE 0 END) / COUNT(*), 2) as anomaly_rate
+FROM sensor_readings
+GROUP BY location
+ORDER BY anomaly_rate DESC;
+```

@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   sensor-simulator:
-    image: ghcr.io/bacalhau-project/sensor-simulator:latest
+    image: ghcr.io/bacalhau-project/sensor-log-generator:2504151801
     pull_policy: always
     build:
       context: .
@@ -12,3 +10,4 @@ services:
     volumes:
       - ./logs:/var/log/app
       - ./config:/app/config
+      - ./data:/app/data
