@@ -82,7 +82,7 @@ services:
 
 
   frontend:
-    image: ghcr.io/bacalhau-project/examples/edge-docker-frontend:250416
+    image: ghcr.io/bacalhau-project/examples/edge-data-transfer-frontend:250417
     container_name: edge-demo-frontend
     ports:
       - "3000:3000"
