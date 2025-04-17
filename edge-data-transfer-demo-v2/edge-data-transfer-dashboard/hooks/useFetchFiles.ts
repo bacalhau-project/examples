@@ -40,7 +40,7 @@ export function useFetchFiles(nodes: NodeProps[]) {
                     const data = await response.json();
 
                     if (data.files) {
-                        setFiles(data.files);
+                        setFiles(data.files.filter((file: string) => file !== ".healthcheck"));
                         fetched.current = true;
                         break;
                     }
