@@ -27,7 +27,7 @@ const HeaderComponent = React.memo(() => {
                     <div className="flex items-center justify-between p-2 gap-3 border rounded-md">
                         <div className="flex items-center gap-2">
                             <HardDrive className="h-4 w-4 text-muted-foreground"/>
-                            <span>NFS Share</span>
+                            <span>Share files</span>
                         </div>
                         <div className="text-sm text-muted-foreground">{files.length ?? 0}</div>
                     </div>
