@@ -105,18 +105,6 @@ if [ -n "$CONFIG_PATH" ]; then
     
     echo "Loading configuration from $CONFIG_PATH..."
     
-    # Check if Python is available
-    if ! command -v python3 &> /dev/null; then
-        echo "Error: python3 is required but not installed"
-        exit 1
-    fi
-    
-    # Install PyYAML if needed
-    if ! python3 -c "import yaml" &> /dev/null; then
-        echo "Installing PyYAML..."
-        python3 -m pip install pyyaml --quiet
-    fi
-    
     # Extract values from YAML
     CONFIG=$(python3 -c "
 import yaml, sys, os
