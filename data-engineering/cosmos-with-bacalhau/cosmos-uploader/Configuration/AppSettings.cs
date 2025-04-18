@@ -8,6 +8,7 @@ namespace CosmosUploader.Configuration
         public required CosmosSettings Cosmos { get; set; }
         public required PerformanceSettings Performance { get; set; }
         public required LoggingSettings Logging { get; set; }
+        public List<CitySettings>? Cities { get; set; }
     }
 
     public class CosmosSettings
@@ -17,6 +18,9 @@ namespace CosmosUploader.Configuration
         public required string DatabaseName { get; set; }
         public required string ContainerName { get; set; }
         public required string PartitionKey { get; set; }
+        public string? ResourceGroup { get; set; }
+        public ConnectionSettings? Connection { get; set; }
+        public CosmosPerformanceSettings? Performance { get; set; }
         
         // Validate that we have all required fields
         public bool IsValid()
@@ -29,11 +33,36 @@ namespace CosmosUploader.Configuration
         }
     }
 
+    public class ConnectionSettings
+    {
+        public string Mode { get; set; } = "Gateway";
+        public int MaxRetryAttempts { get; set; } = 9;
+        public int MaxRetryWaitTimeInSeconds { get; set; } = 30;
+        public int ConnectionTimeout { get; set; } = 60;
+        public bool EnableEndpointDiscovery { get; set; } = true;
+    }
+
+    public class CosmosPerformanceSettings
+    {
+        public bool EnableEndpointDiscovery { get; set; } = true;
+        public bool BulkExecution { get; set; } = true;
+        public List<string> PreferredRegions { get; set; } = new();
+    }
+
+    public class CitySettings
+    {
+        public required string Name { get; set; }
+        public required double Latitude { get; set; }
+        public required double Longitude { get; set; }
+    }
+
     public class PerformanceSettings
     {
-        public int Throughput { get; set; } = 400;
-        public int BatchSize { get; set; } = 100;
+        public int Throughput { get; set; } = 10000;
+        public bool Autoscale { get; set; } = true;
+        public int BatchSize { get; set; } = 1000;
         public int MaxParallelOperations { get; set; } = 10;
+        public bool DisableIndexingDuringBulk { get; set; } = false;
     }
 
     public class LoggingSettings

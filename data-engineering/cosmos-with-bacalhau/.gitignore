@@ -86,3 +86,4 @@ archive/
 
 data/*
 docker-compose*.y*ml
+docker-compose.yml

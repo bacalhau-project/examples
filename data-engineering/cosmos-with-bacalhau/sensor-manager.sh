@@ -206,6 +206,7 @@ function start_sensors() {
   # Parse command line arguments
   local REBUILD=true
   PROJECT_NAME="cosmos-sensors-$(date +%Y%m%d%H%M%S)"
+  SENSOR_CONFIG_FILE="config/sensor-config.yaml"
   
   while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -221,9 +222,13 @@ function start_sensors() {
         NO_DIAGNOSTICS=true
         shift
         ;;
+      --sensor-config)
+        SENSOR_CONFIG_FILE="$2"
+        shift 2
+        ;;
       *)
         echo "Unknown parameter for start: $1"
-        echo "Usage: $0 start [--no-rebuild] [--project-name NAME] [--no-diagnostics]"
+        echo "Usage: $0 start [--no-rebuild] [--project-name NAME] [--no-diagnostics] [--sensor-config PATH]"
         exit 1
         ;;
     esac
@@ -234,8 +239,8 @@ function start_sensors() {
   cleanup_containers
 
   # Step 2: Set default configuration values
-  export SENSORS_PER_CITY=${SENSORS_PER_CITY:-5}
-  export MAX_CITIES=${MAX_CITIES:-5}
+  export SENSORS_PER_CITY=${SENSORS_PER_CITY:-3}
+  export MAX_CITIES=${MAX_CITIES:-3}
   export READINGS_PER_SECOND=${READINGS_PER_SECOND:-1}
   export ANOMALY_PROBABILITY=${ANOMALY_PROBABILITY:-0.05}
   export UPLOAD_INTERVAL=${UPLOAD_INTERVAL:-30}
@@ -260,37 +265,51 @@ function start_sensors() {
   fi
 
   # Step 5: Generate Docker Compose configuration
-  echo -e "${BOLD}Step 4: Generating docker-compose.yml with multiple sensors per city...${RESET}"
+  echo -e "${BOLD}Step 4: Generating docker-compose.yml with sensors using configuration file...${RESET}"
   
   # Make the generate script executable
   chmod +x ./generate-multi-sensor-compose.sh
   
-  # Generate the docker-compose.yml file with multiple sensors per city
+  # Check if the sensor config file exists
+  SENSOR_CONFIG_FILE="config/sensor-config.yaml"
+  if [ ! -f "$SENSOR_CONFIG_FILE" ]; then
+    echo -e "${YELLOW}Warning: Sensor configuration file not found at $SENSOR_CONFIG_FILE${RESET}"
+    echo "Using default configuration instead."
+  else
+    echo -e "${GREEN}Using sensor configuration from $SENSOR_CONFIG_FILE${RESET}"
+    
+    # Export the sensor config file path for use in the generation script
+    export SENSOR_CONFIG_FILE
+  fi
+  
+  # Generate the docker-compose.yml file with the multi-region test configuration
+  echo -e "${GREEN}Generating multi-region test configuration with dedicated sensors and uploaders per region${RESET}"
   ./generate-multi-sensor-compose.sh
+  
+  echo -e "${YELLOW}NOTE: Using TEST configuration with multiple regions - not for production use${RESET}"
   
   # Get the list of cities and sensors per city
   CITIES_FILE="config/cities.txt"
   CITIES=$(head -n $MAX_CITIES "$CITIES_FILE")
 
   # Step 6: Clean up existing data directories
-  echo -e "${BOLD}Step 6: Cleaning up old data directories...${RESET}"
+  echo -e "${BOLD}Step 6: Setting up data directories...${RESET}"
+  
+  # Clean up existing directories and create fresh ones
+  echo "Cleaning up old data..."
   rm -rf ./data/*
   rm -rf ./archive/*
   
-  # Create data and archive directories for each city with sensor-specific subdirectories
-  for CITY in $CITIES; do
-    # Normalize city name
-    NORMALIZED_CITY=$(echo "$CITY" | tr -d " " | tr -d "'" | tr -d "." | tr '[:upper:]' '[:lower:]')
-    
-    echo "Creating directories for $CITY..."
-    mkdir -p "./archive/$NORMALIZED_CITY"
-    
-    # Create directories for each sensor replica in this city
-    for ((i=1; i<=$SENSORS_PER_CITY; i++)); do
-      echo "  - Creating sensor directory: $NORMALIZED_CITY/$i"
-      mkdir -p "./data/$NORMALIZED_CITY/$i"
-    done
-  done
+  # Clean up Docker networks
+  echo "Cleaning up Docker networks..."
+  docker network prune -f
+  
+  # Create base data and archive directories for replicas to use
+  echo "Creating shared data directories..."
+  mkdir -p "./data"
+  mkdir -p "./archive"
+  
+  echo -e "${GREEN}✅ Data directories prepared for replica deployment${RESET}"
 
   # Step 7: Check if Docker is running
   if ! docker info > /dev/null 2>&1; then
@@ -595,60 +614,95 @@ function query_db() {
 }
 
 function run_query() {
-  # Get configuration
-  CITIES_FILE="config/cities.txt"
-  if [ ! -f "$CITIES_FILE" ]; then
-    echo -e "${RED}Error: Cities file not found at $CITIES_FILE${RESET}"
-    exit 1
-  fi
-  
-  # Parse command line
+  # Parse command line options
   if [ "$1" == "--all" ]; then
-    # Query all databases
-    MAX_CITIES=5
-    CITIES=$(head -n $MAX_CITIES "$CITIES_FILE")
-    SENSORS_PER_CITY=5
+    # Query all databases found in the data directory
+    echo -e "${BOLD}Querying all SQLite databases in the data directory...${RESET}"
+    echo ""
     
-    for CITY in $CITIES; do
-      # Normalize city name
-      NORMALIZED_CITY=$(echo "$CITY" | tr -d " " | tr -d "'" | tr -d "." | tr '[:upper:]' '[:lower:]')
+    # Find all sensor_data.db files in the data directory
+    DB_FILES=$(find ./data -name "sensor_data.db")
+    
+    if [ -z "$DB_FILES" ]; then
+      echo -e "${YELLOW}No database files found. Make sure the sensors have generated data.${RESET}"
+      return
+    fi
+    
+    # Process each database file
+    for DB_PATH in $DB_FILES; do
+      # Extract sensor information from the path if possible
+      SENSOR_ID=$(sqlite3 "$DB_PATH" "SELECT DISTINCT sensor_id FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
+      LOCATION=$(sqlite3 "$DB_PATH" "SELECT DISTINCT location FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
       
-      # Check each sensor for this city
-      for ((i=1; i<=$SENSORS_PER_CITY; i++)); do
-        DB_PATH="./data/$NORMALIZED_CITY/$i/sensor_data.db"
-        query_db "$DB_PATH" "$CITY" "$i"
-      done
+      query_db "$DB_PATH" "$LOCATION" "$SENSOR_ID"
     done
-  elif [ -n "$1" ] && [ -n "$2" ]; then
-    # Query a specific database by city and sensor
-    CITY="$1"
-    SENSOR="$2"
-    NORMALIZED_CITY=$(echo "$CITY" | tr -d " " | tr -d "'" | tr -d "." | tr '[:lower:]')
-    DB_PATH="./data/$NORMALIZED_CITY/$SENSOR/sensor_data.db"
-    query_db "$DB_PATH" "$CITY" "$SENSOR"
-  elif [ -n "$1" ]; then
-    # Query all sensors for a specific city
-    CITY="$1"
-    SENSORS_PER_CITY=5
-    NORMALIZED_CITY=$(echo "$CITY" | tr -d " " | tr -d "'" | tr -d "." | tr '[:lower:]')
+  elif [ "$1" == "--list" ]; then
+    # List all sensors found in the databases
+    echo -e "${BOLD}Listing all sensors with data:${RESET}"
+    echo ""
     
-    for ((i=1; i<=$SENSORS_PER_CITY; i++)); do
-      DB_PATH="./data/$NORMALIZED_CITY/$i/sensor_data.db"
-      query_db "$DB_PATH" "$CITY" "$i"
+    # Find all sensor_data.db files
+    DB_FILES=$(find ./data -name "sensor_data.db")
+    
+    if [ -z "$DB_FILES" ]; then
+      echo -e "${YELLOW}No database files found. Make sure the sensors have generated data.${RESET}"
+      return
+    fi
+    
+    echo -e "${CYAN}%-30s %-30s %-30s${RESET}" "DATABASE PATH" "SENSOR ID" "LOCATION"
+    echo "---------------------------------------------------------------------------------"
+    
+    # Process each database file
+    for DB_PATH in $DB_FILES; do
+      # Extract sensor information
+      SENSOR_ID=$(sqlite3 "$DB_PATH" "SELECT DISTINCT sensor_id FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
+      LOCATION=$(sqlite3 "$DB_PATH" "SELECT DISTINCT location FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
+      
+      printf "%-30s %-30s %-30s\n" "$DB_PATH" "$SENSOR_ID" "$LOCATION"
     done
+  elif [ -n "$1" ]; then
+    # Try to find a database with the specified sensor ID
+    SENSOR_ID="$1"
+    echo -e "${BOLD}Searching for sensor with ID: $SENSOR_ID${RESET}"
+    echo ""
+    
+    # Find all sensor_data.db files
+    DB_FILES=$(find ./data -name "sensor_data.db")
+    
+    if [ -z "$DB_FILES" ]; then
+      echo -e "${YELLOW}No database files found. Make sure the sensors have generated data.${RESET}"
+      return
+    fi
+    
+    # Try to find the specified sensor ID
+    FOUND=false
+    for DB_PATH in $DB_FILES; do
+      # Check if this database contains the requested sensor ID
+      FOUND_ID=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sensor_readings WHERE sensor_id LIKE '%$SENSOR_ID%' LIMIT 1;" 2>/dev/null)
+      
+      if [ "$FOUND_ID" -gt 0 ]; then
+        LOCATION=$(sqlite3 "$DB_PATH" "SELECT DISTINCT location FROM sensor_readings WHERE sensor_id LIKE '%$SENSOR_ID%' LIMIT 1;" 2>/dev/null)
+        echo -e "${GREEN}Found sensor $SENSOR_ID in database: $DB_PATH${RESET}"
+        query_db "$DB_PATH" "$LOCATION" "$SENSOR_ID"
+        FOUND=true
+        break
+      fi
+    done
+    
+    if [ "$FOUND" = false ]; then
+      echo -e "${YELLOW}No database found for sensor ID: $SENSOR_ID${RESET}"
+      echo "Available sensors:"
+      run_query --list
+    fi
   else
     # Show usage
-    echo "Usage: $0 query [--all | <city> [<sensor>]]"
+    echo "Usage: $0 query [--all | --list | <sensor_id>]"
     echo ""
     echo "Examples:"
     echo "  $0 query --all                  # Query all databases"
-    echo "  $0 query Amsterdam              # Query all sensors for Amsterdam"
-    echo "  $0 query Amsterdam 1            # Query Amsterdam sensor 1"
+    echo "  $0 query --list                 # List all available sensors"
+    echo "  $0 query AMS_SENSOR001          # Query specific sensor by ID"
     echo ""
-    echo "Available cities:"
-    cat "$CITIES_FILE" | head -n 10 | while read -r city; do
-      echo "  $city"
-    done
   fi
 }
 
@@ -721,15 +775,35 @@ function run_diagnostics() {
   
   # Check uploader logs
   echo -e "${CYAN}🧪 CHECKING LOGS FROM UPLOADER CONTAINERS:${RESET}"
-  echo "Showing last 10 lines from each container..."
+  echo "Showing last 10 lines from the uploader container..."
   echo ""
   
-  for container in $(docker ps --filter "name=uploader" -q); do
-    container_name=$(docker inspect --format='{{.Name}}' $container | sed 's/\///')
+  UPLOADER_CONTAINER=$(docker ps --filter "name=uploader" -q | head -1)
+  if [ -n "$UPLOADER_CONTAINER" ]; then
+    container_name=$(docker inspect --format='{{.Name}}' $UPLOADER_CONTAINER | sed 's/\///')
     echo -e "${YELLOW}=== $container_name ===${RESET}"
-    docker logs $container --tail 20 | grep -i 'sensor' | tail -n 10
-    echo ""
-  done
+    docker logs $UPLOADER_CONTAINER --tail 20 | grep -i 'sensor' | tail -n 10
+  else
+    echo -e "${YELLOW}No uploader container found running${RESET}"
+  fi
+  echo ""
+  
+  # Check sensor logs (sample from a few replica containers)
+  echo -e "${CYAN}🧪 CHECKING LOGS FROM SENSOR CONTAINERS:${RESET}"
+  echo "Showing last 10 lines from a few sensor replicas..."
+  echo ""
+  
+  SENSOR_CONTAINERS=$(docker ps --filter "name=sensor" -q | head -3)
+  if [ -n "$SENSOR_CONTAINERS" ]; then
+    for container in $SENSOR_CONTAINERS; do
+      container_name=$(docker inspect --format='{{.Name}}' $container | sed 's/\///')
+      echo -e "${YELLOW}=== $container_name ===${RESET}"
+      docker logs $container --tail 10
+      echo ""
+    done
+  else
+    echo -e "${YELLOW}No sensor containers found running${RESET}"
+  fi
   
   # Check SQLite databases
   echo -e "${CYAN}🧪 CHECKING SQLITE DATABASES:${RESET}"
@@ -816,18 +890,6 @@ function run_monitor() {
     RED=""
   fi
   
-  # Configuration
-  MAX_CITIES=5
-  SENSORS_PER_CITY=5
-  CITIES_FILE="config/cities.txt"
-  
-  # Get the list of cities
-  CITIES=$(head -n $MAX_CITIES "$CITIES_FILE" 2>/dev/null)
-  if [ -z "$CITIES" ]; then
-    echo -e "${RED}Error: Could not read cities from $CITIES_FILE${RESET}"
-    exit 1
-  fi
-  
   # Print header
   # Only clear if not using watch (watch does its own clearing)
   if [ -z "$WATCH_EXEC" ]; then
@@ -835,90 +897,108 @@ function run_monitor() {
   fi
   
   echo -e "${BOLD}SENSOR DATA MONITORING${RESET} - $(date)"
-  echo -e "${CYAN}Checking data across all cities and sensors...${RESET}"
+  echo -e "${CYAN}Checking data for sensor replicas...${RESET}"
   echo
   
-  # Print table header
-  printf "${BOLD}%-15s %-15s %-10s %-10s %-25s %-8s${RESET}\n" "CITY" "SENSOR" "STATUS" "DB FILES" "LAST UPLOADED" "ARCHIVES"
-  echo "------------------------------------------------------------------------------------------"
+  # Get container stats
+  SENSOR_CONTAINERS=$(docker ps --filter "name=sensor" -q)
+  SENSOR_COUNT=$(echo "$SENSOR_CONTAINERS" | wc -l | tr -d ' ')
+  if [ -z "$SENSOR_CONTAINERS" ]; then
+    SENSOR_COUNT=0
+  fi
   
-  # Counter for total stats
-  TOTAL_SENSORS=0
-  ACTIVE_SENSORS=0
-  TOTAL_DB_FILES=0
-  TOTAL_ARCHIVES=0
+  UPLOADER_CONTAINER=$(docker ps --filter "name=uploader" -q | head -1)
+  if [ -n "$UPLOADER_CONTAINER" ]; then
+    UPLOADER_STATUS="${GREEN}RUNNING${RESET}"
+  else
+    UPLOADER_STATUS="${RED}STOPPED${RESET}"
+  fi
   
-  # Process each city
-  for CITY in $CITIES; do
-    # Normalize city name
-    NORMALIZED_CITY=$(echo "$CITY" | tr -d " " | tr -d "'" | tr -d "." | tr '[:upper:]' '[:lower:]')
+  # Print container summary
+  echo -e "${BOLD}CONTAINER STATUS:${RESET}"
+  echo -e "Sensor Replicas: $SENSOR_COUNT"
+  echo -e "Uploader Status: $UPLOADER_STATUS"
+  echo
+  
+  # Check for SQLite databases
+  echo -e "${BOLD}DATABASE STATUS:${RESET}"
+  DB_FILES=$(find ./data -name "sensor_data.db")
+  DB_COUNT=$(echo "$DB_FILES" | wc -l | tr -d ' ')
+  if [ -z "$DB_FILES" ]; then
+    DB_COUNT=0
+  fi
+  
+  echo -e "SQLite Databases: $DB_COUNT"
+  
+  # Check archive files
+  ARCHIVE_FILES=$(find ./archive -name "*.parquet")
+  ARCHIVE_COUNT=$(echo "$ARCHIVE_FILES" | wc -l | tr -d ' ')
+  if [ -z "$ARCHIVE_FILES" ]; then
+    ARCHIVE_COUNT=0
+  fi
+  
+  echo -e "Archive Files: $ARCHIVE_COUNT"
+  echo
+  
+  # Show active sensors from databases
+  echo -e "${BOLD}ACTIVE SENSORS:${RESET}"
+  echo
+  
+  if [ "$DB_COUNT" -eq 0 ]; then
+    echo -e "${YELLOW}No database files found yet. Sensors may still be initializing.${RESET}"
+  else
+    # Print table header
+    printf "${BOLD}%-25s %-25s %-15s %-15s${RESET}\n" "SENSOR ID" "LOCATION" "DB SIZE" "READINGS"
+    echo "--------------------------------------------------------------------------------"
     
-    # Check each sensor for this city
-    for ((i=1; i<=$SENSORS_PER_CITY; i++)); do
-      # Create a unique sensor ID including the city code and sensor number
-      CITY_CODE=$(echo "$NORMALIZED_CITY" | cut -c1-3 | tr '[:lower:]' '[:upper:]')
-      SENSOR_ID="${CITY_CODE}_SENSOR$(printf "%03d" $i)"
-      CONTAINER_NAME="sensor-${NORMALIZED_CITY}-${i}"
-      
-      # Check container status
-      if is_container_running "$CONTAINER_NAME"; then
-        STATUS="${GREEN}RUNNING${RESET}"
-        ((ACTIVE_SENSORS++))
-      else
-        STATUS="${RED}STOPPED${RESET}"
+    # Check each database file (limit to 10 for display purposes)
+    count=0
+    for DB_PATH in $DB_FILES; do
+      # Skip if we've already shown 10 files
+      ((count++))
+      if [ $count -gt 10 ]; then
+        echo "... and $(($DB_COUNT - 10)) more database files ..."
+        break
       fi
       
-      # Check database files
-      DATA_DIR="./data/${NORMALIZED_CITY}/${i}"
-      DB_COUNT=$(count_files "$DATA_DIR" "*.db")
-      ((TOTAL_DB_FILES += DB_COUNT))
+      # Get database size
+      DB_SIZE=$(du -h "$DB_PATH" | cut -f1)
       
-      # Check archive files for this sensor
-      ARCHIVE_DIR="./archive/${NORMALIZED_CITY}"
-      ARCHIVE_COUNT=$(count_files "$ARCHIVE_DIR" "*${SENSOR_ID}*.parquet")
-      ((TOTAL_ARCHIVES += ARCHIVE_COUNT))
-      
-      # Get last archive file
-      LAST_ARCHIVE=$(latest_file "$ARCHIVE_DIR" "*${SENSOR_ID}*.parquet")
-      if [ "$LAST_ARCHIVE" != "none" ]; then
-        LAST_UPLOAD_TIME=$(get_file_time "$LAST_ARCHIVE")
-        # Truncate time if too long
-        LAST_UPLOAD_TIME=$(echo "$LAST_UPLOAD_TIME" | cut -c 1-24)
-      else
-        LAST_UPLOAD_TIME="No archives yet"
-      fi
+      # Get sensor information
+      SENSOR_ID=$(sqlite3 "$DB_PATH" "SELECT DISTINCT sensor_id FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
+      LOCATION=$(sqlite3 "$DB_PATH" "SELECT DISTINCT location FROM sensor_readings LIMIT 1;" 2>/dev/null || echo "Unknown")
+      READING_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sensor_readings;" 2>/dev/null || echo "0")
       
       # Print row
-      printf "%-15s ${YELLOW}%-15s${RESET} %-10s %-10s %-25s %-8s\n" \
-        "$CITY" "$SENSOR_ID" "$STATUS" "$DB_COUNT" "$LAST_UPLOAD_TIME" "$ARCHIVE_COUNT"
-      
-      ((TOTAL_SENSORS++))
+      printf "%-25s %-25s %-15s %-15s\n" \
+        "$SENSOR_ID" "$LOCATION" "$DB_SIZE" "$READING_COUNT"
     done
-    
-    # Check uploader status
-    UPLOADER_NAME="uploader-${NORMALIZED_CITY}"
-    if is_container_running "$UPLOADER_NAME"; then
-      UPLOADER_STATUS="${GREEN}RUNNING${RESET}"
-    else
-      UPLOADER_STATUS="${RED}STOPPED${RESET}"
-    fi
-    
-    # Print uploader row with different formatting
-    printf "${BLUE}%-15s %-15s${RESET} %-10s %-10s %-25s %-8s\n" \
-      "$CITY" "UPLOADER" "$UPLOADER_STATUS" "-" "-" "-"
-    
-    # Add separator between cities
-    echo "------------------------------------------------------------------------------------------"
-  done
+  fi
   
-  # Print summary
-  echo ""
-  echo -e "${BOLD}SUMMARY:${RESET}"
-  echo -e "Total Sensors: $TOTAL_SENSORS ($ACTIVE_SENSORS active)"
-  echo -e "Total Database Files: $TOTAL_DB_FILES"
-  echo -e "Total Archive Files: $TOTAL_ARCHIVES"
-  echo ""
+  echo
+  
+  # Show recent archive files
+  echo -e "${BOLD}RECENT ARCHIVES:${RESET}"
+  echo
+  
+  if [ "$ARCHIVE_COUNT" -eq 0 ]; then
+    echo -e "${YELLOW}No archive files found yet. May need to wait for the uploader cycle.${RESET}"
+  else
+    # Print table header
+    printf "${BOLD}%-60s %-25s${RESET}\n" "ARCHIVE FILE" "CREATION TIME"
+    echo "--------------------------------------------------------------------------------"
+    
+    # List the 5 most recent archive files
+    find ./archive -name "*.parquet" -type f -printf "%T@ %T+ %p\n" 2>/dev/null | \
+      sort -nr | head -5 | while read timestamp timestr filepath; do
+        filename=$(basename "$filepath")
+        printf "%-60s %-25s\n" "$filename" "$(echo $timestr | cut -d'+' -f1)"
+      done
+  fi
+  
+  echo
   echo -e "${CYAN}TIP:${RESET} Run with 'watch' for real-time updates: ${BOLD}watch -n 5 $0 monitor${RESET}"
+  echo -e "${CYAN}TIP:${RESET} For more details: ${BOLD}$0 query --list${RESET} or ${BOLD}$0 diagnostics${RESET}"
 }
 
 ###########################################
@@ -926,7 +1006,29 @@ function run_monitor() {
 ###########################################
 
 function reset_services() {
-  echo "Resetting services with fixed configuration..."
+  local NO_DIAGNOSTICS=false
+  local SENSOR_CONFIG_FILE="config/sensor-config.yaml"
+  
+  # Parse arguments
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      --no-diagnostics)
+        NO_DIAGNOSTICS=true
+        shift
+        ;;
+      --sensor-config)
+        SENSOR_CONFIG_FILE="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown parameter for reset: $1"
+        echo "Usage: $0 reset [--no-diagnostics] [--sensor-config PATH]"
+        exit 1
+        ;;
+    esac
+  done
+
+  echo "Resetting services with configuration from $SENSOR_CONFIG_FILE..."
   
   # Step 1: Stop all services
   echo "Step 1: Stopping all services..."
@@ -934,27 +1036,39 @@ function reset_services() {
   
   # Step 2: Ensure Dockerfile has the proper entrypoint wrapper
   echo "Step 2: Ensuring Dockerfile has the proper entrypoint wrapper..."
-  fix_dockerfile
+  fix_dockerfile 2>/dev/null || echo "Skipping Dockerfile fix (function not available)."
   
   # Step 3: Rebuild the image
   echo "Step 3: Rebuilding the Docker image with fixed entrypoint..."
   build_uploader --no-tag
   
-  # Step 4: Regenerate the Docker Compose file
-  echo "Step 4: Recreating Docker Compose file with fixed format..."
+  # Step 4: Check if the sensor config file exists
+  if [ ! -f "$SENSOR_CONFIG_FILE" ]; then
+    echo -e "${YELLOW}Warning: Sensor configuration file not found at $SENSOR_CONFIG_FILE${RESET}"
+    echo "Using default configuration instead."
+  else
+    echo -e "${GREEN}Using sensor configuration from $SENSOR_CONFIG_FILE${RESET}"
+    # Export the sensor config file path for use in the generation script
+    export SENSOR_CONFIG_FILE
+  fi
+  
+  # Step 5: Regenerate the Docker Compose file
+  echo "Step 5: Recreating Docker Compose file with multi-region test configuration..."
   chmod +x ./generate-multi-sensor-compose.sh
   ./generate-multi-sensor-compose.sh
   
-  # Step 5: Start all services
-  echo "Step 5: Starting all services with fixed configuration..."
+  echo -e "${YELLOW}NOTE: Using TEST configuration with multiple regions - not for production use${RESET}"
+  
+  # Step 6: Start all services
+  echo "Step 6: Starting all services with configuration..."
   docker-compose up -d
   
   echo "Services reset complete. Check their status with:"
   echo "docker-compose ps"
   
-  # Step 6: Run diagnostics if requested
-  if [ "$1" != "--no-diagnostics" ]; then
-    echo "Step 6: Running diagnostics..."
+  # Step 7: Run diagnostics if requested
+  if [ "$NO_DIAGNOSTICS" != "true" ]; then
+    echo "Step 7: Running diagnostics..."
     sleep 10  # Give containers a bit more time to initialize
     run_diagnostics
   fi
@@ -998,14 +1112,14 @@ function show_help() {
   echo "  See .env.template for available options."
   echo ""
   echo "COMMAND DETAILS:"
-  echo "  start [--no-rebuild] [--project-name NAME] [--no-diagnostics]"
+  echo "  start [--no-rebuild] [--project-name NAME] [--no-diagnostics] [--sensor-config PATH]"
   echo "      Starts sensor simulation with configuration"
   echo ""
   echo "  stop [--no-prompt]"
   echo "      Stops all running containers"
   echo ""
-  echo "  reset [--no-diagnostics]"
-  echo "      Resets services with fixed configuration (stops, regenerates config, starts)"
+  echo "  reset [--no-diagnostics] [--sensor-config PATH]"
+  echo "      Resets services with configuration (stops, regenerates config, starts)"
   echo ""
   echo "  clean [--dry-run] [--yes] [--config PATH]"
   echo "      Deletes all data from Cosmos DB using the bulk delete utility script"
@@ -1023,12 +1137,13 @@ function show_help() {
   echo "      Monitors sensor status and data uploads"
   echo ""
   echo "EXAMPLES:"
-  echo "  $0 start                           # Start with default configuration"
-  echo "  SENSORS_PER_CITY=10 $0 start       # Start with 10 sensors per city"
-  echo "  $0 monitor --plain                 # Monitor without colors"
-  echo "  $0 clean --dry-run                 # Show what would be deleted, without deleting"
-  echo "  $0 query Amsterdam 1               # Check SQLite database for Amsterdam sensor 1"
-  echo "  $0 build --tag v1.0.0              # Build with a specific tag"
+  echo "  $0 start                                       # Start with default configuration"
+  echo "  $0 start --sensor-config config/custom.yaml   # Start with custom sensor configuration"
+  echo "  SENSORS_PER_CITY=10 $0 start                   # Start with 10 sensors per city"
+  echo "  $0 monitor --plain                             # Monitor without colors"
+  echo "  $0 clean --dry-run                             # Show what would be deleted, without deleting"
+  echo "  $0 query Amsterdam 1                           # Check SQLite database for Amsterdam sensor 1"
+  echo "  $0 build --tag v1.0.0                          # Build with a specific tag"
   echo ""
   echo "See docs/using-configuration.md for detailed configuration information."
 }
