@@ -12,6 +12,8 @@
 import argparse
 import json
 import logging
+import random
+import string
 import sys
 from typing import Dict
 
@@ -48,10 +50,34 @@ def load_identity(identity_path: str) -> Dict:
     """
     try:
         with open(identity_path, "r") as f:
-            return json.load(f)
+            identity = json.load(f)
+            if not identity.get("id"):
+                logging.info(
+                    "Identity file does not contain an 'id' key, generating..."
+                )
+                identity["id"] = generate_sensor_id(identity)
+            return identity
     except Exception as e:
         logging.error(f"Error loading identity file: {e}")
         raise
+
+
+def generate_sensor_id(identity: Dict) -> str:
+    """Generate a new sensor ID in the format CITY_XXXXXX."""
+    uppercity_no_special_chars = "".join(
+        c.upper() for c in identity.get("location") if c.isalpha()
+    )
+
+    # Get the first 3 letters of the location
+    location_prefix = uppercity_no_special_chars[:4]
+    if not location_prefix:
+        raise ValueError("Location is required to generate a sensor ID")
+
+    # Generate a random 6-digit string of characters and numbers, no vowels, no special characters
+    vowels = "aeiou"
+    consonants = "".join(c.upper() for c in string.ascii_letters if c not in vowels)
+    random_number = "".join(random.choice(consonants + string.digits) for _ in range(6))
+    return f"{location_prefix}_{random_number}"
 
 
 def setup_logging(config):

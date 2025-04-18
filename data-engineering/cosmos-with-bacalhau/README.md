@@ -8,6 +8,9 @@ This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engi
 - `cosmos-uploader/`: Contains Docker files and entrypoint scripts for containerization
 - `config/`: Configuration files for the simulation
 - `data/`: Directory where sensor data is stored in SQLite databases
+  - `{city}/{sensor-number}/`: Contains SQLite database files for each sensor
+- `archive/`: Directory where processed data is archived
+  - `{city}/`: Contains Parquet files for each city's processed data
 
 ## CosmosDB Uploader
 
@@ -18,6 +21,7 @@ The C# implementation of the CosmosDB uploader provides:
 - **Retry Logic**: Built-in retry mechanism for handling rate limiting and transient errors
 - **Data Archiving**: Optional archiving of processed data to Parquet files for long-term storage
 - **Continuous Mode**: Can run in continuous mode, polling for new data at configurable intervals
+- **Robust DateTime Parsing**: Handles various date formats from SQLite databases to ensure compatibility
 
 ## Getting Started
 
@@ -41,63 +45,71 @@ The C# implementation of the CosmosDB uploader provides:
 
 ### Using the Sensor Manager
 
-The project includes a unified management script `sensor-manager.sh` that handles all aspects of the sensor simulation and Cosmos DB integration:
+The project now uses a Python-based Sensor Manager for handling all aspects of the sensor simulation and Cosmos DB integration. This implementation provides better code organization, error handling, and cross-platform compatibility.
+
+> **Note**: The original Bash script (`sensor-manager.sh`) is now deprecated and will be removed. Please use the Python implementation instead.
+
+#### Python Sensor Manager
 
 ```bash
 # Make the script executable
-chmod +x sensor-manager.sh
+chmod +x sensor_manager.py
 
-# Start the sensor simulation
-./sensor-manager.sh start
+# Start the sensor simulation (automatically stops any existing containers)
+./sensor_manager.py start
 
 # View logs from all containers
-./sensor-manager.sh logs
+./sensor_manager.py logs
 
 # Monitor sensor status and data uploads
-./sensor-manager.sh monitor
+./sensor_manager.py monitor
 
 # Query SQLite databases
-./sensor-manager.sh query --all
-./sensor-manager.sh query Amsterdam 1
+./sensor_manager.py query --all
+./sensor_manager.py query --sensor-id Amsterdam_1234
 
 # Run system diagnostics
-./sensor-manager.sh diagnostics
+./sensor_manager.py diagnostics
 
 # Stop all containers
-./sensor-manager.sh stop
+./sensor_manager.py stop
 
 # Clean up Cosmos DB data
-./sensor-manager.sh clean
+./sensor_manager.py clean
 
 # Force cleanup of all containers
-./sensor-manager.sh cleanup
+./sensor_manager.py cleanup
 ```
 
-#### Advanced Usage
-
-The sensor manager supports various configuration options:
+**Advanced Usage:**
 
 ```bash
-# Start with custom configuration
-SENSORS_PER_CITY=10 ./sensor-manager.sh start
+# Start with custom settings
+./sensor_manager.py start \
+  --project-name my-sensors \
+  --sensors-per-city 3 \
+  --no-diagnostics
 
-# Start without rebuilding the uploader image
-./sensor-manager.sh start --no-rebuild
+# Generate a custom Docker Compose file
+./sensor_manager.py compose \
+  --output my-compose.yml \
+  --sensors-per-city 3 \
+  --readings-per-second 2
 
-# Start with a custom project name
-./sensor-manager.sh start --project-name my-sensors
+# Monitor with continuous updates
+watch -n 5 ./sensor_manager.py monitor --plain
 
 # Clean Cosmos DB with dry run
-./sensor-manager.sh clean --dry-run
-
-# Monitor without colors
-./sensor-manager.sh monitor --plain
+./sensor_manager.py clean --dry-run
 ```
 
-For a complete list of commands and options, run:
+For detailed documentation on all available commands and options:
 ```bash
-./sensor-manager.sh help
+./sensor_manager.py --help
+./sensor_manager.py <command> --help
 ```
+
+See the [Python Sensor Manager Documentation](sensor_manager/README.md) for more information.
 
 ### Manual Docker Compose Usage
 
@@ -112,6 +124,27 @@ cd cosmos-uploader
 docker-compose up -d
 ```
 
+### Multi-Region Test Configuration
+
+The system includes a specialized test configuration for simulating a multi-region deployment with dedicated sensors and uploaders per region:
+
+```bash
+# Generate the multi-region test docker-compose.yml
+./generate-multi-sensor-compose.sh
+
+# Start the multi-region test environment
+docker-compose up -d
+```
+
+This test configuration:
+- Creates 5 sensors per region, based on cities defined in config/config.yaml
+- Provides one dedicated uploader per region
+- Injects city names and GPS coordinates for each sensor
+- Creates a directory structure with region-specific paths for data and archives
+- Assigns unique container names and service identifiers
+
+**Note:** This configuration is intended for TESTING ONLY and not for production use. It creates a larger number of containers and requires more system resources than the standard configuration.
+
 ### Monitoring
 
 ```bash
@@ -124,18 +157,31 @@ docker-compose logs -f uploader-amsterdam uploader-beijing uploader-berlin uploa
 
 ## Querying Cosmos DB
 
-The project includes a tool to query Cosmos DB directly from the command line, which is useful for verifying that data is being uploaded correctly:
+The project includes a Python-based tool to query Cosmos DB directly, which is useful for verifying that data is being uploaded correctly:
 
 ```bash
 # Query the last 5 documents from Amsterdam
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --city Amsterdam --limit 5
+uv run -s cosmos-uploader/query.py --config config/config.yaml --city Amsterdam --limit 5
 
 # Count all documents in the database
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --count
+uv run -s cosmos-uploader/query.py --config config/config.yaml --count
 
 # Run a custom query
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --query "SELECT * FROM c WHERE c.temperature > 25.0 LIMIT 10"
+uv run -s cosmos-uploader/query.py --config config/config.yaml --query "SELECT * FROM c WHERE c.temperature > 25.0 LIMIT 10"
+
+# Analyze data distribution (view sample data)
+uv run -s cosmos-uploader/query.py --config config/config.yaml --analyze
+
+# View results in table format
+uv run -s cosmos-uploader/query.py --config config/config.yaml --format table
 ```
+
+The query tool includes features like:
+- Environment variable expansion in configuration
+- Better error handling with descriptive messages
+- Data analysis capabilities with the `--analyze` option
+- Table output formatting for more readable results
+- Visual progress indicators for long-running operations
 
 See [cosmos-query-tool.md](docs/cosmos-query-tool.md) for detailed documentation.
 
@@ -249,6 +295,10 @@ This results in significantly better performance compared to single document upl
    - If you encounter issues with data processing, check the logs for specific error messages
    - Verify that the SQLite databases contain the expected data structure
    - Adjust batch size and processing parameters based on your hardware capabilities
+   
+4. **DateTime Parsing Errors**:
+   - The CosmosUploader implementation now includes robust datetime parsing to handle various formats
+   - If you see "Year, Month, and Day parameters describe an un-representable DateTime" errors, make sure you're using the latest version of the CosmosUploader
 
 ## License
 
