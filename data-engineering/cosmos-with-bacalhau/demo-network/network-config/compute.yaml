@@ -1,0 +1,9 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - host.docker.internal:4222
+  AllowListedLocalPaths:
+    - "/root/**:rw"
+UpdateConfig:
+  Interval: 0
