@@ -1,6 +1,7 @@
 import logging
 import os
 import sqlite3
+import threading
 import time
 from datetime import datetime
 from functools import wraps
@@ -63,43 +64,46 @@ class SensorDatabase:
         """
         self.db_path = db_path
         self.logger = logging.getLogger("SensorDatabase")
+        self.batch_buffer = []
+        self.batch_size = 100
+        self.batch_timeout = 5.0  # seconds
+        self.last_batch_time = time.time()
+        self.batch_insert_count = 0
+        self.insert_count = 0
+        self.total_insert_time = 0.0
+        self.total_batch_time = 0.0
 
-        # Check if old database exists and needs to be removed
-        if os.path.exists(self.db_path) and self.db_path != ":memory:":
-            try:
-                # Try to connect to the database and check for the synced column
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA table_info(sensor_readings)")
-                columns = [column[1] for column in cursor.fetchall()]
-                if "synced" not in columns:
-                    self.logger.warning(
-                        "Old database schema detected. Removing old database file."
-                    )
-                    conn.close()
-                    os.remove(self.db_path)
-                else:
-                    conn.close()
-            except Exception as e:
-                self.logger.error(f"Error checking database schema: {e}")
-                if os.path.exists(self.db_path):
-                    os.remove(self.db_path)
+        # Thread-local storage for database connections
+        self._local = threading.local()
 
         # Create database directory if it doesn't exist
         if self.db_path != ":memory:":
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        # Initialize database
+        # Initialize database schema
         self._init_db()
+
+    @property
+    def conn(self):
+        """Get thread-local database connection."""
+        if not hasattr(self._local, "conn"):
+            self._local.conn = sqlite3.connect(self.db_path)
+            self._local.cursor = self._local.conn.cursor()
+        return self._local.conn
+
+    @property
+    def cursor(self):
+        """Get thread-local database cursor."""
+        if not hasattr(self._local, "cursor"):
+            self._local.conn = sqlite3.connect(self.db_path)
+            self._local.cursor = self._local.conn.cursor()
+        return self._local.cursor
 
     def _init_db(self):
         """Initialize the database schema."""
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-
             # Create sensor_readings table
-            cursor.execute(
+            self.cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS sensor_readings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,22 +124,17 @@ class SensorDatabase:
                 """
             )
 
-            # Create indexes
-            cursor.execute(
+            # Create only essential indexes
+            self.cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
             )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_sensor_id ON sensor_readings(sensor_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_synced ON sensor_readings(synced)"
-            )
 
-            conn.commit()
-            conn.close()
+            self.conn.commit()
             self.logger.info("Database initialized successfully")
         except Exception as e:
             self.logger.error(f"Error initializing database: {e}")
+            if hasattr(self._local, "conn"):
+                self._local.conn.close()
             raise
 
     def store_reading(
@@ -324,38 +323,15 @@ class SensorDatabase:
             }
 
     def connect(self):
-        """Establish connection to the SQLite database."""
-        try:
-            # Ensure the directory exists
-            db_dir = os.path.dirname(self.db_path)
-            if db_dir and not os.path.exists(db_dir):
-                os.makedirs(db_dir, exist_ok=True)
-                logging.info(f"Created database directory: {db_dir}")
-
-            self.conn = sqlite3.connect(self.db_path)
-
-            # Enable foreign keys
-            self.conn.execute("PRAGMA foreign_keys = ON")
-
-            # Set busy timeout to avoid "database is locked" errors
-            self.conn.execute(f"PRAGMA busy_timeout = 5000")
-
-            # Performance optimizations
-            self.conn.execute(
-                "PRAGMA journal_mode = WAL"
-            )  # Write-Ahead Logging for better concurrency
-            self.conn.execute(
-                "PRAGMA synchronous = NORMAL"
-            )  # Reduce synchronous writes for better performance
-
-            self.cursor = self.conn.cursor()
-            logging.info(f"Connected to database: {self.db_path}")
-        except sqlite3.Error as e:
-            logging.error(f"Database connection error: {e}")
-            raise
-        except Exception as e:
-            logging.error(f"Error setting up database: {e}")
-            raise
+        """Reconnect to the database if needed."""
+        if not self.conn:
+            try:
+                self.conn = sqlite3.connect(self.db_path)
+                self.cursor = self.conn.cursor()
+                self.logger.info(f"Reconnected to database: {self.db_path}")
+            except sqlite3.Error as e:
+                self.logger.error(f"Database connection error: {e}")
+                raise
 
     @retry_on_error()
     def create_tables(self):
@@ -571,19 +547,14 @@ class SensorDatabase:
             raise
 
     def close(self):
-        """Close the database connection."""
-        if self.batch_buffer:
+        """Close the database connection for the current thread."""
+        if hasattr(self._local, "conn"):
             try:
-                self.commit_batch()
+                self._local.conn.close()
+                del self._local.conn
+                del self._local.cursor
             except Exception as e:
-                logging.error(f"Error committing final batch during close: {e}")
-
-        if self.conn:
-            try:
-                self.conn.close()
-                logging.info("Database connection closed")
-            except sqlite3.Error as e:
-                logging.error(f"Error closing database connection: {e}")
+                self.logger.error(f"Error closing database connection: {e}")
 
     @retry_on_error()
     def sync_to_central_db(self, central_db_url, batch_size=100):
@@ -770,3 +741,210 @@ class SensorDatabase:
         except Exception as e:
             logging.error(f"Database health check failed: {e}")
             return False
+
+    @retry_on_error()
+    def get_last_ten_entries(self):
+        """Get the last ten entries from the database.
+
+        Returns:
+            List of the last ten entries
+        """
+        try:
+            self.cursor.execute(
+                "SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 10"
+            )
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            logging.error(f"Error getting last ten entries: {e}")
+            return []
+
+    @retry_on_error()
+    def get_database_stats(self) -> Dict:
+        """Get comprehensive database statistics.
+
+        Returns:
+            Dictionary containing database statistics including:
+            - Total readings count
+            - Database size
+            - Last write timestamp
+            - Index sizes
+            - Table statistics
+            - Performance metrics
+            - File paths and sizes
+        """
+        try:
+            stats = {
+                "total_readings": 0,
+                "database_size_bytes": 0,
+                "last_write_timestamp": None,
+                "index_sizes": {},
+                "table_stats": {},
+                "performance_metrics": {},
+                "sync_stats": {},
+                "anomaly_stats": {},
+                "files": {
+                    "database": {
+                        "path": self.db_path,
+                        "size_bytes": 0,
+                        "exists": False,
+                    },
+                    "log": {
+                        "path": self.db_path.replace(".db", ".log"),
+                        "size_bytes": 0,
+                        "exists": False,
+                    },
+                },
+            }
+
+            # Get file information
+            if self.db_path != ":memory:":
+                try:
+                    # Database file
+                    if os.path.exists(self.db_path):
+                        stats["files"]["database"]["size_bytes"] = os.path.getsize(
+                            self.db_path
+                        )
+                        stats["files"]["database"]["exists"] = True
+                        stats["database_size_bytes"] = stats["files"]["database"][
+                            "size_bytes"
+                        ]
+
+                    # Log file
+                    log_path = self.db_path.replace(".db", ".log")
+                    if os.path.exists(log_path):
+                        stats["files"]["log"]["size_bytes"] = os.path.getsize(log_path)
+                        stats["files"]["log"]["exists"] = True
+                except OSError as e:
+                    self.logger.error(f"Error getting file sizes: {e}")
+
+            # Get total readings count
+            self.cursor.execute("SELECT COUNT(*) FROM sensor_readings")
+            stats["total_readings"] = self.cursor.fetchone()[0]
+
+            # Get last write timestamp
+            self.cursor.execute("""
+                SELECT MAX(timestamp) 
+                FROM sensor_readings
+            """)
+            result = self.cursor.fetchone()
+            if result and result[0]:
+                stats["last_write_timestamp"] = datetime.fromtimestamp(
+                    result[0]
+                ).isoformat()
+
+            # Get index sizes
+            try:
+                self.cursor.execute("""
+                    SELECT name, SUM(pgsize)
+                    FROM sqlite_master
+                    WHERE type='index'
+                    GROUP BY name
+                """)
+                stats["index_sizes"] = dict(self.cursor.fetchall())
+            except sqlite3.Error as e:
+                self.logger.warning(f"Could not get index sizes: {e}")
+                stats["index_sizes"] = {}
+
+            # Get table statistics
+            self.cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_rows,
+                    COUNT(DISTINCT sensor_id) as unique_sensors,
+                    COUNT(DISTINCT location) as unique_locations,
+                    COUNT(DISTINCT manufacturer) as unique_manufacturers,
+                    COUNT(DISTINCT model) as unique_models
+                FROM sensor_readings
+            """)
+            row = self.cursor.fetchone()
+            if row:
+                stats["table_stats"] = {
+                    "total_rows": row[0],
+                    "unique_sensors": row[1],
+                    "unique_locations": row[2],
+                    "unique_manufacturers": row[3],
+                    "unique_models": row[4],
+                }
+
+            # Get performance metrics
+            stats["performance_metrics"] = {
+                "total_inserts": self.insert_count,
+                "total_batches": self.batch_insert_count,
+                "avg_batch_size": self.insert_count / self.batch_insert_count
+                if self.batch_insert_count > 0
+                else 0,
+                "avg_insert_time_ms": (
+                    self.total_insert_time / self.insert_count * 1000
+                )
+                if self.insert_count > 0
+                else 0,
+                "total_insert_time_s": self.total_insert_time,
+                "pending_batch_size": len(self.batch_buffer),
+            }
+
+            # Get sync statistics
+            self.cursor.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN synced = 1 THEN 1 ELSE 0 END) as synced,
+                    SUM(CASE WHEN synced = 0 THEN 1 ELSE 0 END) as unsynced
+                FROM sensor_readings
+            """)
+            row = self.cursor.fetchone()
+            if row:
+                stats["sync_stats"] = {
+                    "total": row[0],
+                    "synced": row[1] or 0,
+                    "unsynced": row[2] or 0,
+                    "sync_percentage": (row[1] / row[0] * 100) if row[0] > 0 else 0,
+                }
+
+            # Get anomaly statistics
+            self.cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_anomalies,
+                    COUNT(DISTINCT anomaly_type) as unique_anomaly_types,
+                    anomaly_type,
+                    COUNT(*) as count
+                FROM sensor_readings
+                WHERE anomaly_flag = 1
+                GROUP BY anomaly_type
+            """)
+            anomalies = self.cursor.fetchall()
+            if anomalies:
+                stats["anomaly_stats"] = {
+                    "total_anomalies": anomalies[0][0],
+                    "unique_anomaly_types": anomalies[0][1],
+                    "anomaly_types": {row[2]: row[3] for row in anomalies},
+                }
+
+            return stats
+
+        except Exception as e:
+            self.logger.error(f"Error getting database stats: {e}")
+            return {
+                "error": str(e),
+                "total_readings": 0,
+                "database_size_bytes": 0,
+                "last_write_timestamp": None,
+                "index_sizes": {},
+                "table_stats": {},
+                "performance_metrics": {},
+                "sync_stats": {},
+                "anomaly_stats": {},
+                "files": {
+                    "database": {
+                        "path": self.db_path,
+                        "size_bytes": 0,
+                        "exists": False,
+                    },
+                    "log": {
+                        "path": self.db_path.replace(".db", ".log"),
+                        "size_bytes": 0,
+                        "exists": False,
+                    },
+                },
+            }
+
+    def __del__(self):
+        """Clean up database connections when the object is destroyed."""
+        self.close()

@@ -1,0 +1,26 @@
+Name: start-sensor
+Type: batch
+Count: 1
+Namespace: demo
+
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/sensor-log-generator:2504180910
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/root"
+            ReadWrite: true
+        Target: "/root"
+    Resources:
+      CPU: "0.1"
+      Memory: "36mb"
+    Timeouts:
+      QueueTimeout: 300
+    Env:
+      - CONFIG_PATH: "/root/config.yaml"
+      - IDENTITY_PATH: "/root/node_identity.json"
