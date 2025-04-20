@@ -1,4 +1,4 @@
-Name: upload-file
+Name: run-python-script
 Type: batch
 Count: {{.count}}
 Namespace: demo
@@ -16,8 +16,7 @@ Tasks:
             echo "$SCRIPT_B64" | base64 -d > /tmp/script.py && uv run -s /tmp/script.py
     Env:
       SCRIPT_B64: "{{.script_b64}}"
-      FILE_B64: "{{.file_b64}}"
-      FILE_NAME: "{{.file_name}}"
+      DEBUG: "true"
     InputSources:
       - Source:
           Type: "localDirectory"

@@ -1,20 +1,59 @@
 #! /usr/bin/env bash
 set -e
 
-# Define the file list directly in the script
-FILE_LIST_JSON='{
-    "/root/cities.json": "https://gist.githubusercontent.com/aronchick/959e3f35a825ea1e3c5956cdc2280fc9/raw/3bae74a23cacec1381ae18caac5e2cf63206531e/cities.json",
-    "/root/config.yaml": "https://gist.githubusercontent.com/aronchick/8fbb7edd71493b08708da701e69033f7/raw/a787cd9ed284c2fbe2ca22e2c3ae0759c02943e1/config.yaml",
-    "/root/node_identity.json": "https://gist.githubusercontent.com/aronchick/5460df4815de1596fc7130e362d64755/raw/213f8ec8666f754bed5eb030d87780af14229550/node-identity.json"
-}'
+# Get count of nodes in the network
+COUNT=$(bacalhau node list --output json | jq -r '[.[] | select(.Info.NodeType == "Compute")] | length')
+NUM_CITIES=${NUM_CITIES:-20}
 
-# Encode the file list
-FILE_LIST_B64=$(echo "$FILE_LIST_JSON" | base64 -w 0)
-
-echo "Processing files..."
+echo "Processing config.yaml..."
 bacalhau job run jobs/upload_file.yaml \
-    -V script_b64="$(cat jobs/write_file.py | base64 -w 0)" \
-    -V file_list_b64="$FILE_LIST_B64" \
-    -V count=3
+    -V script_b64="$(cat jobs/add_sensor_config.py | base64 -w 0)" \
+    -V file_b64="$(cat files/sensor-config.yaml | base64 -w 0)" \
+    -V file_name="config.yaml" \
+    --id-only \
+    -V count="$COUNT"
+
+echo "Processing node_identity.json..."
+bacalhau job run jobs/upload_file.yaml \
+    -V script_b64="$(cat jobs/add_sensor_config.py | base64 -w 0)" \
+    -V file_b64="$(cat files/node-identity.json | base64 -w 0)" \
+    -V file_name="node_identity.json" \
+    --id-only \
+    -V count="$COUNT"
+
+# Create a simplified cities.json file with just name and country
+TEMP_DIR=$(mktemp -d)
+jq -r '.cities | [.[] | {full_name, country}]' files/cities.json > "$TEMP_DIR/cities.json"
+
+# Debug output
+# echo "Debug: Cities file contents:"
+# cat "$TEMP_DIR/cities.json"
+# echo "Debug: Cities file structure:"
+# jq '.' "$TEMP_DIR/cities.json"
+
+trap "rm -rf $TEMP_DIR" EXIT
+
+echo "Cities file has $(jq -r 'length' "$TEMP_DIR/cities.json") cities"
+
+# Upload the simplified cities.json file
+echo "Uploading cities.json..."
+bacalhau job run jobs/upload_file.yaml \
+    -V script_b64="$(cat jobs/add_sensor_config.py | base64 -w 0)" \
+    -V file_b64="$(cat "$TEMP_DIR/cities.json" | base64 -w 0)" \
+    -V file_name="cities.json" \
+    --id-only \
+    -V count="$COUNT"
+
+echo "Randomizing locations..."
+bacalhau job run jobs/run_python_script.yaml \
+    -V script_b64="$(cat jobs/update_location.py | base64 -w 0)" \
+    -V count="$COUNT" \
+    --id-only --wait
+
+echo "Verifying location updates..."
+for i in $(seq 1 $COUNT); do
+    echo "Checking node $i..."
+    bacalhau docker run --count=1 -i file:///root:/root alpine cat /root/node_identity.json
+done
 
 echo "File processing complete."
