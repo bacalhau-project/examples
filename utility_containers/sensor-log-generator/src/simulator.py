@@ -24,22 +24,38 @@ class SensorSimulator:
         """Initialize the sensor simulator.
 
         Args:
-            config: Configuration dictionary
-            identity: Sensor identity configuration
-
-        Raises:
-            ValueError: If configuration is invalid
+            config: Configuration dictionary loaded from YAML
+            identity: Identity dictionary loaded from JSON, including keys:
+                'id', 'location', 'manufacturer', 'model', 'firmware_version'
         """
+        # Store configuration and identity
         self.config = config
         self.identity = identity
+        self.sensor_id = identity.get("id")
+        self.location = identity.get("location")
+        self.manufacturer = identity.get("manufacturer")
+        self.model = identity.get("model")
+        self.firmware_version = identity.get("firmware_version")
+        self.running = False
+        self.logger = logging.getLogger("SensorSimulator")
 
-        if not self.identity.get("id"):
-            raise ValueError("Sensor ID is required in identity configuration")
+        # Set up database path for sensor in project root
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        db_dir = os.path.join(base_dir, "data", self.sensor_id)
+        os.makedirs(db_dir, exist_ok=True)
 
-        self.sensor_id = self.identity["id"]
+        self.db_path = os.path.join(db_dir, f"{self.sensor_id}.db")
+        self.log_path = os.path.join(db_dir, f"{self.sensor_id}.log")
 
-        # Set up logger
-        self.logger = logging.getLogger(__name__)
+        # Initialize database
+        self.database = SensorDatabase(self.db_path)
+
+        # Set up logging to file
+        file_handler = logging.FileHandler(self.log_path)
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        self.logger.addHandler(file_handler)
 
         # Validate sensor configuration
         try:
@@ -51,32 +67,25 @@ class SensorSimulator:
         # Get the base directory (where main.py is located)
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        # Set up database path - use relative path when running locally
-        db_path = config.get("database", {}).get(
-            "path", f"data/{self.sensor_id}/sensor_data.db"
-        )
-        if not os.path.isabs(db_path):
-            db_path = os.path.join(base_dir, db_path)
-
-        self.database = SensorDatabase(db_path)
-
         # Initialize location generator with the correct config section
-        self.location_generator = LocationGenerator(config.get("random_location", {}))
+        self.location_generator = LocationGenerator(
+            self.config.get("random_location", {})
+        )
 
         # Generate and store the location once at initialization
         self.sensor_location = self._get_initial_location()
         self.logger.info(f"Sensor initialized with location: {self.sensor_location}")
 
         # Get simulation parameters
-        self.readings_per_second = config.get("simulation", {}).get(
+        self.readings_per_second = self.config.get("simulation", {}).get(
             "readings_per_second", 1
         )
-        self.run_time_seconds = config.get("simulation", {}).get(
+        self.run_time_seconds = self.config.get("simulation", {}).get(
             "run_time_seconds", 3600
         )
 
         # Get replica configuration
-        self.replica_config = config.get("replicas", {})
+        self.replica_config = self.config.get("replicas", {})
         self.replica_count = self.replica_config.get("count", 1)
         self.replica_prefix = self.replica_config.get("prefix", "SENSOR")
         self.replica_start_index = self.replica_config.get("start_index", 1)
@@ -102,7 +111,6 @@ class SensorSimulator:
             self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
 
             # Initialize state
-            self.running = False
             self.start_time = None
             self.readings_count = 0
             self.error_count = 0
@@ -483,8 +491,8 @@ class SensorSimulator:
                 self.config_manager.stop_file_watcher()
 
             # Close database connection
-            if hasattr(self, "db"):
-                self.db.close()
+            if hasattr(self, "database"):
+                self.database.close()
 
             # Log summary
             success_rate = 0
@@ -536,7 +544,9 @@ class SensorSimulator:
             "readings_per_second": self.readings_per_second,
             "sensor_id": self.sensor_id,
             "firmware_version": self.identity.get("firmware_version"),
-            "database_healthy": self.db.is_healthy() if hasattr(self, "db") else False,
+            "database_healthy": self.database.is_healthy()
+            if hasattr(self, "database")
+            else False,
             "memory_usage_mb": memory_usage.get("current_mb", 0),
             "memory_peak_mb": memory_usage.get("peak_mb", 0),
             "memory_growth_percent": memory_usage.get("growth_percent", 0),
