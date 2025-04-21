@@ -73,7 +73,7 @@ database:
 
 logging:
   level: "INFO"
-  file: "data/sensor_simulator.log"
+  file: "/root/sensor_simulator.log"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   console_output: true
 

@@ -8,11 +8,10 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ghcr.io/bacalhau-project/sensor-log-generator:2504180910
-    Environment:
+        Image: ghcr.io/bacalhau-project/sensor-log-generator:2504211458
     Env:
-      - CONFIG_PATH: "/root/config.yaml"
-      - IDENTITY_PATH: "/root/node_identity.json"
+      CONFIG_FILE: "/root/config.yaml"
+      IDENTITY_FILE: "/root/node_identity.json"
     InputSources:
       - Source:
           Type: "localDirectory"
