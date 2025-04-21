@@ -2,6 +2,8 @@
     "type": "environmental",
     "manufacturer": "SensorTech",
     "model": "EnvMonitor-3000",
-    "firmware_version": "1.3",
-    "location": "New York City"
+    "firmware_version": "1.4",
+    "location": "New York City",
+    "latitude": 40.7128,
+    "longitude": -74.0060
 }
