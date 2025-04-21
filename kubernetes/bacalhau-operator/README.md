@@ -39,7 +39,7 @@ This will create a bacalhau namespace, deploy the job controller and the needed 
 
 Also, If your Bacalhau orchestrator has authentication enabled, you will need to update the API_Key secret, and restart the Operator deployment.
 
-For example, lets say the API_KEY is `abc123abc123abc123`, run the command below to update the key (make sure to replace the value of the API_KEy with your own key):
+For example, lets say the API_KEY is `abc123abc123abc123`, run the command below to update the key (make sure to replace the value of the API_KEY with your own key):
 
 ```shell
 kubectl create secret generic bacalhau-api-credentials \
