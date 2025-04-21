@@ -2,15 +2,6 @@
 # Copy this file to config.yaml and modify as needed
 # Note: Some values can be overridden with environment variables
 
-# Sensor details
-sensor:
-  id: "TEMP001" # Unique identifier for this sensor (can be overridden with SENSOR_ID env var)
-  type: "temperature_vibration" # Type of sensor
-  location: "Factory A - Machine 1" # Physical location (can be overridden with SENSOR_LOCATION env var)
-  manufacturer: "SensorTech Inc." # Optional: Manufacturer name
-  model: "TempVibe-2000" # Optional: Model number
-  firmware_version: "1.2.3" # Optional: Firmware version
-
 # Simulation parameters
 simulation:
   readings_per_second: 1 # How many readings to generate per second
@@ -88,3 +79,10 @@ output:
   json_export_enabled: false # Enable JSON export
   json_export_path: "./exports/" # Where to store JSON files
   json_export_interval_minutes: 60 # How often to export data
+
+# Configuration for location generation
+random_location:
+  enabled: true
+  number_of_cities: 10
+  gps_variation: 100 # meters
+  cities_file: "src/cities.json" # Path to cities file in src directory

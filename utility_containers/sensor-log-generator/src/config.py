@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-import sys
-import time
 from threading import Event, Thread
 
 import yaml
@@ -30,54 +28,57 @@ class ConfigManager:
 
         # Config reload settings
         self.auto_reload = False
-        self.reload_interval = 60  # seconds
+        self.reload_interval = 5  # seconds - reduced to 5 for identity file watching
         self._stop_event = Event()
         self._watcher_thread = None
 
         # Load configuration
         self.config = self.load_config()
+        if self.config is None:
+            logging.error("Failed to load configuration")
+            return False
 
         # Load node identity
-        self.load_node_identity()
+        self.identity = self.load_node_identity()
 
         # Apply environment variable overrides (highest priority)
         self._apply_env_overrides()
 
         # Check if auto-reload is enabled in config
-        reload_config = self.config.get("config_reload", {})
+        reload_config = self.config.get("dynamic_reloading", {})
         self.auto_reload = reload_config.get("enabled", False)
-        self.reload_interval = reload_config.get("check_interval_seconds", 60)
+        self.reload_interval = reload_config.get("check_interval_seconds", 5)
 
         # Start file watcher if auto-reload is enabled
         if self.auto_reload:
             self.start_file_watcher()
 
+    def get_sensor_config(self):
+        """Get sensor configuration."""
+        return self.config.get("sensor", {})
+
     def _apply_env_overrides(self):
         """Apply environment variable overrides to the configuration."""
-        # Ensure sensor config exists
-        if "sensor" not in self.config:
-            self.config["sensor"] = {}
-
         # Override sensor location if environment variable is set
         if "SENSOR_LOCATION" in os.environ:
-            self.config["sensor"]["location"] = os.environ["SENSOR_LOCATION"]
+            self.identity["location"] = os.environ["SENSOR_LOCATION"]
             logging.info(
-                f"Overriding sensor location from environment variable: {self.config['sensor']['location']}"
+                f"Overriding sensor location from environment variable: {self.identity['location']}"
             )
 
         # Override sensor ID if environment variable is set
         if "SENSOR_ID" in os.environ:
-            self.config["sensor"]["id"] = os.environ["SENSOR_ID"]
+            self.identity["id"] = os.environ["SENSOR_ID"]
             logging.info(
-                f"Overriding sensor ID from environment variable: {self.config['sensor']['id']}"
+                f"Overriding sensor ID from environment variable: {self.identity['id']}"
             )
 
     def load_config(self):
         """Load configuration from YAML file."""
         try:
             if not os.path.exists(self.config_path):
-                logging.warning(f"Config file not found: {self.config_path}")
-                return self.get_default_config()
+                logging.error(f"Configuration file not found: {self.config_path}")
+                return {}
 
             with open(self.config_path, "r") as file:
                 config = yaml.safe_load(file)
@@ -97,95 +98,19 @@ class ConfigManager:
         try:
             if not os.path.exists(self.identity_path):
                 logging.warning(f"Node identity file not found: {self.identity_path}")
-                return
+                return {}
 
             with open(self.identity_path, "r") as file:
                 identity = json.load(file)
-
-            # Ensure sensor config exists
-            if "sensor" not in self.config:
-                self.config["sensor"] = {}
-
-            # Apply identity values to sensor config
-            for key, value in identity.items():
-                self.config["sensor"][key] = value
 
             # Update identity file modification time
             self.identity_mtime = os.path.getmtime(self.identity_path)
 
             logging.info(f"Node identity loaded from {self.identity_path}")
+            return identity
         except Exception as e:
             logging.error(f"Error loading node identity: {e}")
-
-    def get_default_config(self):
-        """Return default configuration if no config file is found."""
-        return {
-            "sensor": {
-                "id": "TEMP001",
-                "type": "temperature_vibration",
-                "location": "Factory A - Machine 1",
-                "manufacturer": "SensorTech",
-                "model": "TempVibe-2000",
-                "firmware_version": "1.3",
-            },
-            "simulation": {
-                "readings_per_second": 1,
-                "run_time_seconds": 3600,  # 1 hour
-            },
-            "normal_parameters": {
-                "temperature": {
-                    "mean": 65.0,  # Celsius
-                    "std_dev": 2.0,
-                    "min": 50.0,
-                    "max": 80.0,
-                },
-                "vibration": {
-                    "mean": 2.5,  # mm/s²
-                    "std_dev": 0.5,
-                    "min": 0.1,
-                    "max": 10.0,
-                },
-                "voltage": {
-                    "mean": 12.0,  # Volts
-                    "std_dev": 0.1,
-                    "min": 11.5,
-                    "max": 12.5,
-                },
-            },
-            "anomalies": {
-                "enabled": True,
-                "probability": 0.05,  # 5% chance of anomaly per reading
-                "types": {
-                    "spike": {"enabled": True, "weight": 0.4},
-                    "trend": {
-                        "enabled": True,
-                        "weight": 0.2,
-                        "duration_seconds": 300,  # 5 minutes
-                    },
-                    "pattern": {
-                        "enabled": True,
-                        "weight": 0.1,
-                        "duration_seconds": 600,  # 10 minutes
-                    },
-                    "missing_data": {
-                        "enabled": True,
-                        "weight": 0.1,
-                        "duration_seconds": 30,  # 30 seconds
-                    },
-                    "noise": {
-                        "enabled": True,
-                        "weight": 0.2,
-                        "duration_seconds": 180,  # 3 minutes
-                    },
-                },
-            },
-            "database": {"path": "sensor_data.db"},
-            "logging": {"level": "INFO", "file": "sensor_simulator.log"},
-            "config_reload": {
-                "enabled": True,
-                "check_interval_seconds": 60,
-            },
-        }
+            return {}
 
     def check_for_changes(self):
         """Check if configuration files have changed."""
@@ -219,11 +144,16 @@ class ConfigManager:
 
             # Reload configuration
             self.config = self.load_config()
-            self.load_node_identity()
+            if self.config is None:
+                logging.error("Failed to reload configuration")
+                return False
+
+            # Reload node identity
+            self.identity = self.load_node_identity()
             self._apply_env_overrides()
 
             # Check if auto-reload settings have changed
-            reload_config = self.config.get("config_reload", {})
+            reload_config = self.config.get("dynamic_reloading", {})
             self.auto_reload = reload_config.get("enabled", current_auto_reload)
             self.reload_interval = reload_config.get(
                 "check_interval_seconds", current_interval
@@ -265,10 +195,6 @@ class ConfigManager:
             # Wait for the next check interval or until stopped
             self._stop_event.wait(self.reload_interval)
 
-    def get_sensor_config(self):
-        """Get sensor configuration."""
-        return self.config.get("sensor", {})
-
     def get_simulation_config(self):
         """Get simulation configuration."""
         return self.config.get("simulation", {})
@@ -288,3 +214,11 @@ class ConfigManager:
     def get_logging_config(self):
         """Get logging configuration."""
         return self.config.get("logging", {})
+
+    def get_valid_configurations(self):
+        """Get valid configurations for validation."""
+        return self.config.get("valid_configurations", {})
+
+    def get_identity(self):
+        """Get the current node identity."""
+        return self.identity

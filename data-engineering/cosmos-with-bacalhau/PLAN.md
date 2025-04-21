@@ -15,7 +15,7 @@ This project connects IoT sensor simulation with Azure Cosmos DB using Bacalhau 
 - [x] Create Docker images and push to registry
 - [x] Set up Docker Compose for multi-city deployment
 
-## Phase 3: Uploader Application (In Progress)
+## Phase 3: Uploader Application (Complete)
 - [x] Develop .NET Core uploader application
 - [x] Add configuration system for connection settings
 - [x] Implement batch uploads with optimized performance
@@ -31,20 +31,123 @@ This project connects IoT sensor simulation with Azure Cosmos DB using Bacalhau 
 - [ ] Create data visualization components
 - [ ] Add anomaly detection algorithms
 
-## Phase 5: Monitoring and Management (Future)
-- [ ] Develop unified management scripts
+## Phase 5: Monitoring and Management (In Progress)
+- [x] Develop unified management scripts (Bash)
+- [x] Migrate management scripts to Python
 - [ ] Add monitoring dashboards
 - [ ] Implement cost optimization strategies
 - [ ] Set up alerts and notifications
 - [ ] Add automated scaling based on workload
 
-## Current Tasks
-1. Fix Docker entrypoint for uploader container
-2. Test multi-city deployment with a full set of sensors
-3. Verify data flow from sensors to Cosmos DB
-4. Document setup and operation procedures
+# Sensor Manager Migration: Bash to Python
 
-## Known Issues
-1. ~~Conflict between docker-compose entrypoint and Dockerfile ENTRYPOINT~~ (Fixed)
-2. Need to ensure proper environment variable passing to containers
-3. Need to finalize Bacalhau job specifications for data processing
+This document outlines the step-by-step migration from the current Bash-based sensor management scripts to a Python implementation.
+
+## Goals
+
+1. Create a more maintainable, cross-platform sensor management tool
+2. Improve code structure and error handling
+3. Maintain feature parity with the existing Bash implementation
+4. Allow incremental migration with both implementations coexisting
+
+## Migration Strategy
+
+We'll employ a phased migration approach, where we:
+1. Build a basic Python framework for the sensor manager
+2. Implement core functionality first
+3. Add more complex features progressively
+4. Test at each step to ensure compatibility
+5. Eventually replace the Bash scripts entirely
+
+## Phase 1: Setup Python Framework
+
+- [x] Create project structure
+- [x] Setup basic CLI framework with `argparse`
+- [x] Implement configuration loading
+- [x] Create Docker-related utility functions
+- [x] Implement basic logging
+
+## Phase 2: Implement Core Commands
+
+- [x] Implement `compose` command (Docker Compose generation)
+- [x] Implement `start` command
+- [x] Implement `stop` command
+- [x] Implement `cleanup` command
+- [x] Implement `monitor` command
+
+## Phase 3: Implement Advanced Commands
+
+- [x] Implement `build` command
+- [x] Implement `reset` command
+- [x] Implement `query` command
+- [x] Implement `diagnostics` command
+- [x] Implement `logs` command
+- [x] Implement `clean` command
+
+## Phase 4: Testing & Documentation
+
+- [ ] Add unit tests
+- [ ] Add integration tests
+- [ ] Update documentation
+- [ ] Create installation guide
+
+## Phase 5: Final Transition
+
+- [x] Ensure feature parity
+- [x] Create wrapper scripts for backward compatibility
+- [x] Deprecate Bash scripts
+- [ ] Remove Bash scripts
+
+## Technical Details
+
+### Project Structure
+
+```
+sensor_manager/
+├── __init__.py
+├── __main__.py              # CLI entry point
+├── cli/                     # Command-line interface
+│   ├── __init__.py
+│   ├── commands/            # Command implementations
+│   └── parser.py            # Argument parsing
+├── config/                  # Configuration handling
+│   ├── __init__.py
+│   └── models.py            # Config data models
+├── docker/                  # Docker operations
+│   ├── __init__.py
+│   ├── compose.py           # Docker-compose operations
+│   └── manager.py           # Container management
+├── db/                      # Database operations
+│   ├── __init__.py
+│   └── sqlite.py            # SQLite queries
+├── templates/               # Jinja2 templates
+│   └── docker-compose.yml.j2
+└── utils/                   # Utility functions
+    ├── __init__.py
+    └── logging.py           # Logging setup
+```
+
+### Core Dependencies
+
+- argparse: Command-line interface
+- pydantic: Data validation and configuration
+- jinja2: Templating for docker-compose
+- pyyaml: YAML parsing
+- docker: Docker API client
+- rich: Terminal output formatting
+- sqlite3: Database access (standard library)
+
+### Command Mapping
+
+| Bash Command | Python Command | Priority |
+|--------------|----------------|----------|
+| start        | start          | High     |
+| stop         | stop           | High     |
+| reset        | reset          | Medium   |
+| clean        | clean          | Low      |
+| build        | build          | Medium   |
+| logs         | logs           | Medium   |
+| query        | query          | Medium   |
+| diagnostics  | diagnostics    | Medium   |
+| monitor      | monitor        | High     |
+| cleanup      | cleanup        | High     |
