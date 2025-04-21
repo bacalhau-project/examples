@@ -1,0 +1,31 @@
+Name: run-python-script
+Type: batch
+Count: {{.count}}
+Namespace: demo
+
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/astral-sh/uv:bookworm-slim
+        Parameters:
+          - /bin/sh
+          - -c
+          - |
+            echo "$SCRIPT_B64" | base64 -d > /tmp/script.py && uv run -s /tmp/script.py
+    Env:
+      SCRIPT_B64: "{{.script_b64}}"
+      DEBUG: "true"
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/root"
+            ReadWrite: true
+        Target: "/root"
+    Resources:
+      CPU: "0.1"
+      Memory: "36mb"
+    Timeouts:
+      QueueTimeout: 300

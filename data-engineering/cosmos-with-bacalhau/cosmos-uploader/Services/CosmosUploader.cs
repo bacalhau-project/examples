@@ -39,29 +39,40 @@ namespace CosmosUploader.Services
                     MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
                 };
                 
+                _logger.LogInformation("Creating Cosmos DB client with options: {Options}", JsonConvert.SerializeObject(clientOptions));
+                
                 // Create the client
                 _cosmosClient = new CosmosClient(
                     _settings.Cosmos.Endpoint,
                     _settings.Cosmos.Key,
                     clientOptions);
                 
+                _logger.LogInformation("Cosmos DB client created successfully");
+                
                 // Ensure database exists
-                _logger.LogInformation("Ensuring database {Database} exists", _settings.Cosmos.DatabaseName);
+                _logger.LogInformation("Ensuring database {Database} exists with throughput {Throughput}", 
+                    _settings.Cosmos.DatabaseName, _settings.Performance.Throughput);
+                
                 Database database = await _cosmosClient.CreateDatabaseIfNotExistsAsync(
                     _settings.Cosmos.DatabaseName,
                     throughput: _settings.Performance.Throughput);
                 
+                _logger.LogInformation("Database {Database} verified/created successfully", _settings.Cosmos.DatabaseName);
+                
                 // Ensure container exists
-                _logger.LogInformation("Ensuring container {Container} exists", _settings.Cosmos.ContainerName);
+                _logger.LogInformation("Ensuring container {Container} exists with partition key {PartitionKey}", 
+                    _settings.Cosmos.ContainerName, _settings.Cosmos.PartitionKey);
+                
                 _container = await database.CreateContainerIfNotExistsAsync(
                     _settings.Cosmos.ContainerName,
                     _settings.Cosmos.PartitionKey);
                 
+                _logger.LogInformation("Container {Container} verified/created successfully", _settings.Cosmos.ContainerName);
                 _logger.LogInformation("Cosmos DB initialization completed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initializing Cosmos DB connection");
+                _logger.LogError(ex, "Error initializing Cosmos DB connection. Details: {Message}", ex.Message);
                 throw;
             }
         }
@@ -72,6 +83,12 @@ namespace CosmosUploader.Services
             {
                 _logger.LogWarning("No readings to upload");
                 return;
+            }
+
+            if (_container == null)
+            {
+                _logger.LogError("Cosmos DB container has not been initialized. Call InitializeAsync first.");
+                throw new InvalidOperationException("Cosmos DB container has not been initialized. Call InitializeAsync first.");
             }
 
             _logger.LogInformation("Uploading {Count} readings to Cosmos DB", readings.Count);

@@ -1,3 +1,4 @@
+aeiou
 asctime
 bacalhau
 bacalhauproject
@@ -7,5 +8,6 @@ levelname
 mult
 multiarch
 PYTHONUNBUFFERED
+uppercity
 venv
 YYMMDDHHMM
