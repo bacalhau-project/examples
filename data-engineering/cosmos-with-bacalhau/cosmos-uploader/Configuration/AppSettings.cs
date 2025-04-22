@@ -63,6 +63,7 @@ namespace CosmosUploader.Configuration
         public int BatchSize { get; set; } = 1000;
         public int MaxParallelOperations { get; set; } = 10;
         public bool DisableIndexingDuringBulk { get; set; } = false;
+        public int SleepInterval { get; set; } = 60;
     }
 
     public class LoggingSettings

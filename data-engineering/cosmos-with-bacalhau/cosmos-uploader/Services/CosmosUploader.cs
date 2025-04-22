@@ -29,8 +29,6 @@ namespace CosmosUploader.Services
         {
             try
             {
-                _logger.LogInformation("Initializing Cosmos DB connection to {Endpoint}", _settings.Cosmos.Endpoint);
-                
                 // Configure connection options
                 var clientOptions = new CosmosClientOptions
                 {
@@ -39,40 +37,25 @@ namespace CosmosUploader.Services
                     MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
                 };
                 
-                _logger.LogInformation("Creating Cosmos DB client with options: {Options}", JsonConvert.SerializeObject(clientOptions));
-                
                 // Create the client
                 _cosmosClient = new CosmosClient(
                     _settings.Cosmos.Endpoint,
                     _settings.Cosmos.Key,
                     clientOptions);
                 
-                _logger.LogInformation("Cosmos DB client created successfully");
-                
                 // Ensure database exists
-                _logger.LogInformation("Ensuring database {Database} exists with throughput {Throughput}", 
-                    _settings.Cosmos.DatabaseName, _settings.Performance.Throughput);
-                
                 Database database = await _cosmosClient.CreateDatabaseIfNotExistsAsync(
                     _settings.Cosmos.DatabaseName,
                     throughput: _settings.Performance.Throughput);
                 
-                _logger.LogInformation("Database {Database} verified/created successfully", _settings.Cosmos.DatabaseName);
-                
                 // Ensure container exists
-                _logger.LogInformation("Ensuring container {Container} exists with partition key {PartitionKey}", 
-                    _settings.Cosmos.ContainerName, _settings.Cosmos.PartitionKey);
-                
                 _container = await database.CreateContainerIfNotExistsAsync(
                     _settings.Cosmos.ContainerName,
                     _settings.Cosmos.PartitionKey);
-                
-                _logger.LogInformation("Container {Container} verified/created successfully", _settings.Cosmos.ContainerName);
-                _logger.LogInformation("Cosmos DB initialization completed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initializing Cosmos DB connection. Details: {Message}", ex.Message);
+                _logger.LogError(ex, "Error initializing Cosmos DB connection");
                 throw;
             }
         }
@@ -81,17 +64,17 @@ namespace CosmosUploader.Services
         {
             if (readings == null || readings.Count == 0)
             {
-                _logger.LogWarning("No readings to upload");
+                _logger.LogInformation("No readings to upload");
                 return;
             }
 
             if (_container == null)
             {
-                _logger.LogError("Cosmos DB container has not been initialized. Call InitializeAsync first.");
-                throw new InvalidOperationException("Cosmos DB container has not been initialized. Call InitializeAsync first.");
+                _logger.LogError("Cosmos DB container has not been initialized");
+                throw new InvalidOperationException("Cosmos DB container has not been initialized");
             }
 
-            _logger.LogInformation("Uploading {Count} readings to Cosmos DB", readings.Count);
+            _logger.LogInformation("Starting upload of {Count} readings", readings.Count);
             var stopwatch = Stopwatch.StartNew();
             
             try
@@ -112,9 +95,6 @@ namespace CosmosUploader.Services
                     int skip = i * batchSize;
                     int take = Math.Min(batchSize, readings.Count - skip);
                     var batch = readings.GetRange(skip, take);
-                    
-                    _logger.LogDebug("Processing batch {Current}/{Total} with {Size} items", 
-                        i + 1, batches, batch.Count);
                     
                     // Process batch in parallel for better performance
                     var tasks = new List<Task<(double, bool)>>();
@@ -138,23 +118,15 @@ namespace CosmosUploader.Services
                     
                     _totalRequestUnits += (long)batchRequestUnits;
                     totalUploaded += successCount;
-                    
-                    _logger.LogInformation(
-                        "Batch {Current}/{Total} completed: {Success}/{Total} items, {RU} RUs consumed", 
-                        i + 1, batches, successCount, batch.Count, batchRequestUnits);
                 }
                 
                 stopwatch.Stop();
                 
-                if (_settings.Logging.LogLatency)
-                {
-                    _logger.LogInformation(
-                        "Upload completed in {ElapsedMs} ms. Total RUs: {RUs}, Avg RU/item: {AvgRU}, Items/sec: {ItemsPerSec}", 
-                        stopwatch.ElapsedMilliseconds,
-                        _totalRequestUnits,
-                        _totalRequestUnits / Math.Max(1, totalUploaded),
-                        totalUploaded * 1000.0 / Math.Max(1, stopwatch.ElapsedMilliseconds));
-                }
+                _logger.LogInformation(
+                    "Upload completed: {Total} items in {ElapsedMs}ms, {RUs} RUs consumed", 
+                    totalUploaded,
+                    stopwatch.ElapsedMilliseconds,
+                    _totalRequestUnits);
             }
             catch (Exception ex)
             {
