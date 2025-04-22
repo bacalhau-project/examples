@@ -23,9 +23,18 @@ bacalhau job run jobs/upload_file.yaml \
     -V count="$COUNT" \
     --wait
 
+echo "Processing cosmos-config.yaml..."
+bacalhau job run jobs/upload_file.yaml \
+    -V script_b64="$(cat jobs/add_sensor_config.py | base64 -w 0)" \
+    -V file_b64="$(cat files/cosmos-config.yaml | base64 -w 0)" \
+    -V file_name="cosmos-config.yaml" \
+    --id-only \
+    -V count="$COUNT" \
+    --wait
+
 # Create a simplified cities.json file with just name, country, and coordinates
 TEMP_DIR=$(mktemp -d)
-jq -r '.cities | [.[] | {full_name, country, latitude, longitude}]' files/cities.json > "$TEMP_DIR/cities.json"
+jq '{cities: [.cities[] | {full_name, country, latitude, longitude}]}' files/cities.json > "$TEMP_DIR/cities.json"
 
 # Debug output
 # echo "Debug: Cities file contents:"
