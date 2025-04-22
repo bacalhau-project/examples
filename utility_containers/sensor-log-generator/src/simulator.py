@@ -8,9 +8,10 @@ from typing import Dict, Optional
 import numpy as np
 import psutil
 
-from .anomaly import AnomalyGenerator, AnomalyType
+from .anomaly import AnomalyGenerator
 from .config import ConfigManager
 from .database import SensorDatabase
+from .enums import FirmwareVersion, Manufacturer, Model
 from .location import LocationGenerator
 from .monitor import MonitoringServer
 
@@ -25,21 +26,35 @@ class SensorSimulator:
         Args:
             config: Configuration dictionary
             identity: Sensor identity configuration
+
+        Raises:
+            ValueError: If configuration is invalid
         """
         self.config = config
         self.identity = identity
 
+        if not self.identity.get("id"):
+            raise ValueError("Sensor ID is required in identity configuration")
+
+        self.sensor_id = self.identity["id"]
+
         # Set up logger
         self.logger = logging.getLogger(__name__)
 
-        # Initialize components
-        self.anomaly_generator = AnomalyGenerator(config.get("anomalies", {}), identity)
+        # Validate sensor configuration
+        try:
+            self._validate_sensor_config()
+        except ValueError as e:
+            self.logger.error(str(e))
+            raise
 
         # Get the base directory (where main.py is located)
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # Set up database path - use relative path when running locally
-        db_path = config.get("database", {}).get("path", "data/sensor_data.db")
+        db_path = config.get("database", {}).get(
+            "path", f"data/{self.sensor_id}/sensor_data.db"
+        )
         if not os.path.isabs(db_path):
             db_path = os.path.join(base_dir, db_path)
 
@@ -78,16 +93,13 @@ class SensorSimulator:
 
             # Get sensor configuration
             self.sensor_config = self.config_manager.get_sensor_config()
-            self.sensor_id = self.sensor_config.get("id", "SENSOR001")
-
-            # Initialize anomaly generator with sensor config
-            anomaly_config = self.config_manager.get_anomaly_config()
-            self.anomaly_generator = AnomalyGenerator(
-                anomaly_config, self.sensor_config
-            )
 
             # Get normal parameters
             self.normal_params = self.config_manager.get_normal_parameters()
+
+            # Initialize anomaly generator with sensor config
+            anomaly_config = self.config_manager.get_anomaly_config()
+            self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
 
             # Initialize state
             self.running = False
@@ -123,8 +135,43 @@ class SensorSimulator:
 
             logger.info("Sensor simulator initialized successfully")
         except Exception as e:
-            logger.error(f"Error initializing simulator: {e}")
+            logger.error(f"Error initializing simulator: {str(e)}")
             raise
+
+    def _validate_sensor_config(self):
+        """Validate the sensor configuration."""
+        # Check for required location
+        location = self.identity.get("location")
+        if not location:
+            raise ValueError("Location is required in identity configuration")
+
+        # Check manufacturer, model, and firmware version
+        try:
+            manufacturer = Manufacturer(self.identity.get("manufacturer"))
+        except ValueError:
+            valid_manufacturers = [m.value for m in Manufacturer]
+            raise ValueError(
+                f"Invalid manufacturer: {self.identity.get('manufacturer')}. "
+                f"Valid manufacturers are: {valid_manufacturers}"
+            )
+
+        try:
+            model = Model(self.identity.get("model"))
+        except ValueError:
+            valid_models = [m.value for m in Model]
+            raise ValueError(
+                f"Invalid model: {self.identity.get('model')}. "
+                f"Valid models are: {valid_models}"
+            )
+
+        try:
+            firmware = FirmwareVersion(self.identity.get("firmware_version"))
+        except ValueError:
+            valid_versions = [v.value for v in FirmwareVersion]
+            raise ValueError(
+                f"Invalid firmware version: {self.identity.get('firmware_version')}. "
+                f"Valid versions are: {valid_versions}"
+            )
 
     def generate_normal_reading(self):
         """Generate a normal sensor reading based on configured parameters.
@@ -303,9 +350,7 @@ class SensorSimulator:
 
                 # Update anomaly generator with new configuration
                 anomaly_config = self.config_manager.get_anomaly_config()
-                self.anomaly_generator = AnomalyGenerator(
-                    anomaly_config, self.sensor_config
-                )
+                self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
 
                 # Update monitoring configuration
                 monitoring_config = self.config.get("monitoring", {})
@@ -367,9 +412,9 @@ class SensorSimulator:
                 reading["status_code"],
                 anomaly_flag,
                 anomaly_type,
-                self.sensor_config.get("firmware_version"),
-                self.sensor_config.get("model"),
-                self.sensor_config.get("manufacturer"),
+                self.identity.get("firmware_version"),
+                self.identity.get("model"),
+                self.identity.get("manufacturer"),
                 location,  # Use the current location
             )
 
@@ -490,7 +535,7 @@ class SensorSimulator:
             "remaining_seconds": remaining,
             "readings_per_second": self.readings_per_second,
             "sensor_id": self.sensor_id,
-            "firmware_version": self.sensor_config.get("firmware_version"),
+            "firmware_version": self.identity.get("firmware_version"),
             "database_healthy": self.db.is_healthy() if hasattr(self, "db") else False,
             "memory_usage_mb": memory_usage.get("current_mb", 0),
             "memory_peak_mb": memory_usage.get("peak_mb", 0),
@@ -595,7 +640,9 @@ class SensorSimulator:
                 )
 
         # Use the configured location from identity
-        location = self.identity.get("location", "Unknown")
+        location = self.identity.get("location")
+        if not location:
+            raise ValueError("Location is required")
         logger.info(f"Using configured location: {location}")
         return location
 
