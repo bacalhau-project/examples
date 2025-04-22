@@ -134,7 +134,8 @@ def main():
         
         # Read cities file
         with open('/root/cities.json', 'r') as f:
-            cities = json.load(f)
+            cities_full = json.load(f)
+            cities = cities_full["cities"]
         
         debug_print(f"\nTotal cities loaded: {len(cities)}")
         debug_print("First 5 cities:")

@@ -8,7 +8,7 @@ namespace CosmosUploader.Services
 {
     public interface ICosmosUploader
     {
-        Task InitializeAsync();
+        Task InitializeAsync(CancellationToken cancellationToken);
         Task UploadReadingsAsync(List<SensorReading> readings, CancellationToken cancellationToken);
         Task<int> GetContainerItemCountAsync();
         Task<long> GetTotalRequestUnitsAsync();

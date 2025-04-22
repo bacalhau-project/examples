@@ -78,6 +78,8 @@ cosmos-uploader/.cspell/
 cosmos-uploader/bin/
 cosmos-uploader/obj/
 cosmos-uploader/cosmos-config.yaml
+demo-network/files/cosmos-config.yaml
+config/cosmos-config.yaml
 
 # Logs and data
 logs/
@@ -88,4 +90,3 @@ archive/
 data/*
 docker-compose*.y*ml
 docker-compose.yml
-config/cosmos-config.yaml
