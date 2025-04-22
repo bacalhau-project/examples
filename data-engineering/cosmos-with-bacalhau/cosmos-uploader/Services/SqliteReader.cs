@@ -30,66 +30,61 @@ namespace CosmosUploader.Services
 
         public void SetDataPath(string path)
         {
-            _dataPath = path;
-            _logger.LogInformation("SQLite data path set to: {Path}", _dataPath);
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path), "Data path cannot be null or empty");
+            }
+
+            // Convert relative path to absolute path based on current working directory
+            _dataPath = Path.GetFullPath(path);
+            _logger.LogDebug("SQLite data path set to: {Path}", _dataPath);
+            
+            // Ensure the directory containing the file exists
+            string? directoryPath = Path.GetDirectoryName(_dataPath);
+            if (string.IsNullOrEmpty(directoryPath))
+            {
+                throw new InvalidOperationException($"Could not determine directory path for: {_dataPath}");
+            }
+
+            if (!Directory.Exists(directoryPath))
+            {
+                _logger.LogWarning("Directory for SQLite file does not exist: {Path}", directoryPath);
+                Directory.CreateDirectory(directoryPath);
+            }
         }
 
         public void SetArchivePath(string path)
         {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path), "Archive path cannot be null or empty");
+            }
+
             _archivePath = path;
-            _logger.LogInformation("Archive path set to: {Path}", _archivePath);
+            _logger.LogDebug("Archive path set to: {Path}", _archivePath);
             Directory.CreateDirectory(_archivePath);
         }
 
-        public async Task ProcessAllDatabasesAsync(CancellationToken cancellationToken)
+        public async Task ProcessDatabaseAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting to process all databases in {Path}", _dataPath);
-            
-            // Ensure Cosmos DB is initialized before processing
             try
             {
-                await _cosmosUploader.InitializeAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to initialize Cosmos DB connection");
-                throw;
-            }
-            
-            // Find all SQLite databases
-            var dbFiles = Directory.GetFiles(_dataPath, "*.db", SearchOption.AllDirectories);
-            _logger.LogInformation("Found {Count} database files", dbFiles.Length);
-            
-            foreach (var dbFile in dbFiles)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogWarning("Processing cancelled by user");
-                    break;
-                }
-                
+                // Ensure Cosmos DB is initialized before processing
                 try
                 {
-                    await ProcessDatabaseAsync(dbFile, cancellationToken);
+                    await _cosmosUploader.InitializeAsync();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing database {Database}", dbFile);
+                    _logger.LogError(ex, "Failed to initialize Cosmos DB connection");
+                    throw;
                 }
-            }
-        }
-
-        public async Task ProcessDatabaseAsync(string dbPath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                _logger.LogInformation("Processing database: {DbPath}", dbPath);
 
                 // Read sensor data from the database
-                var readings = await ReadSensorDataAsync(dbPath, cancellationToken);
+                var readings = await ReadSensorDataAsync(_dataPath, cancellationToken);
                 if (readings == null || readings.Count == 0)
                 {
-                    _logger.LogWarning("No readings found in database: {DbPath}", dbPath);
+                    _logger.LogInformation("No readings found in database");
                     return;
                 }
 
@@ -100,24 +95,37 @@ namespace CosmosUploader.Services
                 }
                 catch (InvalidOperationException ex) when (ex.Message.Contains("Cosmos DB container has not been initialized"))
                 {
-                    _logger.LogError(ex, "Failed to upload readings to Cosmos DB: {Message}", ex.Message);
+                    _logger.LogError(ex, "Failed to upload readings to Cosmos DB");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to upload readings to Cosmos DB: {Message}", ex.Message);
+                    _logger.LogError(ex, "Error uploading readings to Cosmos DB");
                     throw;
                 }
 
                 // Archive the database
-                await ArchiveDatabaseAsync(dbPath, cancellationToken);
-
-                // Delete the processed database
-                DeleteProcessedDatabase(dbPath);
+                try
+                {
+                    await ArchiveDatabaseAsync(_dataPath, cancellationToken);
+                    
+                    // Get file sizes
+                    var dbSize = new FileInfo(_dataPath).Length;
+                    var parquetFiles = Directory.GetFiles(_archivePath, "*.parquet");
+                    var totalParquetSize = parquetFiles.Sum(f => new FileInfo(f).Length);
+                    
+                    _logger.LogInformation("Archive complete: {DbSize} bytes in DB, {ParquetSize} bytes in {Count} parquet files", 
+                        dbSize, totalParquetSize, parquetFiles.Length);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error archiving database");
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing database {DbPath}: {Message}", dbPath, ex.Message);
+                _logger.LogError(ex, "Error processing database");
                 throw;
             }
         }
@@ -257,7 +265,8 @@ namespace CosmosUploader.Services
                 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = "DELETE FROM sensor_readings WHERE synced = 1";
+                    // Mark records as synced instead of deleting them
+                    command.CommandText = "UPDATE sensor_readings SET synced = 1 WHERE synced = 0";
                     await command.ExecuteNonQueryAsync(cancellationToken);
                 }
             }
@@ -399,13 +408,14 @@ namespace CosmosUploader.Services
                 _logger.LogInformation("Read {Count} readings from sensor {SensorId} in {Location}", 
                     readings.Count, sensorId, location);
                 
-                // Upload to Cosmos DB
-                await _cosmosUploader.UploadReadingsAsync(readings, cancellationToken);
-                
-                // Archive the uploaded data if archive path is set
+                // Archive the data if archive path is set
                 if (!string.IsNullOrEmpty(_archivePath))
                 {
                     await ArchiveReadingsAsync(readings, sensorId, location, cancellationToken);
+                }
+                else
+                {
+                    _logger.LogInformation("Archive path not set, skipping data archiving");
                 }
                 
                 // Delete processed data from SQLite

@@ -4,6 +4,7 @@ import os
 import random
 import sys
 import secrets
+import math
 
 # Enable debug output if DEBUG environment variable is set
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
@@ -37,6 +38,38 @@ def get_region_for_country(country_code):
     elif country_code in APAC_COUNTRIES:
         return "APAC"
     return None
+
+def generate_fuzzy_coordinates(lat, lon, max_distance_km=3):
+    """
+    Generate random coordinates within max_distance_km of the original point.
+    Uses the Haversine formula to ensure the new point is within the specified distance.
+    """
+    # Earth's radius in kilometers
+    R = 6371
+    
+    # Convert max distance to radians
+    max_distance_rad = max_distance_km / R
+    
+    # Convert original coordinates to radians
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+    
+    # Generate random distance and bearing
+    distance = random.uniform(0, max_distance_rad)
+    bearing = random.uniform(0, 2 * math.pi)
+    
+    # Calculate new coordinates
+    new_lat_rad = math.asin(math.sin(lat_rad) * math.cos(distance) +
+                           math.cos(lat_rad) * math.sin(distance) * math.cos(bearing))
+    
+    new_lon_rad = lon_rad + math.atan2(math.sin(bearing) * math.sin(distance) * math.cos(lat_rad),
+                                      math.cos(distance) - math.sin(lat_rad) * math.sin(new_lat_rad))
+    
+    # Convert back to degrees
+    new_lat = math.degrees(new_lat_rad)
+    new_lon = math.degrees(new_lon_rad)
+    
+    return new_lat, new_lon
 
 def select_city_by_region(cities):
     """Select a city based on regional weightings."""
@@ -107,12 +140,26 @@ def main():
         debug_print("First 5 cities:")
         for city in cities[:5]:
             debug_print(f"  {city['full_name']}, {city['country']}")
+            debug_print(f"  Coordinates: {city.get('latitude', 'N/A')}, {city.get('longitude', 'N/A')}")
         
         # Select a city based on regional weightings
         selected_city = select_city_by_region(cities)
         
-        # Update location
+        # Get coordinates from the selected city
+        if 'latitude' not in selected_city or 'longitude' not in selected_city:
+            debug_print(f"Error: Selected city {selected_city['full_name']} missing coordinates")
+            debug_print(f"City data: {json.dumps(selected_city, indent=2)}")
+            sys.exit(1)
+        
+        # Generate fuzzy coordinates within 3km of the city
+        original_lat = selected_city['latitude']
+        original_lon = selected_city['longitude']
+        fuzzy_lat, fuzzy_lon = generate_fuzzy_coordinates(original_lat, original_lon)
+        
+        # Update location and coordinates
         node_identity['location'] = selected_city['full_name']
+        node_identity['latitude'] = fuzzy_lat
+        node_identity['longitude'] = fuzzy_lon
         
         # Write to mounted directory
         with open('/root/node_identity.json', 'w') as f:

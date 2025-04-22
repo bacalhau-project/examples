@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-# Set working directory
+# Set working directory 
 WORKDIR /cosmos-uploader
 
 # Copy csproj and restore dependencies
