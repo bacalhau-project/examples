@@ -37,3 +37,9 @@ FERRETDB_IP=your_FERRETDB_IP
 ```bash
 docker compose up
 ```
+
+## Build and push image:
+```bash
+make build
+make push
+```

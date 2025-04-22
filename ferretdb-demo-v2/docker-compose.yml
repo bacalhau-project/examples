@@ -49,10 +49,10 @@ services:
 
 
   postgres:
-    image: ghcr.io/ferretdb/postgres-documentdb:17-0.102.0-ferretdb-2.1.0
+    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-documentdb:2504162218
     container_name: ferret-demo-postgres
-#     WARNING: This image is probably only for x86_64 ####
-#    platform: linux/amd64
+#     WARNING: This image is built only for x86_64 ####
+    platform: linux/amd64
     restart: on-failure
     environment:
       - POSTGRES_USER=username
@@ -62,7 +62,7 @@ services:
       - ferret-demo-net
 
   ferretdb:
-    image: ghcr.io/ferretdb/ferretdb:2.1.0
+    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-ferretdb:2504162218
     container_name: ferret-demo-ferretdb
     restart: on-failure
     ports:
@@ -80,7 +80,7 @@ services:
         ipv4_address: 172.28.0.100
 
   storage:
-    image: quay.io/minio/minio
+    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-minio:2504162218
     container_name: ferret-demo-storage
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
