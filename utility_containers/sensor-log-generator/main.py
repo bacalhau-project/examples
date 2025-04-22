@@ -10,11 +10,74 @@
 # ///
 
 import argparse
+import json
 import logging
-import os
+import random
+import string
 import sys
+from typing import Dict
+
+import yaml
 
 from src.simulator import SensorSimulator
+
+
+def load_config(config_path: str) -> Dict:
+    """Load configuration from YAML file.
+
+    Args:
+        config_path: Path to the configuration file
+
+    Returns:
+        Dictionary containing the configuration
+    """
+    try:
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        logging.error(f"Error loading configuration file: {e}")
+        raise
+
+
+def load_identity(identity_path: str) -> Dict:
+    """Load sensor identity from JSON file.
+
+    Args:
+        identity_path: Path to the identity file
+
+    Returns:
+        Dictionary containing the sensor identity
+    """
+    try:
+        with open(identity_path, "r") as f:
+            identity = json.load(f)
+            if not identity.get("id"):
+                logging.info(
+                    "Identity file does not contain an 'id' key, generating..."
+                )
+                identity["id"] = generate_sensor_id(identity)
+            return identity
+    except Exception as e:
+        logging.error(f"Error loading identity file: {e}")
+        raise
+
+
+def generate_sensor_id(identity: Dict) -> str:
+    """Generate a new sensor ID in the format CITY_XXXXXX."""
+    uppercity_no_special_chars = "".join(
+        c.upper() for c in identity.get("location") if c.isalpha()
+    )
+
+    # Get the first 3 letters of the location
+    location_prefix = uppercity_no_special_chars[:4]
+    if not location_prefix:
+        raise ValueError("Location is required to generate a sensor ID")
+
+    # Generate a random 6-digit string of characters and numbers, no vowels, no special characters
+    vowels = "aeiou"
+    consonants = "".join(c.upper() for c in string.ascii_letters if c not in vowels)
+    random_number = "".join(random.choice(consonants + string.digits) for _ in range(6))
+    return f"{location_prefix}_{random_number}"
 
 
 def setup_logging(config):
@@ -49,11 +112,20 @@ def setup_logging(config):
 
 
 def main():
+    """Main entry point for the sensor simulator."""
     parser = argparse.ArgumentParser(description="Industrial Sensor Simulator")
     parser.add_argument(
-        "--config", type=str, default="config.yaml", help="Path to configuration file"
+        "--config",
+        type=str,
+        default="config.yaml",
+        help="Path to configuration file (default: config.yaml)",
     )
-    parser.add_argument("--identity", type=str, help="Path to node identity file")
+    parser.add_argument(
+        "--identity",
+        type=str,
+        default="node_identity.json",
+        help="Path to node identity file (default: node_identity.json)",
+    )
     parser.add_argument(
         "--exit",
         action="store_true",
@@ -66,19 +138,23 @@ def main():
         print("Dependencies loaded successfully. Exiting as requested.")
         sys.exit(0)
 
+    # Load configuration files
+    config = load_config(args.config)
+    identity = load_identity(args.identity)
+
     # Check if config file exists
-    if not os.path.exists(args.config):
-        logging.warning(f"Config file not found: {args.config}")
+    if not args.config:
+        logging.warning("Config file not specified")
         logging.info("Using default configuration")
 
-    # Run the simulator
-    simulator = SensorSimulator(config_path=args.config, identity_path=args.identity)
-
     # Set up logging based on config
-    setup_logging(simulator.config_manager.config)
+    setup_logging(config)
+
+    # Run the simulator
+    simulator = SensorSimulator(config=config, identity=identity)
 
     # Start simulation
-    logging.info(f"Starting sensor simulator")
+    logging.info("Starting sensor simulator")
     simulator.run()
 
 

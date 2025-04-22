@@ -1,6 +1,6 @@
 name: sqs-publisher-eu
 type: batch
-count: {{ or (index . "REPLICAS") 3 }}
+count: {{.count}}
 constraints:
   - key: type
     operator: "="

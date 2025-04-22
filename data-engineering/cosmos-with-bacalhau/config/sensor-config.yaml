@@ -1,0 +1,86 @@
+# Sensor Simulator Configuration
+
+sensor:
+  type: "temperature_vibration"
+  location: "Factory Floor A"
+  manufacturer: "SensorTech"
+  model: "TempVibe-2000"
+  firmware_version: "1.3"
+
+simulation:
+  readings_per_second: 1
+  run_time_seconds: 360000 # 100 hours
+
+normal_parameters:
+  temperature:
+    mean: 65.0 # Celsius
+    std_dev: 2.0
+    min: 50.0
+    max: 80.0
+  vibration:
+    mean: 2.5 # mm/s²
+    std_dev: 0.5
+    min: 0.1
+    max: 10.0
+  voltage:
+    mean: 12.0 # Volts
+    std_dev: 0.1
+    min: 11.5
+    max: 12.5
+
+anomalies:
+  enabled: true
+  base_probability: 0.01
+  types:
+    spike:
+      weight: 0.3
+      duration_seconds: 60
+    trend:
+      weight: 0.2
+      duration_seconds: 300
+    pattern:
+      weight: 0.2
+      duration_seconds: 600
+    missing_data:
+      weight: 0.15
+      duration_seconds: 30
+    noise:
+      weight: 0.15
+      duration_seconds: 120
+
+database:
+  path: "data/sensor_data.db"
+  backup_enabled: false
+  backup_interval_hours: 24
+  backup_path: "/app/data/backups/"
+  batch_size: 100 # Number of readings to insert in a single batch
+
+logging:
+  level: "INFO"
+  file: "data/sensor_simulator.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console_output: true
+
+output:
+  csv_export_enabled: false
+  csv_export_path: "/app/data/exports/"
+  csv_export_interval_minutes: 60
+
+# Configuration for dynamic reloading
+dynamic_reloading:
+  enabled: true
+  check_interval_seconds: 5
+
+# Configuration for monitoring server
+monitoring:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  metrics_interval_seconds: 60
+
+# Configuration for location generation
+random_location:
+  enabled: false  # Disable random location to use container-specified locations
+  number_of_cities: 10
+  gps_variation: 100 # meters
+  cities_file: "src/cities.json" # Path to cities file in src directory
