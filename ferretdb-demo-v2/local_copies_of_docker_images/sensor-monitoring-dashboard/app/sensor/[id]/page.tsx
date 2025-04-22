@@ -1,7 +1,7 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import SensorChart from "@/components/sensor-chart"
-import SensorDetails from "@/components/sensor-details"
+import { Button } from "../../../components/ui/button"
+import SensorChart from "../../../components/sensor-chart"
+import SensorDetails from "../../../components/sensor-details"
 
 export default function SensorPage({ params }: { params: { id: string } }) {
   return (
