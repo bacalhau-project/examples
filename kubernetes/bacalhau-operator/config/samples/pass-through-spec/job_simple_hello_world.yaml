@@ -7,7 +7,7 @@ spec:
   raw:
     Name: hello world happy path
     Type: batch
-    Count: 2
+    Count: 1
     Tasks:
       - Name: main
         Engine:
