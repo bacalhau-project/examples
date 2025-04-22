@@ -12,7 +12,6 @@ namespace CosmosUploader.Configuration
     {
         private readonly string _configPath;
         private readonly ILogger<YamlConfigurationProvider> _logger;
-        private readonly FileSystemWatcher _watcher;
         private readonly CancellationTokenSource _cts;
         private CosmosConfig _currentConfig;
         private DateTime _lastWriteTime;
@@ -28,22 +27,6 @@ namespace CosmosUploader.Configuration
             _currentConfig = LoadConfiguration();
             _lastWriteTime = File.GetLastWriteTime(_configPath);
 
-            // Set up file watcher
-            var directoryPath = Path.GetDirectoryName(_configPath);
-            if (string.IsNullOrEmpty(directoryPath))
-            {
-                throw new InvalidOperationException("Invalid configuration file path");
-            }
-
-            _watcher = new FileSystemWatcher(directoryPath)
-            {
-                Filter = Path.GetFileName(_configPath),
-                NotifyFilter = NotifyFilters.LastWrite
-            };
-
-            _watcher.Changed += OnConfigFileChanged;
-            _watcher.EnableRaisingEvents = true;
-
             // Start background task to check for changes
             Task.Run(WatchConfigurationChanges, _cts.Token);
         }
@@ -54,6 +37,7 @@ namespace CosmosUploader.Configuration
             {
                 var deserializer = new DeserializerBuilder()
                     .WithNamingConvention(UnderscoredNamingConvention.Instance)
+                    .IgnoreUnmatchedProperties()
                     .Build();
 
                 var yaml = File.ReadAllText(_configPath);
@@ -76,15 +60,6 @@ namespace CosmosUploader.Configuration
             
             if (string.IsNullOrEmpty(config.Cosmos.Key))
                 throw new InvalidOperationException("Cosmos key is required");
-            
-            if (config.Performance.Throughput <= 0)
-                throw new InvalidOperationException("Throughput must be greater than 0");
-            
-            if (config.Performance.BatchSize <= 0)
-                throw new InvalidOperationException("Batch size must be greater than 0");
-            
-            if (config.Performance.MaxParallelOperations <= 0)
-                throw new InvalidOperationException("Max parallel operations must be greater than 0");
             
             if (config.ConfigWatch.PollIntervalSeconds <= 0)
                 throw new InvalidOperationException("Poll interval must be greater than 0");
@@ -120,14 +95,6 @@ namespace CosmosUploader.Configuration
             }
         }
 
-        private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
-        {
-            if (e.ChangeType == WatcherChangeTypes.Changed)
-            {
-                _logger.LogInformation("Configuration file change detected");
-            }
-        }
-
         public CosmosConfig GetConfiguration()
         {
             return _currentConfig;
@@ -136,7 +103,6 @@ namespace CosmosUploader.Configuration
         public void Dispose()
         {
             _cts.Cancel();
-            _watcher.Dispose();
             _cts.Dispose();
         }
     }

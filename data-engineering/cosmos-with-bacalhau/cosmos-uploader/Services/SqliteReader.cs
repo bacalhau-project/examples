@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CosmosUploader.Configuration;
 using CosmosUploader.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -19,13 +20,15 @@ namespace CosmosUploader.Services
     {
         private readonly ILogger<SqliteReader> _logger;
         private readonly ICosmosUploader _cosmosUploader;
-        public required string _dataPath { get; set; }
-        public required string _archivePath { get; set; }
+        private readonly AppSettings _settings;
+        public string? _dataPath { get; set; }
+        public string? _archivePath { get; set; }
 
-        public SqliteReader(ILogger<SqliteReader> logger, ICosmosUploader cosmosUploader)
+        public SqliteReader(ILogger<SqliteReader> logger, ICosmosUploader cosmosUploader, AppSettings settings)
         {
             _logger = logger;
             _cosmosUploader = cosmosUploader;
+            _settings = settings;
         }
 
         public void SetDataPath(string path)
@@ -67,24 +70,26 @@ namespace CosmosUploader.Services
 
         public async Task ProcessDatabaseAsync(CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(_dataPath))
+            {
+                _logger.LogError("Data path has not been set. Cannot process database.");
+                throw new InvalidOperationException("Data path must be set before processing.");
+            }
+
             try
             {
-                // Ensure Cosmos DB is initialized before processing
-                try
+                await EnsureSyncIndexAsync(_dataPath, cancellationToken);
+
+                if (_settings.DevelopmentMode)
                 {
-                    await _cosmosUploader.InitializeAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to initialize Cosmos DB connection");
-                    throw;
+                    await ResetSyncStatusAsync(_dataPath, cancellationToken);
                 }
 
                 // Read sensor data from the database
                 var readings = await ReadSensorDataAsync(_dataPath, cancellationToken);
                 if (readings == null || readings.Count == 0)
                 {
-                    _logger.LogInformation("No readings found in database");
+                    _logger.LogInformation("No new readings found in database");
                     return;
                 }
 
@@ -111,11 +116,19 @@ namespace CosmosUploader.Services
                     
                     // Get file sizes
                     var dbSize = new FileInfo(_dataPath).Length;
-                    var parquetFiles = Directory.GetFiles(_archivePath, "*.parquet");
-                    var totalParquetSize = parquetFiles.Sum(f => new FileInfo(f).Length);
                     
-                    _logger.LogInformation("Archive complete: {DbSize} bytes in DB, {ParquetSize} bytes in {Count} parquet files", 
-                        dbSize, totalParquetSize, parquetFiles.Length);
+                    if (!string.IsNullOrEmpty(_archivePath))
+                    {
+                        var parquetFiles = Directory.GetFiles(_archivePath, "*.parquet");
+                        var totalParquetSize = parquetFiles.Sum(f => new FileInfo(f).Length);
+                        _logger.LogInformation("Archive complete: {DbSize} bytes in DB, {ParquetSize} bytes in {Count} parquet files", 
+                            dbSize, totalParquetSize, parquetFiles.Length);
+                    }
+                    else 
+                    {
+                        _logger.LogInformation("Archive path not set, skipping parquet file size calculation.");
+                        _logger.LogInformation("Archive complete: {DbSize} bytes in DB", dbSize);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -127,6 +140,79 @@ namespace CosmosUploader.Services
             {
                 _logger.LogError(ex, "Error processing database");
                 throw;
+            }
+        }
+
+        private async Task EnsureSyncIndexAsync(string dbPath, CancellationToken cancellationToken)
+        {
+            _logger.LogDebug("Ensuring index 'idx_sensor_readings_synced' exists on {DbPath}", dbPath);
+            var connectionString = $"Data Source={dbPath}";
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                // Check if table exists first (optional but good practice)
+                bool tableExists = false;
+                using (var checkCmd = connection.CreateCommand())
+                {
+                    checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='sensor_readings'";
+                    if (await checkCmd.ExecuteScalarAsync(cancellationToken) != null)
+                    {
+                        tableExists = true;
+                    }
+                }
+
+                if (!tableExists)
+                {
+                    _logger.LogWarning("Table 'sensor_readings' not found. Cannot create index.");
+                    return;
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "CREATE INDEX IF NOT EXISTS idx_sensor_readings_synced ON sensor_readings (synced);";
+                    await command.ExecuteNonQueryAsync(cancellationToken);
+                    // Note: ExecuteNonQuery doesn't easily tell us if the index was *newly* created or already existed.
+                    // We could query sqlite_master again if we needed that specific info, but IF NOT EXISTS handles the core logic.
+                    _logger.LogDebug("Index check/creation command executed successfully.");
+                }
+            }
+        }
+
+        private async Task ResetSyncStatusAsync(string dbPath, CancellationToken cancellationToken)
+        {
+            _logger.LogWarning("DEVELOPMENT MODE: Resetting sync status for all records in {DbPath}", dbPath);
+            var connectionString = $"Data Source={dbPath}";
+            using (var connection = new SqliteConnection(connectionString))
+            {
+                await connection.OpenAsync(cancellationToken);
+
+                // Check if table and column exist before updating
+                bool tableExists = false;
+                using (var checkCmd = connection.CreateCommand())
+                {
+                    checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='sensor_readings'";
+                    if (await checkCmd.ExecuteScalarAsync(cancellationToken) != null)
+                    {
+                        tableExists = true;
+                    }
+                }
+
+                if (!tableExists)
+                {
+                    _logger.LogWarning("Table 'sensor_readings' not found. Skipping sync status reset.");
+                    return;
+                }
+
+                // Consider checking if 'synced' column exists if schema might vary
+                // For now, assume it exists if the table exists
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "UPDATE sensor_readings SET synced = 0 WHERE synced != 0";
+                    int rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
+                    _logger.LogInformation("Reset sync status for {RowsAffected} records.", rowsAffected);
+                }
             }
         }
 
@@ -169,6 +255,8 @@ namespace CosmosUploader.Services
                         ORDER BY timestamp
                         LIMIT 10000";
                     
+                    _logger.LogDebug("Executing query: {Query}", command.CommandText);
+
                     using (var reader = await command.ExecuteReaderAsync(cancellationToken))
                     {
                         while (await reader.ReadAsync(cancellationToken))
@@ -253,6 +341,7 @@ namespace CosmosUploader.Services
                 }
             }
             
+            _logger.LogInformation("Read {Count} new sensor readings from SQLite.", readings.Count);
             return readings;
         }
 
@@ -306,17 +395,14 @@ namespace CosmosUploader.Services
 
         private async Task ArchiveReadingsAsync(List<SensorReading> readings, string sensorId, string location, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(_archivePath))
+            {
+                _logger.LogWarning("Archive path is not set. Cannot archive readings for sensor {SensorId}", sensorId);
+                return;
+            }
+
             try
             {
-                /* 
-                 * IMPORTANT NOTE ABOUT DIRECTORY STRUCTURE:
-                 * In Docker setup, the archive path is mounted as:
-                 * ./archive/{{ city_clean }}:/app/archive
-                 * 
-                 * This means each uploader container already has its archive path
-                 * set to a city-specific directory. We need to ensure files are
-                 * named correctly within that city directory.
-                 */
                 string cityName = location.Trim(); // For logging purposes
                 
                 // Ensure archive directory exists

@@ -1,16 +1,29 @@
 # Cosmos Uploader
 
-A .NET 10.0 application for efficiently uploading data to Azure Cosmos DB. This tool supports batch processing and parallel operations for optimal performance.
+A .NET 9.0 application for efficiently uploading sensor data from SQLite databases to Azure Cosmos DB.
+This tool leverages several optimizations for high throughput and resilience.
+
+## Key Features
+
+- **Bulk Upload**: Utilizes the Cosmos DB SDK's bulk execution (`AllowBulkExecution = true`) for optimal throughput.
+- **Direct Connection Mode**: Connects using `ConnectionMode.Direct` for lower latency (requires outbound TCP ports 10250-10255 to be open).
+- **Optimized Operations**: Uses `CreateItemAsync` for inserts, assuming sensor data is typically new, reducing RU cost compared to upserts.
+- **SQLite Optimization**: Automatically creates an index on the `synced` column in the source SQLite database to speed up post-upload updates.
+- **Development Mode**: Includes a `--development` flag to reset SQLite sync status and generate new IDs/timestamps, facilitating testing.
+- **Batch Processing**: Reads data from SQLite in batches (though Cosmos bulk handles the upload batching).
+- **Data Archiving**: Optional archiving of processed data to Parquet files.
+- **Continuous Mode**: Can run continuously, polling for new data.
+- **Configurable**: Settings managed via a YAML configuration file.
 
 ## Prerequisites
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - Azure Cosmos DB account with appropriate access credentials
-- SQLite (for local data storage)
+- SQLite databases containing sensor data
 
 ## Building the Application
 
-1. Navigate to the cosmos-uploader directory:
+1. Navigate to the `cosmos-uploader` directory:
    ```bash
    cd cosmos-uploader
    ```
@@ -23,10 +36,10 @@ A .NET 10.0 application for efficiently uploading data to Azure Cosmos DB. This 
 
 ## Configuration
 
-The application uses a YAML configuration file. Create a `cosmos-config.yaml` file in the project root with the following structure:
+The application uses a YAML configuration file (e.g., `cosmos-config.yaml`) passed via the `--config` argument. See the main project `config/` directory for examples.
 
 ```yaml
-# Cosmos DB Configuration
+# Example cosmos-config.yaml structure
 cosmos:
   endpoint: "https://your-cosmos-account.documents.azure.com:443/"
   key: "your-cosmos-key"
@@ -34,94 +47,68 @@ cosmos:
   container: "SensorReadings"
   partition_key: "/city"
 
-# Performance Settings
 performance:
-  throughput: 400
-  batch_size: 100
-  max_parallel_operations: 10
+  # throughput: 400 # Removed: Not applicable for Serverless accounts
+  autoscale: true  # Ignored by Serverless, relevant for Provisioned Throughput
+  disable_indexing_during_bulk: false # Optional: Can improve write RU cost but affects reads
+  sleep_interval: 60 # Seconds between polls in continuous mode
 
-# Logging Configuration
 logging:
-  level: "INFO"
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR
   log_request_units: true
   log_latency: true
-
-# Configuration File Watch Settings
-config_watch:
-  enabled: true
-  poll_interval_seconds: 5
 ```
 
 ## Running the Application
 
-1. Create your `cosmos-config.yaml` file with the appropriate settings.
+1. Ensure your `cosmos-config.yaml` file is created and populated.
+2. Run the application from the `cosmos-uploader` directory:
 
-2. Run the application:
+   **Standard Run (Single):**
    ```bash
-   dotnet run --config cosmos-config.yaml --sqlite /path/to/sqlite
+   dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db
    ```
 
-The application supports the following command-line arguments:
-- `--config`: Path to the YAML configuration file (required)
-- `--sqlite`: Directory containing SQLite databases (required)
-- `--continuous`: Run in continuous mode, polling for new data
-- `--interval`: Interval in seconds between upload attempts in continuous mode (default: 60)
-- `--archive-path`: Path to archive uploaded data
+   **Continuous Mode:**
+   ```bash
+   dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db --continuous
+   ```
 
-## Configuration File Watching
+   **Development Mode (Single Run):**
+   ```bash
+   dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db --development
+   ```
+   *(Note: `--development` resets the 'synced' flag in SQLite and generates new IDs/Timestamps for uploaded items)*
 
-The application automatically watches the configuration file for changes. When changes are detected:
-- The configuration is reloaded
-- The new settings are applied
-- A log message is generated
-
-You can configure the watch behavior in the `config_watch` section of your YAML file:
-- `enabled`: Enable/disable configuration watching
-- `poll_interval_seconds`: How often to check for changes
+### Command-Line Arguments:
+- `--config`: Path to the YAML configuration file (required).
+- `--sqlite`: Path to the SQLite database file (required).
+- `--continuous`: Run in continuous mode, polling for new data.
+- `--interval`: Interval in seconds between upload attempts in continuous mode (default: 60, uses `performance.sleep_interval` from config).
+- `--archive-path`: Path to directory for archiving processed data as Parquet files (optional).
+- `--development`: Enable development mode.
 
 ## Performance Tuning
 
-The application includes several performance-related settings in the YAML configuration:
-
-- `throughput`: RU/s allocated for the container
-- `batch_size`: Number of items processed in each batch
-- `max_parallel_operations`: Maximum number of parallel operations
-
-Adjust these settings based on your specific requirements and Cosmos DB capacity.
+- **Serverless**: Since this account is Serverless, focus is on optimizing RU cost per operation (e.g., via Indexing Policy) rather than tuning provisioned throughput.
+- **Provisioned Throughput Accounts**: For non-Serverless accounts, adjust `performance.throughput` in the config or use Azure Portal/CLI. Consider enabling autoscale on your Cosmos container for variable workloads.
+- **Direct Mode Ports**: Ensure outbound TCP ports 10250-10255 are open from the client machine/network to your Cosmos DB instance.
+- **Bulk Execution**: The SDK handles optimizing requests with `AllowBulkExecution = true`. Client-side batching/parallelism limits are no longer configured.
 
 ## Logging
 
-The application uses Microsoft.Extensions.Logging with the following configuration options in the YAML file:
-
-- `level`: Log level (INFO, DEBUG, WARNING, ERROR)
-- `log_request_units`: Enable/disable RU consumption logging
-- `log_latency`: Enable/disable operation latency logging
+Configure the log `level` (`DEBUG`, `INFO`, `WARNING`, `ERROR`) and detail flags (`log_request_units`, `log_latency`) in the `logging` section of the configuration file.
 
 ## Troubleshooting
 
-1. Connection Issues:
-   - Verify your Cosmos DB endpoint and key in the YAML configuration
-   - Check network connectivity
-   - Ensure the Cosmos DB account is accessible
-
-2. Performance Issues:
-   - Monitor RU consumption
-   - Adjust batch size and parallel operations in the YAML configuration
-   - Check network latency
-
-3. Data Issues:
-   - Verify data format and schema
-   - Check partition key configuration in the YAML file
-   - Monitor error logs for specific issues
+1. **Connection Issues**: Verify Cosmos DB endpoint/key, network connectivity (including Direct Mode ports if applicable), and container existence.
+2. **Performance Issues**: Monitor RU consumption in Azure Portal. Ensure Direct Mode ports are open. Check client resource usage (CPU/memory).
+3. **Data Issues**: Verify SQLite schema (`sensor_readings` table with `synced` column). Check partition key configuration.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+Standard fork, branch, commit, push, PR workflow.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+MIT License - see the main project LICENSE file. 

@@ -12,7 +12,8 @@ namespace CosmosUploader.Configuration
             Key = string.Empty,
             DatabaseName = "SensorData",
             ContainerName = "SensorReadings",
-            PartitionKey = "/city"
+            PartitionKey = "/city",
+            ResourceGroup = null
         };
 
         [YamlMember(Alias = "performance")]
