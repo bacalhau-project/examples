@@ -81,5 +81,5 @@ Tasks:
       CPU: "0.03"
       Memory: "64mb"
     Timeouts:
-      ExecutionTimeout: 120
+      ExecutionTimeout: 300
       QueueTimeout: 300
