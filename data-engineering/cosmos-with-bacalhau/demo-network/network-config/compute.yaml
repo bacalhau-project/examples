@@ -5,5 +5,8 @@ Compute:
     - host.docker.internal:4222
   AllowListedLocalPaths:
     - "/root/**:rw"
+  AllocatedCapacity:
+    CPU: "0.01%"
+    Memory: "0.01%"
 UpdateConfig:
   Interval: 0
