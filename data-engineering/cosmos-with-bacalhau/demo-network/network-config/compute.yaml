@@ -2,7 +2,7 @@ NameProvider: hostname
 Compute:
   Enabled: true
   Orchestrators:
-    - host.docker.internal:4222
+    - orchestrator:4222
   AllowListedLocalPaths:
     - "/root/**:rw"
   # We want to run 1000 compute nodes in the VM.
