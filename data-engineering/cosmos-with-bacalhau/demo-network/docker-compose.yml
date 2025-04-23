@@ -55,7 +55,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.50"  # Allocate 10% CPU per node
+          cpus: "0.50" # Allocate 10% CPU per node
           memory: "500M" # 500MB per service
     networks:
       - bacalhau-network
@@ -69,13 +69,13 @@ services:
         hard: 65536
     #<<: *logging-driver
 
-  # New non-DinD nodes that use the host Docker socket
+    # New non-DinD nodes that use the host Docker socket
   host-nodes:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     command: serve -c /etc/bacalhau/config.yaml -c labels=docker-type=host
     volumes:
       - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
-      - /var/run/docker.sock:/var/run/docker.sock  # Mount host Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock # Mount host Docker socket
     environment:
       <<: *common-env-variables
     depends_on:
@@ -84,7 +84,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.04"  # Allocate 4% CPU per node
+          cpus: "0.04" # Allocate 4% CPU per node
           memory: "500M" # 500MB per service
     networks:
       - bacalhau-network
