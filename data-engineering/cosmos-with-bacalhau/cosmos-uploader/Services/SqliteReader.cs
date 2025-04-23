@@ -118,65 +118,88 @@ namespace CosmosUploader.Services
                     totalReadCount += batchReadings.Count;
                     _logger.LogInformation("Read {Count} raw sensor readings for Batch #{BatchNumber}.", batchReadings.Count, batchNumber);
 
-                    // --- Processing Pipeline for the Batch --- 
-                    IEnumerable<DataItem> dataToUpload = ConvertReadingsToDataItems(batchReadings);
-                    int itemCount = dataToUpload.Count(); // Get initial count for the batch
+                    // --- Processing Pipeline for the Batch (using streaming where possible) --- 
+                    // Start with the raw converted data
+                    IEnumerable<DataItem> currentPipelineData = ConvertReadingsToDataItems(batchReadings);
+                    IAsyncEnumerable<DataItem>? asyncPipelineData = null; // To hold intermediate async results
 
                     try 
                     {
-                        // Apply processors sequentially (processors should ideally be stream-friendly)
+                        // Chain processors, passing IAsyncEnumerable between streamable ones
                         if (schemaProcessor != null)
                         {
-                            _logger.LogDebug("Applying Schema Processor to Batch #{BatchNumber}...", batchNumber);
-                            dataToUpload = await schemaProcessor.ProcessAsync(dataToUpload, cancellationToken);
-                            itemCount = dataToUpload.Count(); // Re-count after processing
-                             _logger.LogDebug("Batch #{BatchNumber} count after Schema Processor: {Count}", batchNumber, itemCount);
-                             // If a processor eliminates all items, log it but continue processing the batch (e.g., archiving)
-                             if (itemCount == 0) { _logger.LogInformation("No data remaining in Batch #{BatchNumber} after schema processing.", batchNumber); }
+                            _logger.LogDebug("Applying Schema Processor (streaming) to Batch #{BatchNumber}...", batchNumber);
+                            // Use the streaming method
+                            asyncPipelineData = schemaProcessor.ProcessStreamAsync(currentPipelineData, cancellationToken);
+                        }
+                        else {
+                             // If no schema processor, wrap the IEnumerable in an async enumerable for consistency
+                             asyncPipelineData = WrapInAsyncEnumerable(currentPipelineData);
                         }
 
-                        if (sanitizeProcessor != null && itemCount > 0) // No need to run if previous step yielded 0
+                        if (sanitizeProcessor != null) 
                         {
-                             _logger.LogDebug("Applying Sanitize Processor to Batch #{BatchNumber}...", batchNumber);
-                            dataToUpload = await sanitizeProcessor.ProcessAsync(dataToUpload, cancellationToken);
-                            itemCount = dataToUpload.Count(); 
-                            _logger.LogDebug("Batch #{BatchNumber} count after Sanitize Processor: {Count}", batchNumber, itemCount);
-                             if (itemCount == 0) { _logger.LogInformation("No data remaining in Batch #{BatchNumber} after sanitize processing.", batchNumber); }
+                             _logger.LogDebug("Applying Sanitize Processor (streaming) to Batch #{BatchNumber}...", batchNumber);
+                             // Input is the output of the previous stage (or wrapped raw data)
+                            asyncPipelineData = sanitizeProcessor.ProcessStreamAsync(asyncPipelineData, cancellationToken);
                         }
+                        // else: asyncPipelineData remains from previous stage or wrapped raw data
 
-                        if (aggregateProcessor != null && itemCount > 0) // No need to run if previous step yielded 0
+                        // Aggregation is not easily streamable per-item, so it consumes the async stream
+                        // and returns a Task<IEnumerable>
+                        IEnumerable<DataItem> finalDataToUpload;
+                        if (aggregateProcessor != null) 
                         {
                              _logger.LogDebug("Applying Aggregate Processor to Batch #{BatchNumber}...", batchNumber);
-                            dataToUpload = await aggregateProcessor.ProcessAsync(dataToUpload, cancellationToken);
-                            itemCount = dataToUpload.Count(); 
-                            _logger.LogDebug("Batch #{BatchNumber} count after Aggregate Processor: {Count}", batchNumber, itemCount);
-                             if (itemCount == 0) { _logger.LogInformation("No data remaining in Batch #{BatchNumber} after aggregate processing.", batchNumber); }
+                             // AggregateProcessor needs to consume the async stream
+                             var dataBeforeAggregation = new List<DataItem>();
+                             await foreach(var item in asyncPipelineData.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                                 dataBeforeAggregation.Add(item);
+                             }
+                             _logger.LogDebug("Collected {Count} items before aggregation for Batch #{BatchNumber}.", dataBeforeAggregation.Count, batchNumber);
+                             if (!dataBeforeAggregation.Any()) {
+                                 finalDataToUpload = Enumerable.Empty<DataItem>();
+                             } else {
+                                 // Call the aggregate processor (which internally might still buffer groups)
+                                 finalDataToUpload = await aggregateProcessor.ProcessAsync(dataBeforeAggregation, cancellationToken);
+                             }
                         }
+                        else {
+                             // No aggregation, materialize the async stream result for upload
+                              _logger.LogDebug("No aggregation step. Materializing stream for Batch #{BatchNumber}...", batchNumber);
+                             var materializedData = new List<DataItem>();
+                             await foreach(var item in asyncPipelineData.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                                 materializedData.Add(item);
+                             }
+                             finalDataToUpload = materializedData;
+                             _logger.LogDebug("Materialized {Count} items for Batch #{BatchNumber}.", finalDataToUpload.Count(), batchNumber);
+                        }
+                        
+                        int finalItemCount = finalDataToUpload.Count();
+                         _logger.LogInformation("Processing pipeline completed for Batch #{BatchNumber}. Final item count for upload: {Count}", batchNumber, finalItemCount);
+                        if (finalItemCount == 0) { _logger.LogInformation("No data to upload for Batch #{BatchNumber} after processing pipeline.", batchNumber); }
+
+                         // --- Upload processed data for the Batch --- 
+                        if (finalDataToUpload.Any()) 
+                        { 
+                            _logger.LogInformation("Attempting to upload {Count} processed items from Batch #{BatchNumber}...", finalItemCount, batchNumber);
+                            try
+                            {
+                                await _cosmosUploader.UploadDataAsync(finalDataToUpload, cancellationToken);
+                            }
+                            catch (Exception ex) // Catch specific exceptions if needed (e.g., CosmosException)
+                            {
+                                _logger.LogError(ex, "Error uploading processed data for Batch #{BatchNumber}. Aborting further processing.", batchNumber);
+                                throw; // Rethrow upload errors to stop the process
+                            }
+                        }
+                        // else: Logged above that there's nothing to upload
+
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error during data processing pipeline for Batch #{BatchNumber}. Skipping upload for this batch.", batchNumber);
-                        // Decide whether to stop all processing or just skip this batch. Stopping is safer.
                         throw new Exception($"Processing pipeline failed for Batch #{batchNumber}. Aborting.", ex);
-                    }
-
-                    // --- Upload processed data for the Batch --- 
-                    if (dataToUpload.Any()) 
-                    {
-                         _logger.LogInformation("Attempting to upload {Count} processed items from Batch #{BatchNumber}...", dataToUpload.Count(), batchNumber);
-                        try
-                        {
-                             await _cosmosUploader.UploadDataAsync(dataToUpload, cancellationToken);
-                        }
-                        catch (Exception ex) // Catch specific exceptions if needed (e.g., CosmosException)
-                        {
-                            _logger.LogError(ex, "Error uploading processed data for Batch #{BatchNumber}. Aborting further processing.", batchNumber);
-                            throw; // Rethrow upload errors to stop the process
-                        }
-                    }
-                    else 
-                    {
-                         _logger.LogInformation("No data items to upload after processing pipeline for Batch #{BatchNumber}.", batchNumber);
                     }
 
                     // --- Mark original readings as synced for this batch --- 
@@ -663,6 +686,14 @@ namespace CosmosUploader.Services
                  dataItems.Add(item);
              }
              return dataItems;
+        }
+
+        // Helper to wrap IEnumerable in IAsyncEnumerable if needed
+        private async IAsyncEnumerable<T> WrapInAsyncEnumerable<T>(IEnumerable<T> source) {
+            foreach (var item in source) {
+                yield return item;
+            }
+            await Task.CompletedTask; // Keep the compiler happy
         }
     }
 }

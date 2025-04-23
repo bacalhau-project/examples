@@ -63,7 +63,7 @@ namespace CosmosUploader.Services
 
                 var clientOptions = new CosmosClientOptions
                 {
-                    ConnectionMode = ConnectionMode.Gateway,
+                    ConnectionMode = ConnectionMode.Direct,
                     AllowBulkExecution = true,
                     MaxRetryAttemptsOnRateLimitedRequests = 9,
                     MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30),
@@ -71,6 +71,8 @@ namespace CosmosUploader.Services
                     ApplicationName = "CosmosUploader",
                     EnableContentResponseOnWrite = false
                 };
+
+                _logger.LogInformation("Using Cosmos DB ConnectionMode: {Mode}. Ensure outbound TCP ports 10250-10255 are open if using Direct mode.", clientOptions.ConnectionMode);
 
                 if (_settings.DebugMode)
                 {
