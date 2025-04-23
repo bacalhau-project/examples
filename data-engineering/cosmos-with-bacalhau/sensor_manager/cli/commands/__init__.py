@@ -1,1 +1,0 @@
-"""Command implementations for the Sensor Manager CLI."""

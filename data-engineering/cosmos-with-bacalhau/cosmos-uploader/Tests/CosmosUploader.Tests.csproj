@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../cosmos-uploader/CosmosUploader.csproj" /> <!-- Reference the main project -->
+    <ProjectReference Include="../CosmosUploader.csproj" /> <!-- Reference the main project -->
   </ItemGroup>
 
 </Project> 
