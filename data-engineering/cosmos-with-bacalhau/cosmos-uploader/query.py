@@ -627,7 +627,7 @@ def main():
     parser.add_argument("--key", help="CosmosDB access key")
     parser.add_argument("--database", help="Database name")
     parser.add_argument("--container", help="Container name")
-    parser.add_argument("--query", default="SELECT * FROM c LIMIT 10", help="SQL query to execute")
+    parser.add_argument("--query", default="SELECT TOP 10 * FROM c", help="SQL query to execute")
     parser.add_argument("--count", action="store_true", help="Count documents instead of querying")
     parser.add_argument("--city", help="Filter by city (partition key)")
     parser.add_argument("--sensor", help="Filter by sensor ID")
@@ -664,12 +664,7 @@ def main():
     database_name = args.database or cosmos_config.get("database_name")
     container_name = args.container or cosmos_config.get("container_name")
 
-    # Check for environment variable overrides
-    endpoint = os.environ.get("COSMOS_ENDPOINT", endpoint)
-    key = os.environ.get("COSMOS_KEY", key)
-    database_name = os.environ.get("COSMOS_DATABASE", database_name) or os.environ.get("COSMOS_DATABASE_NAME", database_name)
-    container_name = os.environ.get("COSMOS_CONTAINER", container_name) or os.environ.get("COSMOS_CONTAINER_NAME", container_name)
-
+    # Remove environment variable overrides
     # Validate required parameters
     if not all([endpoint, key, database_name, container_name]):
         missing = []
@@ -682,7 +677,6 @@ def main():
         console.print("[yellow]Provide these values via:[/yellow]")
         console.print("  1. Command line arguments (--endpoint, --key, etc.)")
         console.print("  2. Config file (--config)")
-        console.print("  3. Environment variables (COSMOS_ENDPOINT, COSMOS_KEY, etc.)")
         sys.exit(1)
 
     # Connect to CosmosDB
@@ -734,7 +728,7 @@ def main():
 
     # Build query if filters are specified
     query = args.query
-    if args.query == "SELECT * FROM c LIMIT 10" and (args.city or args.sensor or args.limit != 10):
+    if args.query == "SELECT TOP 10 * FROM c" and (args.city or args.sensor or args.limit != 10):
         # Build custom query
         query = "SELECT * FROM c WHERE 1=1"
         if args.city:

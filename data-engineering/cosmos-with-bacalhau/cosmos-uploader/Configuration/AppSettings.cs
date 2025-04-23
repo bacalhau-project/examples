@@ -9,6 +9,8 @@ namespace CosmosUploader.Configuration
         public required PerformanceSettings Performance { get; set; }
         public required LoggingSettings Logging { get; set; }
         public List<CitySettings>? Cities { get; set; }
+        public bool DevelopmentMode { get; set; } = false;
+        public bool DebugMode { get; set; } = false;
     }
 
     public class CosmosSettings
@@ -58,11 +60,9 @@ namespace CosmosUploader.Configuration
 
     public class PerformanceSettings
     {
-        public int Throughput { get; set; } = 10000;
         public bool Autoscale { get; set; } = true;
-        public int BatchSize { get; set; } = 1000;
-        public int MaxParallelOperations { get; set; } = 10;
         public bool DisableIndexingDuringBulk { get; set; } = false;
+        public int SleepInterval { get; set; } = 60;
     }
 
     public class LoggingSettings

@@ -11,7 +11,8 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat files/sensor-config.yaml | base64 -w 0)" \
     -V file_name="config.yaml" \
     --id-only \
-    -V count="$COUNT"
+    -V count="$COUNT" \
+    --wait
 
 echo "Processing node_identity.json..."
 bacalhau job run jobs/upload_file.yaml \
@@ -19,11 +20,21 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat files/node-identity.json | base64 -w 0)" \
     -V file_name="node_identity.json" \
     --id-only \
-    -V count="$COUNT"
+    -V count="$COUNT" \
+    --wait
 
-# Create a simplified cities.json file with just name and country
+echo "Processing cosmos-config.yaml..."
+bacalhau job run jobs/upload_file.yaml \
+    -V script_b64="$(cat jobs/add_sensor_config.py | base64 -w 0)" \
+    -V file_b64="$(cat files/cosmos-config.yaml | base64 -w 0)" \
+    -V file_name="cosmos-config.yaml" \
+    --id-only \
+    -V count="$COUNT" \
+    --wait
+
+# Create a simplified cities.json file with just name, country, and coordinates
 TEMP_DIR=$(mktemp -d)
-jq -r '.cities | [.[] | {full_name, country}]' files/cities.json > "$TEMP_DIR/cities.json"
+jq '{cities: [.cities[] | {full_name, country, latitude, longitude}]}' files/cities.json > "$TEMP_DIR/cities.json"
 
 # Debug output
 # echo "Debug: Cities file contents:"
@@ -42,18 +53,14 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat "$TEMP_DIR/cities.json" | base64 -w 0)" \
     -V file_name="cities.json" \
     --id-only \
-    -V count="$COUNT"
+    -V count="$COUNT" \
+    --wait
 
 echo "Randomizing locations..."
 bacalhau job run jobs/run_python_script.yaml \
     -V script_b64="$(cat jobs/update_location.py | base64 -w 0)" \
     -V count="$COUNT" \
-    --id-only --wait
-
-echo "Verifying location updates..."
-for i in $(seq 1 $COUNT); do
-    echo "Checking node $i..."
-    bacalhau docker run --count=1 -i file:///root:/root alpine cat /root/node_identity.json
-done
+    --id-only \
+    --wait
 
 echo "File processing complete."

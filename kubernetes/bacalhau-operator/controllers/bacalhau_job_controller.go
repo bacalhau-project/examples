@@ -20,6 +20,8 @@ import (
 	"bacalhau-operator/bacalhau_client"
 	"context"
 	"fmt"
+	"time"
+
 	bacalhau_models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	corev1 "k8s.io/api/core/v1"
@@ -29,9 +31,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 
 	jobv1 "bacalhau-operator/api/v1"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )

@@ -1,0 +1,29 @@
+Name: start-cosmos-uploader
+Type: batch
+Count: {{.count}}
+Namespace: demo
+
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/cosmos-uploader:202504222125
+        Parameters:
+          - "--config"
+          - "/root/cosmos-config.yaml"
+          - "--sqlite"
+          - "/root/sensor_data.db"
+          - "--continuous"
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/root"
+            ReadWrite: true
+        Target: "/root"
+    Resources:
+      CPU: "0.5"
+      Memory: "500mb"
+    Timeouts:
+      QueueTimeout: 300

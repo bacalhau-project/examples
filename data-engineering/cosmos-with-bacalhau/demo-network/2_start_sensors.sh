@@ -6,5 +6,7 @@ COUNT=$(bacalhau node list --output json | jq -r '[.[] | select(.Info.NodeType =
 
 echo "Starting sensors on $COUNT nodes..."
 bacalhau job run jobs/start_sensors.yaml \
-    -V count="$COUNT"
+    -V count="$COUNT" \
+    --id-only \
+    --wait=false
 echo "Sensor jobs started."
