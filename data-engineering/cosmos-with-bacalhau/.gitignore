@@ -88,3 +88,5 @@ archive/
 *.log
 
 data/*
+docker-compose.yaml
+
