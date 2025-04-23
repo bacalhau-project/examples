@@ -16,9 +16,13 @@ services:
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
     # Using host network mode for best performance
-    network_mode: "host"
+    # network_mode: "host"
     volumes:
       - ./network-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    ports:
+      - "1234:1234"
+    networks:
+      - bacalhau-network
     deploy:
       resources:
         reservations:
@@ -39,7 +43,7 @@ services:
   nodes:
     image: ghcr.io/bacalhau-project/bacalhau:latest-dind
     privileged: true
-    command: serve -c /etc/bacalhau/config.yaml -c labels=docker-type=dind
+    command: serve -c /etc/bacalhau/config.yaml
     volumes:
       - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./docker-config/daemon.json:/etc/docker/daemon.json
@@ -51,8 +55,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.04"  # Allocate 4% CPU per node
-          memory: "270M" # 270MB per service
+          cpus: "0.50"  # Allocate 10% CPU per node
+          memory: "500M" # 500MB per service
     networks:
       - bacalhau-network
     extra_hosts:
@@ -63,7 +67,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    <<: *logging-driver
+    #<<: *logging-driver
 
   # New non-DinD nodes that use the host Docker socket
   host-nodes:
@@ -81,7 +85,7 @@ services:
       resources:
         limits:
           cpus: "0.04"  # Allocate 4% CPU per node
-          memory: "270M" # 270MB per service
+          memory: "500M" # 500MB per service
     networks:
       - bacalhau-network
     extra_hosts:

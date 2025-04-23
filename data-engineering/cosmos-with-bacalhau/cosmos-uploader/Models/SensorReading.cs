@@ -14,6 +14,7 @@ namespace CosmosUploader.Models
             Status = "UNKNOWN";
             Location = "UNKNOWN";
             City = "UNKNOWN";
+            ProcessingStage = "Raw"; // Default to Raw stage
         }
 
         [JsonProperty("id")]
@@ -24,6 +25,15 @@ namespace CosmosUploader.Models
         
         [JsonProperty("timestamp")]
         public DateTime Timestamp { get; set; }
+
+        [JsonProperty("city")]
+        public string City { get; set; }
+        
+        [JsonProperty("processingStage")]
+        public string ProcessingStage { get; set; }
+
+        [JsonProperty("rawDataString")]
+        public string? RawDataString { get; set; }
         
         [JsonProperty("temperature")]
         public double? Temperature { get; set; }
@@ -33,6 +43,9 @@ namespace CosmosUploader.Models
         
         [JsonProperty("voltage")]
         public double? Voltage { get; set; }
+
+        [JsonProperty("humidity")]
+        public double? Humidity { get; set; }
         
         [JsonProperty("status")]
         public string Status { get; set; }
@@ -54,11 +67,29 @@ namespace CosmosUploader.Models
         
         [JsonProperty("location")]
         public string Location { get; set; }
-        
-        [JsonProperty("city")]
-        public string City { get; set; }
+
+        [JsonProperty("lat")]
+        public string? Lat { get; set; }
+
+        [JsonProperty("long")]
+        public string? Long { get; set; }
+
+        [JsonProperty("aggregationWindowStart")]
+        public DateTime? AggregationWindowStart { get; set; }
+
+        [JsonProperty("aggregationWindowEnd")]
+        public DateTime? AggregationWindowEnd { get; set; }
         
         [JsonProperty("processed")]
         public bool Processed { get; set; } = false;
+    }
+
+    // Define the processing stages as an enum to ensure consistency
+    public enum ProcessingStages
+    {
+        Raw,
+        Schematized,
+        Sanitized,
+        Aggregated
     }
 }
