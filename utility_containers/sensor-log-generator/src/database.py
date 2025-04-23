@@ -7,7 +7,6 @@ from datetime import datetime
 from functools import wraps
 from typing import Dict, List, Optional
 
-import numpy as np
 import requests
 
 
@@ -63,6 +62,9 @@ class SensorDatabase:
             db_path: Path to the SQLite database file
         """
         self.db_path = db_path
+
+        abs_path = os.path.abspath(self.db_path)
+        logging.info(f"Database path: {abs_path}")
         self.logger = logging.getLogger("SensorDatabase")
         self.batch_buffer = []
         self.batch_size = 100
@@ -78,7 +80,9 @@ class SensorDatabase:
 
         # Create database directory if it doesn't exist
         if self.db_path != ":memory:":
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+            abs_path = os.path.abspath(self.db_path)
+            logging.info(f"Database path doesn't exist, creating: {abs_path}")
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
 
         # Initialize database schema
         self._init_db()
@@ -110,6 +114,8 @@ class SensorDatabase:
                     timestamp REAL,
                     sensor_id TEXT,
                     temperature REAL,
+                    humidity REAL,
+                    pressure REAL,
                     vibration REAL,
                     voltage REAL,
                     status_code INTEGER,
@@ -119,6 +125,8 @@ class SensorDatabase:
                     model TEXT,
                     manufacturer TEXT,
                     location TEXT,
+                    latitude REAL,
+                    longitude REAL,
                     synced INTEGER DEFAULT 0
                 )
                 """
@@ -141,6 +149,8 @@ class SensorDatabase:
         self,
         sensor_id: str,
         temperature: float,
+        humidity: float,
+        pressure: float,
         vibration: float,
         voltage: float,
         status_code: int,
@@ -150,12 +160,16 @@ class SensorDatabase:
         model: str,
         manufacturer: str,
         location: str,
+        latitude: float,
+        longitude: float,
     ):
         """Store a sensor reading in the database.
 
         Args:
             sensor_id: ID of the sensor
             temperature: Temperature reading
+            humidity: Humidity reading
+            pressure: Pressure reading
             vibration: Vibration reading
             voltage: Voltage reading
             status_code: Status code
@@ -164,7 +178,7 @@ class SensorDatabase:
             firmware_version: Firmware version of the sensor
             model: Model of the sensor
             manufacturer: Manufacturer of the sensor
-            location: Location of the sensor
+            location: Location of the sensor in format "City (lat, lon)"
         """
         try:
             conn = sqlite3.connect(self.db_path)
@@ -173,15 +187,17 @@ class SensorDatabase:
             cursor.execute(
                 """
                 INSERT INTO sensor_readings (
-                    timestamp, sensor_id, temperature, vibration, voltage,
+                    timestamp, sensor_id, temperature, humidity, pressure, vibration, voltage,
                     status_code, anomaly_flag, anomaly_type, firmware_version,
-                    model, manufacturer, location, synced
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    model, manufacturer, location, latitude, longitude, synced
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     time.time(),
                     sensor_id,
                     temperature,
+                    humidity,
+                    pressure,
                     vibration,
                     voltage,
                     status_code,
@@ -191,6 +207,8 @@ class SensorDatabase:
                     model,
                     manufacturer,
                     location,
+                    latitude,
+                    longitude,
                     0,  # synced = False
                 ),
             )
