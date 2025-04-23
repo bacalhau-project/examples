@@ -3,7 +3,7 @@ import os
 import random
 import time
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 import psutil
@@ -32,40 +32,50 @@ class SensorSimulator:
         self.config = config
         self.identity = identity
         self.sensor_id = identity.get("id")
-        self.location = identity.get("location")
         self.manufacturer = identity.get("manufacturer")
         self.model = identity.get("model")
         self.firmware_version = identity.get("firmware_version")
         self.running = False
-        self.logger = logging.getLogger("SensorSimulator")
 
-        # Set up database path for sensor in project root
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        db_dir = os.path.join(base_dir, "data", self.sensor_id)
-        os.makedirs(db_dir, exist_ok=True)
+        # Initialize location properties
+        self.city_name = None
+        self.latitude = None
+        self.longitude = None
 
-        self.db_path = os.path.join(db_dir, f"{self.sensor_id}.db")
-        self.log_path = os.path.join(db_dir, f"{self.sensor_id}.log")
+        # Get database path from config
+        db_path = config.get("database", {}).get("path")
+        if not db_path:
+            raise ValueError("Database path not specified in config.yaml")
+
+        # Ensure the database directory exists
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
 
         # Initialize database
-        self.database = SensorDatabase(self.db_path)
+        self.database = SensorDatabase(db_path)
 
         # Set up logging to file
-        file_handler = logging.FileHandler(self.log_path)
-        file_handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        self.logger.addHandler(file_handler)
+        log_file = config.get("logging", {}).get("file")
+        if log_file:
+            # Ensure the log directory exists
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(
+                logging.Formatter(
+                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                )
+            )
+            logger.addHandler(file_handler)
 
         # Validate sensor configuration
         try:
             self._validate_sensor_config()
         except ValueError as e:
-            self.logger.error(str(e))
+            logger.error(str(e))
             raise
-
-        # Get the base directory (where main.py is located)
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # Initialize location generator with the correct config section
         self.location_generator = LocationGenerator(
@@ -73,8 +83,7 @@ class SensorSimulator:
         )
 
         # Generate and store the location once at initialization
-        self.sensor_location = self._get_initial_location()
-        self.logger.info(f"Sensor initialized with location: {self.sensor_location}")
+        self._get_initial_location()
 
         # Get simulation parameters
         self.readings_per_second = self.config.get("simulation", {}).get(
@@ -105,6 +114,15 @@ class SensorSimulator:
 
             # Get normal parameters
             self.normal_params = self.config_manager.get_normal_parameters()
+
+            # Update identity with location information
+            self.identity.update(
+                {
+                    "latitude": self.latitude,
+                    "longitude": self.longitude,
+                    "city_name": self.city_name,
+                }
+            )
 
             # Initialize anomaly generator with sensor config
             anomaly_config = self.config_manager.get_anomaly_config()
@@ -156,6 +174,8 @@ class SensorSimulator:
         # Check manufacturer, model, and firmware version
         try:
             manufacturer = Manufacturer(self.identity.get("manufacturer"))
+            if manufacturer is None:
+                raise ValueError("Manufacturer is required in identity configuration")
         except ValueError:
             valid_manufacturers = [m.value for m in Manufacturer]
             raise ValueError(
@@ -165,6 +185,8 @@ class SensorSimulator:
 
         try:
             model = Model(self.identity.get("model"))
+            if model is None:
+                raise ValueError("Model is required in identity configuration")
         except ValueError:
             valid_models = [m.value for m in Model]
             raise ValueError(
@@ -174,6 +196,10 @@ class SensorSimulator:
 
         try:
             firmware = FirmwareVersion(self.identity.get("firmware_version"))
+            if firmware is None:
+                raise ValueError(
+                    "Firmware version is required in identity configuration"
+                )
         except ValueError:
             valid_versions = [v.value for v in FirmwareVersion]
             raise ValueError(
@@ -396,12 +422,12 @@ class SensorSimulator:
         try:
             # Check for missing data anomaly
             if reading is None:
-                self.logger.info("Missing data anomaly detected")
+                logger.info("Missing data anomaly detected")
                 return True
 
             # Get current location
             location = self._get_location()
-            self.logger.debug(f"Current location: {location}")
+            logger.debug(f"Current location: {location}")
 
             # Add anomaly information
             anomaly_flag = reading.get("anomaly_flag", False)
@@ -413,17 +439,21 @@ class SensorSimulator:
 
             # Store in database with sensor identity fields
             self.database.store_reading(
-                reading["sensor_id"],
-                reading["temperature"],
-                reading["vibration"],
-                reading["voltage"],
-                reading["status_code"],
-                anomaly_flag,
-                anomaly_type,
-                self.identity.get("firmware_version"),
-                self.identity.get("model"),
-                self.identity.get("manufacturer"),
-                location,  # Use the current location
+                sensor_id=reading["sensor_id"],
+                temperature=reading["temperature"],
+                humidity=reading.get("humidity"),
+                pressure=reading.get("pressure"),
+                vibration=reading["vibration"],
+                voltage=reading["voltage"],
+                status_code=reading["status_code"],
+                anomaly_flag=anomaly_flag,
+                anomaly_type=anomaly_type,
+                firmware_version=self.identity.get("firmware_version"),
+                model=self.identity.get("model"),
+                manufacturer=self.identity.get("manufacturer"),
+                location=self.identity.get("location"),  # Use the current location
+                latitude=self.identity.get("latitude"),
+                longitude=self.identity.get("longitude"),
             )
 
             self.readings_count += 1
@@ -431,17 +461,17 @@ class SensorSimulator:
 
             # Log occasional status
             if self.readings_count % 100 == 0:
-                self.logger.info(f"Generated {self.readings_count} readings")
+                logger.info(f"Generated {self.readings_count} readings")
 
             return True
         except Exception as e:
             self.error_count += 1
             self.consecutive_errors += 1
-            self.logger.error(f"Error processing reading: {e}")
+            logger.error(f"Error processing reading: {e}")
 
             # If too many consecutive errors, stop the simulator
             if self.consecutive_errors >= self.max_consecutive_errors:
-                self.logger.critical(
+                logger.critical(
                     f"Too many consecutive errors ({self.consecutive_errors}). Stopping simulator."
                 )
                 return False
@@ -544,6 +574,8 @@ class SensorSimulator:
             "readings_per_second": self.readings_per_second,
             "sensor_id": self.sensor_id,
             "firmware_version": self.identity.get("firmware_version"),
+            "model": self.identity.get("model"),
+            "manufacturer": self.identity.get("manufacturer"),
             "database_healthy": self.database.is_healthy()
             if hasattr(self, "database")
             else False,
@@ -568,10 +600,6 @@ class SensorSimulator:
         # Get normal parameters
         normal_params = self.config.get("normal_parameters", {})
 
-        # Get current location
-        location = self._get_location()
-        self.logger.debug(f"Generating reading for location: {location}")
-
         # Generate base reading
         reading = {
             "timestamp": time.time(),
@@ -582,14 +610,18 @@ class SensorSimulator:
             "vibration": self._generate_normal_value(
                 normal_params.get("vibration", {})
             ),
+            "humidity": self._generate_normal_value(normal_params.get("humidity", {})),
+            "pressure": self._generate_normal_value(normal_params.get("pressure", {})),
             "voltage": self._generate_normal_value(normal_params.get("voltage", {})),
             "status_code": 0,
             "anomaly_flag": False,
             "anomaly_type": None,
-            "firmware_version": self.identity.get("firmware_version", "1.4"),
-            "model": self.identity.get("model", "TempVibe-2000"),
-            "manufacturer": self.identity.get("manufacturer", "SensorTech"),
-            "location": location,
+            "firmware_version": self.identity.get("firmware_version"),
+            "model": self.identity.get("model"),
+            "manufacturer": self.identity.get("manufacturer"),
+            "location": self.city_name,  # Just the city name
+            "latitude": self.latitude,  # Latitude as separate field
+            "longitude": self.longitude,  # Longitude as separate field
             "synced": False,
         }
 
@@ -628,39 +660,48 @@ class SensorSimulator:
             if min_val <= value <= max_val:
                 return value
 
-    def _get_initial_location(self) -> str:
+    def _get_initial_location(self) -> None:
         """Get the initial location for the sensor.
         If random_location is enabled in config, generate a random location.
-        Otherwise, use the configured location.
+        Otherwise, use the configured location from node_identity.json.
 
-        Returns:
-            Location string
+        Sets the location properties (city_name, latitude, longitude) on the instance.
         """
         # Check if random location is enabled in config
         if self.config.get("random_location", {}).get("enabled", False):
             location_info = self.location_generator.generate_location()
             if location_info:
-                city_name, lat, lon = location_info
-                location_str = f"{city_name} ({lat:.6f}, {lon:.6f})"
-                logger.info(f"Generated random location: {location_str}")
-                return location_str
+                self.city_name, self.latitude, self.longitude = location_info
+                logger.info(
+                    f"Generated random location: {self.city_name} ({self.latitude:.6f}, {self.longitude:.6f})"
+                )
+                return
             else:
                 logger.warning(
                     "Location generator returned None, using configured location"
                 )
 
         # Use the configured location from identity
-        location = self.identity.get("location")
-        if not location:
-            raise ValueError("Location is required")
-        logger.info(f"Using configured location: {location}")
-        return location
+        self.city_name = self.identity.get("location")
+        self.latitude = self.identity.get("latitude")
+        self.longitude = self.identity.get("longitude")
+
+        if not self.city_name:
+            raise ValueError("Location is required in node_identity.json")
+        if self.latitude is None:
+            raise ValueError("Latitude is required in node_identity.json")
+        if self.longitude is None:
+            raise ValueError("Longitude is required in node_identity.json")
+
+        logger.info(f"   Location: {self.city_name}")
+        logger.info(f"   Latitude: {self.latitude:.6f}")
+        logger.info(f"   Longitude: {self.longitude:.6f}")
 
     def _get_location(self) -> str:
         """Get the current location for the sensor.
         This will always return the initial location, even if config is reloaded.
 
         Returns:
-            Location string
+            Location string (just the city name)
         """
-        return self.sensor_location
+        return self.city_name

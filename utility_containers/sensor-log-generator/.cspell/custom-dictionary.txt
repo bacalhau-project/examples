@@ -4,10 +4,14 @@ bacalhau
 bacalhauproject
 buildcache
 buildx
+ENVMONITOR
+ENVMONITORS
+IOTPRO
 levelname
 mult
 multiarch
 PYTHONUNBUFFERED
+SENSORTECH
 uppercity
 venv
 YYMMDDHHMM
