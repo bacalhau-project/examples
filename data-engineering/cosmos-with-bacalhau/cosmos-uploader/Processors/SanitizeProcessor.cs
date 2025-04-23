@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 
 namespace CosmosUploader.Processors
 {
@@ -11,6 +12,7 @@ namespace CosmosUploader.Processors
     public interface ISanitizeProcessor
     {
         Task<IEnumerable<DataItem>> ProcessAsync(IEnumerable<DataItem> schematizedData, CancellationToken cancellationToken);
+        IAsyncEnumerable<DataItem> ProcessStreamAsync(IEnumerable<DataItem> schematizedData, CancellationToken cancellationToken);
     }
 
     public class SanitizeProcessor : ISanitizeProcessor
@@ -22,14 +24,23 @@ namespace CosmosUploader.Processors
             _logger = logger;
         }
 
-        public Task<IEnumerable<DataItem>> ProcessAsync(IEnumerable<DataItem> schematizedData, CancellationToken cancellationToken)
+        public async Task<IEnumerable<DataItem>> ProcessAsync(IEnumerable<DataItem> schematizedData, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("--- Starting Sanitization ---");
+            _logger.LogDebug("--- Starting Sanitization (buffered wrapper) ---");
+            var results = new List<DataItem>();
+            await foreach (var item in ProcessStreamAsync(schematizedData, cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                results.Add(item);
+            }
+            _logger.LogDebug("--- Finished Sanitization (buffered wrapper, Output: {Count} items) ---", results.Count);
+            return results;
+        }
 
-            // TODO: Implement more robust PII masking/stripping logic based on actual needs.
-            // Example: Use regex for emails, SSNs, etc. Check configuration for fields to sanitize.
+        public async IAsyncEnumerable<DataItem> ProcessStreamAsync(IEnumerable<DataItem> schematizedData, 
+                                                                 [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("--- Starting Sanitization (streaming) ---");
 
-            var processedData = new List<DataItem>();
             int count = 0;
             int maskedCount = 0;
             string keyToMask = "sensor_id"; // Example PII field
@@ -38,35 +49,27 @@ namespace CosmosUploader.Processors
             {
                  cancellationToken.ThrowIfCancellationRequested();
                  count++;
+                 var processedItem = item; // Modify in place
 
-                 // Example Masking: Mask the sensor_id
-                 if (item.TryGetValue(keyToMask, out object? sensorIdValue) && sensorIdValue != null)
+                 if (processedItem.TryGetValue(keyToMask, out object? sensorIdValue) && sensorIdValue != null)
                  {
                      string originalId = sensorIdValue.ToString() ?? string.Empty;
                      if (!string.IsNullOrEmpty(originalId)) 
                      {
                         string maskedId = originalId.Length > 3 ? originalId.Substring(0, 3) + "***" : "***";
-                        item[keyToMask] = maskedId;
-                        _logger.LogTrace("Masked {Key} for item id {ItemId}: '{OriginalValue}' -> '{MaskedValue}'", 
-                            keyToMask, item.GetValueOrDefault("id", "[unknown_id]"), originalId, maskedId);
+                        processedItem[keyToMask] = maskedId;
                         maskedCount++;
+                        _logger.LogTrace("Masked {Key} for item id {ItemId}", keyToMask, processedItem.GetValueOrDefault("id", "[unknown_id]"));
                      }
-                     else {
-                          _logger.LogTrace("Sensor ID was null or empty for item id {ItemId}. Skipping masking.", item.GetValueOrDefault("id", "[unknown_id]"));
-                     }
-                 }
-                 else {
-                     _logger.LogTrace("Item id {ItemId} does not contain key '{Key}' for masking.", item.GetValueOrDefault("id", "[unknown_id]"), keyToMask);
                  }
 
-                 // Update stage marker
-                 item["processed_stage"] = ProcessingStage.Sanitized.ToString(); 
-                 processedData.Add(item);
+                 processedItem["processed_stage"] = ProcessingStage.Sanitized.ToString(); 
+                 yield return processedItem; // Yield the processed item
             }
 
-            _logger.LogInformation("--- Finished Sanitization (Processed: {Count} items, Masked '{Key}' for {MaskedCount} items) ---", 
+            _logger.LogInformation("--- Finished Sanitization (streaming, Processed: {Count} items, Masked '{Key}' for {MaskedCount} items) ---", 
                 count, keyToMask, maskedCount);
-            return Task.FromResult<IEnumerable<DataItem>>(processedData);
+             await Task.CompletedTask; // Required if there are no awaits inside the async iterator method
         }
     }
 } 
