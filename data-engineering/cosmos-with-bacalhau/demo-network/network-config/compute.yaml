@@ -5,5 +5,10 @@ Compute:
     - orchestrator:4222
   AllowListedLocalPaths:
     - "/root/**:rw"
+  # We want to run 1000 compute nodes in the VM.
+  # So we allocate 0.1% of the CPU and memory to each node.
+  AllocatedCapacity:
+    CPU: "0.1%"
+    Memory: "0.1%"
 UpdateConfig:
   Interval: 0
