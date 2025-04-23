@@ -1,0 +1,31 @@
+Name: Top Referring Sites
+Type: batch
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/nginx-access-log-query:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT 
+              SUBSTRING(
+                   REPLACE(REPLACE(http_referer, 'http://', ''), 'https://', ''), 
+                   1, 
+                   POSITION('/' IN REPLACE(REPLACE(http_referer, 'http://', ''), 'https://', '')) - 1
+               ) AS referer, COUNT(*) AS referral_count
+            FROM logs
+            WHERE referer LIKE '__%'
+            GROUP BY referer
+            HAVING referral_count > 1
+            ORDER BY referral_count DESC;
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: s3
+          Params:
+            Bucket: {{.bucket}}
+            Region: {{.region}}
+            Key: {{.date}}
+            Endpoint: "http://storage:9000"
