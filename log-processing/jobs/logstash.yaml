@@ -1,0 +1,34 @@
+Name: Logstash
+Type: daemon
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/nginx-access-log-agent:1.0.0
+        EnvironmentVariables:
+          - OPENSEARCH_ENDPOINT=http://opensearch:9200/
+          - S3_BUCKET=logs-bucket
+          - S3_ENDPOINT=http://storage:9000
+          - AWS_REGION=us-east-1
+          - AGGREGATE_DURATION=1
+          - S3_TIME_FILE=2
+
+    # Network specifies networking requirements.  
+    # Here our job will have full access to the network
+    Network:
+      Type: Full
+    
+    # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
+    # Here we are mounting the logs directory to /app/logs
+    InputSources:
+      - Target: /app/logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-processing/logs
+            ReadWrite: true
+
+    Env:
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin"
