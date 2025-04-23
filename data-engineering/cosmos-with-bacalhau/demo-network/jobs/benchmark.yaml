@@ -20,7 +20,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: alpine:latest
+        Image: ghcr.io/linuxcontainers/alpine:3.20
         Parameters:
           - /bin/sh
           - -c
