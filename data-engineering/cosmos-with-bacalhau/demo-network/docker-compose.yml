@@ -52,7 +52,7 @@ services:
       resources:
         limits:
           cpus: "0.04"  # Allocate 4% CPU per node
-          memory: "200M" # 200MB per service
+          memory: "270M" # 270MB per service
     networks:
       - bacalhau-network
     extra_hosts:
