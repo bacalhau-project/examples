@@ -18,6 +18,15 @@ root            soft    nofile          1048576
 root            hard    nofile          1048576
 EOF
 
+# 1b. Add process limits configuration
+echo "Configuring process limits..."
+cat << EOF > /etc/security/limits.d/90-nproc.conf
+*               soft    nproc           1048576
+*               hard    nproc           1048576
+root            soft    nproc           1048576
+root            hard    nproc           1048576
+EOF
+
 # 2. Adjust kernel parameters for networking
 echo "Optimizing kernel parameters..."
 cat << EOF > /etc/sysctl.d/99-container-network.conf
@@ -68,9 +77,32 @@ vm.max_map_count = 1048576
 vm.vfs_cache_pressure = 50
 EOF
 
+# 2b. Add cgroup v2 and process kernel parameters
+echo "Adding cgroup v2 and process limits to kernel parameters..."
+cat << EOF > /etc/sysctl.d/99-container-process.conf
+# Process limits for container-heavy workloads
+kernel.pid_max = 4194304
+kernel.threads-max = 4194304
+
+# Increase inotify limits for container monitoring
+fs.inotify.max_user_instances = 8192
+fs.inotify.max_user_watches = 524288
+EOF
+
 # 3. Apply sysctl changes immediately
 echo "Applying sysctl changes..."
 sysctl -p /etc/sysctl.d/99-container-network.conf
+sysctl -p /etc/sysctl.d/99-container-process.conf
+
+# 3b. Configure systemd defaults
+echo "Setting systemd DefaultTasksMax..."
+if grep -q "^#DefaultTasksMax" /etc/systemd/system.conf; then
+  # Uncomment and set if it exists but is commented
+  sed -i 's/^#DefaultTasksMax=.*/DefaultTasksMax=1048576/' /etc/systemd/system.conf
+else
+  # Add if it doesn't exist
+  echo "DefaultTasksMax=1048576" >> /etc/systemd/system.conf
+fi
 
 # 4. Configure Docker daemon
 echo "Optimizing Docker daemon configuration..."
@@ -90,26 +122,52 @@ cat << EOF > /etc/docker/daemon.json
       "Name": "nofile",
       "Hard": 1048576,
       "Soft": 1048576
+    },
+    "nproc": {
+      "Name": "nproc",
+      "Hard": 1048576,
+      "Soft": 1048576
     }
   },
   "mtu": 1450,
   "dns": ["1.1.1.1"],
   "max-concurrent-downloads": 20,
-  "max-concurrent-uploads": 20
+  "max-concurrent-uploads": 20,
+  "storage-driver": "overlay2",
+  "default-cgroupns-mode": "host"
 }
+EOF
+
+# 4b. Create systemd override for Docker
+echo "Creating systemd override for Docker..."
+mkdir -p /etc/systemd/system/docker.service.d/
+cat << EOF > /etc/systemd/system/docker.service.d/override.conf
+[Service]
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=300
+TimeoutStopSec=300
+OOMScoreAdjust=-500
 EOF
 
 # 5. Restart Docker to apply changes
 echo "Restarting Docker service..."
+systemctl daemon-reload
 systemctl restart docker
 
 # 6. Verify changes
 echo "Verifying system configuration:"
 echo "Current file descriptor limit: $(ulimit -n)"
+echo "Current process limit: $(ulimit -u)"
 echo "Connection tracking max: $(sysctl -n net.netfilter.nf_conntrack_max)"
 echo "Local port range: $(sysctl -n net.ipv4.ip_local_port_range)"
+echo "PID max: $(sysctl -n kernel.pid_max)"
 echo "CPU cores available: $(nproc)"
 echo "Memory available: $(free -h | grep Mem | awk '{print $2}')"
+echo "Systemd DefaultTasksMax: $(grep DefaultTasksMax /etc/systemd/system.conf)"
+echo "Docker TasksMax: $(systemctl show docker | grep TasksMax)"
 
 echo "== System optimization complete =="
 echo "It's recommended to reboot the system to ensure all changes are applied correctly."
