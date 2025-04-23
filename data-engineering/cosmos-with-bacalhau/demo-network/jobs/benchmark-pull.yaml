@@ -1,0 +1,48 @@
+# Bacalhau Image Pull Benchmark Job
+# Purpose: Pre-pull Docker images to reduce startup time for subsequent benchmark jobs
+#
+# This job:
+# - Only pulls the Alpine Docker image without running any significant workload
+# - Performs minimal operations to verify the image works correctly
+# - Designed to prepare nodes for subsequent benchmark jobs by caching the image
+#
+# Usage: bacalhau job run benchmark-pull.yaml -V count=<number_of_nodes>
+
+Name: node-benchmark-pull
+Type: batch
+Count: {{.count}}
+Namespace: benchmark
+
+Tasks:
+  - Name: pull
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/linuxcontainers/alpine:3.20
+        Parameters:
+          - /bin/sh
+          - -c
+          - |
+            # Log that the image was pulled successfully
+            echo "=== Image Pull Check ==="
+            echo "Image: ghcr.io/linuxcontainers/alpine:3.20"
+            echo "Hostname: $(hostname)"
+            echo "Pull timestamp: $(date -Iseconds)"
+            
+            # Return minimal JSON result
+            cat << EOF > /tmp/pull-result.json
+            {
+              "image": "ghcr.io/linuxcontainers/alpine:3.20",
+              "hostname": "$(hostname)",
+              "timestamp": "$(date -Iseconds)",
+              "pull_success": true
+            }
+            EOF
+            
+            cat /tmp/pull-result.json
+    Resources:
+      CPU: "0.03"
+      Memory: "64mb"
+    Timeouts:
+      ExecutionTimeout: 600
+      QueueTimeout: 600

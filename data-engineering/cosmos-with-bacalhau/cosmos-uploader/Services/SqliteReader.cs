@@ -96,6 +96,33 @@ namespace CosmosUploader.Services
                     await ResetSyncStatusAsync(_dataPath, cancellationToken);
                 }
 
+                // Check if the configured processing stage is valid
+                string processingStage = _settings.ProcessingStage;
+                if (!ProcessingStage.IsValid(processingStage))
+                {
+                    _logger.LogWarning("Invalid processing stage configured: {Stage}. Falling back to Raw.", processingStage);
+                    processingStage = ProcessingStage.Raw;
+                }
+                
+                _logger.LogInformation("Processing database in {Stage} stage", processingStage);
+
+                // Apply processors only if they match the configured stage
+                // For example, don't use sanitizeProcessor if processingStage is Raw
+                bool useSchemaProcessor = schemaProcessor != null && 
+                    (processingStage == ProcessingStage.Schematized || 
+                     processingStage == ProcessingStage.Sanitized || 
+                     processingStage == ProcessingStage.Aggregated);
+                     
+                bool useSanitizeProcessor = sanitizeProcessor != null && 
+                    (processingStage == ProcessingStage.Sanitized || 
+                     processingStage == ProcessingStage.Aggregated);
+                     
+                bool useAggregateProcessor = aggregateProcessor != null && 
+                    processingStage == ProcessingStage.Aggregated;
+                
+                _logger.LogDebug("Processor usage based on {Stage} stage: Schema={UseSchema}, Sanitize={UseSanitize}, Aggregate={UseAggregate}",
+                    processingStage, useSchemaProcessor, useSanitizeProcessor, useAggregateProcessor);
+
                 int batchSize = 1000; // Configurable batch size for reading
                 int offset = 0;
                 int totalReadCount = 0;
@@ -126,7 +153,7 @@ namespace CosmosUploader.Services
                     try 
                     {
                         // Chain processors, passing IAsyncEnumerable between streamable ones
-                        if (schemaProcessor != null)
+                        if (useSchemaProcessor && schemaProcessor != null)
                         {
                             _logger.LogDebug("Applying Schema Processor (streaming) to Batch #{BatchNumber}...", batchNumber);
                             // Use the streaming method
@@ -137,7 +164,7 @@ namespace CosmosUploader.Services
                              asyncPipelineData = WrapInAsyncEnumerable(currentPipelineData);
                         }
 
-                        if (sanitizeProcessor != null) 
+                        if (useSanitizeProcessor && sanitizeProcessor != null) 
                         {
                              _logger.LogDebug("Applying Sanitize Processor (streaming) to Batch #{BatchNumber}...", batchNumber);
                              // Input is the output of the previous stage (or wrapped raw data)
@@ -148,7 +175,7 @@ namespace CosmosUploader.Services
                         // Aggregation is not easily streamable per-item, so it consumes the async stream
                         // and returns a Task<IEnumerable>
                         IEnumerable<DataItem> finalDataToUpload;
-                        if (aggregateProcessor != null) 
+                        if (useAggregateProcessor && aggregateProcessor != null) 
                         {
                              _logger.LogDebug("Applying Aggregate Processor to Batch #{BatchNumber}...", batchNumber);
                              // AggregateProcessor needs to consume the async stream
@@ -286,14 +313,14 @@ namespace CosmosUploader.Services
             {
                 await connection.OpenAsync(cancellationToken);
                 
-                 // Check if the table exists (optional, but good practice)
-                 using (var checkCmd = connection.CreateCommand()) {
-                     checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='sensor_readings'";
-                     if (await checkCmd.ExecuteScalarAsync(cancellationToken) == null) {
-                         _logger.LogWarning("sensor_readings table not found in database {DbPath}", dbPath);
-                         return readings; // Return empty list
-                     }
-                 }
+                    // Check if the table exists (optional, but good practice)
+                    using (var checkCmd = connection.CreateCommand()) {
+                        checkCmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='sensor_readings'";
+                        if (await checkCmd.ExecuteScalarAsync(cancellationToken) == null) {
+                            _logger.LogWarning("sensor_readings table not found in database {DbPath}", dbPath);
+                            return readings; // Return empty list
+                        }
+                    }
                 
                 // Read data using LIMIT and OFFSET
                 using (var command = connection.CreateCommand())
@@ -301,9 +328,9 @@ namespace CosmosUploader.Services
                     // Use parameterized query for LIMIT/OFFSET
                     command.CommandText = @"
                         SELECT id, sensor_id, timestamp, temperature, 
-                               vibration, voltage, status_code, anomaly_flag,
-                               anomaly_type, firmware_version, model, 
-                               manufacturer, location
+                                vibration, voltage, status_code, anomaly_flag,
+                                anomaly_type, firmware_version, model, 
+                                manufacturer, location
                         FROM sensor_readings
                         WHERE synced = 0
                         ORDER BY timestamp -- Order is important for consistent batching
@@ -373,6 +400,42 @@ namespace CosmosUploader.Services
                                 "dbLocation={DbLocation}, pathLocation={PathLocation}, final sensorId={FinalSensorId}, final location={FinalLocation}", 
                                 dbSensorId, $"{cityNameFromPath}_{sensorCodeFromPath}", dbLocation, cityNameFromPath, sensorId, location);
                             
+                            // Extract latitude and longitude if available in the location string
+                            string? lat = null;
+                            string? lng = null;
+                            
+                            // Check if location might contain coordinates (simple check for comma)
+                            if (!string.IsNullOrEmpty(dbLocation) && dbLocation.Contains(","))
+                            {
+                                var parts = dbLocation.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                                if (parts.Length >= 2)
+                                {
+                                    if (double.TryParse(parts[0].Trim(), out double latValue))
+                                    {
+                                        lat = latValue.ToString(CultureInfo.InvariantCulture);
+                                    }
+                                    
+                                    if (double.TryParse(parts[1].Trim(), out double lngValue))
+                                    {
+                                        lng = lngValue.ToString(CultureInfo.InvariantCulture);
+                                    }
+                                }
+                            }
+                            
+                            // If we couldn't extract coordinates, try to look them up from the configured city settings
+                            if ((lat == null || lng == null) && _settings.Cities != null)
+                            {
+                                var citySettings = _settings.Cities.FirstOrDefault(c => 
+                                    string.Equals(c.Name, location, StringComparison.OrdinalIgnoreCase) || 
+                                    string.Equals(c.Name, cityNameFromPath, StringComparison.OrdinalIgnoreCase));
+                                    
+                                if (citySettings != null)
+                                {
+                                    lat = citySettings.Latitude.ToString(CultureInfo.InvariantCulture);
+                                    lng = citySettings.Longitude.ToString(CultureInfo.InvariantCulture);
+                                }
+                            }
+                            
                             var reading = new SensorReading
                             {
                                 Id = reader.GetInt64(0).ToString(),
@@ -389,6 +452,10 @@ namespace CosmosUploader.Services
                                 Manufacturer = reader.IsDBNull(11) ? null : reader.GetString(11),
                                 Location = location,
                                 City = location, // Setting City to the same as Location for consistency
+                                Lat = lat,
+                                Long = lng,
+                                Humidity = null, // No humidity in source data, would need to be generated
+                                ProcessingStage = _settings.ProcessingStage, // Set to the configured stage
                                 Processed = false
                             };
                             
@@ -650,42 +717,147 @@ namespace CosmosUploader.Services
             }
         }
 
-        // Helper method to convert SensorReading to DataItem (Dictionary<string, object>)
+        // Updated method to convert SensorReading to DataItem with the new schema fields
         private IEnumerable<DataItem> ConvertReadingsToDataItems(List<SensorReading> readings)
         {
-             _logger.LogDebug("Converting {Count} SensorReading objects to DataItem dictionaries.", readings.Count);
-             var dataItems = new List<DataItem>();
-             foreach(var reading in readings)
-             {
-                 // Simple manual mapping. Could use reflection or JsonSerializer for more complex objects.
-                 var item = new DataItem();
-                 item["id"] = reading.id; // Assuming Id is already suitable for Cosmos
-                 item["sensor_id"] = reading.sensor_id;
-                 item["timestamp"] = reading.timestamp; // Keep original format for now
-                 item["temperature"] = reading.temperature;
-                 item["vibration"] = reading.vibration;
-                 item["voltage"] = reading.voltage;
-                 item["status_code"] = reading.status_code;
-                 item["anomaly_flag"] = reading.anomaly_flag;
-                 item["processed_stage"] = ProcessingStage.Raw.ToString(); // Initial stage before processors
+            _logger.LogDebug("Converting {Count} SensorReading objects to DataItem dictionaries.", readings.Count);
+            var dataItems = new List<DataItem>();
+            
+            // Get the configured processing stage
+            string processingStage = _settings.ProcessingStage;
+            if (!ProcessingStage.IsValid(processingStage))
+            {
+                _logger.LogWarning("Invalid processing stage configured: {Stage}. Falling back to Raw.", processingStage);
+                processingStage = ProcessingStage.Raw;
+            }
+            
+            foreach(var reading in readings)
+            {
+                // Create a data item with fields populated based on the processing stage
+                var item = new DataItem();
+                
+                // These fields are always included regardless of processing stage
+                item["id"] = reading.Id;
+                item["sensorId"] = reading.SensorId;
+                item["timestamp"] = reading.Timestamp;
+                item["city"] = reading.City;
+                item["location"] = reading.Location;
+                item["processingStage"] = processingStage;
+                
+                // Capture raw sensor data as a JSON string for Raw stage
+                if (processingStage == ProcessingStage.Raw)
+                {
+                    // Serialize the original reading to JSON for the rawDataString
+                    var rawData = new Dictionary<string, object?>
+                    {
+                        ["id"] = reading.Id,
+                        ["sensorId"] = reading.SensorId,
+                        ["timestamp"] = reading.Timestamp,
+                        ["temperature"] = reading.Temperature,
+                        ["vibration"] = reading.Vibration,
+                        ["voltage"] = reading.Voltage,
+                        ["status"] = reading.Status,
+                        ["location"] = reading.Location,
+                        ["city"] = reading.City
+                    };
+                    item["rawDataString"] = JsonSerializer.Serialize(rawData);
+                    
+                    // For Raw stage, we might still include some basic parsed data if available
+                    if (reading.Temperature.HasValue) item["temperature"] = reading.Temperature.Value;
+                    if (reading.Vibration.HasValue) item["vibration"] = reading.Vibration.Value;
+                    if (reading.Voltage.HasValue) item["voltage"] = reading.Voltage.Value;
+                    item["status"] = reading.Status;
+                }
+                
+                // Include all fields for stages above Raw
+                if (processingStage != ProcessingStage.Raw)
+                {
+                    // Core sensor readings
+                    if (reading.Temperature.HasValue) item["temperature"] = reading.Temperature.Value;
+                    if (reading.Vibration.HasValue) item["vibration"] = reading.Vibration.Value;
+                    if (reading.Voltage.HasValue) item["voltage"] = reading.Voltage.Value;
+                    if (reading.Humidity.HasValue) item["humidity"] = reading.Humidity.Value;
+                    item["status"] = reading.Status;
+                    
+                    // Anomaly information
+                    item["anomalyFlag"] = reading.AnomalyFlag;
+                    if (!string.IsNullOrEmpty(reading.AnomalyType)) item["anomalyType"] = reading.AnomalyType;
+                    
+                    // Metadata fields
+                    if (!string.IsNullOrEmpty(reading.FirmwareVersion)) item["firmwareVersion"] = reading.FirmwareVersion;
+                    if (!string.IsNullOrEmpty(reading.Model)) item["model"] = reading.Model;
+                    if (!string.IsNullOrEmpty(reading.Manufacturer)) item["manufacturer"] = reading.Manufacturer;
+                    
+                    // Location with varying precision based on processingStage
+                    if (processingStage == ProcessingStage.Sanitized)
+                    {
+                        // For Sanitized: Reduce precision of lat/long
+                        // Extract and sanitize lat/long from location if available
+                        SanitizeLocationData(reading, item);
+                    }
+                    else
+                    {
+                        // For Schematized: Include precise location data if available
+                        if (!string.IsNullOrEmpty(reading.Lat)) item["lat"] = reading.Lat;
+                        if (!string.IsNullOrEmpty(reading.Long)) item["long"] = reading.Long;
+                    }
+                    
+                    // For Aggregated: Include aggregation window information
+                    if (processingStage == ProcessingStage.Aggregated)
+                    {
+                        // In a real implementation, these would be calculated based on a time window
+                        // Here we're just setting them to examples for demonstration
+                        DateTime timestamp = reading.Timestamp;
+                        DateTime windowStart = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour, timestamp.Minute, 0);
+                        DateTime windowEnd = windowStart.AddMinutes(1);
+                        
+                        item["aggregationWindowStart"] = windowStart;
+                        item["aggregationWindowEnd"] = windowEnd;
+                    }
+                }
+                
+                // Handle development mode overrides (e.g., generate new IDs, update timestamps)
+                if (_settings.DevelopmentMode)
+                {
+                    var newId = Guid.NewGuid().ToString();
+                    _logger.LogTrace("DEV MODE: Overwriting ID {OldId} with {NewId}", item["id"], newId);
+                    item["id"] = newId;
+                    
+                    var now = DateTime.UtcNow;
+                    _logger.LogTrace("DEV MODE: Overwriting timestamp {OldTs} with {NewTs}", item["timestamp"], now);
+                    item["timestamp"] = now;
+                }
+                
+                dataItems.Add(item);
+            }
+            
+            return dataItems;
+        }
 
-                 // Add any other relevant properties from SensorReading
-
-                 // Handle development mode overrides if they should apply *before* processing
-                 if (_settings.DevelopmentMode)
-                 {
-                      var newId = Guid.NewGuid().ToString();
-                      _logger.LogTrace("DEV MODE: Overwriting ID {OldId} with {NewId}", item["id"], newId);
-                      item["id"] = newId; 
-                      
-                      var now = DateTime.UtcNow;
-                       _logger.LogTrace("DEV MODE: Overwriting timestamp {OldTs} with {NewTs}", item["timestamp"], now);
-                      item["timestamp"] = now; 
-                 }
-
-                 dataItems.Add(item);
-             }
-             return dataItems;
+        // Helper method to sanitize location data (reduce precision)
+        private void SanitizeLocationData(SensorReading reading, DataItem item)
+        {
+            // Parse and sanitize latitude if available
+            if (!string.IsNullOrEmpty(reading.Lat) && double.TryParse(reading.Lat, out double lat))
+            {
+                // Reduce precision to 2 decimal places (roughly 1km accuracy)
+                string sanitizedLat = Math.Round(lat, 2).ToString("F2", CultureInfo.InvariantCulture);
+                item["lat"] = sanitizedLat;
+            }
+            
+            // Parse and sanitize longitude if available
+            if (!string.IsNullOrEmpty(reading.Long) && double.TryParse(reading.Long, out double lng))
+            {
+                // Reduce precision to 2 decimal places
+                string sanitizedLong = Math.Round(lng, 2).ToString("F2", CultureInfo.InvariantCulture);
+                item["long"] = sanitizedLong;
+            }
+            
+            // Update location string to reflect sanitized coordinates
+            if (item.ContainsKey("lat") && item.ContainsKey("long"))
+            {
+                item["location"] = $"{item["lat"]},{item["long"]}";
+            }
         }
 
         // Helper to wrap IEnumerable in IAsyncEnumerable if needed

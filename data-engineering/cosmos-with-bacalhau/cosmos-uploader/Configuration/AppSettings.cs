@@ -11,6 +11,7 @@ namespace CosmosUploader.Configuration
         public List<CitySettings>? Cities { get; set; }
         public bool DevelopmentMode { get; set; } = false;
         public bool DebugMode { get; set; } = false;
+        public string ProcessingStage { get; set; } = "Raw"; // Default to Raw stage
     }
 
     public class CosmosSettings

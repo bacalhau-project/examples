@@ -15,14 +15,14 @@ services:
     hostname: orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
-    ports:
-      - "8438:8438"
-      - "1234:1234"
-      - "4222:4222"
-    networks:
-      - bacalhau-network
+    # Using host network mode for best performance
+    # network_mode: "host"
     volumes:
       - ./network-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    ports:
+      - "1234:1234"
+    networks:
+      - bacalhau-network
     deploy:
       resources:
         reservations:
@@ -38,12 +38,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-        compress: "false"
+    # Orchestrator keeps logging enabled
 
   nodes:
     image: ghcr.io/bacalhau-project/bacalhau:latest-dind
@@ -60,16 +55,47 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.20"
-          memory: "200M" # 200MB per service
+          cpus: "0.50" # Allocate 10% CPU per node
+          memory: "500M" # 500MB per service
     networks:
       - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 1.1.1.1
     ulimits:
       nofile:
-        soft: 4096
-        hard: 4096
+        soft: 65536
+        hard: 65536
+    #<<: *logging-driver
+
+    # New non-DinD nodes that use the host Docker socket
+  host-nodes:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    command: serve -c /etc/bacalhau/config.yaml -c labels=docker-type=host
+    volumes:
+      - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock # Mount host Docker socket
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.04" # Allocate 4% CPU per node
+          memory: "500M" # 500MB per service
+    networks:
+      - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     <<: *logging-driver
 
   client:
@@ -82,19 +108,23 @@ services:
     environment:
       <<: *common-env-variables
       # Point to orchestrator on host network
-      BACALHAU_API_HOST: "orchestrator"
+      BACALHAU_API_HOST: "host.docker.internal"
     depends_on:
       - orchestrator
     networks:
       - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ulimits:
       nofile:
-        soft: 4096
-        hard: 4096
+        soft: 65536
+        hard: 65536
     <<: *logging-driver
 
 networks:
   bacalhau-network:
     ipam:
       config:
-        - subnet: 172.27.0.0/24
+        - subnet: 172.28.0.0/16
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
