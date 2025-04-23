@@ -12,15 +12,26 @@ class ConfigManager:
 
         Args:
             config_path: Path to configuration file. If None, will try to get from
-                         environment variable SENSOR_CONFIG or use default 'config.yaml'.
+                         environment variable CONFIG_FILE or use default 'config.yaml'.
             identity_path: Path to node identity file. If None, will try to get from
-                          environment variable SENSOR_IDENTITY_FILE or use default 'node_identity.json'.
+                          environment variable IDENTITY_FILE or use default 'node_identity.json'.
         """
         # Priority: 1. Passed argument, 2. Environment variable, 3. Default
-        self.config_path = config_path or os.environ.get("SENSOR_CONFIG", "config.yaml")
-        self.identity_path = identity_path or os.environ.get(
-            "SENSOR_IDENTITY_FILE", "node_identity.json"
+        self.config_path = os.path.abspath(
+            config_path or os.environ.get("CONFIG_FILE", "config.yaml")
         )
+        if not os.path.exists(self.config_path):
+            logging.error(f"Configuration file not found: {self.config_path}")
+            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
+
+        self.identity_path = os.path.abspath(
+            identity_path or os.environ.get("IDENTITY_FILE", "node_identity.json")
+        )
+        if not os.path.exists(self.identity_path):
+            logging.error(f"Node identity file not found: {self.identity_path}")
+            raise FileNotFoundError(
+                f"Node identity file not found: {self.identity_path}"
+            )
 
         # File modification timestamps
         self.config_mtime = 0
@@ -82,7 +93,8 @@ class ConfigManager:
 
             with open(self.config_path, "r") as file:
                 config = yaml.safe_load(file)
-                logging.info(f"Configuration loaded from {self.config_path}")
+                abs_path = os.path.abspath(self.config_path)
+                logging.info(f"Configuration loaded from {abs_path}")
 
                 # Update config file modification time
                 self.config_mtime = os.path.getmtime(self.config_path)
@@ -97,7 +109,7 @@ class ConfigManager:
         """Load node identity from JSON file."""
         try:
             if not os.path.exists(self.identity_path):
-                logging.warning(f"Node identity file not found: {self.identity_path}")
+                logging.error(f"Node identity file not found: {self.identity_path}")
                 return {}
 
             with open(self.identity_path, "r") as file:
@@ -106,7 +118,8 @@ class ConfigManager:
             # Update identity file modification time
             self.identity_mtime = os.path.getmtime(self.identity_path)
 
-            logging.info(f"Node identity loaded from {self.identity_path}")
+            abs_path = os.path.abspath(self.identity_path)
+            logging.info(f"Node identity loaded from {abs_path}")
             return identity
         except Exception as e:
             logging.error(f"Error loading node identity: {e}")

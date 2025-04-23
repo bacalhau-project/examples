@@ -58,6 +58,8 @@ class AnomalyGenerator:
             )
 
         self.location = identity.get("location")
+        self.latitude = identity.get("latitude")
+        self.longitude = identity.get("longitude")
         if not self.location:
             raise ValueError("Location is required in identity configuration")
 
@@ -71,6 +73,8 @@ class AnomalyGenerator:
         logging.info(f"  Model: {self.model.value}")
         logging.info(f"  Manufacturer: {self.manufacturer.value}")
         logging.info(f"  Location: {self.location}")
+        logging.info(f"  Latitude: {self.latitude}")
+        logging.info(f"  Longitude: {self.longitude}")
 
     def should_generate_anomaly(self):
         """Determine if an anomaly should be generated based on probability and firmware version."""
