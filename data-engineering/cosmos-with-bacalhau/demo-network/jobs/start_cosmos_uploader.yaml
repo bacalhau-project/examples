@@ -8,14 +8,13 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ghcr.io/bacalhau-project/cosmos-uploader:202504222014
+        Image: ghcr.io/bacalhau-project/cosmos-uploader:202504222125
         Parameters:
           - "--config"
           - "/root/cosmos-config.yaml"
           - "--sqlite"
           - "/root/sensor_data.db"
           - "--continuous"
-          - "--debug"
     InputSources:
       - Source:
           Type: "localDirectory"

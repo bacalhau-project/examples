@@ -13,6 +13,9 @@ using System.Net;
 
 namespace CosmosUploader.Services
 {
+    // Define placeholder data type consistent with processors
+    using DataItem = System.Collections.Generic.Dictionary<string, object>;
+
     public class CosmosUploader : ICosmosUploader
     {
         private readonly ILogger<CosmosUploader> _logger;
@@ -30,6 +33,10 @@ namespace CosmosUploader.Services
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Declare Stopwatches here so they are accessible throughout the try block
+            Stopwatch? dbWatch = null;
+            Stopwatch? containerWatch = null;
 
             try
             {
@@ -82,6 +89,7 @@ namespace CosmosUploader.Services
 
                 if (_settings.DebugMode)
                 {
+                    dbWatch = Stopwatch.StartNew();
                     _logger.LogDebug("DEBUG: Calling CreateDatabaseIfNotExistsAsync for database '{DatabaseName}'...", _settings.Cosmos.DatabaseName);
                 }
 
@@ -95,10 +103,10 @@ namespace CosmosUploader.Services
 
                 if (completedTask == cancellationTask)
                 {
+                    dbWatch?.Stop();
                     if (_settings.DebugMode)
                     {
-                        dbWatch.Stop();
-                        _logger.LogDebug("DEBUG: CreateDatabaseIfNotExistsAsync cancelled after {ElapsedMs}ms.", dbWatch.ElapsedMilliseconds);
+                        _logger.LogDebug("DEBUG: CreateDatabaseIfNotExistsAsync cancelled after {ElapsedMs}ms.", dbWatch?.ElapsedMilliseconds ?? -1);
                     }
                     _logger.LogWarning("Cosmos DB initialization cancelled during CreateDatabaseIfNotExistsAsync.");
                     throw new OperationCanceledException(cancellationToken);
@@ -106,10 +114,11 @@ namespace CosmosUploader.Services
 
                 var databaseResponse = await createDbTask;
 
+                dbWatch?.Stop();
                 if (_settings.DebugMode)
                 {
                      _logger.LogDebug("DEBUG: CreateDatabaseIfNotExistsAsync completed in {ElapsedMs}ms. Status: {StatusCode}, RU: {RequestCharge}",
-                         dbWatch.ElapsedMilliseconds, databaseResponse.StatusCode, databaseResponse.RequestCharge);
+                         dbWatch?.ElapsedMilliseconds ?? -1, databaseResponse.StatusCode, databaseResponse.RequestCharge);
                 }
 
                 _logger.LogDebug("Testing container connection (with cancellation race)");
@@ -117,6 +126,7 @@ namespace CosmosUploader.Services
 
                 if (_settings.DebugMode)
                 {
+                    containerWatch = Stopwatch.StartNew();
                     _logger.LogDebug("DEBUG: Calling CreateContainerIfNotExistsAsync for container '{ContainerName}'...", _settings.Cosmos.ContainerName);
                 }
 
@@ -131,9 +141,10 @@ namespace CosmosUploader.Services
 
                 if (completedTask == cancellationTask)
                 {
+                    containerWatch?.Stop();
                     if (_settings.DebugMode)
                     {
-                         _logger.LogDebug("DEBUG: CreateContainerIfNotExistsAsync cancelled after {ElapsedMs}ms.", containerWatch.ElapsedMilliseconds);
+                         _logger.LogDebug("DEBUG: CreateContainerIfNotExistsAsync cancelled after {ElapsedMs}ms.", containerWatch?.ElapsedMilliseconds ?? -1);
                     }
                     _logger.LogWarning("Cosmos DB initialization cancelled during CreateContainerIfNotExistsAsync.");
                     throw new OperationCanceledException(cancellationToken);
@@ -141,10 +152,11 @@ namespace CosmosUploader.Services
 
                 var containerResponse = await createContainerTask;
 
+                containerWatch?.Stop();
                 if (_settings.DebugMode)
                 {
                      _logger.LogDebug("DEBUG: CreateContainerIfNotExistsAsync completed in {ElapsedMs}ms. Status: {StatusCode}, RU: {RequestCharge}",
-                         containerWatch.ElapsedMilliseconds, containerResponse.StatusCode, containerResponse.RequestCharge);
+                         containerWatch?.ElapsedMilliseconds ?? -1, containerResponse.StatusCode, containerResponse.RequestCharge);
                 }
 
                 _container = containerResponse.Container;
@@ -181,11 +193,12 @@ namespace CosmosUploader.Services
             }
         }
 
-        public async Task UploadReadingsAsync(List<SensorReading> readings, CancellationToken cancellationToken)
+        // Modify signature and implementation to handle generic DataItems
+        public async Task UploadDataAsync(IEnumerable<DataItem> data, CancellationToken cancellationToken)
         {
-            if (readings == null || readings.Count == 0)
+            if (data == null || !data.Any())
             {
-                _logger.LogInformation("No readings to upload");
+                _logger.LogInformation("No data items to upload");
                 return;
             }
 
@@ -195,16 +208,19 @@ namespace CosmosUploader.Services
                 throw new InvalidOperationException("Cosmos DB container has not been initialized");
             }
 
-            _logger.LogInformation("Starting bulk upload of {Count} readings...", readings.Count);
+            int totalCount = data.Count();
+            _logger.LogInformation("Starting bulk upload of {Count} processed items...", totalCount);
             var stopwatch = Stopwatch.StartNew();
             double operationRequestUnits = 0;
             int totalUploaded = 0;
             int totalFailed = 0;
             int totalConflicts = 0;
 
-            var concurrentTasks = new List<Task<(ItemResponse<SensorReading>? Response, bool Success, bool IsConflict)>>();
+            // Update task list type to handle generic object/DataItem
+            var concurrentTasks = new List<Task<(ItemResponse<object>? Response, bool Success, bool IsConflict)>>();
+            string partitionKeyPath = _settings.Cosmos.PartitionKey.TrimStart('/'); // Get the key name (e.g., "city")
 
-            foreach (var reading in readings)
+            foreach (var item in data)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -212,105 +228,134 @@ namespace CosmosUploader.Services
                     break;
                 }
 
-                if (_settings.DevelopmentMode)
+                // Development mode overrides are now handled in SqliteReader before processing
+                // Ensure Id exists (processors should maintain it, or add it if needed)
+                if (!item.ContainsKey("id") || item["id"] == null || string.IsNullOrWhiteSpace(item["id"].ToString()))
                 {
-                    reading.Id = Guid.NewGuid().ToString();
-                    reading.Timestamp = DateTime.UtcNow;
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(reading.Id))
-                    {
-                        reading.Id = Guid.NewGuid().ToString();
-                    }
+                    string newId = Guid.NewGuid().ToString();
+                    _logger.LogWarning("Item missing or has empty 'id', assigning new Guid: {NewId}", newId);
+                    item["id"] = newId;
                 }
 
-                if (string.IsNullOrEmpty(reading.City))
+                // Ensure partition key exists and has a value
+                if (!item.TryGetValue(partitionKeyPath, out var partitionKeyValue) || partitionKeyValue == null || string.IsNullOrWhiteSpace(partitionKeyValue.ToString()))
                 {
-                    _logger.LogWarning("Reading with ID {ReadingId} missing City partition key. Using Location '{Location}' as fallback.", reading.Id, reading.Location);
-                    reading.City = reading.Location;
-                    if (string.IsNullOrEmpty(reading.City)) {
-                         _logger.LogError("Reading with ID {ReadingId} has neither City nor Location. Cannot determine partition key. Skipping.", reading.Id);
-                         totalFailed++;
-                         continue;
-                    }
+                     _logger.LogError("Item with ID {ItemId} is missing the partition key field '{PartitionKeyField}' or its value is null/empty. Skipping upload.", 
+                        item.GetValueOrDefault("id", "[unknown_id]"), 
+                        partitionKeyPath);
+                     totalFailed++;
+                     continue;
                 }
 
                 concurrentTasks.Add(
-                    _container.CreateItemAsync(
-                        reading,
-                        new PartitionKey(reading.City),
-                        cancellationToken: cancellationToken
-                    )
-                    .ContinueWith(task => {
+                    // Use generic object type for CreateItemAsync
+                    _container.CreateItemAsync<object>(
+                        item, 
+                        new PartitionKey(partitionKeyValue.ToString()), // Extract partition key value
+                        cancellationToken: cancellationToken)
+                    .ContinueWith(task =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested(); // Check before processing result
+                        if (task.IsCompletedSuccessfully)
+                        {
+                            return (task.Result, true, false);
+                        }
                         if (task.IsFaulted)
                         {
-                            if (task.Exception?.InnerException is CosmosException cosmosEx && cosmosEx.StatusCode == System.Net.HttpStatusCode.Conflict)
+                            if (task.Exception?.InnerException is CosmosException cosmosEx && cosmosEx.StatusCode == HttpStatusCode.Conflict)
                             {
-                                _logger.LogDebug("Item {ItemId} already exists (Conflict - 409). Skipping.", reading.Id);
-                                return (Response: (ItemResponse<SensorReading>?)null, Success: false, IsConflict: true);
+                                // Treat conflict as a separate category, not necessarily a hard failure
+                                return (null, false, true);
                             }
-                            else
-                            {
-                                _logger.LogError(task.Exception, "Failed to create item {ItemId}: {ErrorMessage}", reading.Id, task.Exception?.InnerException?.Message ?? task.Exception?.Message);
-                                return (Response: (ItemResponse<SensorReading>?)null, Success: false, IsConflict: false);
-                            }
+                            // Log other exceptions
+                            _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage}", 
+                                item.GetValueOrDefault("id", "[unknown_id]"), 
+                                task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error");
+                            return (null, false, false);
                         }
-                        if (task.IsCanceled)
-                        {
-                            _logger.LogWarning("Create task cancelled for item {ItemId}", reading.Id);
-                            return (Response: (ItemResponse<SensorReading>?)null, Success: false, IsConflict: false);
+                        // Handle cancellation if task status indicates it (though ThrowIfCancellationRequested should catch most)
+                        if (task.IsCanceled) {
+                            _logger.LogWarning("Bulk upload task was cancelled for item ID {ItemId}", item.GetValueOrDefault("id", "[unknown_id]"));
+                            // Can decide how to count this, maybe as failed?
+                            return (null, false, false);
                         }
-                        if (_settings.Logging.LogRequestUnits)
-                        {
-                             _logger.LogDebug("Successfully created reading {Id} for sensor {SensorId}: {RU} RUs",
-                                reading.Id, reading.SensorId, task.Result.RequestCharge);
-                        }
-                        return (Response: task.Result, Success: true, IsConflict: false);
+                        // Default case (shouldn't happen often)
+                        return (null, false, false);
                     }, cancellationToken)
                 );
+
+                // Optional: Throttle task creation if needed, e.g.:
+                // if (concurrentTasks.Count >= 100) { // Limit concurrency
+                //     var completedTask = await Task.WhenAny(concurrentTasks);
+                //     concurrentTasks.Remove(completedTask);
+                //     // Process completedTask result here or wait for the main loop
+                // }
             }
 
-             _logger.LogInformation("Awaiting completion of {Count} concurrent create tasks...", concurrentTasks.Count);
-            var results = await Task.WhenAll(concurrentTasks);
-
-            foreach (var result in results)
+             if (cancellationToken.IsCancellationRequested)
             {
-                if (result.Success && result.Response != null)
+                 _logger.LogWarning("Upload was cancelled after creating {TaskCount} upload tasks. Awaiting completion of initiated tasks...", concurrentTasks.Count);
+            }
+            else {
+                 _logger.LogDebug("Created {TaskCount} upload tasks. Awaiting completion...", concurrentTasks.Count);
+            }
+
+            // Wait for all initiated tasks to complete
+            await Task.WhenAll(concurrentTasks);
+
+            // Process results
+            foreach (var task in concurrentTasks)
+            {
+                var (response, success, isConflict) = task.Result; // Access the result directly as Task.WhenAll ensures completion
+
+                if (success && response != null)
                 {
                     totalUploaded++;
-                    operationRequestUnits += result.Response.RequestCharge;
+                    operationRequestUnits += response.RequestCharge;
+                    if (_settings.Logging.LogLatency)
+                    {
+                        _logger.LogTrace("Uploaded item {Id} - RU: {RequestCharge}, Latency: {Latency}", 
+                            response.Resource?.GetType().GetProperty("id")?.GetValue(response.Resource) ?? "unknown", // Try to get ID from response if possible
+                            response.RequestCharge, 
+                            response.Diagnostics.GetClientElapsedTime()); 
+                    }
                 }
-                else if (result.IsConflict)
+                else if (isConflict)
                 {
                     totalConflicts++;
+                     _logger.LogWarning("Conflict detected for an item during bulk upload (item likely already exists).");
                 }
                 else
                 {
+                    // Already logged in the ContinueWith block
                     totalFailed++;
                 }
             }
 
-            _totalRequestUnits += (long)operationRequestUnits;
             stopwatch.Stop();
+            _totalRequestUnits += (long)operationRequestUnits;
+
+            if (totalFailed > 0)
+            {
+                 _logger.LogError("Bulk upload completed with {Failures} failures out of {Total} items.", totalFailed, totalCount);
+            }
+            if (totalConflicts > 0)
+            {
+                _logger.LogWarning("Bulk upload completed with {Conflicts} conflicts detected out of {Total} items.", totalConflicts, totalCount);
+            }
 
             _logger.LogInformation(
-                "Bulk upload completed: {Total} items attempted in {ElapsedMs}ms. Success: {Uploaded}, Failed: {Failed}, Conflicts: {Conflicts}, RUs Consumed (approx): {RUs}",
-                readings.Count,
-                stopwatch.ElapsedMilliseconds,
+                "Bulk upload finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Total RUs: {RequestUnits:F2}",
+                stopwatch.Elapsed.TotalSeconds,
                 totalUploaded,
-                totalFailed,
                 totalConflicts,
+                totalFailed,
                 operationRequestUnits);
-
-            if (cancellationToken.IsCancellationRequested)
+            
+            // Decide if failure count warrants throwing an exception to halt processing
+            if (totalFailed > 0 && totalFailed == totalCount) // Example: Fail if all items failed
             {
-                  _logger.LogWarning("Operation was cancelled. Results might be partial.");
-             }
-
-            if (totalFailed > 0 && totalUploaded == 0)
-            {
-                _logger.LogError("Bulk upload failed for all items.");
+                 throw new Exception($"Bulk upload failed for all {totalFailed} items. See logs for details.");
             }
         }
 
