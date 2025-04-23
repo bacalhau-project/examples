@@ -1,0 +1,85 @@
+# Bacalhau Scale Benchmark Job
+# Purpose: Test large-scale container deployment capabilities on Bacalhau
+#
+# This lightweight benchmark job:
+# - Runs a simple CPU and I/O workload for ~30 seconds
+# - Reports system information of the executing container
+# - Returns execution results in JSON format
+# - Uses minimal resources (0.03 CPU, 64MB RAM per node)
+# - Designed to test scheduling and orchestration at scale
+#
+# Usage: bacalhau job run benchmark.yaml -V count=<number_of_nodes>
+
+Name: node-benchmark
+Type: batch
+Count: {{.count}}
+Namespace: benchmark
+
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/linuxcontainers/alpine:3.20
+        Parameters:
+          - /bin/sh
+          - -c
+          - |
+            # Create a unique random ID
+            NODE_ID=$(cat /dev/urandom | tr -dc 'a-f0-9' | fold -w 16 | head -n 1)
+            echo "Starting benchmark on node $NODE_ID"
+            
+            # Create small random file
+            dd if=/dev/urandom of=/tmp/data.bin bs=1M count=5
+            
+            # Get system info
+            echo "=== System Info ==="
+            uname -a
+            cat /proc/cpuinfo | grep "model name" | head -1
+            cat /proc/meminfo | grep MemTotal
+            
+            # Perform CPU work for ~30 seconds
+            echo "=== Starting CPU workload ==="
+            START_TIME=$(date +%s)
+            END_TIME=$((START_TIME + 30))
+            
+            while [ $(date +%s) -lt $END_TIME ]; do
+              # CPU compute loop - calculate prime numbers
+              for i in $(seq 1 1000); do
+                factor $i > /dev/null
+              done
+            
+              # Quick IO test
+              dd if=/dev/urandom of=/tmp/test.$i.bin bs=64k count=10 2>/dev/null
+            
+              # Small sleep to not peg CPU at 100%
+              sleep 0.1
+            done
+            
+            # Report results
+            DURATION=$(($(date +%s) - START_TIME))
+            
+            echo "=== Results ==="
+            echo "Node ID: $NODE_ID"
+            echo "Duration: $DURATION seconds"
+            echo "Hostname: $(hostname)"
+            echo "$(date): Benchmark complete"
+            
+            # Return JSON result for easier parsing
+            cat << EOF > /tmp/result.json
+            {
+              "node_id": "$NODE_ID",
+              "hostname": "$(hostname)",
+              "duration": $DURATION,
+              "timestamp": "$(date -Iseconds)",
+              "success": true
+            }
+            EOF
+            
+            cat /tmp/result.json
+    Resources:
+      CPU: "0.03"
+      Memory: "64mb"
+    Timeouts:
+      ExecutionTimeout: 300
+      QueueTimeout: 300

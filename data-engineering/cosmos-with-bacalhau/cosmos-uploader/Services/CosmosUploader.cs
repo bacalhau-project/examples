@@ -211,12 +211,23 @@ namespace CosmosUploader.Services
             }
 
             int totalCount = data.Count();
-            _logger.LogInformation("Starting bulk upload of {Count} processed items...", totalCount);
+            string processingStage = _settings.ProcessingStage;
+            _logger.LogInformation("Starting bulk upload of {Count} {Stage} items...", totalCount, processingStage);
             var stopwatch = Stopwatch.StartNew();
             double operationRequestUnits = 0;
             int totalUploaded = 0;
             int totalFailed = 0;
             int totalConflicts = 0;
+
+            // Verify all items have the required processingStage field
+            foreach (var item in data)
+            {
+                if (!item.ContainsKey("processingStage"))
+                {
+                    _logger.LogWarning("Item missing 'processingStage' field. Setting to configured value: {Stage}", processingStage);
+                    item["processingStage"] = processingStage;
+                }
+            }
 
             // Update task list type to handle generic object/DataItem
             var concurrentTasks = new List<Task<(ItemResponse<object>? Response, bool Success, bool IsConflict)>>();
@@ -230,7 +241,6 @@ namespace CosmosUploader.Services
                     break;
                 }
 
-                // Development mode overrides are now handled in SqliteReader before processing
                 // Ensure Id exists (processors should maintain it, or add it if needed)
                 if (!item.ContainsKey("id") || item["id"] == null || string.IsNullOrWhiteSpace(item["id"].ToString()))
                 {
@@ -247,6 +257,17 @@ namespace CosmosUploader.Services
                         partitionKeyPath);
                      totalFailed++;
                      continue;
+                }
+
+                // Verify the item has the correct fields for its processing stage
+                string itemStage = item.GetValueOrDefault("processingStage", processingStage)?.ToString() ?? processingStage;
+                
+                // Perform field validation based on processing stage
+                if (!ValidateItemFields(item, itemStage))
+                {
+                    _logger.LogWarning("Item with ID {ItemId} is missing required fields for processing stage '{Stage}'. Uploading anyway with available fields.", 
+                        item.GetValueOrDefault("id", "[unknown_id]"),
+                        itemStage);
                 }
 
                 concurrentTasks.Add(
@@ -347,7 +368,8 @@ namespace CosmosUploader.Services
             }
 
             _logger.LogInformation(
-                "Bulk upload finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Total RUs: {RequestUnits:F2}",
+                "Bulk upload of {ProcessingStage} data finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Total RUs: {RequestUnits:F2}",
+                processingStage,
                 stopwatch.Elapsed.TotalSeconds,
                 totalUploaded,
                 totalConflicts,
@@ -359,6 +381,34 @@ namespace CosmosUploader.Services
             {
                  throw new Exception($"Bulk upload failed for all {totalFailed} items. See logs for details.");
             }
+        }
+
+        // Helper method to validate item fields based on processing stage
+        private bool ValidateItemFields(DataItem item, string stage)
+        {
+            if (!ProcessingStage.IsValid(stage))
+            {
+                _logger.LogWarning("Invalid processing stage '{Stage}' for item ID {ItemId}", 
+                    stage, item.GetValueOrDefault("id", "[unknown_id]"));
+                return false;
+            }
+
+            // Get required fields for this stage
+            var requiredFields = ProcessingStage.FieldRequirements.GetForStage(stage);
+            
+            // Check if all required fields are present
+            bool isValid = true;
+            foreach (var field in requiredFields)
+            {
+                if (!item.ContainsKey(field))
+                {
+                    _logger.LogDebug("Item ID {ItemId} missing required field '{Field}' for processing stage '{Stage}'", 
+                        item.GetValueOrDefault("id", "[unknown_id]"), field, stage);
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
         }
 
         public async Task<int> GetContainerItemCountAsync()
