@@ -78,7 +78,7 @@ Tasks:
             
             cat /tmp/result.json
     Resources:
-      CPU: "0.1"
+      CPU: "0.03"
       Memory: "64mb"
     Timeouts:
       ExecutionTimeout: 120
