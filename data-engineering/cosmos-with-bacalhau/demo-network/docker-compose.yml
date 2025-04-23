@@ -60,7 +60,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.20"
+          cpus: "0.50"
           memory: "200M" # 200MB per service
     networks:
       - bacalhau-network
@@ -97,4 +97,4 @@ networks:
   bacalhau-network:
     ipam:
       config:
-        - subnet: 172.27.0.0/24
+        - subnet: 172.27.0.0/16
