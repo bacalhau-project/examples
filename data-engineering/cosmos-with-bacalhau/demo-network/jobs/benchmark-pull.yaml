@@ -18,7 +18,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ghcr.io/linuxcontainers/alpine:3.20
+        Image: registry-proxy:5000/linuxcontainers/alpine:3.20
         Parameters:
           - /bin/sh
           - -c
