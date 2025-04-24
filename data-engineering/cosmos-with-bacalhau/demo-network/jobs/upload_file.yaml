@@ -1,6 +1,5 @@
 Name: upload-file
-Type: batch
-Count: {{.count}}
+Type: ops
 Namespace: demo
 
 Tasks:

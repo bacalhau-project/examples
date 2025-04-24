@@ -1,5 +1,5 @@
 Name: run-python-script
-Type: batch
+Type: {{.type}}
 Count: {{.count}}
 Namespace: demo
 

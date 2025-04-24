@@ -1,6 +1,5 @@
 Name: start-sensor
-Type: batch
-Count: {{.count}}
+Type: ops
 Namespace: demo
 
 Tasks:
