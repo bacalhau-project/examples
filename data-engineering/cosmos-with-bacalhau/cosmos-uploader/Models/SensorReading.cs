@@ -35,6 +35,10 @@ namespace CosmosUploader.Models
         [JsonProperty("rawDataString")]
         public string? RawDataString { get; set; }
         
+        // New property to store the raw SQLite data
+        [JsonIgnore] // Don't include in JSON serialization
+        public string? RawSqliteData { get; set; }
+        
         [JsonProperty("temperature")]
         public double? Temperature { get; set; }
         

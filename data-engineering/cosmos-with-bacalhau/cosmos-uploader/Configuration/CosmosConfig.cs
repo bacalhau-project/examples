@@ -12,7 +12,7 @@ namespace CosmosUploader.Configuration
             Key = string.Empty,
             DatabaseName = "SensorData",
             ContainerName = "SensorReadings",
-            PartitionKey = "/city",
+            PartitionKey = "/location",
             ResourceGroup = null
         };
 
@@ -24,6 +24,9 @@ namespace CosmosUploader.Configuration
 
         [YamlMember(Alias = "config_watch")]
         public ConfigWatchSettings ConfigWatch { get; set; } = new();
+        
+        [YamlMember(Alias = "processing")]
+        public ProcessingSettings Processing { get; set; } = new();
     }
 
     public class ConfigWatchSettings
@@ -33,5 +36,17 @@ namespace CosmosUploader.Configuration
 
         [YamlMember(Alias = "poll_interval_seconds")]
         public int PollIntervalSeconds { get; set; } = 5;
+    }
+    
+    public class ProcessingSettings
+    {
+        [YamlMember(Alias = "schematize")]
+        public bool Schematize { get; set; } = false;
+        
+        [YamlMember(Alias = "sanitize")]
+        public bool Sanitize { get; set; } = false;
+        
+        [YamlMember(Alias = "aggregate")]
+        public bool Aggregate { get; set; } = false;
     }
 }
