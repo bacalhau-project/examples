@@ -8,7 +8,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: registry-proxy:5000/bacalhau-project/cosmos-uploader:202504222125
+        Image: registry-proxy:5000/bacalhau-project/cosmos-uploader:202504241620
         Parameters:
           - "--config"
           - "/root/cosmos-config.yaml"
