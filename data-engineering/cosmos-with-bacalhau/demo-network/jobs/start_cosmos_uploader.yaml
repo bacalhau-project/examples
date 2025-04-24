@@ -1,6 +1,5 @@
 Name: start-cosmos-uploader
-Type: batch
-Count: {{.count}}
+Type: ops
 Namespace: demo
 
 Tasks:
