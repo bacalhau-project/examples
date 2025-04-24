@@ -1,1 +1,11 @@
 sample_data/*
+bin/
+obj/
+*.dll
+*.pdb
+*.json
+runtimes/
+[a-z][a-z]/
+[a-z][a-z]-[A-Z][a-z]/
+.DS_Store
+*.original
