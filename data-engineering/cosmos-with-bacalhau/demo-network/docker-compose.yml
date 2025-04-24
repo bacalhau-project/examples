@@ -62,7 +62,7 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    <<: *logging-driver
+#    <<: *logging-driver
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
