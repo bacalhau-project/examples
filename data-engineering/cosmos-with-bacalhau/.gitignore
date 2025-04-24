@@ -89,4 +89,5 @@ archive/
 
 data/*
 docker-compose.yaml
+sample-sensor/*
 
