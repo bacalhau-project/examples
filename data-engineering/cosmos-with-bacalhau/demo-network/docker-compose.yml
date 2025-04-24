@@ -64,32 +64,6 @@ services:
         hard: 65536
     <<: *logging-driver
 
-  # New non-DinD nodes that use the host Docker socket
-  host-nodes:
-    image: ghcr.io/bacalhau-project/bacalhau:latest
-    command: serve -c /etc/bacalhau/config.yaml -c labels=docker-type=host
-    volumes:
-      - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
-      - /var/run/docker.sock:/var/run/docker.sock # Mount host Docker socket
-    environment:
-      <<: *common-env-variables
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-      registry-proxy:
-        condition: service_started
-    networks:
-      - bacalhau-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    dns:
-      - 1.1.1.1
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    <<: *logging-driver
-
   client:
     image: ghcr.io/bacalhau-project/bacalhau:latest
     entrypoint: /bin/sh
