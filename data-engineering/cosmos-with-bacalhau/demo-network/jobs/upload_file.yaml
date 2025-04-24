@@ -26,7 +26,7 @@ Tasks:
             ReadWrite: true
         Target: "/root"
     Resources:
-      CPU: "0.1"
-      Memory: "36mb"
+      CPU: "0.5"
+      Memory: "128mb"
     Timeouts:
       QueueTimeout: 300
