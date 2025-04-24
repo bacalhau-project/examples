@@ -8,10 +8,11 @@
 # - Uses minimal resources (0.03 CPU, 64MB RAM per node)
 # - Designed to test scheduling and orchestration at scale
 #
-# Usage: bacalhau job run benchmark.yaml
+# Usage: bacalhau job run benchmark.yaml -V count=<number_of_nodes>
 
 Name: node-benchmark
-Type: ops
+Type: batch
+Count: {{.count}}
 Namespace: benchmark
 
 Tasks:

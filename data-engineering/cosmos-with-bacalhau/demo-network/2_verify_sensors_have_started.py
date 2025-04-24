@@ -19,7 +19,7 @@ def run_job_on_nodes(count=5):
         script_b64 = base64.b64encode(f.read()).decode('utf-8')
     
     # Run the bacalhau job with the specified count and encoded script
-    cmd = f"bacalhau job run jobs/run_python_script.yaml -V script_b64='{script_b64}' -V type=batch -V count={count} --id-only --wait"
+    cmd = f"bacalhau job run jobs/run_python_script.yaml -V script_b64='{script_b64}' -V count={count} --id-only --wait"
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     
     if result.returncode != 0:
