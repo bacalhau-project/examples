@@ -2,6 +2,7 @@
 set -e
 
 # Get count of nodes in the network
+COUNT=$(bacalhau node list --output json | jq -r '[.[] | select(.Info.NodeType == "Compute")] | length')
 NUM_CITIES=${NUM_CITIES:-20}
 
 echo "Processing config.yaml..."
@@ -10,6 +11,7 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat files/sensor-config.yaml | base64 -w 0)" \
     -V file_name="config.yaml" \
     --id-only \
+    -V count="$COUNT" \
     --wait
 
 echo "Processing node_identity.json..."
@@ -18,6 +20,7 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat files/node-identity.json | base64 -w 0)" \
     -V file_name="node_identity.json" \
     --id-only \
+    -V count="$COUNT" \
     --wait
 
 echo "Processing cosmos-config.yaml..."
@@ -26,6 +29,7 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat files/cosmos-config.yaml | base64 -w 0)" \
     -V file_name="cosmos-config.yaml" \
     --id-only \
+    -V count="$COUNT" \
     --wait
 
 # Create a simplified cities.json file with just name, country, and coordinates
@@ -49,13 +53,13 @@ bacalhau job run jobs/upload_file.yaml \
     -V file_b64="$(cat "$TEMP_DIR/cities.json" | base64 -w 0)" \
     -V file_name="cities.json" \
     --id-only \
+    -V count="$COUNT" \
     --wait
 
 echo "Randomizing locations..."
 bacalhau job run jobs/run_python_script.yaml \
     -V script_b64="$(cat jobs/update_location.py | base64 -w 0)" \
-    -V type="ops" \
-    -V count="0" \
+    -V count="$COUNT" \
     --id-only \
     --wait
 

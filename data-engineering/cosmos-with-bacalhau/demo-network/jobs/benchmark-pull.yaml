@@ -6,10 +6,11 @@
 # - Performs minimal operations to verify the image works correctly
 # - Designed to prepare nodes for subsequent benchmark jobs by caching the image
 #
-# Usage: bacalhau job run benchmark-pull.yaml
+# Usage: bacalhau job run benchmark-pull.yaml -V count=<number_of_nodes>
 
 Name: node-benchmark-pull
-Type: ops
+Type: batch
+Count: {{.count}}
 Namespace: benchmark
 
 Tasks:
