@@ -307,22 +307,8 @@ namespace CosmosUploader
                 logger.LogInformation("Database: {Database}/{Container}", config.Cosmos.DatabaseName, config.Cosmos.ContainerName);
 
 
-
                 // Random number generator for jitter
                 var random = new Random();
-
-                // sleep for a random value between 0 and 30 seconds
-                int initialSleep = random.Next(0, 30001); // 0 to 30 seconds
-                logger.LogInformation("Sleeping for {InitialSleepSeconds} seconds before starting...", initialSleep / 1000.0);
-                try
-								{
-										await Task.Delay(initialSleep, cts.Token);
-								}
-								catch (OperationCanceledException)
-								{
-										logger.LogInformation("Initial sleep cancelled.");
-										return 130; // Standard exit code for Ctrl+C
-								}
 
                 try
                 {
