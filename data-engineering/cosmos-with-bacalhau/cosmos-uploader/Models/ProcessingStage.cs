@@ -25,35 +25,78 @@ namespace CosmosUploader.Models
         // Helper method to determine which fields should be populated for a given stage
         public static class FieldRequirements
         {
-            // Fields required/populated for Raw stage
-            public static readonly HashSet<string> Raw = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            // Common fields required for all processing stages
+            public static readonly HashSet<string> CommonFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "id", "sensorId", "timestamp", "city", "location", "processingStage", "rawDataString"
+                // Basic Identification
+                "id",           // Unique identifier for the document
+                "sensorId",     // Unique identifier for the sensor
+                "timestamp",    // Time when reading was taken
+                
+                // Location and Processing
+                "location",     // Location where the sensor is located (Partition Key)
+                "processingStage"  // Processing stage marker
+            };
+
+            // Fields required/populated for Raw stage
+            public static readonly HashSet<string> Raw = new HashSet<string>(CommonFields, StringComparer.OrdinalIgnoreCase)
+            {
+                "rawDataString" // The original raw data string from the sensor
             };
 
             // Fields required/populated for Schematized stage
-            public static readonly HashSet<string> Schematized = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            public static readonly HashSet<string> Schematized = new HashSet<string>(CommonFields, StringComparer.OrdinalIgnoreCase)
             {
-                "id", "sensorId", "timestamp", "city", "location", "lat", "long", "processingStage",
-                "temperature", "vibration", "voltage", "humidity", "status",
-                "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer"
+                // Sensor Readings
+                "temperature",      // Sensor reading: Temperature
+                "vibration",        // Sensor reading: Vibration
+                "voltage",          // Sensor reading: Voltage
+                "humidity",         // Sensor reading: Humidity
+                "status",           // Sensor status
+                
+                // Anomaly Information
+                "anomalyFlag",      // True if this reading indicates an anomaly
+                "anomalyType",      // Type of anomaly
+                
+                // Metadata Fields
+                "firmwareVersion",  // Sensor firmware version
+                "model",            // Sensor model
+                "manufacturer",     // Sensor manufacturer
+                
+                // Location (precise for Schematized)
+                "lat",              // Latitude
+                "long"              // Longitude
             };
 
-            // Fields required/populated for Sanitized stage (same as Schematized but with sanitized location)
-            public static readonly HashSet<string> Sanitized = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "id", "sensorId", "timestamp", "city", "location", "lat", "long", "processingStage",
-                "temperature", "vibration", "voltage", "humidity", "status",
-                "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer"
-            };
+            // Fields required/populated for Sanitized stage (same fields as Schematized but with sanitized location)
+            public static readonly HashSet<string> Sanitized = new HashSet<string>(Schematized, StringComparer.OrdinalIgnoreCase);
 
             // Fields required/populated for Aggregated stage
-            public static readonly HashSet<string> Aggregated = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            public static readonly HashSet<string> Aggregated = new HashSet<string>(CommonFields, StringComparer.OrdinalIgnoreCase)
             {
-                "id", "sensorId", "timestamp", "city", "location", "processingStage",
-                "temperature", "vibration", "voltage", "humidity", "status",
-                "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer",
-                "aggregationWindowStart", "aggregationWindowEnd"
+                // Sensor Readings (averaged or representative values)
+                "temperature",      // Sensor reading: Temperature
+                "vibration",        // Sensor reading: Vibration
+                "voltage",          // Sensor reading: Voltage
+                "humidity",         // Sensor reading: Humidity
+                "status",           // Sensor status
+                
+                // Anomaly Information
+                "anomalyFlag",      // True if this reading indicates an anomaly
+                "anomalyType",      // Type of anomaly
+                
+                // Metadata Fields
+                "firmwareVersion",  // Sensor firmware version
+                "model",            // Sensor model
+                "manufacturer",     // Sensor manufacturer
+                
+                // Location
+                "lat",              // Latitude
+                "long",             // Longitude
+                
+                // Aggregation Fields
+                "aggregationWindowStart", // Start timestamp of the aggregation window
+                "aggregationWindowEnd"    // End timestamp of the aggregation window
             };
 
             // Get fields for a specific stage

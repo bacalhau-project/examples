@@ -35,3 +35,8 @@ logging:
   level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_request_units: true  # Whether to log request units consumed
   log_latency: true  # Whether to log latency metrics
+
+Processing:
+  Schematize: false
+  Sanitize: false
+  Aggregate: false

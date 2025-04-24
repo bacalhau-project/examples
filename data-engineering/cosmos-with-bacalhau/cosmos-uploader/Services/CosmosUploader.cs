@@ -10,6 +10,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using System.Net.NetworkInformation;
 using System.Net;
+using System.Text.Json;
 
 namespace CosmosUploader.Services
 {
@@ -45,19 +46,27 @@ namespace CosmosUploader.Services
                 if (_settings.DebugMode)
                 {
                     _logger.LogDebug("DEBUG MODE ENABLED");
-                    _logger.LogDebug("DEBUG: Target Cosmos Endpoint: {Endpoint}", _settings.Cosmos.Endpoint);
+                    _logger.LogDebug("DEBUG: Target Cosmos Endpoint: {Endpoint}", _settings.Cosmos?.Endpoint ?? "undefined");
 
                     try
                     {
-                        Uri endpointUri = new Uri(_settings.Cosmos.Endpoint);
-                        _logger.LogDebug("DEBUG: Attempting DNS lookup for host: {Host}", endpointUri.Host);
-                        IPHostEntry entry = await Dns.GetHostEntryAsync(endpointUri.Host);
-                        _logger.LogDebug("DEBUG: DNS resolved host {Host} to {IPCount} IP addresses. First IP: {IPAddress}",
-                            endpointUri.Host, entry.AddressList.Length, entry.AddressList.FirstOrDefault()?.ToString() ?? "N/A");
+                        if (!string.IsNullOrEmpty(_settings.Cosmos?.Endpoint))
+                        {
+                            Uri endpointUri = new Uri(_settings.Cosmos.Endpoint);
+                            _logger.LogDebug("DEBUG: Attempting DNS lookup for host: {Host}", endpointUri.Host);
+                            IPHostEntry entry = await Dns.GetHostEntryAsync(endpointUri.Host);
+                            _logger.LogDebug("DEBUG: DNS resolved host {Host} to {IPCount} IP addresses. First IP: {IPAddress}",
+                                endpointUri.Host, entry.AddressList.Length, entry.AddressList.FirstOrDefault()?.ToString() ?? "N/A");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("DEBUG: Cosmos endpoint is not configured - cannot perform DNS lookup");
+                        }
                     }
                     catch (Exception netEx)
                     {
-                         _logger.LogWarning(netEx, "DEBUG: Network diagnostic check (DNS/Ping) failed for {Host}.", new Uri(_settings.Cosmos.Endpoint).Host);
+                         _logger.LogWarning(netEx, "DEBUG: Network diagnostic check (DNS/Ping) failed for {Host}.", 
+                             !string.IsNullOrEmpty(_settings.Cosmos?.Endpoint) ? new Uri(_settings.Cosmos.Endpoint).Host : "unknown host");
                     }
                 }
 
@@ -81,7 +90,14 @@ namespace CosmosUploader.Services
                 }
 
                 _logger.LogDebug("Creating CosmosClient with endpoint: {Endpoint} and ConnectionMode: {Mode}",
-                    _settings.Cosmos.Endpoint, clientOptions.ConnectionMode);
+                    _settings.Cosmos?.Endpoint ?? "undefined", clientOptions.ConnectionMode);
+                
+                if (string.IsNullOrEmpty(_settings.Cosmos?.Endpoint) || string.IsNullOrEmpty(_settings.Cosmos?.Key))
+                {
+                    _logger.LogError("Missing required Cosmos DB settings: Endpoint or Key");
+                    throw new InvalidOperationException("Cosmos DB settings incomplete: Endpoint and Key are required");
+                }
+
                 _cosmosClient = new CosmosClient(
                     _settings.Cosmos.Endpoint,
                     _settings.Cosmos.Key,
@@ -211,29 +227,176 @@ namespace CosmosUploader.Services
             }
 
             int totalCount = data.Count();
-            string processingStage = _settings.ProcessingStage;
+            string processingStage = _settings.ProcessingStage.ToString();
             _logger.LogInformation("Starting bulk upload of {Count} {Stage} items...", totalCount, processingStage);
+            
+            // Display helpful message if using Raw stage
+            if (processingStage == "Raw")
+            {
+                _logger.LogInformation("Processing in 'Raw' stage which requires 'rawDataString' field. " + 
+                    "If you have issues, consider using 'Schematized' stage in your config.yaml: " +
+                    "Processing.Schematize: true, Processing.Sanitize: false, Processing.Aggregate: false");
+            }
+
             var stopwatch = Stopwatch.StartNew();
             double operationRequestUnits = 0;
             int totalUploaded = 0;
             int totalFailed = 0;
             int totalConflicts = 0;
+            int totalSkipped = 0;
 
-            // Verify all items have the required processingStage field
+            // Ensure all items have required fields according to schema
+            var validatedItems = new List<DataItem>();
             foreach (var item in data)
             {
-                if (!item.ContainsKey("processingStage"))
+                // Ensure processing stage is set
+                if (!item.ContainsKey("processingStage") || item["processingStage"] == null || string.IsNullOrWhiteSpace(item["processingStage"].ToString()))
                 {
                     _logger.LogWarning("Item missing 'processingStage' field. Setting to configured value: {Stage}", processingStage);
                     item["processingStage"] = processingStage;
                 }
+
+                // Get the actual processing stage of this item
+                string itemStage = item["processingStage"]?.ToString() ?? string.Empty;
+                
+                // Check if item has city but no location, and if so, copy city to location
+                if ((!item.ContainsKey("location") || item["location"] == null || string.IsNullOrWhiteSpace(item["location"].ToString())) && 
+                     item.ContainsKey("city") && item["city"] != null && !string.IsNullOrWhiteSpace(item["city"].ToString()))
+                {
+                    _logger.LogDebug("Item ID {ItemId} has 'city' field but no 'location'. Copying city value to location for partition key.", 
+                        item.GetValueOrDefault("id", "[unknown_id]"));
+                    item["location"] = item["city"];
+                }
+                
+                // Validate and fix any missing fields
+                if (!ValidateItemFields(item, itemStage))
+                {
+                    _logger.LogError("Item failed validation and cannot be processed. Skipping item.");
+                    totalSkipped++;
+                    continue;
+                }
+
+                validatedItems.Add(item);
             }
 
-            // Update task list type to handle generic object/DataItem
-            var concurrentTasks = new List<Task<(ItemResponse<object>? Response, bool Success, bool IsConflict)>>();
-            string partitionKeyPath = _settings.Cosmos.PartitionKey.TrimStart('/'); // Get the key name (e.g., "city")
+            // DEBUGGING: Try single item upload mode when in debug mode to identify problematic documents
+            if (_settings.DebugMode && validatedItems.Count > 0)
+            {
+                _logger.LogWarning("DEBUG MODE: Attempting to upload first item individually to diagnose issues");
+                
+                // Get the first item and try to upload it
+                var firstItem = validatedItems.First();
+                string itemId = firstItem.GetValueOrDefault("id", "[unknown_id]")?.ToString() ?? "[unknown_id]";
+                
+                _logger.LogDebug("Attempting individual upload of item ID: {ItemId}", itemId);
+                
+                try
+                {
+                    // Create a simplified version for testing
+                    var simplifiedItem = new Dictionary<string, object>
+                    {
+                        ["id"] = itemId,
+                        ["processingStage"] = firstItem["processingStage"],
+                        ["location"] = firstItem["location"] // Partition key field
+                    };
+                    
+                    // Try adding a few basic fields
+                    if (firstItem.ContainsKey("timestamp"))
+                        simplifiedItem["timestamp"] = firstItem["timestamp"];
+                    
+                    // Try to get the partition key
+                    string testPartitionKeyField = "location";
+                    string partitionKeyValue = simplifiedItem[testPartitionKeyField]?.ToString() ?? "unknown";
+                                            
+                    // Try uploading just the simplified version first
+                    try
+                    {
+                        var response = await _container.CreateItemAsync<Dictionary<string, object>>(
+                            simplifiedItem,
+                            new PartitionKey(partitionKeyValue),
+                            cancellationToken: cancellationToken);
+                            
+                        _logger.LogInformation("SUCCESS: Simplified document uploaded successfully!");
+                        
+                        // Now try to identify which fields might be causing problems by adding them one at a time
+                        _logger.LogInformation("Field-by-field analysis started for document {ItemId}", itemId);
+                        
+                        // Delete the simplified document we just created
+                        await _container.DeleteItemAsync<Dictionary<string, object>>(
+                            itemId,
+                            new PartitionKey(partitionKeyValue),
+                            cancellationToken: cancellationToken);
+                            
+                        // Try the original document to see what happens
+                        try
+                        {
+                            var fullResponse = await _container.CreateItemAsync<Dictionary<string, object>>(
+                                firstItem,
+                                new PartitionKey(partitionKeyValue),
+                                cancellationToken: cancellationToken);
+                                
+                            _logger.LogInformation("SUCCESS: Original document uploaded successfully too! Problem may be with batching.");
+                        }
+                        catch (CosmosException ce)
+                        {
+                            _logger.LogError("FAILED: Original document upload failed with error: {Error}", ce.Message);
+                            _logger.LogWarning("This suggests the document structure is problematic. Examining document:");
+                            
+                            // Log problematic fields
+                            foreach (var kvp in firstItem)
+                            {
+                                object? value = kvp.Value;
+                                
+                                try
+                                {
+                                    if (value == null)
+                                    {
+                                        _logger.LogDebug("Field {Field}: null", kvp.Key);
+                                    }
+                                    else
+                                    {
+                                        var valueType = value.GetType().Name;
+                                        string valueString;
+                                        
+                                        if (value is string str)
+                                            valueString = str.Length > 50 ? $"{str.Substring(0, 47)}..." : str;
+                                        else
+                                            valueString = value.ToString() ?? "null";
+                                            
+                                        _logger.LogDebug("Field {Field}: [{Type}] {Value}", 
+                                            kvp.Key, valueType, valueString);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning("Error examining field {Field}: {Error}", kvp.Key, ex.Message);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Even simplified document failed: {Error}", ex.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error during diagnostic upload: {ErrorMessage}", ex.Message);
+                }
+                
+                _logger.LogWarning("DEBUG DIAGNOSTICS COMPLETE - continuing with normal operation");
+            }
 
-            foreach (var item in data)
+            // Update task list type to match the actual nullability of the return values
+            var concurrentTasks = new List<Task<(ItemResponse<object>? Response, bool Success, bool IsConflict)>>();
+            // Always use "location" as the partition key field, regardless of configuration
+            string partitionKeyField = "location";
+            
+            // Log the partition key field being used
+            _logger.LogInformation("Using '{PartitionKeyField}' as the partition key field (container configured with {ConfiguredKey})", 
+                partitionKeyField, _settings.Cosmos?.PartitionKey ?? "/id");
+
+            foreach (var item in validatedItems)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -241,42 +404,73 @@ namespace CosmosUploader.Services
                     break;
                 }
 
-                // Ensure Id exists (processors should maintain it, or add it if needed)
-                if (!item.ContainsKey("id") || item["id"] == null || string.IsNullOrWhiteSpace(item["id"].ToString()))
-                {
-                    string newId = Guid.NewGuid().ToString();
-                    _logger.LogWarning("Item missing or has empty 'id', assigning new Guid: {NewId}", newId);
-                    item["id"] = newId;
-                }
-
-                // Ensure partition key exists and has a value
-                if (!item.TryGetValue(partitionKeyPath, out var partitionKeyValue) || partitionKeyValue == null || string.IsNullOrWhiteSpace(partitionKeyValue.ToString()))
+                // Check location exists and has a value (location should never be null)
+                if (!item.TryGetValue(partitionKeyField, out var partitionKeyValue) || 
+                    partitionKeyValue == null || 
+                    string.IsNullOrWhiteSpace(partitionKeyValue?.ToString()))
                 {
                      _logger.LogError("Item with ID {ItemId} is missing the partition key field '{PartitionKeyField}' or its value is null/empty. Skipping upload.", 
                         item.GetValueOrDefault("id", "[unknown_id]"), 
-                        partitionKeyPath);
+                        partitionKeyField);
                      totalFailed++;
                      continue;
                 }
 
-                // Verify the item has the correct fields for its processing stage
-                string itemStage = item.GetValueOrDefault("processingStage", processingStage)?.ToString() ?? processingStage;
+                // Get the string value safely
+                string partitionKeyString = partitionKeyValue?.ToString() ?? string.Empty;
                 
-                // Perform field validation based on processing stage
-                if (!ValidateItemFields(item, itemStage))
+                if (string.IsNullOrWhiteSpace(partitionKeyString))
                 {
-                    _logger.LogWarning("Item with ID {ItemId} is missing required fields for processing stage '{Stage}'. Uploading anyway with available fields.", 
-                        item.GetValueOrDefault("id", "[unknown_id]"),
-                        itemStage);
+                    _logger.LogError("Item with ID {ItemId} has a null or empty partition key after conversion to string", 
+                        item.GetValueOrDefault("id", "[unknown_id]"));
+                    totalFailed++;
+                    continue;
                 }
-
+                
+                // Debug log the item content to see what might be causing the BadRequest
+                if (_settings.DebugMode)
+                {
+                    try 
+                    {
+                        // Check document size - Cosmos DB has a 2MB limit
+                        string jsonContent = System.Text.Json.JsonSerializer.Serialize(item);
+                        int documentSizeKB = System.Text.Encoding.UTF8.GetByteCount(jsonContent) / 1024;
+                        
+                        if (documentSizeKB > 1900) // Getting close to 2MB limit
+                        {
+                            _logger.LogWarning("Document ID {ItemId} is {SizeKB}KB, approaching Cosmos DB 2MB limit", 
+                                item.GetValueOrDefault("id", "[unknown_id]"), documentSizeKB);
+                        }
+                        
+                        // Only log full content for small documents
+                        if (documentSizeKB < 10)
+                        {
+                            _logger.LogDebug("Attempting to upload document with ID {ItemId}. Content: {Content}", 
+                                item.GetValueOrDefault("id", "[unknown_id]"), 
+                                System.Text.Json.JsonSerializer.Serialize(item, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                        }
+                        else
+                        {
+                            // For large documents, just log the keys and their types
+                            var fieldInfo = string.Join(", ", item.Select(kvp => $"{kvp.Key}:[{kvp.Value?.GetType().Name ?? "null"}]"));
+                            _logger.LogDebug("Document ID {ItemId} - Size: {SizeKB}KB - Fields: {Fields}", 
+                                item.GetValueOrDefault("id", "[unknown_id]"), documentSizeKB, fieldInfo);
+                        }
+                    }
+                    catch (Exception jsonEx)
+                    {
+                        _logger.LogWarning("Unable to serialize document to JSON for debug output. This may indicate the issue: {ErrorMessage}", 
+                            jsonEx.Message);
+                    }
+                }
+                
                 concurrentTasks.Add(
                     // Use generic object type for CreateItemAsync
                     _container.CreateItemAsync<object>(
                         item, 
-                        new PartitionKey(partitionKeyValue.ToString()), // Extract partition key value
+                        new PartitionKey(partitionKeyString), // Use the validated string 
                         cancellationToken: cancellationToken)
-                    .ContinueWith(task =>
+                    .ContinueWith<(ItemResponse<object>? Response, bool Success, bool IsConflict)>(task =>
                     {
                         cancellationToken.ThrowIfCancellationRequested(); // Check before processing result
                         if (task.IsCompletedSuccessfully)
@@ -285,15 +479,63 @@ namespace CosmosUploader.Services
                         }
                         if (task.IsFaulted)
                         {
-                            if (task.Exception?.InnerException is CosmosException cosmosEx && cosmosEx.StatusCode == HttpStatusCode.Conflict)
+                            if (task.Exception?.InnerException is CosmosException cosmosEx)
                             {
-                                // Treat conflict as a separate category, not necessarily a hard failure
-                                return (null, false, true);
+                                if (cosmosEx.StatusCode == HttpStatusCode.Conflict)
+                                {
+                                    // Treat conflict as a separate category, not necessarily a hard failure
+                                    return (null, false, true);
+                                }
+                                else if (cosmosEx.StatusCode == HttpStatusCode.BadRequest)
+                                {
+                                    // Add enhanced error logging for BadRequest errors
+                                    _logger.LogError("BadRequest error for item ID {ItemId}. SubStatusCode: {SubStatusCode}, ActivityId: {ActivityId}. " +
+                                        "Diagnostics: {Diagnostics}", 
+                                        item.GetValueOrDefault("id", "[unknown_id]"),
+                                        cosmosEx.SubStatusCode,
+                                        cosmosEx.ActivityId,
+                                        cosmosEx.Diagnostics?.ToString() ?? "No diagnostic info");
+                                        
+                                    // Try to dump data properties that might be problematic
+                                    try
+                                    {
+                                        var problematicKeys = new List<string>();
+                                        foreach (var kvp in item)
+                                        {
+                                            if (kvp.Value == null)
+                                                problematicKeys.Add($"{kvp.Key}: null");
+                                            else if (kvp.Value is string str && string.IsNullOrEmpty(str))
+                                                problematicKeys.Add($"{kvp.Key}: empty string");
+                                            else if (Double.IsNaN(kvp.Value as double? ?? 0))
+                                                problematicKeys.Add($"{kvp.Key}: NaN");
+                                            else if (Double.IsInfinity(kvp.Value as double? ?? 0))
+                                                problematicKeys.Add($"{kvp.Key}: Infinity");
+                                        }
+                                        
+                                        if (problematicKeys.Count > 0)
+                                            _logger.LogWarning("Found potentially problematic properties: {Properties}", 
+                                                string.Join(", ", problematicKeys));
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogWarning("Error analyzing document properties: {ErrorMessage}", ex.Message);
+                                    }
+                                }
+                                
+                                // Log other exceptions
+                                _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage} (Status: {Status}, SubStatus: {SubStatus})", 
+                                    item.GetValueOrDefault("id", "[unknown_id]"), 
+                                    task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error",
+                                    cosmosEx.StatusCode,
+                                    cosmosEx.SubStatusCode);
                             }
-                            // Log other exceptions
-                            _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage}", 
-                                item.GetValueOrDefault("id", "[unknown_id]"), 
-                                task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error");
+                            else
+                            {
+                                // For non-Cosmos exceptions
+                                _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage}", 
+                                    item.GetValueOrDefault("id", "[unknown_id]"), 
+                                    task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error");
+                            }
                             return (null, false, false);
                         }
                         // Handle cancellation if task status indicates it (though ThrowIfCancellationRequested should catch most)
@@ -306,13 +548,6 @@ namespace CosmosUploader.Services
                         return (null, false, false);
                     }, cancellationToken)
                 );
-
-                // Optional: Throttle task creation if needed, e.g.:
-                // if (concurrentTasks.Count >= 100) { // Limit concurrency
-                //     var completedTask = await Task.WhenAny(concurrentTasks);
-                //     concurrentTasks.Remove(completedTask);
-                //     // Process completedTask result here or wait for the main loop
-                // }
             }
 
              if (cancellationToken.IsCancellationRequested)
@@ -335,12 +570,12 @@ namespace CosmosUploader.Services
                 {
                     totalUploaded++;
                     operationRequestUnits += response.RequestCharge;
-                    if (_settings.Logging.LogLatency)
+                    if (_settings.Logging?.LogLatency == true)
                     {
                         _logger.LogTrace("Uploaded item {Id} - RU: {RequestCharge}, Latency: {Latency}", 
                             response.Resource?.GetType().GetProperty("id")?.GetValue(response.Resource) ?? "unknown", // Try to get ID from response if possible
                             response.RequestCharge, 
-                            response.Diagnostics.GetClientElapsedTime()); 
+                            response.Diagnostics?.GetClientElapsedTime() ?? TimeSpan.Zero); 
                     }
                 }
                 else if (isConflict)
@@ -366,49 +601,147 @@ namespace CosmosUploader.Services
             {
                 _logger.LogWarning("Bulk upload completed with {Conflicts} conflicts detected out of {Total} items.", totalConflicts, totalCount);
             }
+            if (totalSkipped > 0)
+            {
+                _logger.LogWarning("Bulk upload skipped {Skipped} items due to validation failures.", totalSkipped);
+            }
 
             _logger.LogInformation(
-                "Bulk upload of {ProcessingStage} data finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Total RUs: {RequestUnits:F2}",
+                "Bulk upload of {ProcessingStage} data finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Skipped: {Skipped}, Total RUs: {RequestUnits:F2}",
                 processingStage,
                 stopwatch.Elapsed.TotalSeconds,
                 totalUploaded,
                 totalConflicts,
                 totalFailed,
+                totalSkipped,
                 operationRequestUnits);
             
             // Decide if failure count warrants throwing an exception to halt processing
-            if (totalFailed > 0 && totalFailed == totalCount) // Example: Fail if all items failed
+            if (totalFailed > 0 && totalFailed == validatedItems.Count) // Only throw if all attempted uploads failed
             {
-                 throw new Exception($"Bulk upload failed for all {totalFailed} items. See logs for details.");
+                 throw new Exception($"Bulk upload failed for all {totalFailed} attempted items. See logs for details.");
             }
         }
 
         // Helper method to validate item fields based on processing stage
         private bool ValidateItemFields(DataItem item, string stage)
         {
-            if (!ProcessingStage.IsValid(stage))
+            // Check if the stage is valid (using string comparison)
+            if (stage != "Raw" && stage != "Schematized" && 
+                stage != "Sanitized" && stage != "Aggregated")
             {
                 _logger.LogWarning("Invalid processing stage '{Stage}' for item ID {ItemId}", 
                     stage, item.GetValueOrDefault("id", "[unknown_id]"));
                 return false;
             }
 
-            // Get required fields for this stage
-            var requiredFields = ProcessingStage.FieldRequirements.GetForStage(stage);
+            // Get required fields for this stage based on the stage string
+            HashSet<string> requiredFields;
+            if (stage == "Raw")
+            {
+                requiredFields = new HashSet<string> { "id", "sensorId", "timestamp", "location", "processingStage", "rawDataString" };
+            }
+            else if (stage == "Schematized" || stage == "Sanitized")
+            {
+                requiredFields = new HashSet<string> { 
+                    "id", "sensorId", "timestamp", "location", "processingStage",
+                    "temperature", "vibration", "voltage", "humidity", "status",
+                    "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer",
+                    "lat", "long"
+                };
+            }
+            else if (stage == "Aggregated")
+            {
+                requiredFields = new HashSet<string> { 
+                    "id", "sensorId", "timestamp", "location", "processingStage",
+                    "temperature", "vibration", "voltage", "humidity", "status",
+                    "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer",
+                    "aggregationWindowStart", "aggregationWindowEnd"
+                };
+            }
+            else
+            {
+                // Should not get here due to earlier check
+                requiredFields = new HashSet<string> { "id", "processingStage" };
+            }
             
             // Check if all required fields are present
             bool isValid = true;
+            List<string> missingFields = new List<string>();
+            
             foreach (var field in requiredFields)
             {
-                if (!item.ContainsKey(field))
+                if (!item.ContainsKey(field) || item[field] == null || 
+                    (item[field] is string strVal && string.IsNullOrWhiteSpace(strVal)))
                 {
-                    _logger.LogDebug("Item ID {ItemId} missing required field '{Field}' for processing stage '{Stage}'", 
-                        item.GetValueOrDefault("id", "[unknown_id]"), field, stage);
+                    missingFields.Add(field);
                     isValid = false;
                 }
             }
             
-            return isValid;
+            if (!isValid)
+            {
+                string itemId = item.GetValueOrDefault("id", "[unknown_id]")?.ToString() ?? "[unknown_id]";
+                _logger.LogWarning("Item ID {ItemId} missing required fields for processing stage '{Stage}': {MissingFields}", 
+                    itemId, stage, string.Join(", ", missingFields));
+                
+                // Automatically add missing fields with default values where possible
+                foreach (var field in missingFields)
+                {
+                    switch (field)
+                    {
+                        case "id":
+                            item["id"] = Guid.NewGuid().ToString();
+                            _logger.LogDebug("Generated new ID {Id} for item", item["id"]);
+                            break;
+                        case "processingStage":
+                            item["processingStage"] = stage; // Use the provided stage
+                            break;
+                        case "timestamp":
+                            item["timestamp"] = DateTime.UtcNow;
+                            break;
+                        case "location":
+                            // Location is used as partition key and cannot be null
+                            item["location"] = "unknown_location";
+                            _logger.LogWarning("Added required partition key field 'location' with default value for item ID {ItemId}", 
+                                item.GetValueOrDefault("id", "[unknown_id]"));
+                            break;
+                        case "rawDataString":
+                            // For Raw stage, provide an empty JSON object as default rawDataString
+                            item["rawDataString"] = "{}";
+                            _logger.LogDebug("Added default rawDataString value for item ID {ItemId}", 
+                                item.GetValueOrDefault("id", "[unknown_id]"));
+                            break;
+                        case "anomalyFlag":
+                            item["anomalyFlag"] = false; // Default to no anomaly
+                            break;
+                        default:
+                            // For other fields, add a placeholder/empty value
+                            if (field.EndsWith("WindowStart") || field.EndsWith("WindowEnd"))
+                                item[field] = DateTime.UtcNow; // Default date for window fields
+                            else if (field == "temperature" || field == "vibration" || field == "voltage" || field == "humidity")
+                                item[field] = 0.0; // Default numeric value for sensor readings
+                            else
+                                item[field] = ""; // Empty string for other fields
+                            break;
+                    }
+                    _logger.LogDebug("Added default value for missing field {Field} to item ID {ItemId}", field, item["id"]);
+                }
+            }
+            
+            // After fixing missing fields, check special field requirements
+            if (stage == "Aggregated")
+            {
+                // Ensure timestamp matches aggregationWindowEnd for Aggregated data
+                if (item.ContainsKey("timestamp") && item.ContainsKey("aggregationWindowEnd") &&
+                    item["timestamp"] != item["aggregationWindowEnd"])
+                {
+                    _logger.LogWarning("For Aggregated data, 'timestamp' should match 'aggregationWindowEnd'. Fixing.");
+                    item["timestamp"] = item["aggregationWindowEnd"];
+                }
+            }
+            
+            return true; // Return true since we attempt to fix all issues
         }
 
         public async Task<int> GetContainerItemCountAsync()

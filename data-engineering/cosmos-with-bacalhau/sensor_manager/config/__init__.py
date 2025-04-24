@@ -1,1 +1,0 @@
-"""Configuration handling for the Sensor Manager."""

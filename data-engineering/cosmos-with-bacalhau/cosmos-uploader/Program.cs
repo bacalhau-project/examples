@@ -104,7 +104,6 @@ namespace CosmosUploader
                 YamlConfigurationProvider? configProvider = null;
                 CosmosConfig? config = null;
                 AppSettings? appSettings = null;
-                ProcessingStage stage = ProcessingStage.Raw; // Default stage
 
                 try
                 {
@@ -122,7 +121,7 @@ namespace CosmosUploader
                             DatabaseName = config.Cosmos.DatabaseName,
                             ContainerName = config.Cosmos.ContainerName,
                             PartitionKey = config.Cosmos.PartitionKey,
-                            ResourceGroup = config.Cosmos.ResourceGroup
+                            ResourceGroup = config.Cosmos.ResourceGroup ?? string.Empty
                         },
                         Performance = new PerformanceSettings
                         {
@@ -163,13 +162,14 @@ namespace CosmosUploader
                     }
 
                     // Determine processing stage based on validated config values
-                    if (appSettings.Processing.Aggregate) stage = ProcessingStage.Aggregated;
-                    else if (appSettings.Processing.Sanitize) stage = ProcessingStage.Sanitized;
-                    else if (appSettings.Processing.Schematize) stage = ProcessingStage.Schematized;
+                    ProcessingStage determinedStage = ProcessingStage.Raw;
+                    if (appSettings.Processing.Aggregate) determinedStage = ProcessingStage.Aggregated;
+                    else if (appSettings.Processing.Sanitize) determinedStage = ProcessingStage.Sanitized;
+                    else if (appSettings.Processing.Schematize) determinedStage = ProcessingStage.Schematized;
                     // else remains Raw
 
-                    appSettings.ProcessingStage = stage; // Set the final stage in settings
-                    initialLogger.LogInformation($"Processing stage set to: {stage} (based on configuration)");
+                    appSettings.ProcessingStage = determinedStage; // Set the final stage in settings
+                    initialLogger.LogInformation($"Processing stage set to: {determinedStage} (based on configuration)");
 
 
                     // Update logging level based on config OR debug flag AFTER reading config
@@ -207,17 +207,17 @@ namespace CosmosUploader
                     );
 
                     // Conditionally register Processor Services based on the determined stage
-                    if (stage >= ProcessingStage.Schematized)
+                    if (determinedStage >= ProcessingStage.Schematized)
                     {
                         services.AddTransient<ISchemaProcessor, SchemaProcessor>();
                         initialLogger.LogDebug("Registering SchemaProcessor.");
                     }
-                    if (stage >= ProcessingStage.Sanitized)
+                    if (determinedStage >= ProcessingStage.Sanitized)
                     {
                         services.AddTransient<ISanitizeProcessor, SanitizeProcessor>();
                         initialLogger.LogDebug("Registering SanitizeProcessor.");
                     }
-                    if (stage >= ProcessingStage.Aggregated)
+                    if (determinedStage >= ProcessingStage.Aggregated)
                     {
                         services.AddTransient<IAggregateProcessor, AggregateProcessor>();
                         initialLogger.LogDebug("Registering AggregateProcessor.");
@@ -295,7 +295,7 @@ namespace CosmosUploader
 
                 // Print connection information
                 logger.LogInformation("Starting Cosmos Uploader");
-                logger.LogInformation("Processing Stage: {Stage}", stage); // Log the stage
+                logger.LogInformation("Processing Stage: {Stage}", appSettings!.ProcessingStage); // Log the stage
                 // Log individual config settings
                 logger.LogInformation("Configured Processing -> Schematize: {Schematize}, Sanitize: {Sanitize}, Aggregate: {Aggregate}",
                     appSettings!.Processing.Schematize, appSettings.Processing.Sanitize, appSettings.Processing.Aggregate);
@@ -452,7 +452,7 @@ namespace CosmosUploader
                                  logger.LogError(ex, "Error reloading configuration file. Continuing with previous settings.");
                              }
                              // Update local 'stage' variable for the current loop iteration
-                             stage = appSettings?.ProcessingStage ?? ProcessingStage.Raw;
+                             ProcessingStage currentStage = appSettings?.ProcessingStage ?? ProcessingStage.Raw;
 
 
                             bool initialized = false;
@@ -487,10 +487,9 @@ namespace CosmosUploader
                                     try
                                     {
                                         // Execute Processing with Polly Policy
-                                        // TODO: Update this call to use the correct processor based on 'stage'
                                         await processingPolicy.ExecuteAsync(async token =>
                                         {
-                                            logger.LogInformation("Starting processing cycle for stage: {Stage}", stage);
+                                            logger.LogInformation("Starting processing cycle for stage: {Stage}", currentStage);
                                             // Pass resolved processors to SqliteReader
                                             // SqliteReader will handle the conditional execution based on which processors are non-null
                                             await sqliteReader!.ProcessDatabaseAsync(
@@ -499,7 +498,7 @@ namespace CosmosUploader
                                                 sanitizeProcessor,  // Can be null
                                                 aggregateProcessor  // Can be null
                                             );
-                                            logger.LogInformation("Finished processing cycle for stage: {Stage}", stage);
+                                            logger.LogInformation("Finished processing cycle for stage: {Stage}", currentStage);
 
                                         }, cts.Token);
 
@@ -579,8 +578,7 @@ namespace CosmosUploader
                             await uploader!.InitializeAsync(cts.Token);
                             logger.LogInformation("Cosmos DB connection initialized successfully.");
 
-                            // TODO: Update this call to use the correct processor based on 'stage'
-                             logger.LogInformation("Starting processing for stage: {Stage}", stage);
+                            logger.LogInformation("Starting processing for stage: {Stage}", appSettings.ProcessingStage);
                             // Pass resolved processors to SqliteReader
                             await sqliteReader!.ProcessDatabaseAsync(
                                 cts.Token,
@@ -588,7 +586,7 @@ namespace CosmosUploader
                                 sanitizeProcessor,  // Can be null
                                 aggregateProcessor  // Can be null
                             );
-                            logger.LogInformation("Finished processing for stage: {Stage}", stage);
+                            logger.LogInformation("Finished processing for stage: {Stage}", appSettings.ProcessingStage);
                         }
                         catch (Exception ex)
                         {
