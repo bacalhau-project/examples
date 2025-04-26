@@ -1,70 +1,75 @@
 using System;
+using System.Collections.Generic; // Added for List
 using System.CommandLine;
 using System.IO;
+using System.Linq; // Added for LINQ operations
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json; // <-- Add using for JSON
 using CosmosUploader.Configuration;
+using CosmosUploader.Models; // Added for SensorReading
 using CosmosUploader.Services;
-using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging.Abstractions;
-using Polly;
-using Polly.Retry;
-using System.Net; // Added for DNS lookup
-using System.Collections; // Added for Environment Variables
 using CosmosUploader.Processors; // Add using for processors
-
-// Define the expected handler delegate signature
-// using HandlerFunc = System.Func<string, string, bool, int, string?, bool, bool, System.Threading.Tasks.Task<int>>; // Old signature - now using Func directly
 
 namespace CosmosUploader
 {
-    // Enum for processing stages
-    public enum ProcessingStage
-    {
-        Raw,
-        Schematized,
-        Sanitized,
-        Aggregated
-    }
-
     class Program
     {
+        // Define known processor names (excluding Aggregate)
+        private static readonly HashSet<string> KnownProcessors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Schematize", "Sanitize" // Removed "Aggregate"
+        };
+        // private const string AggregateProcessorName = "Aggregate"; // No longer needed here
+
+        // Add this helper class (or move it to a Models/Common file if preferred)
+        internal class ProcessingStatus
+        {
+            public string? LastProcessedTimestampIso { get; set; }
+            public string? LastProcessedId { get; set; }
+        }
+
         static async Task<int> Main(string[] args)
         {
             // Set up command line arguments
-            var rootCommand = new RootCommand("Azure Cosmos DB Uploader for sensor data");
-            
+            var rootCommand = new RootCommand(
+                "Azure Cosmos DB Uploader for sensor data. " +
+                "Processes data using a pipeline defined in the config file, optionally followed by aggregation. " +
+                $"Available pipeline processors: {string.Join(", ", KnownProcessors)}."
+            );
+
             var configOption = new Option<string>(
                 name: "--config",
                 description: "Path to the YAML configuration file");
             configOption.IsRequired = true;
             rootCommand.AddOption(configOption);
-            
+
             var sqliteOption = new Option<string>(
                 name: "--sqlite",
-                description: "Directory containing SQLite databases");
+                description: "Path to a single SQLite database file");
             sqliteOption.IsRequired = true;
             rootCommand.AddOption(sqliteOption);
-            
+
             var continuousOption = new Option<bool>(
                 name: "--continuous",
                 description: "Run in continuous mode, polling for new data");
             rootCommand.AddOption(continuousOption);
-            
+
             var intervalOption = new Option<int>(
                 name: "--interval",
                 description: "Interval in seconds between upload attempts in continuous mode",
                 getDefaultValue: () => 60);
             rootCommand.AddOption(intervalOption);
-            
+
             var archivePathOption = new Option<string>(
                 name: "--archive-path",
                 description: "Path to archive uploaded data");
             rootCommand.AddOption(archivePathOption);
-            
+
             var developmentOption = new Option<bool>(
                 name: "--development",
                 description: "Enable development mode (generates random IDs and uses current timestamp)",
@@ -81,7 +86,6 @@ namespace CosmosUploader
             // Transformation options are now controlled via the config file
 
             // Configure command handler
-            // Update the handler signature to remove the bool parameters for transformations
             rootCommand.SetHandler((Func<string, string, bool, int, string?, bool, bool, Task<int>>)(async (configPath, sqlitePath, continuous, interval, archivePath, developmentMode, debug) =>
             {
                 // Build services initial setup
@@ -104,75 +108,99 @@ namespace CosmosUploader
                 YamlConfigurationProvider? configProvider = null;
                 CosmosConfig? config = null;
                 AppSettings? appSettings = null;
+                List<string> configuredProcessors = new List<string>(); // Initialize empty list
+                TimeSpan? aggregationWindow = null; // Initialize nullable TimeSpan
 
                 try
                 {
                     configProvider = new YamlConfigurationProvider(configPath, initialServiceProvider.GetRequiredService<ILogger<YamlConfigurationProvider>>());
                     config = configProvider.GetConfiguration();
 
-                    // Map CosmosConfig to AppSettings (assuming CosmosConfig now has Schematize, Sanitize, Aggregate)
-                    // We need to map these *before* validation and stage determination
+                    // --- Validate and retrieve Processor List (Pipeline Processors) ---
+                    configuredProcessors = config?.Processing?.Processors ?? new List<string>(); // Default to empty if null
+
+                    if (configuredProcessors.Any())
+                    {
+                        initialLogger.LogInformation("Configured processing pipeline: [{Processors}]", string.Join(" -> ", configuredProcessors));
+
+                        // Validation 1: Check for unknown processors (excluding Aggregate)
+                        var unknownProcessors = configuredProcessors.Where(p => !KnownProcessors.Contains(p)).ToList();
+                        if (unknownProcessors.Any())
+                        {
+                            initialLogger.LogCritical("Invalid configuration: Unknown processor(s) specified in 'processors' list: {Unknown}. Known pipeline processors are: {Known}",
+                                string.Join(", ", unknownProcessors), string.Join(", ", KnownProcessors));
+                            Console.Error.WriteLine($"ERROR: Unknown processor(s) found in config 'processors': {string.Join(", ", unknownProcessors)}. Valid names: {string.Join(", ", KnownProcessors)}");
+                            return 1;
+                        }
+
+                        // Validation 2: Removed check for 'Aggregate' position
+                    }
+                    else
+                    {
+                        initialLogger.LogInformation("No pipeline processors configured.");
+                    }
+
+                    // --- Validate and parse Aggregation configuration ---
+                    var aggregationConfig = config?.Processing?.Aggregation;
+                    if (aggregationConfig != null)
+                    {
+                        if (string.IsNullOrWhiteSpace(aggregationConfig.Window))
+                        {
+                             initialLogger.LogCritical("Invalid configuration: 'aggregation' section found but 'window' is missing or empty.");
+                             Console.Error.WriteLine("ERROR: 'aggregation.window' is required in the config file if the 'aggregation' section is present.");
+                             return 1;
+                        }
+
+                        // Attempt to parse the window string (e.g., "30s", "5m", "1h")
+                        // Using System.ComponentModel.TimeSpanConverter for flexibility
+                        try
+                        {
+                            var converter = new System.ComponentModel.TimeSpanConverter();
+                            aggregationWindow = (TimeSpan?)converter.ConvertFromString(aggregationConfig.Window);
+
+                            if (aggregationWindow <= TimeSpan.Zero)
+                            {
+                                initialLogger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be a positive time duration.", aggregationConfig.Window);
+                                Console.Error.WriteLine($"ERROR: Aggregation window '{aggregationConfig.Window}' must be positive.");
+                                return 1;
+                            }
+                            initialLogger.LogInformation("Aggregation configured with window: {Window}", aggregationWindow);
+                        }
+                        catch (Exception ex)
+                        {
+                            initialLogger.LogCritical(ex, "Invalid configuration: Could not parse aggregation window '{Window}'. Example formats: 30s, 5m, 1.5h", aggregationConfig.Window);
+                            Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'. Use formats like '30s', '5m', '1h'.");
+                            return 1;
+                        }
+                    }
+                    else
+                    {
+                        initialLogger.LogInformation("Aggregation not configured.");
+                    }
+
+                    // --- Map to canonical AppSettings (defined in Configuration/AppSettings.cs) ---
+                    // Ensure config parts are not null before assigning
+                    if (config?.Cosmos == null || config.Performance == null || config.Logging == null)
+                    {
+                        throw new InvalidOperationException("Core configuration sections (Cosmos, Performance, Logging) are missing in the config file.");
+                    }
+
                     appSettings = new AppSettings
                     {
-                        Cosmos = new CosmosSettings
-                        {
-                            Endpoint = config!.Cosmos.Endpoint,
-                            Key = config.Cosmos.Key,
-                            DatabaseName = config.Cosmos.DatabaseName,
-                            ContainerName = config.Cosmos.ContainerName,
-                            PartitionKey = config.Cosmos.PartitionKey,
-                            ResourceGroup = config.Cosmos.ResourceGroup ?? string.Empty
-                        },
-                        Performance = new PerformanceSettings
-                        {
-                            DisableIndexingDuringBulk = config.Performance.DisableIndexingDuringBulk,
-                            SleepInterval = interval // Use command-line interval here if needed, or keep config value? Let's use config for performance tuning section.
-                        },
-                        Logging = new LoggingSettings
-                        {
-                            Level = config.Logging.Level, // Logging level will be updated below
-                            LogRequestUnits = config.Logging.LogRequestUnits,
-                            LogLatency = config.Logging.LogLatency
-                        },
-                        // Assume these properties exist in CosmosConfig and are mapped here
-                        Processing = new ProcessingSettings
-                        {
-                           Schematize = config.Processing?.Schematize ?? false,
-                           Sanitize = config.Processing?.Sanitize ?? false,
-                           Aggregate = config.Processing?.Aggregate ?? false
-                        },
+                        // Assign existing config objects directly
+                        Cosmos = config.Cosmos,
+                        Performance = config.Performance,
+                        Logging = config.Logging, // Assign the existing LoggingSettings object
+
+                        // Map other direct properties
                         DevelopmentMode = developmentMode,
-                        DebugMode = debug // Add debug flag to settings if needed elsewhere
-                        // ProcessingStage will be set after validation below
+                        DebugMode = debug,
+                        Processors = configuredProcessors, // Assign the validated processor list
+                        AggregationWindow = aggregationWindow, // Assign the parsed aggregation window
+                        StatusFileSuffix = "_processing_status.json" // Set the status file suffix here
                     };
 
-
-                    // --- Stage Validation (using config values from appSettings) ---
-                    if (appSettings.Processing.Sanitize && !appSettings.Processing.Schematize)
-                    {
-                        initialLogger.LogCritical("Invalid configuration: Cannot enable 'sanitize' without 'schematize' in the configuration file.");
-                        Console.Error.WriteLine("ERROR: Cannot sanitize before schematization. Enable 'schematize: true' in config if 'sanitize: true'.");
-                        return 1; // Indicate configuration error
-                    }
-                    if (appSettings.Processing.Aggregate && !appSettings.Processing.Sanitize)
-                    {
-                        initialLogger.LogCritical("Invalid configuration: Cannot enable 'aggregate' without 'sanitize' (and 'schematize') in the configuration file.");
-                        Console.Error.WriteLine("ERROR: Cannot aggregate before sanitization. Enable 'schematize: true' and 'sanitize: true' in config if 'aggregate: true'.");
-                        return 1; // Indicate configuration error
-                    }
-
-                    // Determine processing stage based on validated config values
-                    ProcessingStage determinedStage = ProcessingStage.Raw;
-                    if (appSettings.Processing.Aggregate) determinedStage = ProcessingStage.Aggregated;
-                    else if (appSettings.Processing.Sanitize) determinedStage = ProcessingStage.Sanitized;
-                    else if (appSettings.Processing.Schematize) determinedStage = ProcessingStage.Schematized;
-                    // else remains Raw
-
-                    appSettings.ProcessingStage = determinedStage; // Set the final stage in settings
-                    initialLogger.LogInformation($"Processing stage set to: {determinedStage} (based on configuration)");
-
-
-                    // Update logging level based on config OR debug flag AFTER reading config
+                    // --- Update logging level based on debug flag ---
                     services.AddLogging(builder =>
                     {
                         LogLevel effectiveLevel;
@@ -193,36 +221,44 @@ namespace CosmosUploader
                         appSettings.Logging.Level = effectiveLevel.ToString();
                     });
 
-
                     services.AddSingleton(appSettings); // Add mapped settings
                     services.AddSingleton(config);      // Add raw config if needed elsewhere
 
-                    services.AddSingleton<ICosmosUploader, Services.CosmosUploader>();
-                    services.AddTransient<SqliteReader>(sp =>
-                        new SqliteReader(
-                            sp.GetRequiredService<ILogger<SqliteReader>>(),
-                            sp.GetRequiredService<ICosmosUploader>(),
-                            sp.GetRequiredService<AppSettings>()
-                        )
-                    );
+                    // Register services
+                    // Register SqliteReader as itself
+                    services.AddTransient<SqliteReader>();
+                    // Register ProcessData as itself
+                    services.AddTransient<ProcessData>();
+                    // Register Archiver as itself
+                    services.AddTransient<Archiver>();
+                    // Register CosmosUploader with its interface
+                    services.AddTransient<ICosmosUploader, Services.CosmosUploader>();
 
-                    // Conditionally register Processor Services based on the determined stage
-                    if (determinedStage >= ProcessingStage.Schematized)
+                    // --- Register Processors based on the configured PIPELINE list ---
+                    if (configuredProcessors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Schematize")))
                     {
                         services.AddTransient<ISchemaProcessor, SchemaProcessor>();
-                        initialLogger.LogDebug("Registering SchemaProcessor.");
+                        initialLogger.LogDebug("Registering SchemaProcessor based on configuration.");
                     }
-                    if (determinedStage >= ProcessingStage.Sanitized)
+                    if (configuredProcessors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Sanitize")))
                     {
                         services.AddTransient<ISanitizeProcessor, SanitizeProcessor>();
-                        initialLogger.LogDebug("Registering SanitizeProcessor.");
+                        initialLogger.LogDebug("Registering SanitizeProcessor based on configuration.");
                     }
-                    if (determinedStage >= ProcessingStage.Aggregated)
-                    {
-                        services.AddTransient<IAggregateProcessor, AggregateProcessor>();
-                        initialLogger.LogDebug("Registering AggregateProcessor.");
-                    }
+                    // Removed registration trigger for Aggregate here
 
+                    // --- Register Aggregation Processor conditionally ---
+                    if (aggregationWindow.HasValue)
+                    {
+                        // Provide the window to the constructor via factory
+                        services.AddTransient<IAggregateProcessor>(sp => 
+                            new AggregateProcessor(
+                                sp.GetRequiredService<ILogger<AggregateProcessor>>(), 
+                                aggregationWindow.Value // Pass the parsed window
+                            )
+                        );
+                        initialLogger.LogDebug("Registering AggregateProcessor as aggregation is configured with window {Window}.", aggregationWindow.Value);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -238,498 +274,250 @@ namespace CosmosUploader
                 // Ensure logger uses the final provider's configuration
                 var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
-                // Get required services
-                ICosmosUploader uploader;
-                SqliteReader sqliteReader;
-                // Resolve processors (will be null if not registered for the current stage)
-                ISchemaProcessor? schemaProcessor = null;
-                ISanitizeProcessor? sanitizeProcessor = null;
-                IAggregateProcessor? aggregateProcessor = null;
-                try
+                // Resolve concrete service types needed for orchestration
+                var sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
+                var processDataService = serviceProvider.GetRequiredService<ProcessData>();
+                var cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
+                var archiverService = serviceProvider.GetRequiredService<Archiver>();
+                var settings = serviceProvider.GetRequiredService<AppSettings>();
+
+                // CancellationToken setup
+                var cts = new CancellationTokenSource();
+                Console.CancelKeyPress += (sender, e) =>
                 {
-                    uploader = serviceProvider.GetRequiredService<ICosmosUploader>();
-                    sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
-
-                    // Resolve optional processors using GetService
-                    schemaProcessor = serviceProvider.GetService<ISchemaProcessor>();
-                    sanitizeProcessor = serviceProvider.GetService<ISanitizeProcessor>();
-                    aggregateProcessor = serviceProvider.GetService<IAggregateProcessor>();
-
-                    if (schemaProcessor != null) logger.LogDebug("SchemaProcessor resolved.");
-                    if (sanitizeProcessor != null) logger.LogDebug("SanitizeProcessor resolved.");
-                    if (aggregateProcessor != null) logger.LogDebug("AggregateProcessor resolved.");
-
-                }
-                catch (Exception ex)
-                {
-                    logger.LogCritical(ex, "Failed to resolve core services: {Message}", ex.Message);
-                    return 1; // Exit if essential services like reader/uploader fail
-                }
-
-
-                // Set up configuration change handler (if needed)
-                // configProvider.ConfigurationChanged += ... ;
-
-                // Set up cancellation token source for graceful shutdown
-                using var cts = new CancellationTokenSource();
-                Console.CancelKeyPress += (s, e) =>
-                {
-                    logger.LogInformation("Shutdown signal received...");
+                    logger.LogWarning("Cancellation requested via Ctrl+C.");
+                    e.Cancel = true; // Prevent process termination immediately
                     cts.Cancel();
-                    e.Cancel = true;
                 };
 
-                // Set paths
-                sqliteReader!.SetDataPath(sqlitePath);
-                if (!string.IsNullOrEmpty(archivePath))
+                // Determine archive path - Use provided option or default relative to the directory containing the sqlite path
+                string baseDirectoryPath = Path.GetDirectoryName(Path.GetFullPath(sqlitePath)) ?? "."; // Get full path first to handle relative paths correctly
+                string defaultArchivePath = Path.Combine(baseDirectoryPath, "archive");
+                string effectiveArchivePath = archivePath ?? defaultArchivePath;
+                logger.LogInformation("Using archive path: {ArchivePath}", effectiveArchivePath);
+
+                // Main processing loop (single run or continuous)
+                do
                 {
-                    logger.LogDebug($"Setting archive path to: {archivePath}");
-                    sqliteReader!.SetArchivePath(archivePath);
-                }
-                else
-                {
-                    var sqliteDirectory = Path.GetDirectoryName(sqlitePath) ?? Directory.GetCurrentDirectory();
-                    logger.LogDebug($"Setting archive path to SQLite directory: {sqliteDirectory}");
-                    sqliteReader!.SetArchivePath(sqliteDirectory);
-                }
-
-                // Print connection information
-                logger.LogInformation("Starting Cosmos Uploader");
-                logger.LogInformation("Processing Stage: {Stage}", appSettings!.ProcessingStage); // Log the stage
-                // Log individual config settings
-                logger.LogInformation("Configured Processing -> Schematize: {Schematize}, Sanitize: {Sanitize}, Aggregate: {Aggregate}",
-                    appSettings!.Processing.Schematize, appSettings.Processing.Sanitize, appSettings.Processing.Aggregate);
-                if (appSettings!.DevelopmentMode) { logger.LogWarning("DEVELOPMENT MODE ENABLED (via CLI): IDs and timestamps will be overwritten."); }
-                if (appSettings!.DebugMode) { logger.LogInformation("DEBUG MODE ENABLED (via CLI): Verbose logging active."); }
-                logger.LogInformation("Configuration file: {ConfigPath}", configPath);
-                logger.LogInformation("SQLite database: {SqlitePath}", sqlitePath);
-                logger.LogInformation("Cosmos DB endpoint: {Endpoint}", config!.Cosmos.Endpoint);
-                logger.LogInformation("Database: {Database}/{Container}", config.Cosmos.DatabaseName, config.Cosmos.ContainerName);
-
-
-                // Random number generator for jitter
-                var random = new Random();
-
-                try
-                {
-                    // Run mode logic
-                    if (continuous)
+                    try
                     {
-                        logger.LogInformation("Running in continuous mode with {Interval} seconds interval between processing cycles", interval);
+                        logger.LogInformation("Starting data processing cycle...");
 
-                        // --- Polly Policy for Initialization ---
-                        // Retries indefinitely on any exception during initialization
-                        // Waits exponentially: 5s, 10s, 20s, ... up to 5 minutes
-                        AsyncRetryPolicy initPolicy = Policy
-                            .Handle<Exception>()
-                            .WaitAndRetryForeverAsync(
-                                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Min(Math.Pow(2, retryAttempt - 1) * 5, 300)), // 5s * 2^(attempt-1), max 300s
-                                onRetryAsync: async (Exception exception, TimeSpan timespan) =>
+                        // Determine if sqlitePath is a file or directory
+                        List<string> dbFilesToProcess = new List<string>();
+                        if (Directory.Exists(sqlitePath))
+                        {
+                            logger.LogDebug("Specified SQLite path is a directory: {DirectoryPath}. Searching for *.db files...", sqlitePath);
+                            dbFilesToProcess.AddRange(Directory.GetFiles(sqlitePath, "*.db"));
+                        }
+                        else if (File.Exists(sqlitePath))
+                        {
+                            // Check if the file has a .db extension (optional, but good practice)
+                            if (Path.GetExtension(sqlitePath).Equals(".db", StringComparison.OrdinalIgnoreCase))
+                            {
+                                logger.LogDebug("Specified SQLite path is a single file: {FilePath}", sqlitePath);
+                                dbFilesToProcess.Add(sqlitePath);
+                            }
+                            else
+                            {
+                                logger.LogWarning("Specified SQLite path is a file but does not have a .db extension: {FilePath}. Skipping.", sqlitePath);
+                            }
+                        }
+                        else
+                        {
+                            logger.LogError("Specified SQLite path does not exist or is not accessible: {SqlitePath}", sqlitePath);
+                        }
+
+                        if (!dbFilesToProcess.Any())
+                        {
+                            logger.LogWarning("No SQLite files found to process in the specified path: {PathInput}", sqlitePath);
+                        }
+                        else
+                        {
+                            logger.LogInformation("Found {Count} database file(s) to process.", dbFilesToProcess.Count);
+                            // Process each database file found
+                            foreach (var dbPath in dbFilesToProcess)
+                            {
+                                if (cts.IsCancellationRequested) break;
+                                logger.LogInformation("Processing database file: {DbPath}", dbPath);
+
+                                try
                                 {
-                                    // Log exception details on retry
-                                    logger.LogWarning(exception,
-                                        "Initialization failed. Retrying after {Timespan}s... Exception: {ExceptionType} - {ExceptionMessage}",
-                                        timespan.TotalSeconds, exception.GetType().Name, exception.Message);
+                                    const int batchSize = 1000; // Max records to read/process per file per cycle
 
-                                    // --- Debug Diagnostics on Timeout ---
-                                    if (appSettings?.DebugMode == true && IsPotentialTimeoutException(exception))
+                                    // 1. Read ONE Batch (Max 10k)
+                                    logger.LogInformation("Attempting to read up to {BatchSize} records from {DbPath}...", batchSize, dbPath);
+                                    // Offset is 0, relying on the synced flag logic within SqliteReader
+                                    List<SensorReading> rawReadingsBatch = await sqliteReader.ReadRawDataAsync(dbPath, batchSize, cts.Token);
+
+                                    if (!rawReadingsBatch.Any())
                                     {
-                                        logger.LogDebug("DEBUG: Timeout detected during initialization retry. Collecting diagnostics...");
+                                        logger.LogInformation("No new raw data found in {DbPath} for this cycle.", dbPath);
+                                        continue; // Move to the next file
+                                    }
 
-                                        // 1. Log Environment Variables
-                                        try
-                                        {
-                                            logger.LogDebug("DEBUG: Environment Variables:");
-                                            foreach (DictionaryEntry de in Environment.GetEnvironmentVariables())
-                                            {
-                                                logger.LogDebug("  {Key} = {Value}", de.Key, de.Value);
-                                            }
-                                        }
-                                        catch (Exception envEx)
-                                        {
-                                            logger.LogWarning(envEx, "DEBUG: Failed to retrieve environment variables.");
-                                        }
+                                    logger.LogInformation("Read {Count} raw records from {DbPath}. Processing this batch...", rawReadingsBatch.Count, dbPath);
 
-                                        // 2. Perform DNS Lookup
-                                        if (!string.IsNullOrEmpty(appSettings?.Cosmos?.Endpoint))
+                                    // 2. Process Data Batch
+                                    logger.LogDebug("Processing batch ({Count} records)...", rawReadingsBatch.Count);
+                                    List<DataTypes.DataItem> processedDataBatch = await processDataService.ProcessAsync(rawReadingsBatch, cts.Token);
+
+                                    if (!processedDataBatch.Any())
+                                    {
+                                        logger.LogWarning("Processing resulted in zero records for upload from {DbPath}. Raw data will still be archived.", dbPath);
+                                        // Proceed to archive step even if processing yields nothing
+                                    }
+                                    else
+                                    {
+                                        logger.LogInformation("Processing completed. {Count} records ready for upload.", processedDataBatch.Count);
+                                    }
+
+                                    // 3. Upload Processed Data Batch (if any)
+                                    if (processedDataBatch.Any())
+                                    {
+                                        logger.LogDebug("Uploading batch ({Count} processed records) to Cosmos DB...", processedDataBatch.Count);
+                                        await cosmosUploaderService.UploadDataAsync(processedDataBatch, dbPath, cts.Token);
+                                        logger.LogInformation("Successfully initiated upload for batch ({Count} processed records) from {DbPath}.", processedDataBatch.Count, dbPath);
+                                    }
+
+                                    // 4. Archive Raw Data Batch
+                                    logger.LogDebug("Archiving batch ({Count} raw records) to {ArchivePath}...", rawReadingsBatch.Count, effectiveArchivePath);
+                                    await archiverService.ArchiveAsync(rawReadingsBatch, effectiveArchivePath, cts.Token);
+                                    logger.LogInformation("Successfully initiated archiving for batch ({Count} raw records) from {DbPath}.", rawReadingsBatch.Count, dbPath);
+
+                                    // 5. Update Status File with Last Processed Item (JSON)
+                                    try
+                                    {
+                                        if (rawReadingsBatch.Any()) // Only update if we processed something
                                         {
-                                            try
+                                            string statusFilePath = GetStatusFilePath(dbPath);
+                                            // Get the last record based on the order from SqliteReader (timestamp, id)
+                                            SensorReading lastRecord = rawReadingsBatch.Last(); 
+                                            
+                                            // Create the new status object
+                                            var newStatus = new ProcessingStatus
                                             {
-                                                Uri endpointUri = new Uri(appSettings.Cosmos.Endpoint);
-                                                logger.LogDebug("DEBUG: Attempting DNS lookup for host: {Host}", endpointUri.Host);
-                                                IPHostEntry entry = await Dns.GetHostEntryAsync(endpointUri.Host);
-                                                logger.LogDebug("DEBUG: DNS resolved host {Host} to {IPCount} IP addresses. First IP: {IPAddress}",
-                                                    endpointUri.Host, entry.AddressList.Length, entry.AddressList.FirstOrDefault()?.ToString() ?? "N/A");
-                                            }
-                                            catch (Exception dnsEx)
-                                            {
-                                                logger.LogWarning(dnsEx, "DEBUG: DNS lookup failed for {Host}.", new Uri(appSettings.Cosmos.Endpoint).Host);
-                                            }
+                                                // Format Timestamp in ISO 8601 Round-trip format
+                                                LastProcessedTimestampIso = lastRecord.Timestamp.ToUniversalTime().ToString("o"), 
+                                                LastProcessedId = lastRecord.Id
+                                            };
+
+                                            // Serialize and overwrite the status file
+                                            string updatedJson = JsonSerializer.Serialize(newStatus, new JsonSerializerOptions { WriteIndented = true });
+                                            await File.WriteAllTextAsync(statusFilePath, updatedJson, cts.Token);
+
+                                            logger.LogInformation("Successfully updated status file {StatusFile} with LastTimestamp={Ts}, LastId={Id}", 
+                                                statusFilePath, newStatus.LastProcessedTimestampIso, newStatus.LastProcessedId);
                                         }
                                         else
                                         {
-                                            logger.LogWarning("DEBUG: Cannot perform DNS lookup because Cosmos endpoint is not configured in AppSettings.");
+                                            // Optional: Log that status file wasn't updated because no records were processed
+                                            logger.LogDebug("No records in the processed batch for {DbPath}. Status file not updated.", dbPath);
                                         }
-                                        logger.LogDebug("DEBUG: Diagnostics collection finished.");
-                                    }
-                                    // --- End Debug Diagnostics ---
-
-                                    await Task.CompletedTask; // Required for async onRetry
-                                }
-                            );
-
-                        // --- Polly Policy for Processing ---
-                        // Retries 3 times on specific processing errors
-                        // Waits exponentially based on the --interval: interval*1, interval*2, interval*4
-                        const int maxProcessingRetries = 3;
-                        IAsyncPolicy processingPolicy = Policy
-                            .Handle<CosmosException>() // Add other transient exceptions if needed
-                            .Or<Exception>() // Catch potentially other transient issues during processing
-                            .WaitAndRetryAsync(
-                                retryCount: maxProcessingRetries,
-                                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(interval * Math.Pow(2, retryAttempt - 1)), // interval * 2^(attempt-1)
-                                onRetryAsync: async (Exception exception, TimeSpan timespan, int retryAttempt, Context context) =>
-                                {
-                                    logger.LogWarning(exception,
-                                        "Processing failed (Attempt {RetryAttempt}/{MaxRetries}). Waiting {Timespan} seconds before next retry...",
-                                        retryAttempt, maxProcessingRetries, timespan.TotalSeconds);
-                                    await Task.CompletedTask;
-                                }
-                            );
-
-
-                        bool firstInitialization = true;
-                        while (!cts.Token.IsCancellationRequested)
-                        {
-                             // Re-read config and update stage INSIDE the loop for live updates (simplistic approach)
-                             // NOTE: This simplistic config reload doesn't handle DI updates or complex changes well.
-                             // A more robust solution would use IOptionsMonitor or similar patterns.
-                             try
-                             {
-                                 logger.LogDebug("Checking for configuration changes...");
-                                 config = configProvider?.GetConfiguration(); // Re-read the config file
-                                 if (config != null && appSettings != null) {
-                                     bool schematizeNew = config.Processing?.Schematize ?? false;
-                                     bool sanitizeNew = config.Processing?.Sanitize ?? false;
-                                     bool aggregateNew = config.Processing?.Aggregate ?? false;
-
-                                     // Basic validation for reloaded config
-                                     if (sanitizeNew && !schematizeNew) {
-                                         logger.LogWarning("Configuration change ignored: Cannot enable 'sanitize' without 'schematize'.");
-                                     } else if (aggregateNew && !sanitizeNew) {
-                                          logger.LogWarning("Configuration change ignored: Cannot enable 'aggregate' without 'sanitize'.");
-                                     } else {
-                                         // Update AppSettings if changed
-                                         bool configChanged = false;
-                                         if (appSettings.Processing.Schematize != schematizeNew) { appSettings.Processing.Schematize = schematizeNew; configChanged = true; }
-                                         if (appSettings.Processing.Sanitize != sanitizeNew) { appSettings.Processing.Sanitize = sanitizeNew; configChanged = true; }
-                                         if (appSettings.Processing.Aggregate != aggregateNew) { appSettings.Processing.Aggregate = aggregateNew; configChanged = true; }
-
-                                         // Determine new stage
-                                         ProcessingStage newStage = ProcessingStage.Raw;
-                                         if (aggregateNew) newStage = ProcessingStage.Aggregated;
-                                         else if (sanitizeNew) newStage = ProcessingStage.Sanitized;
-                                         else if (schematizeNew) newStage = ProcessingStage.Schematized;
-
-                                         if (appSettings.ProcessingStage != newStage) {
-                                             appSettings.ProcessingStage = newStage;
-                                             configChanged = true;
-                                             logger.LogInformation("Processing stage updated to: {NewStage} based on configuration change.", newStage);
-                                         } else if (configChanged) {
-                                              logger.LogInformation("Processing flags updated based on configuration change. Stage remains: {Stage}", appSettings.ProcessingStage);
-                                         }
-                                     }
-                                     // Update other potentially reloadable settings if needed (e.g., logging level)
-                                     // This is a simplified reload, real-world might need service provider rebuild or IOptionsMonitor
-                                     LogLevel newLogLevel = Enum.TryParse<LogLevel>(config?.Logging?.Level ?? "Information", true, out var parsedLevel) ? parsedLevel : LogLevel.Information;
-                                     if (!debug && appSettings.Logging.Level != newLogLevel.ToString()) {
-                                          logger.LogInformation("Logging level changed via config to: {NewLevel}", newLogLevel);
-                                          // NOTE: Changing log level dynamically often requires more setup (e.g., using ILoggingBuilder filter rules)
-                                          appSettings.Logging.Level = newLogLevel.ToString();
-                                     }
-                                 }
-                             } catch (Exception ex) {
-                                 logger.LogError(ex, "Error reloading configuration file. Continuing with previous settings.");
-                             }
-                             // Update local 'stage' variable for the current loop iteration
-                             ProcessingStage currentStage = appSettings?.ProcessingStage ?? ProcessingStage.Raw;
-
-
-                            bool initialized = false;
-                            try
-                            {
-                                // Execute Initialization with Polly Policy
-                                logger.LogDebug("Attempting Cosmos DB initialization via Polly policy (Attempt Context: first={isFirst})", firstInitialization);
-                                await initPolicy.ExecuteAsync(async token =>
-                                {
-                                    logger.LogDebug("Calling uploader.InitializeAsync() within Polly attempt...");
-                                    try
-                                    {
-                                        await uploader!.InitializeAsync(token);
-                                        initialized = true; // Set flag inside successful execution
-                                        logger.LogDebug("uploader.InitializeAsync() completed successfully within Polly attempt.");
-                                        if (!firstInitialization)
-                                        { // Only log subsequent successful inits
-                                            logger.LogInformation("Cosmos DB connection successfully re-established after previous failure(s).");
-                                        }
-                                        firstInitialization = false; // Mark that initial attempt (or first success) happened
                                     }
                                     catch (Exception ex)
                                     {
-                                        // Log the specific exception from InitializeAsync *before* Polly handles it for retry
-                                        logger.LogError(ex, "Exception caught directly from uploader.InitializeAsync() within Polly attempt: {ExceptionType} - {Message}", ex.GetType().Name, ex.Message);
-                                        throw; // Rethrow so Polly can handle the retry according to the policy
+                                        // Log error but don't stop the whole process, as the data *was* processed and archived.
+                                        // However, this means duplicates might be processed next time.
+                                        logger.LogError(ex, "Failed to update status file {StatusFile} for {DbPath}. Potential for reprocessing duplicates on next run.", GetStatusFilePath(dbPath), dbPath);
                                     }
-                                }, cts.Token);
 
-                                if (initialized)
-                                {
-                                    try
-                                    {
-                                        // Execute Processing with Polly Policy
-                                        await processingPolicy.ExecuteAsync(async token =>
-                                        {
-                                            logger.LogInformation("Starting processing cycle for stage: {Stage}", currentStage);
-                                            // Pass resolved processors to SqliteReader
-                                            // SqliteReader will handle the conditional execution based on which processors are non-null
-                                            await sqliteReader!.ProcessDatabaseAsync(
-                                                token,
-                                                schemaProcessor,    // Can be null
-                                                sanitizeProcessor,  // Can be null
-                                                aggregateProcessor  // Can be null
-                                            );
-                                            logger.LogInformation("Finished processing cycle for stage: {Stage}", currentStage);
-
-                                        }, cts.Token);
-
-                                        // Calculate delay with jitter (+/- 30 seconds)
-                                        int jitterMilliseconds = random.Next(-30000, 30001); // -30s to +30s
-                                        TimeSpan baseInterval = TimeSpan.FromSeconds(interval);
-                                        TimeSpan jitter = TimeSpan.FromMilliseconds(jitterMilliseconds);
-                                        TimeSpan delay = baseInterval + jitter;
-                                        // Ensure minimum delay (e.g., 1 second)
-                                        if (delay.TotalSeconds < 1) delay = TimeSpan.FromSeconds(1);
-
-                                        var nextWakeTime = DateTime.Now + delay;
-                                        logger.LogInformation("Processing complete. Sleeping for {DelaySeconds:F1} seconds (interval {BaseInterval}s + jitter {JitterSeconds:F1}s) until {NextWakeTime}",
-                                            delay.TotalSeconds, interval, jitter.TotalSeconds, nextWakeTime.ToString("HH:mm:ss"));
-
-                                        // Check cancellation before delaying
-                                        try
-                                        {
-                                            await Task.Delay(delay, cts.Token);
-                                        }
-                                        catch (OperationCanceledException)
-                                        {
-                                            logger.LogInformation("Operation cancelled during sleep period.");
-                                            break; // Exit loop if cancelled
-                                        }
-                                    }
-                                    catch (OperationCanceledException)
-                                    {
-                                        logger.LogInformation("Processing operation cancelled.");
-                                        break; // Exit loop if cancelled
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // This catch block is reached if the processingPolicy fails after all retries
-                                        logger.LogCritical(ex, "Processing failed after {MaxRetries} retries. Stopping continuous processing.", maxProcessingRetries);
-                                        // Optionally, re-throw or handle differently, but breaking the loop is common.
-                                        break; // Exit the while loop on processing policy failure
-                                    }
+                                    logger.LogInformation("Finished processing batch for database file: {DbPath}", dbPath);
+                                    // End of processing for this file IN THIS CYCLE. If more data exists, it's handled next time.
                                 }
-                                else
+                                catch (OperationCanceledException)
                                 {
-                                    // This case should ideally not be reached if initPolicy retries indefinitely
-                                    logger.LogError("Initialization flag not set after initPolicy execution. This should not happen.");
-                                    // Use the main interval for retrying initialization
-                                    try {
-                                         await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
-                                    } catch (OperationCanceledException) {
-                                        logger.LogInformation("Operation cancelled during initialization retry wait.");
-                                        break;
-                                    }
+                                    logger.LogWarning("Processing cancelled for database file: {DbPath}", dbPath);
+                                    break; // Exit file loop if cancelled
                                 }
-
+                                catch (DirectoryNotFoundException dirEx) when (dirEx.Message.Contains("archive directory")) // Catch specific archive creation failure
+                                {
+                                    logger.LogCritical("Archive directory creation failed: {Reason} - Cannot continue.", dirEx.Message);
+                                    cts.Cancel(); // Trigger cancellation for other operations/continuous mode exit
+                                    return 1; // Exit the application with an error code
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogError(ex, "Error processing database file {DbPath}. Skipping this file for the current cycle.", dbPath);
+                                    // Continue to the next file in this cycle
+                                }
                             }
-                            catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                            {
-                                logger.LogInformation("Cancellation requested during continuous loop. Exiting...");
-                                break;
-                            }
-                            catch (Exception ex)
-                            {
-                                // Catch exceptions that might escape Polly policies (e.g., during policy setup, or unhandled exceptions)
-                                // This might indicate a non-transient issue or a bug.
-                                logger.LogCritical(ex, "Unhandled exception in continuous processing loop: {Message}. Exiting loop.", ex.Message);
-                                break; // Exit the loop on critical unhandled errors
-                            }
-
-                            // Delay is now handled within the 'if (initialized)' block after successful processing.
                         }
-                        logger.LogInformation("Continuous mode loop exited.");
                     }
-                    else // Single run mode
+                    catch (OperationCanceledException)
                     {
-                        logger.LogInformation("Running in single mode");
-                        logger.LogInformation("Initializing Cosmos DB connection...");
-                        try
-                        {
-                            await uploader!.InitializeAsync(cts.Token);
-                            logger.LogInformation("Cosmos DB connection initialized successfully.");
-
-                            logger.LogInformation("Starting processing for stage: {Stage}", appSettings.ProcessingStage);
-                            // Pass resolved processors to SqliteReader
-                            await sqliteReader!.ProcessDatabaseAsync(
-                                cts.Token,
-                                schemaProcessor,    // Can be null
-                                sanitizeProcessor,  // Can be null
-                                aggregateProcessor  // Can be null
-                            );
-                            logger.LogInformation("Finished processing for stage: {Stage}", appSettings.ProcessingStage);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogCritical(ex, "Failed during single run: {Message}", ex.Message);
-                            return 1; // Indicate failure
-                        }
+                        logger.LogWarning("Processing cycle cancelled.");
+                        break; // Exit main loop if cancelled
                     }
-
-                    logger.LogInformation("Cosmos Uploader finished.");
-                    return 0; // Indicate success
-                }
-                catch (OperationCanceledException) when (cts.IsCancellationRequested)
-                {
-                    logger.LogWarning("Operation cancelled.");
-                    return 130; // Standard exit code for Ctrl+C
-                }
-                catch (Exception ex)
-                {
-                    logger.LogCritical(ex, "An unhandled error occurred: {Message}", ex.Message);
-                    return 1; // Indicate failure
-                }
-                finally
-                {
-                    // Dispose resources if needed (e.g., ServiceProvider)
-                    if (serviceProvider is IDisposable disposableProvider)
+                    catch (Exception ex)
                     {
-                        disposableProvider.Dispose();
+                        logger.LogCritical(ex, "An unexpected error occurred during the processing cycle: {Message}", ex.Message);
+                        // Depending on the error, might decide to break or continue
+                        if (!continuous) return 1; // Exit if not in continuous mode
                     }
-                    logger.LogInformation("Cosmos Uploader process terminated."); // Added final termination log
-                }
-            }), configOption, sqliteOption, continuousOption, intervalOption, archivePathOption, developmentOption, debugOption); // Removed schematize/sanitize/aggregate options from args
-            
-            // Parse and execute
+
+                    if (continuous)
+                    {
+                        if (cts.IsCancellationRequested)
+                        {
+                             logger.LogInformation("Continuous mode cancelled. Exiting.");
+                             break;
+                        }
+                        logger.LogInformation("Continuous mode enabled. Waiting {Interval} seconds before next cycle...", interval);
+                        await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
+                    }
+                } while (continuous && !cts.IsCancellationRequested);
+
+                logger.LogInformation("CosmosUploader finished.");
+                return 0; // Success
+            }), configOption, sqliteOption, continuousOption, intervalOption, archivePathOption, developmentOption, debugOption);
+
             return await rootCommand.InvokeAsync(args);
         }
 
-        // Helper function to identify potential timeout exceptions
-        private static bool IsPotentialTimeoutException(Exception ex)
+        // Helper function to get status file path (Updated Suffix)
+        private static string GetStatusFilePath(string dbPath)
         {
-            // Check for the specific Cosmos DB Gateway Timeout error
-            if (ex is CosmosException cosmosEx &&
-                cosmosEx.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable &&
-                cosmosEx.SubStatusCode == 20003) // Specific sub-status code for Gateway Timeout
-            {
-                 // logger?.LogDebug("Identified potential timeout: CosmosException with StatusCode ServiceUnavailable and SubStatusCode 20003."); // Cannot log here easily
-                return true;
-            }
+            const string StatusFileSuffix = "_processing_status.json"; // New suffix
+            string? directory = Path.GetDirectoryName(dbPath);
+            string dbFileNameWithoutExt = Path.GetFileNameWithoutExtension(dbPath);
+            string statusFileName = $"{dbFileNameWithoutExt}{StatusFileSuffix}";
 
-            // Check if it's a general operation cancellation, possibly due to overall timeout
-            if (ex is OperationCanceledException)
+            if (string.IsNullOrEmpty(directory))
             {
-                // logger?.LogDebug("Identified potential timeout: OperationCanceledException."); // Cannot log here easily
-                return true;
+                // Fallback if directory is somehow null
+                return statusFileName;
             }
-
-            // Check inner exceptions recursively
-            if (ex.InnerException != null)
-            {
-                return IsPotentialTimeoutException(ex.InnerException);
-            }
-
-            return false;
+            return Path.Combine(directory, statusFileName);
         }
     }
 
-    // --- Placeholder/Example Configuration Classes ---
-    // IMPORTANT: You need to integrate these properties into your actual configuration classes
-    // (likely in the CosmosUploader.Configuration namespace)
-
-    public class AppSettings
+    // CustomFormatter remains
+    public sealed class CustomFormatter : ConsoleFormatter
     {
-        public CosmosSettings? Cosmos { get; set; }
-        public PerformanceSettings? Performance { get; set; }
-        public LoggingSettings? Logging { get; set; }
-        public ProcessingSettings Processing { get; set; } = new ProcessingSettings(); // Ensure initialized
-        public bool DevelopmentMode { get; set; }
-        public bool DebugMode { get; set; }
-        public ProcessingStage ProcessingStage { get; set; } // Stage determined after validation
-    }
+        public CustomFormatter() : base("custom") { }
 
-    public class CosmosSettings
-    {
-        public string Endpoint { get; set; } = string.Empty;
-        public string Key { get; set; } = string.Empty;
-        public string DatabaseName { get; set; } = string.Empty;
-        public string ContainerName { get; set; } = string.Empty;
-        public string PartitionKey { get; set; } = string.Empty;
-        public string ResourceGroup { get; set; } = string.Empty; // Added based on usage in mapping
-    }
-
-    public class PerformanceSettings
-    {
-        public bool DisableIndexingDuringBulk { get; set; }
-        public int SleepInterval { get; set; } // Added based on usage in mapping
-    }
-
-    public class LoggingSettings
-    {
-        public string Level { get; set; } = "Information";
-        public bool LogRequestUnits { get; set; }
-        public bool LogLatency { get; set; }
-    }
-
-     public class ProcessingSettings // New class for processing flags
-     {
-         public bool Schematize { get; set; } = false;
-         public bool Sanitize { get; set; } = false;
-         public bool Aggregate { get; set; } = false;
-     }
-
-     // Assume CosmosConfig (read from YAML) also has a Processing property
-     // e.g., public ProcessingSettings? Processing { get; set; }
-
-
-    // --- End Placeholder Configuration Classes ---
-}
-
-
-// Add this class to your project
-public sealed class CustomFormatter : ConsoleFormatter
-{
-    public CustomFormatter() : base("custom") { }
-
-    public override void Write<TState>(
-        in LogEntry<TState> logEntry,
-        IExternalScopeProvider? scopeProvider,
-        TextWriter textWriter)
-    {
-        var timestamp = DateTimeOffset.Now.ToString("yyMMddTHH:mm:ss.fffzzz ");
-        var level = logEntry.LogLevel.ToString().Substring(0, Math.Min(4, logEntry.LogLevel.ToString().Length)).ToUpper(); // Safer Substring
-        string message = logEntry.Formatter(logEntry.State, logEntry.Exception);
-        string? exceptionDetails = logEntry.Exception?.ToString(); // Get full exception details if present
-
-        textWriter.Write($"{timestamp}{level}: {message}");
-        if (exceptionDetails != null)
+        public override void Write<TState>(
+            in LogEntry<TState> logEntry,
+            IExternalScopeProvider? scopeProvider,
+            TextWriter textWriter)
         {
-            // Indent exception details for readability
-            string indentedException = string.Join(Environment.NewLine,
-                exceptionDetails.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                                .Select(line => "    " + line));
-            textWriter.WriteLine(); // New line before exception
-            textWriter.Write(indentedException);
+            var timestamp = DateTimeOffset.Now.ToString("yyMMddTHH:mm:ss.fffzzz ");
+            var level = logEntry.LogLevel.ToString().Substring(0, Math.Min(4, logEntry.LogLevel.ToString().Length)).ToUpper(); // Safer Substring
+            string message = logEntry.Formatter(logEntry.State, logEntry.Exception);
+            string? exceptionDetails = logEntry.Exception?.ToString(); // Get full exception details if present
+
+            textWriter.Write($"{timestamp}{level}: {message}");
+            if (exceptionDetails != null)
+            {
+                // Indent exception details for readability
+                string indentedException = string.Join(Environment.NewLine,
+                    exceptionDetails.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+                                    .Select(line => "    " + line));
+                textWriter.WriteLine(); // New line before exception
+                textWriter.Write(indentedException);
+            }
+            textWriter.WriteLine(); // Ensure a new line after each log entry
         }
-        textWriter.WriteLine(); // Ensure a new line after each log entry
     }
 }
