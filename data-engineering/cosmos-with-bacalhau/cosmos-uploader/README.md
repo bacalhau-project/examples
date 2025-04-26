@@ -96,7 +96,7 @@ processing:        # Optional: Configure data processing stages
    ```bash
    dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db --development
    ```
-   *(Note: `--development` resets the 'synced' flag in SQLite and generates new IDs/Timestamps for uploaded items before any processing stages)*
+   *(Note: `--development` resets the 'last_write.txt' file in the SQLite database directory, which can be useful for testing and development purposes)*
 
 ### Command-Line Arguments:
 - `--config`: Path to the YAML configuration file (required).
