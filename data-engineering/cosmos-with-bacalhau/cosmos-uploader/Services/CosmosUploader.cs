@@ -1,22 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CosmosUploader.Configuration;
-using CosmosUploader.Models;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
-using System.Net.NetworkInformation;
-using System.Net;
-using System.Text.Json;
+using CosmosUploader.Models;
 
 namespace CosmosUploader.Services
 {
-    // Define placeholder data type consistent with processors
-    using DataItem = System.Collections.Generic.Dictionary<string, object>;
-
+    // Re-apply interface implementation
     public class CosmosUploader : ICosmosUploader
     {
         private readonly ILogger<CosmosUploader> _logger;
@@ -24,724 +20,300 @@ namespace CosmosUploader.Services
         private CosmosClient? _cosmosClient;
         private Container? _container;
         private long _totalRequestUnits = 0;
+        private bool _isInitialized;
 
-        public CosmosUploader(AppSettings settings, ILogger<CosmosUploader> logger)
+        public CosmosUploader(ILogger<CosmosUploader> logger, AppSettings settings)
         {
-            _settings = settings;
             _logger = logger;
+            _settings = settings;
         }
 
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (_isInitialized)
+            {
+                return;
+            }
 
-            // Declare Stopwatches here so they are accessible throughout the try block
-            Stopwatch? dbWatch = null;
-            Stopwatch? containerWatch = null;
+            if (_cosmosClient != null)
+            {
+                _logger.LogWarning("Cosmos DB client is already initialized");
+                return;
+            }
+            if (_settings.Cosmos == null)
+            {
+                throw new InvalidOperationException("Cosmos settings are not configured");
+            }
 
             try
             {
-                _logger.LogInformation("Initializing Cosmos DB connection...");
-
-                if (_settings.DebugMode)
-                {
-                    _logger.LogDebug("DEBUG MODE ENABLED");
-                    _logger.LogDebug("DEBUG: Target Cosmos Endpoint: {Endpoint}", _settings.Cosmos?.Endpoint ?? "undefined");
-
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(_settings.Cosmos?.Endpoint))
-                        {
-                            Uri endpointUri = new Uri(_settings.Cosmos.Endpoint);
-                            _logger.LogDebug("DEBUG: Attempting DNS lookup for host: {Host}", endpointUri.Host);
-                            IPHostEntry entry = await Dns.GetHostEntryAsync(endpointUri.Host);
-                            _logger.LogDebug("DEBUG: DNS resolved host {Host} to {IPCount} IP addresses. First IP: {IPAddress}",
-                                endpointUri.Host, entry.AddressList.Length, entry.AddressList.FirstOrDefault()?.ToString() ?? "N/A");
-                        }
-                        else
-                        {
-                            _logger.LogWarning("DEBUG: Cosmos endpoint is not configured - cannot perform DNS lookup");
-                        }
-                    }
-                    catch (Exception netEx)
-                    {
-                         _logger.LogWarning(netEx, "DEBUG: Network diagnostic check (DNS/Ping) failed for {Host}.", 
-                             !string.IsNullOrEmpty(_settings.Cosmos?.Endpoint) ? new Uri(_settings.Cosmos.Endpoint).Host : "unknown host");
-                    }
-                }
-
-                var clientOptions = new CosmosClientOptions
-                {
-                    ConnectionMode = ConnectionMode.Direct,
-                    AllowBulkExecution = true,
-                    MaxRetryAttemptsOnRateLimitedRequests = 9,
-                    MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30),
-                    RequestTimeout = TimeSpan.FromSeconds(60),
-                    ApplicationName = "CosmosUploader",
-                    EnableContentResponseOnWrite = false
-                };
-
-                _logger.LogInformation("Using Cosmos DB ConnectionMode: {Mode}. Ensure outbound TCP ports 10250-10255 are open if using Direct mode.", clientOptions.ConnectionMode);
-
-                if (_settings.DebugMode)
-                {
-                    _logger.LogDebug("DEBUG: CosmosClientOptions - ConnectionMode: {Mode}, AllowBulkExecution: {Bulk}, MaxRetryAttempts: {Retries}, MaxRetryWaitTime: {WaitTime}, RequestTimeout: {ReqTimeout}, AppName: {AppName}",
-                        clientOptions.ConnectionMode, clientOptions.AllowBulkExecution, clientOptions.MaxRetryAttemptsOnRateLimitedRequests, clientOptions.MaxRetryWaitTimeOnRateLimitedRequests, clientOptions.RequestTimeout, clientOptions.ApplicationName);
-                }
-
-                _logger.LogDebug("Creating CosmosClient with endpoint: {Endpoint} and ConnectionMode: {Mode}",
-                    _settings.Cosmos?.Endpoint ?? "undefined", clientOptions.ConnectionMode);
-                
-                if (string.IsNullOrEmpty(_settings.Cosmos?.Endpoint) || string.IsNullOrEmpty(_settings.Cosmos?.Key))
-                {
-                    _logger.LogError("Missing required Cosmos DB settings: Endpoint or Key");
-                    throw new InvalidOperationException("Cosmos DB settings incomplete: Endpoint and Key are required");
-                }
-
+                _logger.LogInformation("Initializing Cosmos DB client...");
                 _cosmosClient = new CosmosClient(
                     _settings.Cosmos.Endpoint,
                     _settings.Cosmos.Key,
-                    clientOptions);
-
-                _logger.LogDebug("Testing database connection (with cancellation race)");
-
-                if (_settings.DebugMode)
-                {
-                    dbWatch = Stopwatch.StartNew();
-                    _logger.LogDebug("DEBUG: Calling CreateDatabaseIfNotExistsAsync for database '{DatabaseName}'...", _settings.Cosmos.DatabaseName);
-                }
-
-                var createDbTask = _cosmosClient.CreateDatabaseIfNotExistsAsync(
-                    _settings.Cosmos.DatabaseName,
-                    cancellationToken: cancellationToken);
-
-                var cancellationTask = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-
-                var completedTask = await Task.WhenAny(createDbTask, cancellationTask);
-
-                if (completedTask == cancellationTask)
-                {
-                    dbWatch?.Stop();
-                    if (_settings.DebugMode)
+                    new CosmosClientOptions
                     {
-                        _logger.LogDebug("DEBUG: CreateDatabaseIfNotExistsAsync cancelled after {ElapsedMs}ms.", dbWatch?.ElapsedMilliseconds ?? -1);
-                    }
-                    _logger.LogWarning("Cosmos DB initialization cancelled during CreateDatabaseIfNotExistsAsync.");
-                    throw new OperationCanceledException(cancellationToken);
-                }
+                        ApplicationName = "CosmosUploader",
+                        ConnectionMode = ConnectionMode.Direct,
+                        MaxRetryAttemptsOnRateLimitedRequests = 5,
+                        MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
+                    });
 
-                var databaseResponse = await createDbTask;
+                _logger.LogInformation("Getting Database: {DatabaseName}", _settings.Cosmos.DatabaseName);
+                Database database = await _cosmosClient.CreateDatabaseIfNotExistsAsync(
+                   _settings.Cosmos.DatabaseName,
+                    cancellationToken: cancellationToken);
+                _logger.LogInformation("Database obtained successfully.");
 
-                dbWatch?.Stop();
-                if (_settings.DebugMode)
+                _logger.LogInformation("Getting Container: {ContainerName}", _settings.Cosmos.ContainerName);
+                string partitionKeyPath = _settings.Cosmos.PartitionKey ?? "/partitionKey";
+                if (!partitionKeyPath.StartsWith("/"))
                 {
-                     _logger.LogDebug("DEBUG: CreateDatabaseIfNotExistsAsync completed in {ElapsedMs}ms. Status: {StatusCode}, RU: {RequestCharge}",
-                         dbWatch?.ElapsedMilliseconds ?? -1, databaseResponse.StatusCode, databaseResponse.RequestCharge);
+                    partitionKeyPath = "/" + partitionKeyPath;
                 }
+                _logger.LogDebug("Using Partition Key Path: {Path}", partitionKeyPath);
 
-                _logger.LogDebug("Testing container connection (with cancellation race)");
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (_settings.DebugMode)
-                {
-                    containerWatch = Stopwatch.StartNew();
-                    _logger.LogDebug("DEBUG: Calling CreateContainerIfNotExistsAsync for container '{ContainerName}'...", _settings.Cosmos.ContainerName);
-                }
-
-                var createContainerTask = databaseResponse.Database.CreateContainerIfNotExistsAsync(
+                _container = await database.CreateContainerIfNotExistsAsync(
                     _settings.Cosmos.ContainerName,
-                    _settings.Cosmos.PartitionKey,
+                    partitionKeyPath,
                     cancellationToken: cancellationToken);
+                 _logger.LogInformation("Container obtained successfully.");
 
-                cancellationTask = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-
-                completedTask = await Task.WhenAny(createContainerTask, cancellationTask);
-
-                if (completedTask == cancellationTask)
-                {
-                    containerWatch?.Stop();
-                    if (_settings.DebugMode)
-                    {
-                         _logger.LogDebug("DEBUG: CreateContainerIfNotExistsAsync cancelled after {ElapsedMs}ms.", containerWatch?.ElapsedMilliseconds ?? -1);
-                    }
-                    _logger.LogWarning("Cosmos DB initialization cancelled during CreateContainerIfNotExistsAsync.");
-                    throw new OperationCanceledException(cancellationToken);
-                }
-
-                var containerResponse = await createContainerTask;
-
-                containerWatch?.Stop();
-                if (_settings.DebugMode)
-                {
-                     _logger.LogDebug("DEBUG: CreateContainerIfNotExistsAsync completed in {ElapsedMs}ms. Status: {StatusCode}, RU: {RequestCharge}",
-                         containerWatch?.ElapsedMilliseconds ?? -1, containerResponse.StatusCode, containerResponse.RequestCharge);
-                }
-
-                _container = containerResponse.Container;
-
-                _logger.LogInformation("Successfully initialized Cosmos DB connection");
+                _isInitialized = true;
+                _logger.LogInformation("Cosmos DB client initialized successfully");
             }
             catch (Exception ex)
             {
-                 if (_settings.DebugMode)
-                {
-                    _logger.LogDebug(ex, "DEBUG: Exception caught during InitializeAsync.");
-                }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogWarning("Cosmos DB initialization cancelled during operation.");
-                    throw new OperationCanceledException("Operation cancelled during initialization.", ex, cancellationToken);
-                }
-
-                if (ex is CosmosException cosmosEx)
-                {
-                    _logger.LogError(cosmosEx,
-                        "Cosmos DB error during initialization attempt. StatusCode: {StatusCode}, SubStatusCode: {SubStatusCode}, Message: {Message}, Diagnostics: {Diagnostics}",
-                        cosmosEx.StatusCode, cosmosEx.SubStatusCode, cosmosEx.Message, cosmosEx.Diagnostics?.ToString() ?? "N/A");
-                }
-                else
-                {
-                    _logger.LogError(ex,
-                        "Unexpected error during Cosmos DB initialization attempt: {Message}",
-                        ex.Message);
-                }
-
+                _logger.LogError(ex, "Failed to initialize Cosmos DB client");
                 throw;
             }
         }
 
-        // Modify signature and implementation to handle generic DataItems
-        public async Task UploadDataAsync(IEnumerable<DataItem> data, CancellationToken cancellationToken)
+        public async Task UploadDataAsync(List<DataTypes.DataItem> data, string dataPath, CancellationToken cancellationToken)
         {
-            if (data == null || !data.Any())
+            if (!_isInitialized)
             {
-                _logger.LogInformation("No data items to upload");
-                return;
+                _logger.LogWarning("CosmosUploader not initialized. Initializing now...");
+                await InitializeAsync(cancellationToken); 
             }
 
             if (_container == null)
             {
-                _logger.LogError("Cosmos DB container has not been initialized");
-                throw new InvalidOperationException("Cosmos DB container has not been initialized");
+                throw new InvalidOperationException("Cosmos container is not initialized after attempt.");
             }
 
-            int totalCount = data.Count();
-            string processingStage = _settings.ProcessingStage.ToString();
-            _logger.LogInformation("Starting bulk upload of {Count} {Stage} items...", totalCount, processingStage);
-            
-            // Display helpful message if using Raw stage
-            if (processingStage == "Raw")
+            if (data == null || !data.Any())
             {
-                _logger.LogInformation("Processing in 'Raw' stage which requires 'rawDataString' field. " + 
-                    "If you have issues, consider using 'Schematized' stage in your config.yaml: " +
-                    "Processing.Schematize: true, Processing.Sanitize: false, Processing.Aggregate: false");
+                _logger.LogWarning("No data provided to upload.");
+                return;
             }
 
-            var stopwatch = Stopwatch.StartNew();
-            double operationRequestUnits = 0;
-            int totalUploaded = 0;
-            int totalFailed = 0;
-            int totalConflicts = 0;
-            int totalSkipped = 0;
+            if (_settings?.Cosmos == null)
+            {
+                throw new InvalidOperationException("Cosmos settings are not configured.");
+            }
 
-            // Ensure all items have required fields according to schema
-            var validatedItems = new List<DataItem>();
+            string partitionKeyName = _settings.Cosmos.PartitionKey ?? "partitionKey";
+            if (partitionKeyName.StartsWith("/"))
+            {
+                partitionKeyName = partitionKeyName.Substring(1);
+            }
+
+            _logger.LogInformation("Starting upload of {Count} items to Cosmos DB [Database: {Db}, Container: {Container}]...",
+                data.Count, _settings.Cosmos.DatabaseName, _settings.Cosmos.ContainerName);
+
+            var tasks = new List<Task>();
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            double totalRU = 0;
+            int successfulUploads = 0;
+            int failedUploads = 0;
+            int conflictUploads = 0;
+
+            // Create a linked token source to allow cancelling this specific batch on 503
+            using var batchCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var batchToken = batchCts.Token;
+
             foreach (var item in data)
             {
-                // Ensure processing stage is set
-                if (!item.ContainsKey("processingStage") || item["processingStage"] == null || string.IsNullOrWhiteSpace(item["processingStage"].ToString()))
-                {
-                    _logger.LogWarning("Item missing 'processingStage' field. Setting to configured value: {Stage}", processingStage);
-                    item["processingStage"] = processingStage;
-                }
+                cancellationToken.ThrowIfCancellationRequested();
 
-                // Get the actual processing stage of this item
-                string itemStage = item["processingStage"]?.ToString() ?? string.Empty;
-                
-                // Check if item has city but no location, and if so, copy city to location
-                if ((!item.ContainsKey("location") || item["location"] == null || string.IsNullOrWhiteSpace(item["location"].ToString())) && 
-                     item.ContainsKey("city") && item["city"] != null && !string.IsNullOrWhiteSpace(item["city"].ToString()))
-                {
-                    _logger.LogDebug("Item ID {ItemId} has 'city' field but no 'location'. Copying city value to location for partition key.", 
-                        item.GetValueOrDefault("id", "[unknown_id]"));
-                    item["location"] = item["city"];
-                }
-                
-                // Validate and fix any missing fields
-                if (!ValidateItemFields(item, itemStage))
-                {
-                    _logger.LogError("Item failed validation and cannot be processed. Skipping item.");
-                    totalSkipped++;
-                    continue;
-                }
+                // Store local_reading_id for logging/error context before potentially removing 'id' key
+                string logItemId = item.TryGetValue("local_reading_id", out object? localId) && localId != null ? localId.ToString() ?? "unknown" : "unknown";
 
-                validatedItems.Add(item);
-            }
-
-            // DEBUGGING: Try single item upload mode when in debug mode to identify problematic documents
-            if (_settings.DebugMode && validatedItems.Count > 0)
-            {
-                _logger.LogWarning("DEBUG MODE: Attempting to upload first item individually to diagnose issues");
-                
-                // Get the first item and try to upload it
-                var firstItem = validatedItems.First();
-                string itemId = firstItem.GetValueOrDefault("id", "[unknown_id]")?.ToString() ?? "[unknown_id]";
-                
-                _logger.LogDebug("Attempting individual upload of item ID: {ItemId}", itemId);
-                
                 try
                 {
-                    // Create a simplified version for testing
-                    var simplifiedItem = new Dictionary<string, object>
+                    // Ensure the 'id' field is present. Generate one if it's missing.
+                    if (!item.ContainsKey("id") || item["id"] == null || string.IsNullOrWhiteSpace(item["id"].ToString()))
                     {
-                        ["id"] = itemId,
-                        ["processingStage"] = firstItem["processingStage"],
-                        ["location"] = firstItem["location"] // Partition key field
-                    };
-                    
-                    // Try adding a few basic fields
-                    if (firstItem.ContainsKey("timestamp"))
-                        simplifiedItem["timestamp"] = firstItem["timestamp"];
-                    
-                    // Try to get the partition key
-                    string testPartitionKeyField = "location";
-                    string partitionKeyValue = simplifiedItem[testPartitionKeyField]?.ToString() ?? "unknown";
-                                            
-                    // Try uploading just the simplified version first
-                    try
+                        string newId = Guid.NewGuid().ToString();
+                        item["id"] = newId;
+                        _logger.LogTrace("Generated new GUID '{NewId}' for item with local_reading_id {LogItemId}.", newId, logItemId);
+                    }
+                    else
                     {
-                        var response = await _container.CreateItemAsync<Dictionary<string, object>>(
-                            simplifiedItem,
-                            new PartitionKey(partitionKeyValue),
-                            cancellationToken: cancellationToken);
-                            
-                        _logger.LogInformation("SUCCESS: Simplified document uploaded successfully!");
-                        
-                        // Now try to identify which fields might be causing problems by adding them one at a time
-                        _logger.LogInformation("Field-by-field analysis started for document {ItemId}", itemId);
-                        
-                        // Delete the simplified document we just created
-                        await _container.DeleteItemAsync<Dictionary<string, object>>(
-                            itemId,
-                            new PartitionKey(partitionKeyValue),
-                            cancellationToken: cancellationToken);
-                            
-                        // Try the original document to see what happens
-                        try
+                         _logger.LogTrace("Using existing 'id' '{ExistingId}' for item with local_reading_id {LogItemId}.", item["id"], logItemId);
+                    }
+
+                    if (!item.TryGetValue(partitionKeyName, out object? pkValue) || pkValue == null)
+                    {
+                         _logger.LogWarning("Item missing partition key field '{PartitionKeyName}' or value is null. Skipping item with local_reading_id: {LogItemId}", partitionKeyName, logItemId);
+                         failedUploads++;
+                         continue;
+                    }
+                    string partitionKeyValue = string.Empty;
+                    if (pkValue != null)
+                    {
+                        partitionKeyValue = pkValue.ToString() ?? string.Empty;
+                    }
+                    if (string.IsNullOrEmpty(partitionKeyValue))
+                    {
+                        _logger.LogWarning("Partition key value for field '{PartitionKeyName}' is empty. Skipping item: {LogItemId}", partitionKeyName, logItemId);
+                        failedUploads++;
+                        continue;
+                    }
+
+                    // Use the batch-specific token for the create operation
+                    tasks.Add(_container.CreateItemAsync(item, new PartitionKey(partitionKeyValue), cancellationToken: batchToken)
+                        .ContinueWith(task =>
                         {
-                            var fullResponse = await _container.CreateItemAsync<Dictionary<string, object>>(
-                                firstItem,
-                                new PartitionKey(partitionKeyValue),
-                                cancellationToken: cancellationToken);
-                                
-                            _logger.LogInformation("SUCCESS: Original document uploaded successfully too! Problem may be with batching.");
-                        }
-                        catch (CosmosException ce)
-                        {
-                            _logger.LogError("FAILED: Original document upload failed with error: {Error}", ce.Message);
-                            _logger.LogWarning("This suggests the document structure is problematic. Examining document:");
-                            
-                            // Log problematic fields
-                            foreach (var kvp in firstItem)
+                            // Check the batch token first - if cancellation was requested (e.g., by a 503), don't process result
+                            if (batchToken.IsCancellationRequested)
                             {
-                                object? value = kvp.Value;
-                                
-                                try
+                                return; // Stop processing results for this task if batch was cancelled
+                            }
+
+                            if (task.IsCompletedSuccessfully)
+                            {
+                                Interlocked.Increment(ref successfulUploads);
+                                var responseItem = task.Result.Resource;
+                                string? cosmosId = "unknown"; // Default if resource is somehow null
+                                if (responseItem != null && responseItem.ContainsKey("id"))
                                 {
-                                    if (value == null)
-                                    {
-                                        _logger.LogDebug("Field {Field}: null", kvp.Key);
-                                    }
-                                    else
-                                    {
-                                        var valueType = value.GetType().Name;
-                                        string valueString;
-                                        
-                                        if (value is string str)
-                                            valueString = str.Length > 50 ? $"{str.Substring(0, 47)}..." : str;
-                                        else
-                                            valueString = value.ToString() ?? "null";
-                                            
-                                        _logger.LogDebug("Field {Field}: [{Type}] {Value}", 
-                                            kvp.Key, valueType, valueString);
-                                    }
+                                    cosmosId = responseItem["id"]?.ToString();
                                 }
-                                catch (Exception ex)
+                                
+                                totalRU += task.Result.RequestCharge;
+                                _logger.LogTrace("Successfully uploaded item (Local ID: {LogItemId}, Cosmos ID: {CosmosId}). RU: {RU}", 
+                                    logItemId, cosmosId, task.Result.RequestCharge);
+                            }
+                            else if (task.IsFaulted)
+                            {
+                                // Check for Service Unavailable (503) first
+                                if (task.Exception?.InnerException is CosmosException cosmosEx503 && cosmosEx503.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                                 {
-                                    _logger.LogWarning("Error examining field {Field}: {Error}", kvp.Key, ex.Message);
+                                    Interlocked.Increment(ref failedUploads); // Still count as failed for this batch attempt report
+                                    // Log as Warning since we intend to retry
+                                    _logger.LogWarning("Service Unavailable (503) detected for item (Local ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
+                                    // Cancel the rest of the batch
+                                    try { batchCts.Cancel(); } catch (ObjectDisposedException) { /* Ignore if already disposed */ }
+                                }
+                                // Check for TooManyRequests (429) next
+                                else if (task.Exception?.InnerException is CosmosException cosmosEx429 && cosmosEx429.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                                {
+                                    Interlocked.Increment(ref failedUploads); // Count as failed for this batch attempt report
+                                    _logger.LogWarning("TooManyRequests (429) detected for item (Local ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
+                                    // Cancel the rest of the batch
+                                    try { batchCts.Cancel(); } catch (ObjectDisposedException) { /* Ignore if already disposed */ }
+                                }
+                                // Then check for Conflict (409)
+                                else if (task.Exception?.InnerException is CosmosException cosmosEx409 && cosmosEx409.StatusCode == System.Net.HttpStatusCode.Conflict)
+                                {
+                                    Interlocked.Increment(ref conflictUploads);
+                                    // Log conflict, which might occur if the explicitly provided/generated ID already exists.
+                                    _logger.LogWarning(task.Exception?.InnerException, "Conflict (409) detected for item (Local ID: {LogItemId}, Document ID: {DocumentId}). Skipping.", logItemId, item.TryGetValue("id", out var docId) ? docId : "unknown");
+                                }
+                                // Add specific handling for BadRequest (400)
+                                else if (task.Exception?.InnerException is CosmosException cosmosEx400 && cosmosEx400.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                                {
+                                    string errorMessage = cosmosEx400.ResponseBody ?? cosmosEx400.Message;
+                                    // Handle BadRequest errors normally now that we explicitly set 'id'
+                                    Interlocked.Increment(ref failedUploads);
+                                    _logger.LogError(cosmosEx400, "BadRequest (400) detected for item (Local ID: {LogItemId}, Document ID: {DocumentId}). Reason: {Reason}", logItemId, item.TryGetValue("id", out var docId400) ? docId400 : "unknown", errorMessage);
+                                }
+                                // Handle other failures
+                                else
+                                {
+                                    Interlocked.Increment(ref failedUploads);
+                                    _logger.LogError(task.Exception?.InnerException ?? task.Exception, "Failed to upload item (Local ID: {LogItemId})", logItemId);
                                 }
                             }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError("Even simplified document failed: {Error}", ex.Message);
-                    }
+                            else if (task.IsCanceled && task.Exception == null)
+                            {
+                                // Log cancellation specifically if it wasn't due to an exception (e.g., external cancellation)
+                                // Don't increment failure count here, as it might be intended cancellation.
+                                _logger.LogWarning("Upload task cancelled for item (Local ID: {LogItemId}) (external request or 503 propagation).", logItemId);
+                            }
+                            // Note: If task.IsCanceled is true AND task.Exception is not null, it's likely due to the token passed
+                            // to CreateItemAsync being cancelled (e.g., by our batchCts.Cancel()), which is handled by IsFaulted.
+                        }, CancellationToken.None)); // Use CancellationToken.None for the continuation itself
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Error during diagnostic upload: {ErrorMessage}", ex.Message);
+                    Interlocked.Increment(ref failedUploads);
+                     // Use logItemId which was captured before potentially removing 'id'
+                     _logger.LogError(ex, "Error preparing item for upload (Local ID: {LogItemId}): {ItemJson}", logItemId, System.Text.Json.JsonSerializer.Serialize(item));
                 }
-                
-                _logger.LogWarning("DEBUG DIAGNOSTICS COMPLETE - continuing with normal operation");
             }
 
-            // Update task list type to match the actual nullability of the return values
-            var concurrentTasks = new List<Task<(ItemResponse<object>? Response, bool Success, bool IsConflict)>>();
-            // Always use "location" as the partition key field, regardless of configuration
-            string partitionKeyField = "location";
-            
-            // Log the partition key field being used
-            _logger.LogInformation("Using '{PartitionKeyField}' as the partition key field (container configured with {ConfiguredKey})", 
-                partitionKeyField, _settings.Cosmos?.PartitionKey ?? "/id");
-
-            foreach (var item in validatedItems)
+            try
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogWarning("Upload cancelled by user during task creation");
-                    break;
-                }
-
-                // Check location exists and has a value (location should never be null)
-                if (!item.TryGetValue(partitionKeyField, out var partitionKeyValue) || 
-                    partitionKeyValue == null || 
-                    string.IsNullOrWhiteSpace(partitionKeyValue?.ToString()))
-                {
-                     _logger.LogError("Item with ID {ItemId} is missing the partition key field '{PartitionKeyField}' or its value is null/empty. Skipping upload.", 
-                        item.GetValueOrDefault("id", "[unknown_id]"), 
-                        partitionKeyField);
-                     totalFailed++;
-                     continue;
-                }
-
-                // Get the string value safely
-                string partitionKeyString = partitionKeyValue?.ToString() ?? string.Empty;
-                
-                if (string.IsNullOrWhiteSpace(partitionKeyString))
-                {
-                    _logger.LogError("Item with ID {ItemId} has a null or empty partition key after conversion to string", 
-                        item.GetValueOrDefault("id", "[unknown_id]"));
-                    totalFailed++;
-                    continue;
-                }
-                
-                // Debug log the item content to see what might be causing the BadRequest
-                if (_settings.DebugMode)
-                {
-                    try 
-                    {
-                        // Check document size - Cosmos DB has a 2MB limit
-                        string jsonContent = System.Text.Json.JsonSerializer.Serialize(item);
-                        int documentSizeKB = System.Text.Encoding.UTF8.GetByteCount(jsonContent) / 1024;
-                        
-                        if (documentSizeKB > 1900) // Getting close to 2MB limit
-                        {
-                            _logger.LogWarning("Document ID {ItemId} is {SizeKB}KB, approaching Cosmos DB 2MB limit", 
-                                item.GetValueOrDefault("id", "[unknown_id]"), documentSizeKB);
-                        }
-                        
-                        // Only log full content for small documents
-                        if (documentSizeKB < 10)
-                        {
-                            _logger.LogDebug("Attempting to upload document with ID {ItemId}. Content: {Content}", 
-                                item.GetValueOrDefault("id", "[unknown_id]"), 
-                                System.Text.Json.JsonSerializer.Serialize(item, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-                        }
-                        else
-                        {
-                            // For large documents, just log the keys and their types
-                            var fieldInfo = string.Join(", ", item.Select(kvp => $"{kvp.Key}:[{kvp.Value?.GetType().Name ?? "null"}]"));
-                            _logger.LogDebug("Document ID {ItemId} - Size: {SizeKB}KB - Fields: {Fields}", 
-                                item.GetValueOrDefault("id", "[unknown_id]"), documentSizeKB, fieldInfo);
-                        }
-                    }
-                    catch (Exception jsonEx)
-                    {
-                        _logger.LogWarning("Unable to serialize document to JSON for debug output. This may indicate the issue: {ErrorMessage}", 
-                            jsonEx.Message);
-                    }
-                }
-                
-                concurrentTasks.Add(
-                    // Use generic object type for CreateItemAsync
-                    _container.CreateItemAsync<object>(
-                        item, 
-                        new PartitionKey(partitionKeyString), // Use the validated string 
-                        cancellationToken: cancellationToken)
-                    .ContinueWith<(ItemResponse<object>? Response, bool Success, bool IsConflict)>(task =>
-                    {
-                        cancellationToken.ThrowIfCancellationRequested(); // Check before processing result
-                        if (task.IsCompletedSuccessfully)
-                        {
-                            return (task.Result, true, false);
-                        }
-                        if (task.IsFaulted)
-                        {
-                            if (task.Exception?.InnerException is CosmosException cosmosEx)
-                            {
-                                if (cosmosEx.StatusCode == HttpStatusCode.Conflict)
-                                {
-                                    // Treat conflict as a separate category, not necessarily a hard failure
-                                    return (null, false, true);
-                                }
-                                else if (cosmosEx.StatusCode == HttpStatusCode.BadRequest)
-                                {
-                                    // Add enhanced error logging for BadRequest errors
-                                    _logger.LogError("BadRequest error for item ID {ItemId}. SubStatusCode: {SubStatusCode}, ActivityId: {ActivityId}. " +
-                                        "Diagnostics: {Diagnostics}", 
-                                        item.GetValueOrDefault("id", "[unknown_id]"),
-                                        cosmosEx.SubStatusCode,
-                                        cosmosEx.ActivityId,
-                                        cosmosEx.Diagnostics?.ToString() ?? "No diagnostic info");
-                                        
-                                    // Try to dump data properties that might be problematic
-                                    try
-                                    {
-                                        var problematicKeys = new List<string>();
-                                        foreach (var kvp in item)
-                                        {
-                                            if (kvp.Value == null)
-                                                problematicKeys.Add($"{kvp.Key}: null");
-                                            else if (kvp.Value is string str && string.IsNullOrEmpty(str))
-                                                problematicKeys.Add($"{kvp.Key}: empty string");
-                                            else if (Double.IsNaN(kvp.Value as double? ?? 0))
-                                                problematicKeys.Add($"{kvp.Key}: NaN");
-                                            else if (Double.IsInfinity(kvp.Value as double? ?? 0))
-                                                problematicKeys.Add($"{kvp.Key}: Infinity");
-                                        }
-                                        
-                                        if (problematicKeys.Count > 0)
-                                            _logger.LogWarning("Found potentially problematic properties: {Properties}", 
-                                                string.Join(", ", problematicKeys));
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogWarning("Error analyzing document properties: {ErrorMessage}", ex.Message);
-                                    }
-                                }
-                                
-                                // Log other exceptions
-                                _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage} (Status: {Status}, SubStatus: {SubStatus})", 
-                                    item.GetValueOrDefault("id", "[unknown_id]"), 
-                                    task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error",
-                                    cosmosEx.StatusCode,
-                                    cosmosEx.SubStatusCode);
-                            }
-                            else
-                            {
-                                // For non-Cosmos exceptions
-                                _logger.LogError(task.Exception, "Bulk upload task failed for item ID {ItemId}: {ErrorMessage}", 
-                                    item.GetValueOrDefault("id", "[unknown_id]"), 
-                                    task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error");
-                            }
-                            return (null, false, false);
-                        }
-                        // Handle cancellation if task status indicates it (though ThrowIfCancellationRequested should catch most)
-                        if (task.IsCanceled) {
-                            _logger.LogWarning("Bulk upload task was cancelled for item ID {ItemId}", item.GetValueOrDefault("id", "[unknown_id]"));
-                            // Can decide how to count this, maybe as failed?
-                            return (null, false, false);
-                        }
-                        // Default case (shouldn't happen often)
-                        return (null, false, false);
-                    }, cancellationToken)
-                );
+                 await Task.WhenAll(tasks);
             }
-
-             if (cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException ex) // Catch cancellation specific to Task.WhenAll
             {
-                 _logger.LogWarning("Upload was cancelled after creating {TaskCount} upload tasks. Awaiting completion of initiated tasks...", concurrentTasks.Count);
-            }
-            else {
-                 _logger.LogDebug("Created {TaskCount} upload tasks. Awaiting completion...", concurrentTasks.Count);
-            }
-
-            // Wait for all initiated tasks to complete
-            await Task.WhenAll(concurrentTasks);
-
-            // Process results
-            foreach (var task in concurrentTasks)
-            {
-                var (response, success, isConflict) = task.Result; // Access the result directly as Task.WhenAll ensures completion
-
-                if (success && response != null)
+                // Check if cancellation was triggered by our batch CTS (likely a 503) or the external token
+                if (ex.CancellationToken == batchToken)
                 {
-                    totalUploaded++;
-                    operationRequestUnits += response.RequestCharge;
-                    if (_settings.Logging?.LogLatency == true)
-                    {
-                        _logger.LogTrace("Uploaded item {Id} - RU: {RequestCharge}, Latency: {Latency}", 
-                            response.Resource?.GetType().GetProperty("id")?.GetValue(response.Resource) ?? "unknown", // Try to get ID from response if possible
-                            response.RequestCharge, 
-                            response.Diagnostics?.GetClientElapsedTime() ?? TimeSpan.Zero); 
-                    }
+                    _logger.LogWarning("Batch upload halted due to Service Unavailable (503). Only partially completed.");
                 }
-                else if (isConflict)
+                else if (ex.CancellationToken == cancellationToken)
                 {
-                    totalConflicts++;
-                     _logger.LogWarning("Conflict detected for an item during bulk upload (item likely already exists).");
+                    _logger.LogWarning("Batch upload cancelled by external request.");
                 }
                 else
                 {
-                    // Already logged in the ContinueWith block
-                    totalFailed++;
+                    _logger.LogWarning("Upload operation cancelled during Task.WhenAll."); // Generic cancellation
+                }
+            }
+            catch (AggregateException aggEx)
+            { 
+                // Check if the aggregate exception contains the cancellation we triggered
+                if (aggEx.InnerExceptions.OfType<OperationCanceledException>().Any(oce => oce.CancellationToken == batchToken))
+                {
+                    _logger.LogWarning("Batch upload halted due to Service Unavailable (503) resulting in AggregateException. Only partially completed.");
+                }
+                else
+                {
+                    _logger.LogError(aggEx, "AggregateException occurred during Task.WhenAll that was not related to batch cancellation.");
+                    // Re-throw if it's not the expected cancellation scenario, as it represents other errors.
+                    // Note: This might still be caught by Program.cs, which is okay.
+                    throw; 
                 }
             }
 
             stopwatch.Stop();
-            _totalRequestUnits += (long)operationRequestUnits;
+            _totalRequestUnits += (long)totalRU; // Note: RU count might be slightly off if cancelled mid-operation
 
-            if (totalFailed > 0)
-            {
-                 _logger.LogError("Bulk upload completed with {Failures} failures out of {Total} items.", totalFailed, totalCount);
-            }
-            if (totalConflicts > 0)
-            {
-                _logger.LogWarning("Bulk upload completed with {Conflicts} conflicts detected out of {Total} items.", totalConflicts, totalCount);
-            }
-            if (totalSkipped > 0)
-            {
-                _logger.LogWarning("Bulk upload skipped {Skipped} items due to validation failures.", totalSkipped);
-            }
+            // Log results, indicating if the batch was halted
+            string completionStatus = batchCts.IsCancellationRequested ? "(Halted by 503, 429, or Cancellation)" : "(Completed)";
+            _logger.LogInformation("Upload batch processing finished {Status} in {ElapsedMs} ms. Successful: {SuccessCount}, Conflicts (Skipped): {ConflictCount}, Other Failures: {FailCount}. Total RU consumed for batch: {RU}",
+                completionStatus, stopwatch.ElapsedMilliseconds, successfulUploads, conflictUploads, failedUploads, totalRU);
 
-            _logger.LogInformation(
-                "Bulk upload of {ProcessingStage} data finished in {ElapsedSeconds:F2} seconds. Uploaded: {Uploaded}, Conflicts: {Conflicts}, Failed: {Failures}, Skipped: {Skipped}, Total RUs: {RequestUnits:F2}",
-                processingStage,
-                stopwatch.Elapsed.TotalSeconds,
-                totalUploaded,
-                totalConflicts,
-                totalFailed,
-                totalSkipped,
-                operationRequestUnits);
-            
-            // Decide if failure count warrants throwing an exception to halt processing
-            if (totalFailed > 0 && totalFailed == validatedItems.Count) // Only throw if all attempted uploads failed
+            // Only throw a hard exception for non-503/429 failures if the batch wasn't intentionally cancelled
+            if (failedUploads > 0 && !batchCts.IsCancellationRequested)
             {
-                 throw new Exception($"Bulk upload failed for all {totalFailed} attempted items. See logs for details.");
+                throw new Exception($"{failedUploads} items failed to upload due to errors (excluding conflicts, 503s, and 429s). Check logs for details.");
             }
-        }
-
-        // Helper method to validate item fields based on processing stage
-        private bool ValidateItemFields(DataItem item, string stage)
-        {
-            // Check if the stage is valid (using string comparison)
-            if (stage != "Raw" && stage != "Schematized" && 
-                stage != "Sanitized" && stage != "Aggregated")
+            else if (successfulUploads == 0 && conflictUploads == 0 && !batchCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("Invalid processing stage '{Stage}' for item ID {ItemId}", 
-                    stage, item.GetValueOrDefault("id", "[unknown_id]"));
-                return false;
+                _logger.LogWarning("No items were successfully uploaded or skipped due to conflicts, and the operation was not cancelled.");
             }
 
-            // Get required fields for this stage based on the stage string
-            HashSet<string> requiredFields;
-            if (stage == "Raw")
+            // Update status based on items processed before any potential cancellation
+            if (successfulUploads > 0 || conflictUploads > 0)
             {
-                requiredFields = new HashSet<string> { "id", "sensorId", "timestamp", "location", "processingStage", "rawDataString" };
+                _logger.LogInformation("Processed {Count} items (Successful + Conflicts) for data path: {DataPath}", successfulUploads + conflictUploads, dataPath);
             }
-            else if (stage == "Schematized" || stage == "Sanitized")
-            {
-                requiredFields = new HashSet<string> { 
-                    "id", "sensorId", "timestamp", "location", "processingStage",
-                    "temperature", "vibration", "voltage", "humidity", "status",
-                    "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer",
-                    "lat", "long"
-                };
-            }
-            else if (stage == "Aggregated")
-            {
-                requiredFields = new HashSet<string> { 
-                    "id", "sensorId", "timestamp", "location", "processingStage",
-                    "temperature", "vibration", "voltage", "humidity", "status",
-                    "anomalyFlag", "anomalyType", "firmwareVersion", "model", "manufacturer",
-                    "aggregationWindowStart", "aggregationWindowEnd"
-                };
-            }
-            else
-            {
-                // Should not get here due to earlier check
-                requiredFields = new HashSet<string> { "id", "processingStage" };
-            }
-            
-            // Check if all required fields are present
-            bool isValid = true;
-            List<string> missingFields = new List<string>();
-            
-            foreach (var field in requiredFields)
-            {
-                if (!item.ContainsKey(field) || item[field] == null || 
-                    (item[field] is string strVal && string.IsNullOrWhiteSpace(strVal)))
-                {
-                    missingFields.Add(field);
-                    isValid = false;
-                }
-            }
-            
-            if (!isValid)
-            {
-                string itemId = item.GetValueOrDefault("id", "[unknown_id]")?.ToString() ?? "[unknown_id]";
-                _logger.LogWarning("Item ID {ItemId} missing required fields for processing stage '{Stage}': {MissingFields}", 
-                    itemId, stage, string.Join(", ", missingFields));
-                
-                // Automatically add missing fields with default values where possible
-                foreach (var field in missingFields)
-                {
-                    switch (field)
-                    {
-                        case "id":
-                            item["id"] = Guid.NewGuid().ToString();
-                            _logger.LogDebug("Generated new ID {Id} for item", item["id"]);
-                            break;
-                        case "processingStage":
-                            item["processingStage"] = stage; // Use the provided stage
-                            break;
-                        case "timestamp":
-                            item["timestamp"] = DateTime.UtcNow;
-                            break;
-                        case "location":
-                            // Location is used as partition key and cannot be null
-                            item["location"] = "unknown_location";
-                            _logger.LogWarning("Added required partition key field 'location' with default value for item ID {ItemId}", 
-                                item.GetValueOrDefault("id", "[unknown_id]"));
-                            break;
-                        case "rawDataString":
-                            // For Raw stage, provide an empty JSON object as default rawDataString
-                            item["rawDataString"] = "{}";
-                            _logger.LogDebug("Added default rawDataString value for item ID {ItemId}", 
-                                item.GetValueOrDefault("id", "[unknown_id]"));
-                            break;
-                        case "anomalyFlag":
-                            item["anomalyFlag"] = false; // Default to no anomaly
-                            break;
-                        default:
-                            // For other fields, add a placeholder/empty value
-                            if (field.EndsWith("WindowStart") || field.EndsWith("WindowEnd"))
-                                item[field] = DateTime.UtcNow; // Default date for window fields
-                            else if (field == "temperature" || field == "vibration" || field == "voltage" || field == "humidity")
-                                item[field] = 0.0; // Default numeric value for sensor readings
-                            else
-                                item[field] = ""; // Empty string for other fields
-                            break;
-                    }
-                    _logger.LogDebug("Added default value for missing field {Field} to item ID {ItemId}", field, item["id"]);
-                }
-            }
-            
-            // After fixing missing fields, check special field requirements
-            if (stage == "Aggregated")
-            {
-                // Ensure timestamp matches aggregationWindowEnd for Aggregated data
-                if (item.ContainsKey("timestamp") && item.ContainsKey("aggregationWindowEnd") &&
-                    item["timestamp"] != item["aggregationWindowEnd"])
-                {
-                    _logger.LogWarning("For Aggregated data, 'timestamp' should match 'aggregationWindowEnd'. Fixing.");
-                    item["timestamp"] = item["aggregationWindowEnd"];
-                }
-            }
-            
-            return true; // Return true since we attempt to fix all issues
         }
 
         public async Task<int> GetContainerItemCountAsync()

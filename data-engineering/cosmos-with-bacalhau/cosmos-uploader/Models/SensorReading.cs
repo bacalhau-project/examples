@@ -1,7 +1,4 @@
-using System;
-using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
-
+using Newtonsoft.Json; 
 namespace CosmosUploader.Models
 {
     public class SensorReading
@@ -14,7 +11,7 @@ namespace CosmosUploader.Models
             Status = "UNKNOWN";
             Location = "UNKNOWN";
             City = "UNKNOWN";
-            ProcessingStage = "Raw"; // Default to Raw stage
+            ProcessingStage = ProcessingStages.Raw.ToString();
         }
 
         [JsonProperty("id")]
@@ -51,6 +48,9 @@ namespace CosmosUploader.Models
         [JsonProperty("humidity")]
         public double? Humidity { get; set; }
         
+        [JsonProperty("pressure")]
+        public double? Pressure { get; set; }
+        
         [JsonProperty("status")]
         public string Status { get; set; }
         
@@ -83,9 +83,9 @@ namespace CosmosUploader.Models
 
         [JsonProperty("aggregationWindowEnd")]
         public DateTime? AggregationWindowEnd { get; set; }
-        
-        [JsonProperty("processed")]
-        public bool Processed { get; set; } = false;
+
+        [JsonProperty("rawData")]
+        public string? RawData { get; set; }
     }
 
     // Define the processing stages as an enum to ensure consistency

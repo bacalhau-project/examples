@@ -10,20 +10,8 @@ using CosmosUploader.Models;
 
 namespace CosmosUploader.Processors
 {
-    // Define a placeholder data type - replace with your actual data model
-    using DataItem = System.Collections.Generic.Dictionary<string, object>; 
-
-    public interface ISchemaProcessor
+    public class SchemaProcessor : BaseProcessor, ISchemaProcessor
     {
-        // Return IEnumerable for streaming potential
-        Task<IEnumerable<DataItem>> ProcessAsync(IEnumerable<DataItem> rawData, CancellationToken cancellationToken);
-        // Add an async streaming interface method
-        IAsyncEnumerable<DataItem> ProcessStreamAsync(IEnumerable<DataItem> rawData, CancellationToken cancellationToken);
-    }
-
-    public class SchemaProcessor : ISchemaProcessor
-    {
-        private readonly ILogger<SchemaProcessor> _logger;
         private readonly ProcessingStage _processingStage;
         
         // Define required keys for basic validation
@@ -33,26 +21,26 @@ namespace CosmosUploader.Processors
         };
 
         public SchemaProcessor(ILogger<SchemaProcessor> logger)
+            : base(logger, "SchemaProcessor", ProcessingStage.Schematized)
         {
-            _logger = logger;
             _processingStage = ProcessingStage.Schematized;
         }
 
-        // Keep the original method for compatibility if needed, but delegate to streaming
-        public async Task<IEnumerable<DataItem>> ProcessAsync(IEnumerable<DataItem> rawData, CancellationToken cancellationToken)
+        public async Task<IEnumerable<DataTypes.DataItem>> ProcessAsync(
+            IEnumerable<DataTypes.DataItem> data,
+            CancellationToken cancellationToken)
         {
-             _logger.LogInformation("--- Starting Schematization (buffered) ---");
-            var results = new List<DataItem>();
-            await foreach (var item in ProcessStreamAsync(rawData, cancellationToken).WithCancellation(cancellationToken))
+            _logger.LogInformation("--- Starting Schematization (buffered) ---");
+            var results = new List<DataTypes.DataItem>();
+            await foreach (var item in ProcessStreamAsync(data, cancellationToken).WithCancellation(cancellationToken))
             {
                 results.Add(item);
             }
-             _logger.LogInformation("--- Finished Schematization (buffered, Output: {Count} items) ---", results.Count);
+            _logger.LogInformation("--- Finished Schematization (buffered, Output: {Count} items) ---", results.Count);
             return results;
         }
         
-        // Implement the streaming method using async iterator
-        public async IAsyncEnumerable<DataItem> ProcessStreamAsync(IEnumerable<DataItem> rawData,
+        public async IAsyncEnumerable<DataTypes.DataItem> ProcessStreamAsync(IEnumerable<DataTypes.DataItem> rawData,
                                                                    [EnumeratorCancellation] CancellationToken cancellationToken)
         {
              _logger.LogInformation("--- Starting Schematization (streaming) ---");
@@ -68,7 +56,7 @@ namespace CosmosUploader.Processors
                  inputCount++;
                  
                  // Clone the item to avoid modifying the original
-                 var processedItem = new DataItem(item);
+                 var processedItem = new DataTypes.DataItem(item);
                  
                  // Check and enforce required fields
                  foreach (var key in _commonRawFields)
@@ -144,7 +132,7 @@ namespace CosmosUploader.Processors
             await Task.CompletedTask; // Required if there are no awaits inside the async iterator method
         }
         
-        private void EnsureProperNumericTypes(DataItem item)
+        private void EnsureProperNumericTypes(DataTypes.DataItem item)
         {
             // Process numeric fields to ensure they're the right type
             string[] numericFields = new[] { "temperature", "vibration", "voltage", "humidity" };
