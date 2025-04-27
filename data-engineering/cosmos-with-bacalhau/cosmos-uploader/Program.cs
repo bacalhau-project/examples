@@ -22,9 +22,8 @@ namespace CosmosUploader
         // Define known processor names (excluding Aggregate)
         private static readonly HashSet<string> KnownProcessors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Schematize", "Sanitize" // Removed "Aggregate"
+            "Schematize", "Sanitize" // Aggregate is handled separately
         };
-        // private const string AggregateProcessorName = "Aggregate"; // No longer needed here
 
         // Add this helper class (or move it to a Models/Common file if preferred)
         internal class ProcessingStatus
@@ -122,6 +121,14 @@ namespace CosmosUploader
                     {
                         // Use the initial provider to get a logger for this critical error
                         initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical("Initial configuration failed. Exiting.");
+                        
+                        // Also write to console directly to ensure visibility even if logger configuration failed
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Error.WriteLine("\nERROR: Initial configuration failed. Application cannot start.\n");
+                        Console.Error.WriteLine("Check that the config file exists and is valid: " + configPath);
+                        Console.Error.WriteLine("Check that the SQLite path exists: " + sqlitePath + "\n");
+                        Console.ResetColor();
+                        
                         return 1;
                     }
                     settings = loadResult.AppSettings;
@@ -131,6 +138,24 @@ namespace CosmosUploader
                 catch (Exception ex) // Catch potential errors during initial load not caught inside the method
                 {
                     initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical(ex, "Unhandled exception during initial configuration load: {Message}", ex.Message);
+                    
+                    // Also write to console directly to ensure visibility even if logger configuration failed
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine("\nERROR: Unhandled exception during startup:\n");
+                    Console.Error.WriteLine(ex.Message);
+                    
+                    if (ex is System.IO.DirectoryNotFoundException || ex is System.IO.FileNotFoundException)
+                    {
+                        Console.Error.WriteLine("\nCheck that all required files exist:");
+                        Console.Error.WriteLine("- Config file: " + configPath);
+                        Console.Error.WriteLine("- SQLite path: " + sqlitePath);
+                    }
+                    
+                    Console.Error.WriteLine("\nStack trace:");
+                    Console.Error.WriteLine(ex.StackTrace);
+                    Console.Error.WriteLine();
+                    Console.ResetColor();
+                    
                     return 1;
                 }
                 
@@ -528,7 +553,10 @@ namespace CosmosUploader
                          effectiveLevel = configLevel;
                     }
                     builder.SetMinimumLevel(effectiveLevel);
-                    appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
+                    if (appSettings.Logging != null)
+                    {
+                        appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
+                    }
                 });
 
                 // Clear potentially existing singletons/transients before adding new ones
