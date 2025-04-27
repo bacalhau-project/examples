@@ -323,7 +323,7 @@ namespace CosmosUploader.Services
             }
         }
 
-        private async Task<long> GetCountForPartitionKeysAsync(List<string> partitionKeys, string partitionKeyName, CancellationToken cancellationToken)
+        private async Task<long> GetCountForPartitionKeysAsync(List<string?> partitionKeys, string partitionKeyName, CancellationToken cancellationToken)
         {
             if (_container == null) return 0;
 
@@ -332,24 +332,28 @@ namespace CosmosUploader.Services
 
             foreach (var pkValue in partitionKeys)
             {
+                // Skip null values (should not occur due to Where filter, but we're being defensive)
+                if (pkValue == null) continue;
+                
+                string partitionKey = pkValue; // Create a local non-nullable copy for the lambda
                 queryTasks.Add(Task.Run(async () =>
                 {
                     try
                     {
-                        QueryRequestOptions queryOptions = new QueryRequestOptions() { PartitionKey = new PartitionKey(pkValue) };
+                        QueryRequestOptions queryOptions = new QueryRequestOptions() { PartitionKey = new PartitionKey(partitionKey) };
                         var count = await _container.GetItemLinqQueryable<DataTypes.DataItem>(requestOptions: queryOptions)
-                                                     .Where(i => i[partitionKeyName].ToString() == pkValue)
+                                                     .Where(i => i[partitionKeyName].ToString() == partitionKey)
                                                      .CountAsync(cancellationToken);
                         return (long)count;
                     }
                     catch (CosmosException ex)
                     {
-                        _logger.LogWarning(ex, "[DEBUG] Error querying count for partition key '{PK}'. Status: {Status}", pkValue, ex.StatusCode);
+                        _logger.LogWarning(ex, "[DEBUG] Error querying count for partition key '{PK}'. Status: {Status}", partitionKey, ex.StatusCode);
                         return 0L;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "[DEBUG] Non-Cosmos error querying count for partition key '{PK}'", pkValue);
+                        _logger.LogError(ex, "[DEBUG] Non-Cosmos error querying count for partition key '{PK}'", partitionKey);
                         return 0L;
                     }
                 }, cancellationToken));

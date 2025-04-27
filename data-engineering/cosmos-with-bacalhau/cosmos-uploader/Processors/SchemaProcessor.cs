@@ -137,20 +137,38 @@ namespace CosmosUploader.Processors
             // Process numeric fields to ensure they're the right type
             string[] numericFields = new[] { "temperature", "vibration", "voltage", "humidity" };
             
+            // Get the item ID for logging (safely)
+            string itemId = "unknown";
+            if (item.TryGetValue("id", out object? idValue) && idValue != null)
+            {
+                itemId = idValue.ToString() ?? "unknown";
+            }
+            
             foreach (var field in numericFields)
             {
-                if (item.TryGetValue(field, out object? value) && value != null)
+                if (item.TryGetValue(field, out object? value))
                 {
-                    if (!(value is double))
+                    // Handle null values
+                    if (value == null)
+                    {
+                        item[field] = 0.0;
+                        _logger.LogDebug("Field {Field} has null value for item id {Id}. Setting to 0.0.", field, itemId);
+                        continue;
+                    }
+                    
+                    // If not already a double, try to convert
+                    if (value is not double)
                     {
                         if (double.TryParse(value.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double numericValue))
                         {
                             item[field] = numericValue;
+                            _logger.LogTrace("Converted {Field} from {Type} to double for item id {Id}.", 
+                                field, value.GetType().Name, itemId);
                         }
                         else
                         {
-                            _logger.LogWarning("Could not convert {Field} value '{Value}' to double for item id {Id}. Setting to null.", 
-                                field, value, item["id"]);
+                            _logger.LogWarning("Could not convert {Field} value '{Value}' to double for item id {Id}. Setting to 0.0.", 
+                                field, value, itemId);
                             item[field] = 0.0; // Default to 0.0 instead of null
                         }
                     }
@@ -158,25 +176,36 @@ namespace CosmosUploader.Processors
             }
             
             // Ensure boolean fields are proper booleans
-            if (item.TryGetValue("anomalyFlag", out object? flagValue) && flagValue != null)
+            if (item.TryGetValue("anomalyFlag", out object? flagValue))
             {
-                if (!(flagValue is bool))
+                // Handle null values
+                if (flagValue == null)
                 {
-                    if (bool.TryParse(flagValue.ToString(), out bool boolValue))
+                    item["anomalyFlag"] = false;
+                    _logger.LogDebug("anomalyFlag is null for item id {Id}. Setting to false.", itemId);
+                }
+                // If not already a boolean, try to convert
+                else if (flagValue is not bool)
+                {
+                    string flagValueStr = flagValue.ToString() ?? string.Empty;
+                    
+                    if (bool.TryParse(flagValueStr, out bool boolValue))
                     {
                         item["anomalyFlag"] = boolValue;
+                        _logger.LogTrace("Converted anomalyFlag from string '{Value}' to boolean for item id {Id}.", flagValueStr, itemId);
                     }
                     else
                     {
                         // Try numeric conversion (0=false, non-zero=true)
-                        if (int.TryParse(flagValue.ToString(), out int intValue))
+                        if (int.TryParse(flagValueStr, out int intValue))
                         {
                             item["anomalyFlag"] = intValue != 0;
+                            _logger.LogTrace("Converted anomalyFlag from numeric value {Value} to boolean for item id {Id}.", intValue, itemId);
                         }
                         else
                         {
                             _logger.LogWarning("Could not convert anomalyFlag value '{Value}' to boolean for item id {Id}. Setting to false.", 
-                                flagValue, item["id"]);
+                                flagValueStr, itemId);
                             item["anomalyFlag"] = false;
                         }
                     }
@@ -186,6 +215,7 @@ namespace CosmosUploader.Processors
             {
                 // Default value if not present
                 item["anomalyFlag"] = false;
+                _logger.LogDebug("anomalyFlag field not present for item id {Id}. Adding with default value false.", itemId);
             }
         }
     }

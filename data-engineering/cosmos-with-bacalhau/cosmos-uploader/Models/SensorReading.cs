@@ -1,4 +1,6 @@
+using System;
 using Newtonsoft.Json; 
+
 namespace CosmosUploader.Models
 {
     public class SensorReading
@@ -11,7 +13,7 @@ namespace CosmosUploader.Models
             Status = "UNKNOWN";
             Location = "UNKNOWN";
             City = "UNKNOWN";
-            ProcessingStage = ProcessingStages.Raw.ToString();
+            ProcessingStage = ProcessingStages.Raw;
         }
 
         [JsonProperty("id")]
@@ -86,14 +88,5 @@ namespace CosmosUploader.Models
 
         [JsonProperty("rawData")]
         public string? RawData { get; set; }
-    }
-
-    // Define the processing stages as an enum to ensure consistency
-    public enum ProcessingStages
-    {
-        Raw,
-        Schematized,
-        Sanitized,
-        Aggregated
     }
 }

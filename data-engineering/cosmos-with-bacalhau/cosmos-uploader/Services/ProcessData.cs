@@ -72,18 +72,20 @@ namespace CosmosUploader.Services
                         // Cast to the appropriate interface and call ProcessAsync
                         if (processorInstance is ISchemaProcessor schemaProcessor)
                         {
-                            currentPipelineData = (await schemaProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                            var result = await schemaProcessor.ProcessAsync(dataBefore, cancellationToken);
+                            currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         }
                         else if (processorInstance is ISanitizeProcessor sanitizeProcessor)
                         {
-                            currentPipelineData = (await sanitizeProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                            var result = await sanitizeProcessor.ProcessAsync(dataBefore, cancellationToken);
+                            currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         }
                         // Aggregate case removed from pipeline loop
                         else
                         {
                             _logger.LogError("Resolved processor '{ProcessorName}' is not a recognized processor type (ISchemaProcessor or ISanitizeProcessor).", processorName);
-                            // Decide how to handle this - skip or throw?
-                            continue; // Skip this processor
+                            // Skip this processor
+                            continue;
                         }
 
                         _logger.LogDebug("Pipeline processor '{ProcessorName}' completed. Item count: {Count}", processorName, currentPipelineData.Count);
@@ -108,7 +110,8 @@ namespace CosmosUploader.Services
                     {
                         var dataBefore = currentPipelineData;
                         // Assuming AggregateProcessor now uses AppSettings for the window
-                        currentPipelineData = (await aggregateProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                        var result = await aggregateProcessor.ProcessAsync(dataBefore, cancellationToken);
+                        currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         _logger.LogDebug("Aggregation step completed. Item count: {Count}", currentPipelineData.Count);
                     }
                     else
