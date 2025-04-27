@@ -70,16 +70,49 @@ namespace CosmosUploader.Processors
             {
                 if (item.TryGetValue(field, out object? value))
                 {
-                    if (value == null || value is not double || double.IsNaN((double)value) || double.IsInfinity((double)value))
+                    // Handle null values
+                    if (value == null)
                     {
                         item[field] = 0.0;
-                        _logger.LogWarning("Sanitized invalid numeric value for field {Field} in item {Id}",
-                            field, item["id"]);
+                        _logger.LogDebug("Set null value for field {Field} to 0.0 in item {Id}",
+                            field, item.TryGetValue("id", out var id) ? id?.ToString() ?? "unknown" : "unknown");
+                        continue;
+                    }
+                    
+                    // Handle non-double values
+                    if (value is not double doubleValue)
+                    {
+                        // Try to convert to double
+                        if (double.TryParse(value.ToString(), out double parsedValue))
+                        {
+                            item[field] = parsedValue;
+                            _logger.LogTrace("Converted {Field} from {Type} to double in item {Id}",
+                                field, value.GetType().Name, item.TryGetValue("id", out var id2) ? id2?.ToString() ?? "unknown" : "unknown");
+                        }
+                        else
+                        {
+                            item[field] = 0.0;
+                            _logger.LogWarning("Sanitized invalid numeric value for field {Field} in item {Id}",
+                                field, item.TryGetValue("id", out var id3) ? id3?.ToString() ?? "unknown" : "unknown");
+                        }
+                        continue;
+                    }
+                    
+                    // Handle NaN and Infinity
+                    if (double.IsNaN(doubleValue) || double.IsInfinity(doubleValue))
+                    {
+                        item[field] = 0.0;
+                        _logger.LogWarning("Sanitized {SpecialValue} value for field {Field} in item {Id}",
+                            double.IsNaN(doubleValue) ? "NaN" : "Infinity", field, 
+                            item.TryGetValue("id", out var id4) ? id4?.ToString() ?? "unknown" : "unknown");
                     }
                 }
                 else
                 {
+                    // Field doesn't exist, add it with default value
                     item[field] = 0.0;
+                    _logger.LogTrace("Added missing field {Field} with default value 0.0 to item {Id}",
+                        field, item.TryGetValue("id", out var id5) ? id5?.ToString() ?? "unknown" : "unknown");
                 }
             }
         }
@@ -95,15 +128,28 @@ namespace CosmosUploader.Processors
                     if (value == null)
                     {
                         item[field] = string.Empty;
+                        _logger.LogDebug("Set null value for string field {Field} to empty string in item {Id}",
+                            field, item.TryGetValue("id", out var id) ? id?.ToString() ?? "unknown" : "unknown");
                     }
                     else
                     {
-                        item[field] = value.ToString()?.Trim() ?? string.Empty;
+                        string stringValue = value.ToString()?.Trim() ?? string.Empty;
+                        
+                        // If the value changed, log it
+                        if (!stringValue.Equals(value.ToString()))
+                        {
+                            _logger.LogTrace("Trimmed string field {Field} in item {Id}", 
+                                field, item.TryGetValue("id", out var id2) ? id2?.ToString() ?? "unknown" : "unknown");
+                        }
+                        
+                        item[field] = stringValue;
                     }
                 }
                 else
                 {
                     item[field] = string.Empty;
+                    _logger.LogTrace("Added missing string field {Field} with empty value to item {Id}",
+                        field, item.TryGetValue("id", out var id3) ? id3?.ToString() ?? "unknown" : "unknown");
                 }
             }
         }
