@@ -1,0 +1,27 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - orchestrator:4222
+  AllowListedLocalPaths:
+    - /bacalhau_data:rw
+    - /scripts:rw
+    - /mnt/bufor:rw
+    - /etc/environment:ro
+    - /mnt/local_files:rw
+    - /mnt/s3_low:rw
+    - /mnt/s3_high:rw
+    - /input:rw
+    - /output:rw
+UpdateConfig:
+  Interval: 0
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
+  Heartbeat:
+    Interval: 1s
+    InfoUpdateInterval: 10s
+JobDefaults:
+  Batch:
+    Task:
+      Resources:
+        Memory: "4Gi"
