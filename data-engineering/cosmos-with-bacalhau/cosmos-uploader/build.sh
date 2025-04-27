@@ -225,6 +225,7 @@ main() {
 
     # Write the tag to a file for other scripts to use
     echo "$TAG" > "$PROJECT_ROOT/.latest-image-tag"
+    echo "$TAG" > "$SCRIPT_DIR/latest-tag"
     if [ "$PUSH_TO_REGISTRY" = true ]; then
         echo "$REGISTRY_IMAGE_NAME" > "$PROJECT_ROOT/.latest-registry-image"
     fi
