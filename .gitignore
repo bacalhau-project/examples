@@ -64,3 +64,4 @@ event-pusher/*.json
 
 *.specstory*
 *debug.log*
+.minio*
