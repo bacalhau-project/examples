@@ -34,6 +34,8 @@ spec:
         envFrom:
           - configMapRef:
               name: api-config
+          - secretRef:
+              name: api-credentials
         name: job-controller
         securityContext:
           allowPrivilegeEscalation: false

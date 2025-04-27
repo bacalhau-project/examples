@@ -1,0 +1,16 @@
+{
+    "index_patterns": [
+        "aggregated-geoip-*"
+    ],
+    "mappings": {
+        "properties": {
+            "geo": {
+                "properties": {
+                    "location": {
+                        "type": "geo_point"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -41,7 +41,9 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
 
         # Check database health
         db_healthy = (
-            self.simulator.db.is_healthy() if hasattr(self.simulator, "db") else False
+            self.simulator.database.is_healthy()
+            if hasattr(self.simulator, "database")
+            else False
         )
 
         # Overall health status
@@ -70,17 +72,17 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
 
         # Get database performance metrics
         db_metrics = {}
-        if hasattr(self.simulator, "db") and hasattr(
-            self.simulator.db, "get_performance_stats"
+        if hasattr(self.simulator, "database") and hasattr(
+            self.simulator.database, "get_performance_stats"
         ):
-            db_metrics = self.simulator.db.get_performance_stats()
+            db_metrics = self.simulator.database.get_performance_stats()
 
         # Get sync stats
         sync_stats = {}
-        if hasattr(self.simulator, "db") and hasattr(
-            self.simulator.db, "get_sync_stats"
+        if hasattr(self.simulator, "database") and hasattr(
+            self.simulator.database, "get_sync_stats"
         ):
-            sync_stats = self.simulator.db.get_sync_stats()
+            sync_stats = self.simulator.database.get_sync_stats()
 
         # Combine all metrics
         metrics = {
@@ -103,123 +105,76 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
         status = self.simulator.get_status()
         self._send_json_response(200, status)
 
-    def _handle_prometheus(self):
-        """Handle Prometheus metrics requests."""
-        if not self.simulator:
-            self._send_response(503, "text/plain", "# ERROR: Simulator not initialized")
-            return
+    def _handle_sample(self):
+        """Loads the last ten entries from the database and sends them as a JSON response."""
+        data = self.simulator.database.get_last_ten_entries()
+        self._send_json_response(200, data)
 
-        # Get metrics data
-        simulator_status = self.simulator.get_status()
-        db_metrics = {}
-        if hasattr(self.simulator, "db") and hasattr(
-            self.simulator.db, "get_performance_stats"
-        ):
-            db_metrics = self.simulator.db.get_performance_stats()
+    def _handle_db_stats(self):
+        """Handle database statistics request."""
+        try:
+            if not hasattr(self.simulator, "database"):
+                return self._send_json_response(
+                    400, {"error": "Database not initialized"}
+                )
 
-        sync_stats = {}
-        if hasattr(self.simulator, "db") and hasattr(
-            self.simulator.db, "get_sync_stats"
-        ):
-            sync_stats = self.simulator.db.get_sync_stats()
+            stats = self.simulator.database.get_database_stats()
 
-        # Format as Prometheus metrics
-        lines = []
+            # Format the response with human-readable values
+            formatted_stats = {
+                "total_readings": stats["total_readings"],
+                "database_size": {
+                    "bytes": stats["database_size_bytes"],
+                    "human_readable": self._format_bytes(stats["database_size_bytes"]),
+                },
+                "last_write": stats["last_write_timestamp"],
+                "indexes": {
+                    name: {"bytes": size, "human_readable": self._format_bytes(size)}
+                    for name, size in stats["index_sizes"].items()
+                },
+                "table_stats": stats["table_stats"],
+                "performance": {
+                    "total_inserts": stats["performance_metrics"]["total_inserts"],
+                    "total_batches": stats["performance_metrics"]["total_batches"],
+                    "avg_batch_size": round(
+                        stats["performance_metrics"]["avg_batch_size"], 2
+                    ),
+                    "avg_insert_time_ms": round(
+                        stats["performance_metrics"]["avg_insert_time_ms"], 2
+                    ),
+                    "total_insert_time_s": round(
+                        stats["performance_metrics"]["total_insert_time_s"], 2
+                    ),
+                    "pending_batch_size": stats["performance_metrics"][
+                        "pending_batch_size"
+                    ],
+                },
+                "sync_status": {
+                    "total": stats["sync_stats"]["total"],
+                    "synced": stats["sync_stats"]["synced"],
+                    "unsynced": stats["sync_stats"]["unsynced"],
+                    "sync_percentage": round(stats["sync_stats"]["sync_percentage"], 2),
+                },
+                "anomalies": stats["anomaly_stats"],
+            }
 
-        # Simulator metrics
-        lines.append(
-            "# HELP sensor_simulator_running Whether the simulator is running (1=yes, 0=no)"
-        )
-        lines.append("# TYPE sensor_simulator_running gauge")
-        lines.append(
-            f"sensor_simulator_running {1 if simulator_status.get('running', False) else 0}"
-        )
+            # Include file paths and sizes in the response
+            formatted_stats["files"] = stats.get("files", {})
+            return self._send_json_response(200, formatted_stats)
+        except Exception as e:
+            logging.error(f"Error getting database stats: {e}")
+            return self._send_json_response(500, {"error": str(e)})
 
-        lines.append(
-            "# HELP sensor_simulator_readings_total Total number of readings generated"
-        )
-        lines.append("# TYPE sensor_simulator_readings_total counter")
-        lines.append(
-            f"sensor_simulator_readings_total {simulator_status.get('readings_count', 0)}"
-        )
-
-        lines.append(
-            "# HELP sensor_simulator_errors_total Total number of errors encountered"
-        )
-        lines.append("# TYPE sensor_simulator_errors_total counter")
-        lines.append(
-            f"sensor_simulator_errors_total {simulator_status.get('error_count', 0)}"
-        )
-
-        lines.append("# HELP sensor_simulator_elapsed_seconds Elapsed time in seconds")
-        lines.append("# TYPE sensor_simulator_elapsed_seconds gauge")
-        lines.append(
-            f"sensor_simulator_elapsed_seconds {simulator_status.get('elapsed_seconds', 0)}"
-        )
-
-        # Database metrics
-        if db_metrics:
-            lines.append(
-                "# HELP sensor_database_readings_total Total number of readings in the database"
-            )
-            lines.append("# TYPE sensor_database_readings_total counter")
-            lines.append(
-                f"sensor_database_readings_total {db_metrics.get('total_readings', 0)}"
-            )
-
-            lines.append(
-                "# HELP sensor_database_batches_total Total number of batch inserts"
-            )
-            lines.append("# TYPE sensor_database_batches_total counter")
-            lines.append(
-                f"sensor_database_batches_total {db_metrics.get('total_batches', 0)}"
-            )
-
-            lines.append(
-                "# HELP sensor_database_avg_insert_time_ms Average insert time in milliseconds"
-            )
-            lines.append("# TYPE sensor_database_avg_insert_time_ms gauge")
-            lines.append(
-                f"sensor_database_avg_insert_time_ms {db_metrics.get('avg_insert_time_ms', 0)}"
-            )
-
-            lines.append("# HELP sensor_database_size_bytes Database size in bytes")
-            lines.append("# TYPE sensor_database_size_bytes gauge")
-            lines.append(
-                f"sensor_database_size_bytes {db_metrics.get('database_size_bytes', 0)}"
-            )
-
-        # Sync metrics
-        if sync_stats:
-            lines.append("# HELP sensor_sync_total_readings Total number of readings")
-            lines.append("# TYPE sensor_sync_total_readings gauge")
-            lines.append(
-                f"sensor_sync_total_readings {sync_stats.get('total_readings', 0)}"
-            )
-
-            lines.append("# HELP sensor_sync_synced_readings Number of synced readings")
-            lines.append("# TYPE sensor_sync_synced_readings gauge")
-            lines.append(
-                f"sensor_sync_synced_readings {sync_stats.get('synced_readings', 0)}"
-            )
-
-            lines.append(
-                "# HELP sensor_sync_unsynced_readings Number of unsynced readings"
-            )
-            lines.append("# TYPE sensor_sync_unsynced_readings gauge")
-            lines.append(
-                f"sensor_sync_unsynced_readings {sync_stats.get('unsynced_readings', 0)}"
-            )
-
-            lines.append(
-                "# HELP sensor_sync_percentage Percentage of readings that are synced"
-            )
-            lines.append("# TYPE sensor_sync_percentage gauge")
-            lines.append(
-                f"sensor_sync_percentage {sync_stats.get('sync_percentage', 0)}"
-            )
-
-        self._send_response(200, "text/plain", "\n".join(lines))
+    def _format_bytes(self, size_bytes):
+        """Format bytes into human-readable string."""
+        if size_bytes == 0:
+            return "0 B"
+        size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        i = 0
+        while size_bytes >= 1024 and i < len(size_name) - 1:
+            size_bytes /= 1024
+            i += 1
+        return f"{size_bytes:.2f} {size_name[i]}"
 
     def do_GET(self):
         """Handle GET requests."""
@@ -227,22 +182,25 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
         path = parsed_url.path
 
         # Route to appropriate handler based on path
-        if path == "/health" or path == "/healthz":
+        if path == "/healthz":
             self._handle_health()
-        elif path == "/metrics":
+        elif path == "/metricz":
             self._handle_metrics()
-        elif path == "/status":
+        elif path == "/statusz":
             self._handle_status()
-        elif path == "/prometheus":
-            self._handle_prometheus()
+        elif path == "/samplez":
+            self._handle_sample()
+        elif path == "/db_stats":
+            self._handle_db_stats()
         else:
             # Default to showing available endpoints
             endpoints = {
                 "endpoints": {
-                    "/health": "Health check endpoint",
-                    "/metrics": "JSON metrics endpoint",
-                    "/status": "Simulator status endpoint",
-                    "/prometheus": "Prometheus metrics endpoint",
+                    "/healthz": "Health check endpoint",
+                    "/metricz": "JSON metrics endpoint",
+                    "/statusz": "Simulator status endpoint",
+                    "/samplez": "Sample data endpoint",
+                    "/db_stats": "Database statistics endpoint",
                 },
                 "simulator_running": self.simulator.running
                 if self.simulator
