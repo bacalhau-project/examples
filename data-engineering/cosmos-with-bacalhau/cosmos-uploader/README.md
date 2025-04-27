@@ -62,20 +62,27 @@ logging:
   log_request_units: true
   log_latency: true
 
-processing:        # Optional: Configure data processing stages
-  schematize: false # Default: false. If true, enables basic schema validation.
-  sanitize: false   # Default: false. Requires schematize: true. Enables basic PII masking.
-  aggregate: false  # Default: false. Requires sanitize: true. Enables basic aggregation.
+processing:                 # Optional: Configure data processing pipeline
+  processors:               # List of processor names to apply in order
+    - "SchemaValidation"    # Example: Validate required fields, convert types
+    - "Sanitization"        # Example: Mask sensitive fields like sensor_id
+    - "Aggregation"         # Example: Aggregate data (configure details below)
+  aggregation:              # Specific configuration if "Aggregation" processor is used
+    window: "1m"            # Example: Time window for aggregation (e.g., 1 minute)
 
 ```
 
 **Processing Configuration Details:**
 
-- **`schematize`**: (boolean, default `false`) If `true`, enables the `SchemaProcessor`. The current implementation validates that required fields (`id`, `sensor_id`, `timestamp`, `temperature`) exist and attempts to convert `temperature` to a double.
-- **`sanitize`**: (boolean, default `false`) If `true`, enables the `SanitizeProcessor`. **Requires `schematize: true`**. The current implementation masks the `sensor_id` field (e.g., `sensor_abc` becomes `sen***`).
-- **`aggregate`**: (boolean, default `false`) If `true`, enables the `AggregateProcessor`. **Requires `sanitize: true` (and therefore `schematize: true`)**. The current implementation groups data by `sensor_id` within the batch and outputs one document per sensor containing the count and average temperature.
+- **`processors`**: (list of strings, optional) Specifies the sequence of processors to apply to the data *before* uploading to Cosmos DB. The order in the list defines the execution order.
+    - Available processor names might include (check source code or specific documentation for exact names and behavior):
+        - `SchemaValidation`: Performs basic schema checks (e.g., required fields, data types).
+        - `Sanitization`: Masks or removes sensitive information (e.g., PII).
+        - `Aggregation`: Groups and aggregates data within a batch or time window (requires `aggregation` section for configuration).
+- **`aggregation`**: (object, optional) Contains settings specific to the `Aggregation` processor, if used.
+    - **`window`**: (string, required if `Aggregation` processor is used) Defines the time window or criteria for aggregation (e.g., `"1m"` for 1 minute). The exact format depends on the processor's implementation.
 
-**Important:** Enabling processing stages changes the structure of the data uploaded to Cosmos DB. Ensure your downstream consumers are prepared for the potentially transformed or aggregated data formats.
+**Important:** Enabling processing stages changes the structure of the data uploaded to Cosmos DB. Ensure processors are listed in the desired order and that downstream consumers are prepared for the transformed data format resulting from the *entire* applied pipeline.
 
 ## Running the Application
 
