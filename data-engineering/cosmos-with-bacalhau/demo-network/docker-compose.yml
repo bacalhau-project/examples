@@ -1,0 +1,108 @@
+name: bacalhau-network
+
+x-common-env-variables: &common-env-variables
+  BACALHAU_DISABLEANALYTICS: true
+  LOG_LEVEL: info
+
+# Common logging configuration to disable logs
+x-logging-driver: &logging-driver
+  logging:
+    driver: "none"
+
+services:
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    hostname: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    # Using host network mode for best performance
+    network_mode: "host"
+    volumes:
+      - ./network-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+#    ports:
+#      - "1234:1234"
+#    networks:
+#      - bacalhau-network
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    healthcheck:
+      test: [ "CMD", "bacalhau", "agent", "alive" ]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+      start_period: 15s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    # Orchestrator keeps logging enabled
+
+  nodes:
+    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
+    privileged: true
+    command: serve -c /etc/bacalhau/config.yaml
+    volumes:
+      - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    networks:
+      - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+#    <<: *logging-driver
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:latest
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      # Point to orchestrator on host network
+      BACALHAU_API_HOST: "host.docker.internal"
+    depends_on:
+      - orchestrator
+    networks:
+      - bacalhau-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    <<: *logging-driver
+
+  registry-proxy:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    networks:
+      - bacalhau-network
+
+networks:
+  bacalhau-network:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+
+volumes:
+  registry-data:

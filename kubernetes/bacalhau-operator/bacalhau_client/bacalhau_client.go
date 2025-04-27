@@ -10,17 +10,16 @@ package bacalhau_client
 import (
 	"cmp"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"net/http"
+	"slices"
+	"strings"
+
 	bacalhau_models "github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	api "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/samber/lo"
-	"net/http"
-	"slices"
-	"strings"
-	//"github.com/bacalhau-project/projectweezer/internal/filter"
-	//"github.com/bacalhau-project/projectweezer/internal/marketplace"
-	//"github.com/bacalhau-project/projectweezer/internal/utils"
 
 	bacalhau "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
@@ -36,12 +35,18 @@ type BacalhauClient struct {
 	api api.API
 }
 
+type BacalhauAPICredentials struct {
+	APIKey      string
+	APIUsername string
+	APIPassword string
+}
+
 func NewBacalhauClientFromAPI(api bacalhau.API) *BacalhauClient {
 	return &BacalhauClient{api: api}
 }
 
 // NewBacalhauClient creates a new BacalhauClient
-func NewBacalhauClient(endpoint string) (BacalhauClienter, error) {
+func NewBacalhauClient(endpoint string, apiCredentials BacalhauAPICredentials) (BacalhauClienter, error) {
 	httpClient := &http.Client{
 		Transport: &http.Transport{},
 	}
@@ -52,8 +57,19 @@ func NewBacalhauClient(endpoint string) (BacalhauClienter, error) {
 		return httpClient.Transport.RoundTrip(req)
 	})
 
-	bapi := api.New(endpoint,
-		api.WithHTTPClient(&http.Client{Transport: customTransport}))
+	headers := make(http.Header)
+	if apiCredentials.APIKey != "" {
+		headers.Set("Authorization", "Bearer "+apiCredentials.APIKey)
+	} else if apiCredentials.APIUsername != "" && apiCredentials.APIPassword != "" {
+		auth := apiCredentials.APIUsername + ":" + apiCredentials.APIPassword
+		headers.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
+	}
+
+	bapi := api.New(
+		endpoint,
+		api.WithHTTPClient(&http.Client{Transport: customTransport}),
+		api.WithHeaders(headers),
+	)
 	client := NewBacalhauClientFromAPI(bapi)
 	return client, nil
 }

@@ -21,16 +21,17 @@ import (
 	"bacalhau-operator/utils"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"os"
-	"strconv"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	bacalhauorgv1 "bacalhau-operator/api/v1"
 	"bacalhau-operator/controllers"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -88,8 +89,9 @@ func main() {
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(telemetry.Cleanup)
 
-	apiHost, apiPort := getDefaultHostPort()
-	bclient, _ := bacalhau_client.NewBacalhauClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	apiEndpoint := resolveAPIEndpoint()
+	apiCredentials := resolveAPICredentials()
+	bclient, _ := bacalhau_client.NewBacalhauClient(apiEndpoint, apiCredentials)
 	if bclient == nil {
 		setupLog.Error(fmt.Errorf("unable to create bacalhau client"), "unable to create bacalhau client")
 		os.Exit(1)
@@ -123,15 +125,23 @@ func main() {
 	}
 }
 
-func getDefaultHostPort() (string, uint16) {
-	defaultAPIHost, present := os.LookupEnv("APIHost")
+func resolveAPIEndpoint() string {
+	apiEndpoint, present := os.LookupEnv("API_Endpoint")
 	if !present {
-		defaultAPIHost = "bootstrap.production.bacalhau.org"
+		apiEndpoint = "http://bootstrap.production.bacalhau.org:1234/"
 	}
 
-	defaultAPIPort, err := strconv.ParseInt(os.Getenv("APIPort"), 0, 16)
-	if err != nil {
-		defaultAPIPort = 1234
+	return apiEndpoint
+}
+
+func resolveAPICredentials() bacalhau_client.BacalhauAPICredentials {
+	apiKey := os.Getenv("API_KEY")
+	apiUsername := os.Getenv("API_USERNAME")
+	apiPassword := os.Getenv("API_PASSWORD")
+
+	return bacalhau_client.BacalhauAPICredentials{
+		APIKey:      apiKey,
+		APIUsername: apiUsername,
+		APIPassword: apiPassword,
 	}
-	return defaultAPIHost, uint16(defaultAPIPort)
 }

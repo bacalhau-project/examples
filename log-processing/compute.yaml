@@ -1,0 +1,10 @@
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://<TODO>.us1.cloud.expanso.io:4222
+  Auth:
+    Token: "<TODO>"
+  TLS:
+    RequireTLS: true
+  AllowListedLocalPaths:
+    - /data/log-processing/**:rw
