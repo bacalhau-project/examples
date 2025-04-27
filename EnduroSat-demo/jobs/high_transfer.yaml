@@ -1,0 +1,39 @@
+name: data-transfer-low
+type: batch
+
+constraints:
+  - key: SATTELITE_NAME
+    operator: '='
+    values:
+      - "{{ .SATELLITE_NAME }}"
+
+labels:
+  sattelite_number: "{{ .SATELLITE_NAME }}"
+
+tasks:
+  - name: data-transer
+    engine:
+      type: docker
+      params:
+        Image: ubuntu:20.04
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - -c
+          - |
+            echo "📦 Listing files to transfer:" && \
+            ls -l /mnt/local_files/output/HIGH_bandwidth/ && \
+            cp -r /mnt/local_files/output/HIGH_bandwidth/* /mnt/s3_high/
+    InputSources:
+      - Target: /mnt/local_files
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /mnt/local_files
+            readWrite: true
+      - Target: /mnt/s3_high
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /mnt/s3_high
+            readWrite: true
