@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
 using Parquet.Data;
 using CosmosUploader.Models;
@@ -15,6 +17,7 @@ namespace CosmosUploader.Configuration
         public List<string> Processors { get; set; } = new List<string>(); // Initialize to empty list
         public TimeSpan? AggregationWindow { get; set; }
         public required string StatusFileSuffix { get; set; }
+        public required string UpdateNotificationFilePath { get; set; }
     }
 
     public class CitySettings

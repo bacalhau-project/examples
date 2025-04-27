@@ -83,10 +83,17 @@ namespace CosmosUploader
                 getDefaultValue: () => false);
             rootCommand.AddOption(debugOption);
 
+            // Add update notification file path option
+            var updateNotificationFilePathOption = new Option<string>(
+                name: "--update-notification-file-path",
+                description: "Path to the file used to signal configuration updates.",
+                getDefaultValue: () => "/tmp/.update_config"); // Updated Default path
+            rootCommand.AddOption(updateNotificationFilePathOption);
+
             // Transformation options are now controlled via the config file
 
             // Configure command handler
-            rootCommand.SetHandler((Func<string, string, bool, int, string?, bool, bool, Task<int>>)(async (configPath, sqlitePath, continuous, interval, archivePath, developmentMode, debug) =>
+            rootCommand.SetHandler((Func<string, string, bool, int, string?, bool, bool, string, Task<int>>)(async (configPath, sqlitePath, continuous, interval, archivePath, developmentMode, debug, updateNotificationFilePath) =>
             {
                 // Build services initial setup
                 var services = new ServiceCollection();
@@ -96,190 +103,52 @@ namespace CosmosUploader
                     builder.AddConsole(options => { options.FormatterName = "custom"; })
                            .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
                     // Set initial default level - will be overridden after config load if not debugging
-                    builder.SetMinimumLevel(LogLevel.Information);
+                    builder.SetMinimumLevel(debug ? LogLevel.Debug : LogLevel.Information); // Set initial based on debug flag
                 });
 
                 var initialServiceProvider = services.BuildServiceProvider();
-                var initialLogger = initialServiceProvider.GetRequiredService<ILogger<Program>>(); // Use this for early logging
+                //var initialLogger = initialServiceProvider.GetRequiredService<ILogger<Program>>(); // No longer needed here
 
-                // Moved stage validation *after* config loading
-
-                // Add configuration
-                YamlConfigurationProvider? configProvider = null;
-                CosmosConfig? config = null;
-                AppSettings? appSettings = null;
-                List<string> configuredProcessors = new List<string>(); // Initialize empty list
-                TimeSpan? aggregationWindow = null; // Initialize nullable TimeSpan
+                // --- Initial Configuration Load ---
+                AppSettings? settings = null;
+                IServiceProvider? serviceProvider = null;
+                DateTime lastConfigLoadTimeUtc = DateTime.MinValue; // Initialize
 
                 try
                 {
-                    configProvider = new YamlConfigurationProvider(configPath, initialServiceProvider.GetRequiredService<ILogger<YamlConfigurationProvider>>());
-                    config = configProvider.GetConfiguration();
-
-                    // --- Validate and retrieve Processor List (Pipeline Processors) ---
-                    configuredProcessors = config?.Processing?.Processors ?? new List<string>(); // Default to empty if null
-
-                    if (configuredProcessors.Any())
+                    // Pass the initial provider to load config and setup final services
+                    var loadResult = LoadAndConfigureServices(configPath, developmentMode, debug, updateNotificationFilePath, services, initialServiceProvider);
+                    if (loadResult.AppSettings == null || loadResult.ServiceProvider == null)
                     {
-                        initialLogger.LogInformation("Configured processing pipeline: [{Processors}]", string.Join(" -> ", configuredProcessors));
-
-                        // Validation 1: Check for unknown processors (excluding Aggregate)
-                        var unknownProcessors = configuredProcessors.Where(p => !KnownProcessors.Contains(p)).ToList();
-                        if (unknownProcessors.Any())
-                        {
-                            initialLogger.LogCritical("Invalid configuration: Unknown processor(s) specified in 'processors' list: {Unknown}. Known pipeline processors are: {Known}",
-                                string.Join(", ", unknownProcessors), string.Join(", ", KnownProcessors));
-                            Console.Error.WriteLine($"ERROR: Unknown processor(s) found in config 'processors': {string.Join(", ", unknownProcessors)}. Valid names: {string.Join(", ", KnownProcessors)}");
-                            return 1;
-                        }
-
-                        // Validation 2: Removed check for 'Aggregate' position
+                        // Use the initial provider to get a logger for this critical error
+                        initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical("Initial configuration failed. Exiting.");
+                        return 1;
                     }
-                    else
-                    {
-                        initialLogger.LogInformation("No pipeline processors configured.");
-                    }
-
-                    // --- Validate and parse Aggregation configuration ---
-                    var aggregationConfig = config?.Processing?.Aggregation;
-                    if (aggregationConfig != null)
-                    {
-                        if (string.IsNullOrWhiteSpace(aggregationConfig.Window))
-                        {
-                             initialLogger.LogCritical("Invalid configuration: 'aggregation' section found but 'window' is missing or empty.");
-                             Console.Error.WriteLine("ERROR: 'aggregation.window' is required in the config file if the 'aggregation' section is present.");
-                             return 1;
-                        }
-
-                        // Attempt to parse the window string (e.g., "30s", "5m", "1h")
-                        // Using System.ComponentModel.TimeSpanConverter for flexibility
-                        try
-                        {
-                            var converter = new System.ComponentModel.TimeSpanConverter();
-                            aggregationWindow = (TimeSpan?)converter.ConvertFromString(aggregationConfig.Window);
-
-                            if (aggregationWindow <= TimeSpan.Zero)
-                            {
-                                initialLogger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be a positive time duration.", aggregationConfig.Window);
-                                Console.Error.WriteLine($"ERROR: Aggregation window '{aggregationConfig.Window}' must be positive.");
-                                return 1;
-                            }
-                            initialLogger.LogInformation("Aggregation configured with window: {Window}", aggregationWindow);
-                        }
-                        catch (Exception ex)
-                        {
-                            initialLogger.LogCritical(ex, "Invalid configuration: Could not parse aggregation window '{Window}'. Example formats: 30s, 5m, 1.5h", aggregationConfig.Window);
-                            Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'. Use formats like '30s', '5m', '1h'.");
-                            return 1;
-                        }
-                    }
-                    else
-                    {
-                        initialLogger.LogInformation("Aggregation not configured.");
-                    }
-
-                    // --- Map to canonical AppSettings (defined in Configuration/AppSettings.cs) ---
-                    // Ensure config parts are not null before assigning
-                    if (config?.Cosmos == null || config.Performance == null || config.Logging == null)
-                    {
-                        throw new InvalidOperationException("Core configuration sections (Cosmos, Performance, Logging) are missing in the config file.");
-                    }
-
-                    appSettings = new AppSettings
-                    {
-                        // Assign existing config objects directly
-                        Cosmos = config.Cosmos,
-                        Performance = config.Performance,
-                        Logging = config.Logging, // Assign the existing LoggingSettings object
-
-                        // Map other direct properties
-                        DevelopmentMode = developmentMode,
-                        DebugMode = debug,
-                        Processors = configuredProcessors, // Assign the validated processor list
-                        AggregationWindow = aggregationWindow, // Assign the parsed aggregation window
-                        StatusFileSuffix = "_processing_status.json" // Set the status file suffix here
-                    };
-
-                    // --- Update logging level based on debug flag ---
-                    services.AddLogging(builder =>
-                    {
-                        LogLevel effectiveLevel;
-                        if (debug)
-                        {
-                            effectiveLevel = LogLevel.Debug;
-                            initialLogger.LogDebug("--debug flag detected, setting minimum log level to Debug.");
-                        }
-                        else
-                        {
-                            // Use the level from the config object directly
-                            effectiveLevel = Enum.TryParse<LogLevel>(config?.Logging?.Level ?? "Information", true, out var configLevel)
-                                                ? configLevel
-                                                : LogLevel.Information; // Default to Info if parsing fails
-                        }
-                        builder.SetMinimumLevel(effectiveLevel);
-                        // Update AppSettings logging level if it wasn't set correctly initially
-                        appSettings.Logging.Level = effectiveLevel.ToString();
-                    });
-
-                    services.AddSingleton(appSettings); // Add mapped settings
-                    services.AddSingleton(config);      // Add raw config if needed elsewhere
-
-                    // Register services
-                    // Register SqliteReader as itself
-                    services.AddTransient<SqliteReader>();
-                    // Register ProcessData as itself
-                    services.AddTransient<ProcessData>();
-                    // Register Archiver as itself
-                    services.AddTransient<Archiver>();
-                    // Register CosmosUploader with its interface
-                    services.AddTransient<ICosmosUploader, Services.CosmosUploader>();
-
-                    // --- Register Processors based on the configured PIPELINE list ---
-                    if (configuredProcessors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Schematize")))
-                    {
-                        services.AddTransient<ISchemaProcessor, SchemaProcessor>();
-                        initialLogger.LogDebug("Registering SchemaProcessor based on configuration.");
-                    }
-                    if (configuredProcessors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Sanitize")))
-                    {
-                        services.AddTransient<ISanitizeProcessor, SanitizeProcessor>();
-                        initialLogger.LogDebug("Registering SanitizeProcessor based on configuration.");
-                    }
-                    // Removed registration trigger for Aggregate here
-
-                    // --- Register Aggregation Processor conditionally ---
-                    if (aggregationWindow.HasValue)
-                    {
-                        // Provide the window to the constructor via factory
-                        services.AddTransient<IAggregateProcessor>(sp => 
-                            new AggregateProcessor(
-                                sp.GetRequiredService<ILogger<AggregateProcessor>>(), 
-                                aggregationWindow.Value // Pass the parsed window
-                            )
-                        );
-                        initialLogger.LogDebug("Registering AggregateProcessor as aggregation is configured with window {Window}.", aggregationWindow.Value);
-                    }
+                    settings = loadResult.AppSettings;
+                    serviceProvider = loadResult.ServiceProvider;
+                    lastConfigLoadTimeUtc = DateTime.UtcNow; // Record initial load time
                 }
-                catch (Exception ex)
+                catch (Exception ex) // Catch potential errors during initial load not caught inside the method
                 {
-                    // Use final logger instance if available, else initialLogger
-                    var loggerToUse = initialLogger; // Logger might not be fully configured yet
-                    // Cannot safely build service provider here if it failed during setup
-                    loggerToUse.LogCritical(ex, "Failed during configuration setup: {Message}", ex.Message);
-                    return 1; // Return error code
+                    initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical(ex, "Unhandled exception during initial configuration load: {Message}", ex.Message);
+                    return 1;
                 }
-
-                // Build the final service provider
-                var serviceProvider = services.BuildServiceProvider();
+                
                 // Ensure logger uses the final provider's configuration
                 var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+                // Log if the default update notification file path is being used
+                const string defaultUpdatePath = "/tmp/.update_config";
+                if (settings.UpdateNotificationFilePath == defaultUpdatePath)
+                {
+                    logger.LogInformation("Using default configuration update notification file path: {DefaultPath}. Use --update-notification-file-path to specify a different location.", defaultUpdatePath);
+                }
 
                 // Resolve concrete service types needed for orchestration
                 var sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
                 var processDataService = serviceProvider.GetRequiredService<ProcessData>();
                 var cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
                 var archiverService = serviceProvider.GetRequiredService<Archiver>();
-                var settings = serviceProvider.GetRequiredService<AppSettings>();
 
                 // CancellationToken setup
                 var cts = new CancellationTokenSource();
@@ -295,6 +164,11 @@ namespace CosmosUploader
                 string defaultArchivePath = Path.Combine(baseDirectoryPath, "archive");
                 string effectiveArchivePath = archivePath ?? defaultArchivePath;
                 logger.LogInformation("Using archive path: {ArchivePath}", effectiveArchivePath);
+
+                // Random number generator for jitter
+                Random jitterRandom = new Random();
+                const int JitterSeconds = 10; // +/- 10 seconds
+                const int MinSleepSeconds = 1; // Minimum sleep time
 
                 // Main processing loop (single run or continuous)
                 do
@@ -463,16 +337,259 @@ namespace CosmosUploader
                              logger.LogInformation("Continuous mode cancelled. Exiting.");
                              break;
                         }
-                        logger.LogInformation("Continuous mode enabled. Waiting {Interval} seconds before next cycle...", interval);
-                        await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
+
+                        // --- Check for Configuration Update --- 
+                        try
+                        {
+                            if (File.Exists(settings.UpdateNotificationFilePath))
+                            {
+                                DateTime fileWriteTimeUtc = File.GetLastWriteTimeUtc(settings.UpdateNotificationFilePath);
+                                logger.LogDebug("Update notification file found ({File}). LastWriteTimeUTC: {WriteTime}, LastConfigLoadUTC: {LoadTime}", 
+                                    settings.UpdateNotificationFilePath, fileWriteTimeUtc, lastConfigLoadTimeUtc);
+
+                                if (fileWriteTimeUtc > lastConfigLoadTimeUtc)
+                                {
+                                    logger.LogInformation("Configuration update triggered by notification file: {File}", settings.UpdateNotificationFilePath);
+                                    
+                                    // Rebuild services collection for reload (safer than modifying existing)
+                                    var updatedServices = new ServiceCollection();
+                                    updatedServices.AddLogging(builder => // Re-add basic logging config
+                                    {
+                                        builder.ClearProviders();
+                                        builder.AddConsole(options => { options.FormatterName = "custom"; })
+                                            .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
+                                        // Level will be set within LoadAndConfigureServices
+                                    });
+
+                                    var reloadResult = LoadAndConfigureServices(configPath, settings.DevelopmentMode, settings.DebugMode, settings.UpdateNotificationFilePath, updatedServices, serviceProvider); // Use current provider for reload messages
+
+                                    if (reloadResult.AppSettings != null && reloadResult.ServiceProvider != null)
+                                    {
+                                        settings = reloadResult.AppSettings; // Update settings reference
+                                        serviceProvider = reloadResult.ServiceProvider; // Update service provider reference
+                                        lastConfigLoadTimeUtc = DateTime.UtcNow; // Update load time
+
+                                        // Re-resolve services that might depend on the new configuration
+                                        logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // IMPORTANT: Update logger instance
+                                        sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
+                                        processDataService = serviceProvider.GetRequiredService<ProcessData>();
+                                        cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
+                                        archiverService = serviceProvider.GetRequiredService<Archiver>();
+
+                                        logger.LogInformation("Configuration successfully reloaded.");
+
+                                        // Attempt to delete the notification file
+                                        try
+                                        {
+                                            File.Delete(settings.UpdateNotificationFilePath);
+                                            logger.LogInformation("Deleted configuration notification file: {File}", settings.UpdateNotificationFilePath);
+                                        }
+                                        catch (Exception deleteEx)
+                                        {
+                                            logger.LogWarning(deleteEx, "Failed to delete configuration notification file {File} after reload.", settings.UpdateNotificationFilePath);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        logger.LogError("Configuration reload failed. Continuing with previous configuration.");
+                                        // Do not delete the notification file if reload failed
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                             logger.LogError(ex, "Error checking or processing configuration update notification file: {File}", settings.UpdateNotificationFilePath);
+                        }
+                        // --- End Check for Configuration Update ---
+
+                        // Calculate sleep duration with jitter
+                        int baseIntervalSeconds = interval; // Use the command-line provided interval
+                        int jitter = jitterRandom.Next(-JitterSeconds, JitterSeconds + 1); // Range is inclusive min, exclusive max
+                        int sleepDurationSeconds = Math.Max(MinSleepSeconds, baseIntervalSeconds + jitter);
+
+                        logger.LogInformation("Continuous mode enabled. Waiting {Duration} seconds (Interval: {BaseInterval}s, Jitter: {JitterValue}s) before next cycle...",
+                            sleepDurationSeconds, baseIntervalSeconds, jitter);
+                        await Task.Delay(TimeSpan.FromSeconds(sleepDurationSeconds), cts.Token);
                     }
                 } while (continuous && !cts.IsCancellationRequested);
 
                 logger.LogInformation("CosmosUploader finished.");
                 return 0; // Success
-            }), configOption, sqliteOption, continuousOption, intervalOption, archivePathOption, developmentOption, debugOption);
+            }), configOption, sqliteOption, continuousOption, intervalOption, archivePathOption, developmentOption, debugOption, updateNotificationFilePathOption);
 
             return await rootCommand.InvokeAsync(args);
+        }
+
+        // --- Refactored Configuration Loading and Service Setup ---  
+        private static (AppSettings? AppSettings, IServiceProvider? ServiceProvider) LoadAndConfigureServices(
+            string configPath, 
+            bool developmentMode, 
+            bool debug, 
+            string updateNotificationFilePath, 
+            IServiceCollection services, 
+            IServiceProvider initialServiceProvider) // Accept provider instead of logger
+        {
+            CosmosConfig? config = null;
+            AppSettings? appSettings = null;
+            List<string> configuredProcessors = new List<string>();
+            TimeSpan? aggregationWindow = null;
+            // Get loggers from the initial provider
+            var logger = initialServiceProvider.GetRequiredService<ILogger<Program>>(); 
+            var configProviderLogger = initialServiceProvider.GetRequiredService<ILogger<CosmosUploader.Configuration.YamlConfigurationProvider>>();
+
+            try
+            {
+                // Pass the correctly typed logger
+                var configProvider = new CosmosUploader.Configuration.YamlConfigurationProvider(configPath, configProviderLogger);
+                config = configProvider.GetConfiguration();
+
+                // --- Validate and retrieve Processor List (Pipeline Processors) ---
+                configuredProcessors = config?.Processing?.Processors ?? new List<string>();
+                if (configuredProcessors.Any())
+                {
+                    logger.LogInformation("Configured processing pipeline: [{Processors}]", string.Join(" -> ", configuredProcessors));
+                    var unknownProcessors = configuredProcessors.Where(p => !KnownProcessors.Contains(p)).ToList();
+                    if (unknownProcessors.Any())
+                    {
+                        logger.LogCritical("Invalid configuration: Unknown processor(s) specified: {Unknown}. Known: {Known}", string.Join(", ", unknownProcessors), string.Join(", ", KnownProcessors));
+                        Console.Error.WriteLine($"ERROR: Unknown processor(s) in config 'processors': {string.Join(", ", unknownProcessors)}. Valid: {string.Join(", ", KnownProcessors)}");
+                        return (null, null); // Indicate failure
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("No pipeline processors configured.");
+                }
+
+                // --- Validate and parse Aggregation configuration ---
+                var aggregationConfig = config?.Processing?.Aggregation;
+                if (aggregationConfig != null)
+                {
+                    if (string.IsNullOrWhiteSpace(aggregationConfig.Window))
+                    {
+                         logger.LogCritical("Invalid configuration: 'aggregation.window' is required.");
+                         Console.Error.WriteLine("ERROR: 'aggregation.window' is required in config.");
+                         return (null, null);
+                    }
+                    try
+                    {                       
+                        var converter = new System.ComponentModel.TimeSpanConverter();
+                        aggregationWindow = (TimeSpan?)converter.ConvertFromString(aggregationConfig.Window);
+                        if (aggregationWindow <= TimeSpan.Zero)
+                        {
+                            logger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be positive.", aggregationConfig.Window);
+                            Console.Error.WriteLine($"ERROR: Aggregation window '{aggregationConfig.Window}' must be positive.");
+                            return (null, null);
+                        }
+                        logger.LogInformation("Aggregation configured with window: {Window}", aggregationWindow);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogCritical(ex, "Invalid configuration: Could not parse aggregation window '{Window}'.", aggregationConfig.Window);
+                        Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'.");
+                        return (null, null);
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("Aggregation not configured.");
+                }
+
+                // --- Map to canonical AppSettings ---
+                if (config?.Cosmos == null || config.Performance == null || config.Logging == null)
+                {                    
+                    logger.LogCritical("Core configuration sections (Cosmos, Performance, Logging) are missing.");
+                    return (null, null);
+                }
+                appSettings = new AppSettings
+                {
+                    Cosmos = config.Cosmos,
+                    Performance = config.Performance,
+                    Logging = config.Logging,
+                    DevelopmentMode = developmentMode,
+                    DebugMode = debug,
+                    Processors = configuredProcessors,
+                    AggregationWindow = aggregationWindow,
+                    StatusFileSuffix = "_processing_status.json",
+                    UpdateNotificationFilePath = updateNotificationFilePath
+                };
+
+                // --- Update logging level based on final settings ---
+                services.AddLogging(builder =>
+                {
+                    LogLevel effectiveLevel = LogLevel.Information; // Default
+                    if (appSettings.DebugMode)
+                    {
+                        effectiveLevel = LogLevel.Debug;
+                    }
+                    else if (Enum.TryParse<LogLevel>(appSettings.Logging?.Level ?? "Information", true, out var configLevel))
+                    {
+                         effectiveLevel = configLevel;
+                    }
+                    builder.SetMinimumLevel(effectiveLevel);
+                    appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
+                });
+
+                // Clear potentially existing singletons/transients before adding new ones
+                // This is crucial for reload scenarios
+                var serviceDescriptors = services.Where(d => d.ServiceType == typeof(AppSettings) || 
+                                                         d.ServiceType == typeof(CosmosConfig) ||
+                                                         d.ServiceType == typeof(ISchemaProcessor) ||
+                                                         d.ServiceType == typeof(ISanitizeProcessor) ||
+                                                         d.ServiceType == typeof(IAggregateProcessor) ||
+                                                         // Add other services that depend directly on config if needed
+                                                         d.ImplementationType == typeof(SqliteReader) || 
+                                                         d.ImplementationType == typeof(ProcessData) ||
+                                                         d.ImplementationType == typeof(Archiver) ||
+                                                         d.ImplementationType == typeof(Services.CosmosUploader)
+                                                         ).ToList();
+                foreach (var descriptor in serviceDescriptors)
+                {
+                    services.Remove(descriptor);
+                }
+
+                // Register services with potentially new configuration
+                services.AddSingleton(appSettings); 
+                services.AddSingleton(config); // Keep raw config available if needed
+                services.AddTransient<SqliteReader>();
+                services.AddTransient<ProcessData>();
+                services.AddTransient<Archiver>();
+                services.AddTransient<ICosmosUploader, Services.CosmosUploader>();
+
+                // Register pipeline processors based on the config
+                if (appSettings.Processors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Schematize")))
+                {
+                    services.AddTransient<ISchemaProcessor, SchemaProcessor>();
+                }
+                if (appSettings.Processors.Any(p => StringComparer.OrdinalIgnoreCase.Equals(p, "Sanitize")))
+                {
+                    services.AddTransient<ISanitizeProcessor, SanitizeProcessor>();
+                }
+
+                // Register aggregation processor conditionally
+                if (appSettings.AggregationWindow.HasValue)
+                {
+                    services.AddTransient<IAggregateProcessor>(sp => 
+                        new AggregateProcessor(
+                            sp.GetRequiredService<ILogger<AggregateProcessor>>(), 
+                            appSettings.AggregationWindow.Value
+                        )
+                    );
+                }
+                
+                // Build the service provider
+                var serviceProvider = services.BuildServiceProvider();
+                logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // Get the fully configured logger
+                logger.LogInformation("Configuration loaded and services configured successfully.");
+                return (appSettings, serviceProvider);
+
+            }
+            catch (Exception ex)
+            {                
+                logger.LogCritical(ex, "Failed during configuration load or service setup: {Message}", ex.Message);
+                return (null, null); // Indicate failure
+            }
         }
 
         // Helper function to get status file path (Updated Suffix)
