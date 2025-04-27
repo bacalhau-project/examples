@@ -205,6 +205,9 @@ namespace CosmosUploader.Services
                     _logger.LogDebug("Executing query: {Query} with LastTimestamp={Ts}, LastId={Id}, Limit={Lim}", 
                         command.CommandText, lastTimestampEpoch, lastId, limit);
 
+                    string? lastLoggedSensorId = null; // Track the last sensor ID for which full log was printed
+                    int currentSensorReadCount = 0; // Count reads for the current sensor
+
                     using (var reader = await command.ExecuteReaderAsync(cancellationToken))
                     {
                         while (await reader.ReadAsync(cancellationToken))
@@ -302,10 +305,32 @@ namespace CosmosUploader.Services
                             string? finalLng = dbLongitude?.ToString(CultureInfo.InvariantCulture);
 
 
-                            _logger.LogDebug(
-                                "Reading data for sensor: dbSensorId={DbSensorId}, pathSensorId={PathSensorId}, " +
-                                "dbLocation={DbLocation}, pathLocation={PathLocation}, final sensorId={FinalSensorId}, final location={FinalLocation}, finalCity={FinalCity}",
-                                dbSensorId, $"{cityNameFromPath}_{sensorCodeFromPath}", dbLocation, cityNameFromPath, uniqueSensorId, finalLocation, finalCity);
+                            // --- Modified Debug Logging ---
+                            if (uniqueSensorId != lastLoggedSensorId)
+                            {
+                                // If we were tracking a previous sensor, log its final count
+                                if (lastLoggedSensorId != null && currentSensorReadCount > 0)
+                                {
+                                    Console.WriteLine(); // Newline after dots
+                                    _logger.LogDebug("... completed reading {Count} records for sensor {SensorId}", currentSensorReadCount, lastLoggedSensorId);
+                                }
+
+                                // Log the full message for the new sensor
+                                _logger.LogDebug(
+                                    "Reading data for sensor: dbSensorId={DbSensorId}, pathSensorId={PathSensorId}, " +
+                                    "dbLocation={DbLocation}, pathLocation={PathLocation}, final sensorId={FinalSensorId}, final location={FinalLocation}, finalCity={FinalCity}",
+                                    dbSensorId, $"{cityNameFromPath}_{sensorCodeFromPath}", dbLocation, cityNameFromPath, uniqueSensorId, finalLocation, finalCity);
+                                
+                                lastLoggedSensorId = uniqueSensorId;
+                                currentSensorReadCount = 1; // Reset count for the new sensor
+                            }
+                            else
+                            {
+                                // Print a dot for subsequent reads of the same sensor
+                                Console.Write(".");
+                                currentSensorReadCount++;
+                            }
+                            // --- End Modified Debug Logging ---
 
 
                             var reading = new SensorReading
@@ -332,6 +357,16 @@ namespace CosmosUploader.Services
                             };
 
                             readings.Add(reading);
+                        }
+
+                        // Log the final count for the last sensor processed in the loop
+                        if (lastLoggedSensorId != null && currentSensorReadCount > 0)
+                        {
+                             if (currentSensorReadCount > 1) // Only add newline if dots were printed
+                             {
+                                Console.WriteLine(); // Newline after dots
+                             }
+                            _logger.LogDebug("... completed reading {Count} records for sensor {SensorId}", currentSensorReadCount, lastLoggedSensorId);
                         }
                     }
                 }

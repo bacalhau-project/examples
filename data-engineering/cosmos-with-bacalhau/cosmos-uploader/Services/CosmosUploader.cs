@@ -9,6 +9,7 @@ using CosmosUploader.Configuration;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using CosmosUploader.Models;
+using Microsoft.Azure.Cosmos.Linq; // Required for CountAsync
 
 namespace CosmosUploader.Services
 {
@@ -94,7 +95,7 @@ namespace CosmosUploader.Services
             if (!_isInitialized)
             {
                 _logger.LogWarning("CosmosUploader not initialized. Initializing now...");
-                await InitializeAsync(cancellationToken); 
+                await InitializeAsync(cancellationToken);
             }
 
             if (_container == null)
@@ -119,8 +120,30 @@ namespace CosmosUploader.Services
                 partitionKeyName = partitionKeyName.Substring(1);
             }
 
-            _logger.LogInformation("Starting upload of {Count} items to Cosmos DB [Database: {Db}, Container: {Container}]...",
-                data.Count, _settings.Cosmos.DatabaseName, _settings.Cosmos.ContainerName);
+            _logger.LogInformation("Starting upload of {Count} items to Cosmos DB [Database: {Db}, Container: {Container}]... from {DataPath}",
+                data.Count, _settings.Cosmos.DatabaseName, _settings.Cosmos.ContainerName, dataPath);
+
+            var distinctPartitionKeys = data
+                .Select(item => item.TryGetValue(partitionKeyName, out var pk) && pk != null ? pk.ToString() : null)
+                .Where(pk => !string.IsNullOrEmpty(pk))
+                .Distinct()
+                .ToList();
+
+            if (_settings.DebugMode && distinctPartitionKeys.Any())
+            {
+                long preUploadCount = 0;
+                try
+                {
+                    _logger.LogDebug("[DEBUG] Querying pre-upload count for partitions: [{Partitions}]", string.Join(", ", distinctPartitionKeys));
+                    preUploadCount = await GetCountForPartitionKeysAsync(distinctPartitionKeys, partitionKeyName, cancellationToken);
+                    _logger.LogDebug("[DEBUG] Pre-upload count for relevant partitions: {Count}", preUploadCount);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[DEBUG] Failed to query pre-upload count.");
+                    // Continue with upload even if pre-count fails
+                }
+            }
 
             var tasks = new List<Task>();
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -129,7 +152,6 @@ namespace CosmosUploader.Services
             int failedUploads = 0;
             int conflictUploads = 0;
 
-            // Create a linked token source to allow cancelling this specific batch on 503
             using var batchCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var batchToken = batchCts.Token;
 
@@ -249,105 +271,118 @@ namespace CosmosUploader.Services
                 }
                 catch (Exception ex)
                 {
-                    Interlocked.Increment(ref failedUploads);
-                     // Use logItemId which was captured before potentially removing 'id'
-                     _logger.LogError(ex, "Error preparing item for upload (Local ID: {LogItemId}): {ItemJson}", logItemId, System.Text.Json.JsonSerializer.Serialize(item));
+                    failedUploads++;
+                    _logger.LogError(ex, "Error processing or adding task for item (Local ID: {LogItemId})", logItemId);
                 }
             }
 
             try
             {
-                 await Task.WhenAll(tasks);
+                await Task.WhenAll(tasks);
             }
-            catch (OperationCanceledException ex) // Catch cancellation specific to Task.WhenAll
+            catch (OperationCanceledException) when (batchToken.IsCancellationRequested)
             {
-                // Check if cancellation was triggered by our batch CTS (likely a 503) or the external token
-                if (ex.CancellationToken == batchToken)
-                {
-                    _logger.LogWarning("Batch upload halted due to Service Unavailable (503). Only partially completed.");
-                }
-                else if (ex.CancellationToken == cancellationToken)
-                {
-                    _logger.LogWarning("Batch upload cancelled by external request.");
-                }
-                else
-                {
-                    _logger.LogWarning("Upload operation cancelled during Task.WhenAll."); // Generic cancellation
-                }
+                _logger.LogWarning("Batch upload partially cancelled due to rate limiting (503) or excessive requests (429). Remaining tasks in this batch were halted.");
             }
-            catch (AggregateException aggEx)
-            { 
-                // Check if the aggregate exception contains the cancellation we triggered
-                if (aggEx.InnerExceptions.OfType<OperationCanceledException>().Any(oce => oce.CancellationToken == batchToken))
-                {
-                    _logger.LogWarning("Batch upload halted due to Service Unavailable (503) resulting in AggregateException. Only partially completed.");
-                }
-                else
-                {
-                    _logger.LogError(aggEx, "AggregateException occurred during Task.WhenAll that was not related to batch cancellation.");
-                    // Re-throw if it's not the expected cancellation scenario, as it represents other errors.
-                    // Note: This might still be caught by Program.cs, which is okay.
-                    throw; 
-                }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error occurred while waiting for batch upload tasks to complete.");
             }
-
             stopwatch.Stop();
-            _totalRequestUnits += (long)totalRU; // Note: RU count might be slightly off if cancelled mid-operation
 
-            // Log results, indicating if the batch was halted
-            string completionStatus = batchCts.IsCancellationRequested ? "(Halted by 503, 429, or Cancellation)" : "(Completed)";
-            _logger.LogInformation("Upload batch processing finished {Status} in {ElapsedMs} ms. Successful: {SuccessCount}, Conflicts (Skipped): {ConflictCount}, Other Failures: {FailCount}. Total RU consumed for batch: {RU}",
-                completionStatus, stopwatch.ElapsedMilliseconds, successfulUploads, conflictUploads, failedUploads, totalRU);
+            if (_settings.DebugMode && distinctPartitionKeys.Any())
+            {
+                long postUploadCount = 0;
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                    _logger.LogDebug("[DEBUG] Querying post-upload count for partitions: [{Partitions}]", string.Join(", ", distinctPartitionKeys));
+                    postUploadCount = await GetCountForPartitionKeysAsync(distinctPartitionKeys, partitionKeyName, cancellationToken);
+                    _logger.LogDebug("[DEBUG] Post-upload count for relevant partitions: {Count}", postUploadCount);
+                }
+                catch (OperationCanceledException) { /* Ignore if main operation was cancelled */ }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[DEBUG] Failed to query post-upload count.");
+                }
+            }
 
-            // Only throw a hard exception for non-503/429 failures if the batch wasn't intentionally cancelled
-            if (failedUploads > 0 && !batchCts.IsCancellationRequested)
+            _totalRequestUnits += (long)totalRU;
+
+            _logger.LogInformation(
+                "Upload batch completed in {ElapsedMilliseconds} ms. Successful: {SuccessCount}, Failed: {FailCount}, Conflicts (Skipped): {ConflictCount}, Total RU: {TotalRU:F2}",
+                stopwatch.ElapsedMilliseconds,
+                successfulUploads,
+                failedUploads,
+                conflictUploads,
+                totalRU);
+
+            if (batchCts.IsCancellationRequested && (failedUploads > 0 || conflictUploads == 0))
             {
-                throw new Exception($"{failedUploads} items failed to upload due to errors (excluding conflicts, 503s, and 429s). Check logs for details.");
+                _logger.LogWarning("Upload batch was halted prematurely due to rate limiting (503/429). Subsequent processing cycles will attempt to retry.");
             }
-            else if (successfulUploads == 0 && conflictUploads == 0 && !batchCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        }
+
+        private async Task<long> GetCountForPartitionKeysAsync(List<string> partitionKeys, string partitionKeyName, CancellationToken cancellationToken)
+        {
+            if (_container == null) return 0;
+
+            long totalCount = 0;
+            var queryTasks = new List<Task<long>>();
+
+            foreach (var pkValue in partitionKeys)
             {
-                _logger.LogWarning("No items were successfully uploaded or skipped due to conflicts, and the operation was not cancelled.");
+                queryTasks.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        QueryRequestOptions queryOptions = new QueryRequestOptions() { PartitionKey = new PartitionKey(pkValue) };
+                        var count = await _container.GetItemLinqQueryable<DataTypes.DataItem>(requestOptions: queryOptions)
+                                                     .Where(i => i[partitionKeyName].ToString() == pkValue)
+                                                     .CountAsync(cancellationToken);
+                        return (long)count;
+                    }
+                    catch (CosmosException ex)
+                    {
+                        _logger.LogWarning(ex, "[DEBUG] Error querying count for partition key '{PK}'. Status: {Status}", pkValue, ex.StatusCode);
+                        return 0L;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[DEBUG] Non-Cosmos error querying count for partition key '{PK}'", pkValue);
+                        return 0L;
+                    }
+                }, cancellationToken));
             }
 
-            // Update status based on items processed before any potential cancellation
-            if (successfulUploads > 0 || conflictUploads > 0)
-            {
-                _logger.LogInformation("Processed {Count} items (Successful + Conflicts) for data path: {DataPath}", successfulUploads + conflictUploads, dataPath);
-            }
+            var counts = await Task.WhenAll(queryTasks);
+            totalCount = counts.Sum();
+
+            return totalCount;
         }
 
         public async Task<int> GetContainerItemCountAsync()
         {
             if (_container == null)
             {
-                _logger.LogError("Cosmos DB container has not been initialized");
-                return 0;
+                _logger.LogWarning("Cannot get item count, container not initialized.");
+                return -1;
             }
 
             try
             {
-                int count = 0;
-                QueryDefinition query = new QueryDefinition("SELECT VALUE COUNT(1) FROM c");
-                using (FeedIterator<int> feedIterator = _container.GetItemQueryIterator<int>(query))
-                {
-                    while (feedIterator.HasMoreResults)
-                    {
-                        FeedResponse<int> response = await feedIterator.ReadNextAsync();
-                        count += response.FirstOrDefault();
-                        _totalRequestUnits += (long)response.RequestCharge;
-                    }
-                }
-                _logger.LogInformation("Container item count: {Count}", count);
+                int count = await _container.GetItemLinqQueryable<object>().CountAsync();
+                _logger.LogInformation("Current approximate item count in container: {Count}", count);
                 return count;
             }
             catch (CosmosException ex)
             {
-                _logger.LogError(ex, "Error retrieving item count. StatusCode: {StatusCode}", ex.StatusCode);
+                _logger.LogError(ex, "Failed to get item count from container. Status Code: {StatusCode}", ex.StatusCode);
                 return -1;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error retrieving item count: {Message}", ex.Message);
+                _logger.LogError(ex, "Unexpected error occurred while getting item count.");
                 return -1;
             }
         }
