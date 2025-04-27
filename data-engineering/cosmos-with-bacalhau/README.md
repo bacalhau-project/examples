@@ -13,6 +13,48 @@ This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engi
 - `sensor_manager/`: Python-based sensor manager/simulator (optional).
 - `utility_scripts/`: Miscellaneous helper scripts.
 
+## Build Commands
+
+- Build C# application: `cd cosmos-uploader && ./build.sh [--tag VERSION] [--no-tag]`
+- Run cosmos query: `cd cosmos-uploader && uv run query.py --config path/to/cosmos-config.yaml [options]`
+- Run sensor manager (Python): `./sensor_manager.py [command] [options]`
+  - Example commands: `start`, `stop`, `reset`, `clean`, `build`, `logs`, `query`, `diagnostics`, `monitor`, `cleanup`
+
+## Data Flow and Structure
+
+1.  **Sensor Simulation (Optional)**: `sensor_manager` can generate sensor readings (`{CITY}_{SENSOR_CODE}`) stored locally in SQLite DBs.
+2.  **Uploader**: The `cosmos-uploader` reads from SQLite, uploads to Cosmos DB, and optionally archives processed data to Parquet.
+
+### Directory Structure (Expected)
+
+```
+/
+├── config/                  # Configuration files
+├── data/                    # Root for raw sensor data
+│   ├── London/              # City-level directory
+│   │   ├── abc123/          # Sensor-specific directory
+│   │   │   └── sensor_data.db # Raw data
+│   │   ├── def456/
+│   │   │   └── sensor_data.db
+│   │   └── ...
+│   ├── Paris/
+│   │   └── ...
+│   └── ...
+├── archive/                 # Root for processed data archives
+│   ├── London/              # City-level directory
+│   │   ├── abc123.parquet   # Archived data per sensor
+│   │   ├── def456.parquet
+│   │   └── ...
+│   ├── Paris/
+│   │   └── ...
+│   └── ...
+└── ... (project code like cosmos-uploader/, sensor_manager/, etc.)
+```
+
+- **City-based organization**: Data and archives are organized by city.
+- **Sensor-based identification**: SQLite data is stored per-sensor; Parquet archives consolidate data per sensor over time.
+- **Uploader Isolation**: The uploader (when run per city, e.g., by `sensor_manager`) typically only accesses its assigned city's `data/` and `archive/` subdirectories.
+
 ## CosmosDB Uploader
 
 The C# implementation (`cosmos-uploader/`) provides efficient and resilient data ingestion:
@@ -159,7 +201,7 @@ These features significantly improve ingestion performance compared to single-it
             ```bash
             cat /etc/resolv.conf
             ```
-            *(Note the `nameserver` IP addresses listed, e.g., `8.8.8.8`)*
+            *(Note the `nameserver` IP addresses listed, e.g., `1.1.1.1`)*
         4.  Attempt to resolve the Cosmos DB endpoint using the container's configured DNS:
             ```bash
             nslookup your-cosmos-account.documents.azure.com
@@ -167,24 +209,14 @@ These features significantly improve ingestion performance compared to single-it
             *(Replace with your actual endpoint. Timeouts or failures here indicate a DNS problem.)*
         5.  Test connectivity to the DNS server itself (use an IP from `resolv.conf`):
             ```bash
-            ping -c 3 8.8.8.8
-            traceroute -T -p 53 8.8.8.8 # Test UDP port 53 connectivity
+            ping -c 3 1.1.1.1
+            traceroute -T -p 53 1.1.1.1 # Test UDP port 53 connectivity
             ```
             *(`traceroute` stopping with `* * *` can indicate where the block occurs.)*
-    *   **Likely Cause**: Outbound network traffic on UDP port 53 (used for DNS lookups) is being blocked by a firewall rule. This block could be on the host machine's firewall (e.g., `iptables`) or, more commonly, in an external firewall or cloud Network Security Group (NSG) applied to the host.
+    *   **Likely Cause**: Outbound network traffic on UDP port 53 (used for DNS lookups) is being blocked by a firewall rule. This block could be on the host machine's firewall (e.g., `iptables`), an external firewall, or a cloud Network Security Group (NSG). Docker containers rely on external DNS resolution.
     *   **Solutions**:
-        1.  **(Recommended)** **Adjust External Firewall/NSG**: Modify the outbound rules for the host machine (where Docker is running) to ALLOW UDP traffic on destination port 53, originating from the host's IP address, to the required DNS server IPs (e.g., `8.8.8.8`, `8.8.4.4`) or to `0.0.0.0/0` for general DNS access. Ensure this rule has priority over potential DENY rules.
-        2.  **(Workaround)** **Configure Docker Daemon DNS**: If the host machine *can* resolve DNS, configure the Docker daemon to use the host's resolver or a known-good internal DNS server.
-            *   Edit `/etc/docker/daemon.json` on the host (create if it doesn't exist):
-                ```json
-                {
-                  "dns": ["<host_nameserver_ip>", "8.8.8.8"]
-                }
-                ```
-                *(Find `<host_nameserver_ip>` via `cat /etc/resolv.conf` on the host. Replace `8.8.8.8` if needed.)*
-            *   Restart the Docker daemon: `sudo systemctl restart docker`
-            *   Remove and restart your container(s).
-        3.  **(Workaround - Less Ideal)** **Use Host Networking**: Run the container with `--network host`. This bypasses Docker's network isolation, using the host's network directly. It often resolves connectivity but has security implications and potential port conflicts.
+        1.  **(Recommended)** **Adjust External Firewall/NSG**: Modify the outbound rules for the host machine (where Docker is running) to ALLOW UDP traffic on destination port 53, originating from the host's IP address, to the required DNS server IPs (e.g., `1.1.1.1`, `1.0.0.1`) or to `0.0.0.0/0` for general DNS access.
+        2.  **(Workaround)** **Configure Docker Daemon DNS**: Configure the Docker daemon to use a specific DNS server (e.g., `1.1.1.1`).
 
 ## License
 
