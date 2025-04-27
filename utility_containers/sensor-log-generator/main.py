@@ -12,12 +12,30 @@
 import argparse
 import json
 import logging
+import os
+import random
+import string
 import sys
 from typing import Dict
 
 import yaml
 
 from src.simulator import SensorSimulator
+
+
+def check_required_env_vars():
+    """Check for required environment variables and exit if any are missing."""
+    required_vars = {
+        "CONFIG_FILE": "Path to the configuration file",
+        "IDENTITY_FILE": "Path to the identity file",
+    }
+
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        logging.error("Missing required environment variables:")
+        for var in missing_vars:
+            logging.error(f"- {var}: {required_vars[var]}")
+        sys.exit(1)
 
 
 def load_config(config_path: str) -> Dict:
@@ -48,10 +66,34 @@ def load_identity(identity_path: str) -> Dict:
     """
     try:
         with open(identity_path, "r") as f:
-            return json.load(f)
+            identity = json.load(f)
+            if not identity.get("id"):
+                logging.info(
+                    "Identity file does not contain an 'id' key, generating..."
+                )
+                identity["id"] = generate_sensor_id(identity)
+            return identity
     except Exception as e:
         logging.error(f"Error loading identity file: {e}")
         raise
+
+
+def generate_sensor_id(identity: Dict) -> str:
+    """Generate a new sensor ID in the format CITY_XXXXXX."""
+    uppercity_no_special_chars = "".join(
+        c.upper() for c in identity.get("location") if c.isalpha()
+    )
+
+    # Get the first 3 letters of the location
+    location_prefix = uppercity_no_special_chars[:4]
+    if not location_prefix:
+        raise ValueError("Location is required to generate a sensor ID")
+
+    # Generate a random 6-digit string of characters and numbers, no vowels, no special characters
+    vowels = "aeiou"
+    consonants = "".join(c.upper() for c in string.ascii_letters if c not in vowels)
+    random_number = "".join(random.choice(consonants + string.digits) for _ in range(6))
+    return f"{location_prefix}_{random_number}"
 
 
 def setup_logging(config):
@@ -78,8 +120,12 @@ def setup_logging(config):
         console_handler.setFormatter(logging.Formatter(log_format))
         logger.addHandler(console_handler)
 
-    # Add file handler if specified
+    # Add file handler if log file is specified
     if log_file:
+        # Ensure the log directory exists
+        log_dir = os.path.dirname(log_file)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir)
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(logging.Formatter(log_format))
         logger.addHandler(file_handler)
@@ -87,48 +133,44 @@ def setup_logging(config):
 
 def main():
     """Main entry point for the sensor simulator."""
-    parser = argparse.ArgumentParser(description="Industrial Sensor Simulator")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="config.yaml",
-        help="Path to configuration file (default: config.yaml)",
-    )
-    parser.add_argument(
-        "--identity",
-        type=str,
-        default="node_identity.json",
-        help="Path to node identity file (default: node_identity.json)",
-    )
-    parser.add_argument(
-        "--exit",
-        action="store_true",
-        help="Exit after loading dependencies (for Docker build)",
-    )
-    args = parser.parse_args()
-
-    # Exit early if --exit flag is provided (used during Docker build)
-    if args.exit:
-        print("Dependencies loaded successfully. Exiting as requested.")
+    # If the --exit flag is provided, exit after the simulator is run
+    if "--exit" in sys.argv:
         sys.exit(0)
 
-    # Load configuration files
-    config = load_config(args.config)
-    identity = load_identity(args.identity)
+    # Check for required environment variables
+    check_required_env_vars()
 
-    # Check if config file exists
-    if not args.config:
-        logging.warning("Config file not specified")
-        logging.info("Using default configuration")
+    # Load configuration and identity
+    try:
+        config = load_config(os.getenv("CONFIG_FILE"))
+    except Exception as e:
+        logging.error(f"Failed to load configuration file: {e}")
+        sys.exit(1)
 
-    # Set up logging based on config
+    try:
+        identity = load_identity(os.getenv("IDENTITY_FILE"))
+    except Exception as e:
+        logging.error(f"Failed to load identity file: {e}")
+        sys.exit(1)
+
+    # Set up logging
     setup_logging(config)
 
-    # Run the simulator
-    simulator = SensorSimulator(config=config, identity=identity)
+    # Get data directory path from config
+    data_dir = config.get("database", {}).get("path", "data")
+    if not data_dir:
+        logging.error("Data directory path not specified in config.yaml")
+        sys.exit(1)
 
-    # Start simulation
-    logging.info("Starting sensor simulator")
+    # Ensure the data directory exists
+    try:
+        os.makedirs(os.path.dirname(data_dir), exist_ok=True)
+    except Exception as e:
+        logging.error(f"Failed to create data directory: {e}")
+        sys.exit(1)
+
+    # Create and run the simulator
+    simulator = SensorSimulator(config, identity)
     simulator.run()
 
 

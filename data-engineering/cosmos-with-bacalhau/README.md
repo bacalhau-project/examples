@@ -1,255 +1,223 @@
 # Cosmos DB with Bacalhau
 
-This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engineering workloads. It includes tools for processing sensor data and uploading it to Cosmos DB using bulk upload capabilities.
+This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engineering workloads. It includes tools for processing sensor data from SQLite databases and uploading it efficiently to Cosmos DB.
 
 ## Project Structure
 
-- `src/CosmosUploader/`: Contains the C# application for uploading data to Cosmos DB
-- `cosmos-uploader/`: Contains Docker files and entrypoint scripts for containerization
-- `config/`: Configuration files for the simulation
-- `data/`: Directory where sensor data is stored in SQLite databases
+- `cosmos-uploader/`: Contains the C# application for uploading data to Cosmos DB.
+- `config/`: Configuration files for the uploader and simulation (if used).
+- `data/`: Directory intended for storing sensor data in SQLite databases.
+  - `{city}/{sensor-number}/`: Example structure for SQLite database files.
+- `archive/`: Directory intended for archiving processed data.
+  - `{city}/`: Example structure for Parquet archive files.
+- `sensor_manager/`: Python-based sensor manager/simulator (optional).
+- `utility_scripts/`: Miscellaneous helper scripts.
+
+## Build Commands
+
+- Build C# application: `cd cosmos-uploader && ./build.sh [--tag VERSION] [--no-tag]`
+- Run cosmos query: `cd cosmos-uploader && uv run query.py --config path/to/cosmos-config.yaml [options]`
+- Run sensor manager (Python): `./sensor_manager.py [command] [options]`
+  - Example commands: `start`, `stop`, `reset`, `clean`, `build`, `logs`, `query`, `diagnostics`, `monitor`, `cleanup`
+
+## Data Flow and Structure
+
+1.  **Sensor Simulation (Optional)**: `sensor_manager` can generate sensor readings (`{CITY}_{SENSOR_CODE}`) stored locally in SQLite DBs.
+2.  **Uploader**: The `cosmos-uploader` reads from SQLite, uploads to Cosmos DB, and optionally archives processed data to Parquet.
+
+### Directory Structure (Expected)
+
+```
+/
+├── config/                  # Configuration files
+├── data/                    # Root for raw sensor data
+│   ├── London/              # City-level directory
+│   │   ├── abc123/          # Sensor-specific directory
+│   │   │   └── sensor_data.db # Raw data
+│   │   ├── def456/
+│   │   │   └── sensor_data.db
+│   │   └── ...
+│   ├── Paris/
+│   │   └── ...
+│   └── ...
+├── archive/                 # Root for processed data archives
+│   ├── London/              # City-level directory
+│   │   ├── abc123.parquet   # Archived data per sensor
+│   │   ├── def456.parquet
+│   │   └── ...
+│   ├── Paris/
+│   │   └── ...
+│   └── ...
+└── ... (project code like cosmos-uploader/, sensor_manager/, etc.)
+```
+
+- **City-based organization**: Data and archives are organized by city.
+- **Sensor-based identification**: SQLite data is stored per-sensor; Parquet archives consolidate data per sensor over time.
+- **Uploader Isolation**: The uploader (when run per city, e.g., by `sensor_manager`) typically only accesses its assigned city's `data/` and `archive/` subdirectories.
 
 ## CosmosDB Uploader
 
-The C# implementation of the CosmosDB uploader provides:
+The C# implementation (`cosmos-uploader/`) provides efficient and resilient data ingestion:
 
-- **Bulk Upload Capabilities**: Uses the CosmosDB .NET SDK's bulk upload feature for efficient data transfer
-- **Batch Processing**: Processes data in configurable batch sizes for optimal performance
-- **Retry Logic**: Built-in retry mechanism for handling rate limiting and transient errors
-- **Data Archiving**: Optional archiving of processed data to Parquet files for long-term storage
-- **Continuous Mode**: Can run in continuous mode, polling for new data at configurable intervals
+- **Optimized Uploads**: Uses the Cosmos DB .NET SDK's bulk execution (`AllowBulkExecution = true`) combined with `CreateItemAsync` and Direct Connection Mode for high throughput and reduced RU cost.
+- **SQLite Handling**: Automatically creates necessary indexes (`synced` column) on the source SQLite DB for efficient processing.
+- **Resilience**: Leverages SDK built-in retries for transient errors and rate limiting.
+- **Development Mode**: Includes a `--development` flag for easy testing (resets SQLite sync status, overwrites item IDs and timestamps).
+- **Continuous Mode**: Can run continuously, polling for new data.
+- **Data Archiving**: Optional archiving of processed data to Parquet files.
+- **Configurable**: Performance and behavior controlled via a YAML configuration file.
+
+See the [Cosmos Uploader README](cosmos-uploader/README.md) for detailed usage instructions.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- .NET SDK 7.0 or later (for local development)
+- Docker and Docker Compose (optional, if using containerization or sensor manager)
+- .NET 9.0 SDK (for building/running the uploader directly)
 - Azure Cosmos DB account
-- Bash 4.0 or later (for sensor-manager.sh)
+- Source SQLite database(s) with sensor data
 
 ### Configuration
 
-1. Create a config.yaml file in the config directory based on the example.yaml template
-2. Update the Cosmos DB connection details in docker-compose.yml or set them as environment variables:
-   ```bash
-   export COSMOS_ENDPOINT="your-cosmos-endpoint"
-   export COSMOS_KEY="your-cosmos-key"
-   export COSMOS_DATABASE="SensorData"
-   export COSMOS_CONTAINER="SensorReadings"
-   ```
+1. Create a `cosmos-config.yaml` file (see `cosmos-uploader/README.md` or `config/` for structure).
+2. Populate it with your Azure Cosmos DB `endpoint`, `key`, `database`, `container`, and `partition_key` details.
+3. Set performance and logging options as needed.
 
-### Using the Sensor Manager
-
-The project includes a unified management script `sensor-manager.sh` that handles all aspects of the sensor simulation and Cosmos DB integration:
+### Running the Uploader Directly
 
 ```bash
-# Make the script executable
-chmod +x sensor-manager.sh
-
-# Start the sensor simulation
-./sensor-manager.sh start
-
-# View logs from all containers
-./sensor-manager.sh logs
-
-# Monitor sensor status and data uploads
-./sensor-manager.sh monitor
-
-# Query SQLite databases
-./sensor-manager.sh query --all
-./sensor-manager.sh query Amsterdam 1
-
-# Run system diagnostics
-./sensor-manager.sh diagnostics
-
-# Stop all containers
-./sensor-manager.sh stop
-
-# Clean up Cosmos DB data
-./sensor-manager.sh clean
-
-# Force cleanup of all containers
-./sensor-manager.sh cleanup
-```
-
-#### Advanced Usage
-
-The sensor manager supports various configuration options:
-
-```bash
-# Start with custom configuration
-SENSORS_PER_CITY=10 ./sensor-manager.sh start
-
-# Start without rebuilding the uploader image
-./sensor-manager.sh start --no-rebuild
-
-# Start with a custom project name
-./sensor-manager.sh start --project-name my-sensors
-
-# Clean Cosmos DB with dry run
-./sensor-manager.sh clean --dry-run
-
-# Monitor without colors
-./sensor-manager.sh monitor --plain
-```
-
-For a complete list of commands and options, run:
-```bash
-./sensor-manager.sh help
-```
-
-### Manual Docker Compose Usage
-
-While the sensor manager is the recommended way to run the system, you can also use Docker Compose directly:
-
-```bash
-# Build the CosmosDB uploader application and Docker image
 cd cosmos-uploader
-./build.sh
+dotnet restore
+dotnet build
 
-# Start the entire system
-docker-compose up -d
+# Example: Run once
+dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db
+
+# Example: Run continuously in development mode
+dotnet run --config path/to/cosmos-config.yaml --sqlite /path/to/your/sensor_data.db --continuous --development
 ```
 
-### Monitoring
+### Using the (Optional) Sensor Manager
+
+If you need to simulate sensor data generation, the Python-based Sensor Manager (`sensor_manager/`) can orchestrate the simulation and the uploader containers.
+
+> **Note**: The Sensor Manager might require separate setup (e.g., `uv`). Refer to its specific documentation.
 
 ```bash
-# View logs from a specific uploader
-docker logs uploader-amsterdam -f
+# Example: Start simulation and uploaders defined in sensor manager config
+./sensor_manager.py start
 
-# View logs from all uploaders
-docker-compose logs -f uploader-amsterdam uploader-beijing uploader-berlin uploader-cairo uploader-chicago
+# Example: Stop the system
+./sensor_manager.py stop
 ```
+See the [Python Sensor Manager Documentation](sensor_manager/README.md) for details.
 
 ## Querying Cosmos DB
 
-The project includes a tool to query Cosmos DB directly from the command line, which is useful for verifying that data is being uploaded correctly:
+The Python query tool (`cosmos-uploader/query.py`) helps verify data:
 
 ```bash
-# Query the last 5 documents from Amsterdam
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --city Amsterdam --limit 5
+# Requires 'uv' or manual dependency installation for the query tool
+cd cosmos-uploader
+# Assuming uv is installed and configured for the query tool's env
 
-# Count all documents in the database
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --count
+# Example: Count documents
+uv run query.py --config path/to/cosmos-config.yaml --count
 
-# Run a custom query
-./cosmos-uploader/cosmosdb-query.sh --config config/config.yaml --query "SELECT * FROM c WHERE c.temperature > 25.0 LIMIT 10"
+# Example: Get latest 5 from a city
+uv run query.py --config path/to/cosmos-config.yaml --city Amsterdam --limit 5
 ```
-
-See [cosmos-query-tool.md](docs/cosmos-query-tool.md) for detailed documentation.
+See [cosmos-query-tool.md](docs/cosmos-query-tool.md) for more.
 
 ## Setting Up Azure Cosmos DB
 
-### Setting Environment Variables
+*(This section remains largely the same - ensure variables match your config)*
 
-First, set up all the necessary environment variables that will be used throughout the setup process:
+### Setting Environment Variables (Example)
 
 ```bash
-# Azure Resource Configuration
 export RESOURCE_GROUP="CosmosDB-RG"
 export LOCATION="brazilsouth"
-# Add a unique suffix to ensure the Cosmos DB account name is globally unique
 export UNIQUE_SUFFIX=$RANDOM
 export COSMOS_ACCOUNT_NAME="cosmos-bacalhau-${UNIQUE_SUFFIX}"
-export DATABASE_NAME="SensorData"
-export CONTAINER_NAME="SensorReadings"
-export PARTITION_KEY="/city"
-export THROUGHPUT=400
+export DATABASE_NAME="SensorData" # Match config
+export CONTAINER_NAME="SensorReadings" # Match config
+export PARTITION_KEY="/city" # Match config
+# export THROUGHPUT=400 # Removed: Not applicable for Serverless
 ```
 
 ### Creating Resources via Azure CLI
 
-1. **Login to Azure**:
+*(Commands remain the same, except for container creation)*
 
-```bash
-az login
-```
-
-2. **Create a Resource Group**:
-
-```bash
-az group create --name $RESOURCE_GROUP --location $LOCATION
-```
-
-3. **Create a Cosmos DB Account**:
-
-```bash
-# Create a Cosmos DB account with a single region
-az cosmosdb create \
-  --name $COSMOS_ACCOUNT_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --kind GlobalDocumentDB \
-  --default-consistency-level Session \
-  --enable-automatic-failover false \
-  --locations regionName=$LOCATION failoverPriority=0
-```
-
-4. **Create a Database**:
-
-```bash
-az cosmosdb sql database create \
-  --account-name $COSMOS_ACCOUNT_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --name $DATABASE_NAME
-```
-
-5. **Create the Container**:
-
-```bash
-az cosmosdb sql container create \
-  --account-name $COSMOS_ACCOUNT_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --database-name $DATABASE_NAME \
-  --name $CONTAINER_NAME \
-  --partition-key-path $PARTITION_KEY \
-  --throughput $THROUGHPUT
-```
-
-6. **Get Connection Information**:
-
-```bash
-# Get the endpoint
-export COSMOS_ENDPOINT=$(az cosmosdb show --name $COSMOS_ACCOUNT_NAME --resource-group $RESOURCE_GROUP --query documentEndpoint -o tsv)
-
-# Get the primary key (for admin access)
-export COSMOS_KEY=$(az cosmosdb keys list --name $COSMOS_ACCOUNT_NAME --resource-group $RESOURCE_GROUP --query primaryMasterKey -o tsv)
-
-echo "Cosmos DB Endpoint: $COSMOS_ENDPOINT"
-echo "Cosmos DB Key: $COSMOS_KEY"
-```
+1.  `az login`
+2.  `az group create ...`
+3.  `az cosmosdb create ...` (Ensure `--capabilities EnableServerless` is used if creating a new Serverless account)
+4.  `az cosmosdb sql database create ...`
+5.  `az cosmosdb sql container create ...` (Remove `--throughput` parameter for Serverless)
+    ```bash
+    # Example for Serverless container:
+    az cosmosdb sql container create \
+        --account-name $COSMOS_ACCOUNT_NAME \
+        --resource-group $RESOURCE_GROUP \
+        --database-name $DATABASE_NAME \
+        --name $CONTAINER_NAME \
+        --partition-key-path $PARTITION_KEY
+    ```
+6.  Get connection info (`az cosmosdb show ...`, `az cosmosdb keys list ...`)
 
 ## Performance Considerations
 
-The C# implementation leverages the Azure CosmosDB .NET SDK's bulk upload capabilities, which provides optimized throughput by:
+The C# uploader leverages several Azure Cosmos DB .NET SDK features for optimized throughput:
 
-1. Batching multiple documents into a single network request
-2. Managing parallelism with configurable batch sizes
-3. Automatically retrying rate-limited requests
-4. Tracking request charges for performance monitoring
-5. Using proper partitioning strategies for distributed writes
+1.  **Bulk Execution**: Enabled via `AllowBulkExecution = true`, the SDK efficiently batches operations (`CreateItemAsync`) into fewer network requests.
+2.  **Direct Connection Mode**: Reduces network latency compared to Gateway mode (ensure required TCP ports are open).
+3.  **Optimized Operations**: Using `CreateItemAsync` avoids the read-before-write overhead of upserts when ingesting new data.
+4.  **SDK Retries**: Handles transient errors like rate limiting (HTTP 429) automatically based on `CosmosClientOptions`.
+5.  **Partitioning**: Relies on a well-distributed partition key (`/city` in the example) for scalable writes.
 
-This results in significantly better performance compared to single document uploads, especially for large datasets from multiple sensors.
+These features significantly improve ingestion performance compared to single-item operations.
 
 ## Troubleshooting
 
-### Common Issues
+*(Consolidated and updated)*
 
-1. **Docker Build Issues**:
-   - If you encounter issues with the Docker build, check that the paths in the Dockerfile are correct
-   - Ensure the .NET SDK version in the Dockerfile matches the version used in the project file
-   - Make sure the entrypoint.sh script is properly configured
+1.  **Build Issues**: Ensure correct .NET SDK (9.0) is installed. Check Dockerfile paths if containerizing.
+2.  **Cosmos DB Connection**: Verify endpoint/key in config. Check container existence and partition key (`/city`). Ensure firewall allows Direct Mode TCP ports (10250-10255) if used.
+3.  **Data Processing**: Check SQLite file path and schema (`sensor_readings` table, `synced` column). Monitor uploader logs for errors.
+4.  **Performance**: Monitor RU consumption in Azure Portal. Check client CPU/memory usage.
 
-2. **Cosmos DB Connection Issues**:
-   - Verify that the connection string and key are correctly set in the configuration
-   - Check that the database and container exist in your Cosmos DB account
-   - Ensure that you have sufficient permissions to write to the container
-
-3. **Data Processing Issues**:
-   - If you encounter issues with data processing, check the logs for specific error messages
-   - Verify that the SQLite databases contain the expected data structure
-   - Adjust batch size and processing parameters based on your hardware capabilities
+5.  **DNS Resolution Issues Inside Container**:
+    *   **Symptom**: The uploader fails to connect to the Cosmos DB endpoint, potentially logging errors related to name resolution or unknown host. This might occur even if the host machine can resolve the address.
+    *   **Diagnosis (run inside the container)**:
+        1.  Get a shell inside the running container (e.g., `docker exec -it <container_id_or_name> /bin/bash`).
+        2.  Install necessary tools (if not present in the base image):
+            ```bash
+            # Example for Debian/Ubuntu-based images
+            apt-get update && apt-get install -y dnsutils iputils-ping telnet traceroute
+            ```
+        3.  Check which DNS servers the container is configured to use:
+            ```bash
+            cat /etc/resolv.conf
+            ```
+            *(Note the `nameserver` IP addresses listed, e.g., `1.1.1.1`)*
+        4.  Attempt to resolve the Cosmos DB endpoint using the container's configured DNS:
+            ```bash
+            nslookup your-cosmos-account.documents.azure.com
+            ```
+            *(Replace with your actual endpoint. Timeouts or failures here indicate a DNS problem.)*
+        5.  Test connectivity to the DNS server itself (use an IP from `resolv.conf`):
+            ```bash
+            ping -c 3 1.1.1.1
+            traceroute -T -p 53 1.1.1.1 # Test UDP port 53 connectivity
+            ```
+            *(`traceroute` stopping with `* * *` can indicate where the block occurs.)*
+    *   **Likely Cause**: Outbound network traffic on UDP port 53 (used for DNS lookups) is being blocked by a firewall rule. This block could be on the host machine's firewall (e.g., `iptables`), an external firewall, or a cloud Network Security Group (NSG). Docker containers rely on external DNS resolution.
+    *   **Solutions**:
+        1.  **(Recommended)** **Adjust External Firewall/NSG**: Modify the outbound rules for the host machine (where Docker is running) to ALLOW UDP traffic on destination port 53, originating from the host's IP address, to the required DNS server IPs (e.g., `1.1.1.1`, `1.0.0.1`) or to `0.0.0.0/0` for general DNS access.
+        2.  **(Workaround)** **Configure Docker Daemon DNS**: Configure the Docker daemon to use a specific DNS server (e.g., `1.1.1.1`).
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see the LICENSE file for details.

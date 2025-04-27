@@ -1,45 +1,92 @@
 using System;
-using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json; 
 
 namespace CosmosUploader.Models
 {
     public class SensorReading
     {
+        public SensorReading()
+        {
+            Id = Guid.NewGuid().ToString();
+            SensorId = "UNKNOWN";
+            Timestamp = DateTime.UtcNow;
+            Status = "UNKNOWN";
+            Location = "UNKNOWN";
+            City = "UNKNOWN";
+            ProcessingStage = ProcessingStages.Raw;
+        }
+
         [JsonProperty("id")]
-        public required string Id { get; set; }
+        public string Id { get; set; }
         
         [JsonProperty("sensorId")]
-        public required string SensorId { get; set; }
+        public string SensorId { get; set; }
         
         [JsonProperty("timestamp")]
-        public required DateTime Timestamp { get; set; }
+        public DateTime Timestamp { get; set; }
+
+        [JsonProperty("city")]
+        public string City { get; set; }
+        
+        [JsonProperty("processingStage")]
+        public string ProcessingStage { get; set; }
+
+        [JsonProperty("rawDataString")]
+        public string? RawDataString { get; set; }
+        
+        // New property to store the raw SQLite data
+        [JsonIgnore] // Don't include in JSON serialization
+        public string? RawSqliteData { get; set; }
         
         [JsonProperty("temperature")]
-        public required double? Temperature { get; set; }
-        
-        [JsonProperty("humidity")]
-        public required double? Humidity { get; set; }
-        
-        [JsonProperty("pressure")]
-        public required double? Pressure { get; set; }
+        public double? Temperature { get; set; }
         
         [JsonProperty("vibration")]
-        public required double? Vibration { get; set; }
+        public double? Vibration { get; set; }
         
         [JsonProperty("voltage")]
-        public required double? Voltage { get; set; }
+        public double? Voltage { get; set; }
+
+        [JsonProperty("humidity")]
+        public double? Humidity { get; set; }
+        
+        [JsonProperty("pressure")]
+        public double? Pressure { get; set; }
         
         [JsonProperty("status")]
-        public required string Status { get; set; }
+        public string Status { get; set; }
+        
+        [JsonProperty("anomalyFlag")]
+        public bool AnomalyFlag { get; set; }
+        
+        [JsonProperty("anomalyType")]
+        public string? AnomalyType { get; set; }
+        
+        [JsonProperty("firmwareVersion")]
+        public string? FirmwareVersion { get; set; }
+        
+        [JsonProperty("model")]
+        public string? Model { get; set; }
+        
+        [JsonProperty("manufacturer")]
+        public string? Manufacturer { get; set; }
         
         [JsonProperty("location")]
-        public required string Location { get; set; }
-        
-        [JsonProperty("city")]
-        public required string City { get; set; }
-        
-        [JsonProperty("processed")]
-        public required bool Processed { get; set; } = false;
+        public string Location { get; set; }
+
+        [JsonProperty("lat")]
+        public string? Lat { get; set; }
+
+        [JsonProperty("long")]
+        public string? Long { get; set; }
+
+        [JsonProperty("aggregationWindowStart")]
+        public DateTime? AggregationWindowStart { get; set; }
+
+        [JsonProperty("aggregationWindowEnd")]
+        public DateTime? AggregationWindowEnd { get; set; }
+
+        [JsonProperty("rawData")]
+        public string? RawData { get; set; }
     }
 }

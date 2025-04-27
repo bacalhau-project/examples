@@ -1,51 +1,80 @@
 import logging
 import random
 import time
-from enum import Enum
 
 import numpy as np
 
-
-class AnomalyType(Enum):
-    SPIKE = "spike"
-    TREND = "trend"
-    PATTERN = "pattern"
-    MISSING_DATA = "missing_data"
-    NOISE = "noise"
+from .enums import AnomalyType, FirmwareVersion, Manufacturer, Model, ParameterType
 
 
 class AnomalyGenerator:
-    def __init__(self, config, sensor_config):
+    def __init__(self, config, identity):
         """Initialize the anomaly generator with configuration.
 
         Args:
             config: Anomaly configuration
-            sensor_config: Sensor identity configuration
+            identity: Sensor identity configuration
+
+        Raises:
+            ValueError: If any of the identity values are invalid
         """
         self.config = config
-        self.sensor_config = sensor_config
-        self.enabled = config.get("enabled", True)
-        self.probability = config.get("probability", 0.05)
-        self.types = config.get("types", {})
+        self.anomaly_config = config.get("anomalies", {})
+        self.enabled = self.anomaly_config.get("enabled", False)
+        self.probability = self.anomaly_config.get("probability", 0.05)
+        self.types = self.anomaly_config.get("types", {})
 
         # Get firmware version
-        self.firmware_version = sensor_config.get("firmware_version", "1.3")
-        self.model = sensor_config.get("model", "TempVibe-2000")
-        self.manufacturer = sensor_config.get("manufacturer", "SensorTech")
-        self.location = sensor_config.get("location", "Factory A - Machine 1")
+        self.id = identity.get("id")
+        if not self.id:
+            raise ValueError("Sensor ID is required in identity configuration")
+
+        # Initialize identity with validation
+        try:
+            self.firmware_version = FirmwareVersion(identity.get("firmware_version"))
+        except ValueError:
+            valid_versions = [v.value for v in FirmwareVersion]
+            raise ValueError(
+                f"Invalid firmware version: {identity.get('firmware_version')}. "
+                f"Valid versions are: {valid_versions}"
+            )
+
+        try:
+            self.model = Model(identity.get("model"))
+        except ValueError:
+            valid_models = [m.value for m in Model]
+            raise ValueError(
+                f"Invalid model: {identity.get('model')}. "
+                f"Valid models are: {valid_models}"
+            )
+
+        try:
+            self.manufacturer = Manufacturer(identity.get("manufacturer"))
+        except ValueError:
+            valid_manufacturers = [m.value for m in Manufacturer]
+            raise ValueError(
+                f"Invalid manufacturer: {identity.get('manufacturer')}. "
+                f"Valid manufacturers are: {valid_manufacturers}"
+            )
+
+        self.location = identity.get("location")
+        self.latitude = identity.get("latitude")
+        self.longitude = identity.get("longitude")
+        if not self.location:
+            raise ValueError("Location is required in identity configuration")
 
         # Track active anomalies
         self.active_anomalies = {}
         self.start_times = {}
 
         # Log sensor identity
-        logging.info(
-            f"Initializing anomaly generator for sensor: {sensor_config.get('id', 'unknown')}"
-        )
-        logging.info(f"  Firmware: {self.firmware_version}")
-        logging.info(f"  Model: {self.model}")
-        logging.info(f"  Manufacturer: {self.manufacturer}")
+        logging.info(f"Initializing anomaly generator for sensor: {self.id}")
+        logging.info(f"  Firmware: {self.firmware_version.value}")
+        logging.info(f"  Model: {self.model.value}")
+        logging.info(f"  Manufacturer: {self.manufacturer.value}")
         logging.info(f"  Location: {self.location}")
+        logging.info(f"  Latitude: {self.latitude}")
+        logging.info(f"  Longitude: {self.longitude}")
 
     def should_generate_anomaly(self):
         """Determine if an anomaly should be generated based on probability and firmware version."""
@@ -56,20 +85,20 @@ class AnomalyGenerator:
         adjusted_probability = self.probability
 
         # Firmware 1.3 has higher anomaly probability
-        if self.firmware_version == "1.3":
+        if self.firmware_version == FirmwareVersion.V1_4:
             adjusted_probability *= 1.5  # 50% more anomalies
 
         # Firmware 1.4 has lower anomaly probability
-        elif self.firmware_version == "1.4":
+        elif self.firmware_version == FirmwareVersion.V1_5:
             adjusted_probability *= 0.7  # 30% fewer anomalies
 
         # Adjust based on manufacturer
-        if self.manufacturer == "SensorTech":
+        if self.manufacturer == Manufacturer.SENSORTECH:
             # Standard probability
             pass
-        elif self.manufacturer == "DataSense":
+        elif self.manufacturer == Manufacturer.ENVMONITORS:
             adjusted_probability *= 0.8  # 20% fewer anomalies but more severe
-        elif self.manufacturer == "VibrationPlus":
+        elif self.manufacturer == Manufacturer.IOTPRO:
             adjusted_probability *= 1.2  # 20% more anomalies
 
         return random.random() < adjusted_probability
@@ -80,38 +109,38 @@ class AnomalyGenerator:
         enabled_types = {}
         for anomaly_type, config in self.types.items():
             if config.get("enabled", True):
-                enabled_types[anomaly_type] = config.get("weight", 1.0)
+                enabled_types[AnomalyType(anomaly_type)] = config.get("weight", 1.0)
 
         if not enabled_types:
             return None
 
         # Adjust weights based on model
-        if self.model == "TempVibe-1000":
+        if self.model == Model.ENVMONITOR_3000:
             # More prone to missing data
-            if "missing_data" in enabled_types:
-                enabled_types["missing_data"] *= 2.0
-        elif self.model == "TempVibe-2000":
+            if AnomalyType.MISSING_DATA in enabled_types:
+                enabled_types[AnomalyType.MISSING_DATA] *= 2.0
+        elif self.model == Model.ENVMONITOR_4000:
             # More prone to pattern anomalies
-            if "pattern" in enabled_types:
-                enabled_types["pattern"] *= 1.5
-        elif self.model == "TempVibe-3000":
+            if AnomalyType.PATTERN in enabled_types:
+                enabled_types[AnomalyType.PATTERN] *= 1.5
+        elif self.model == Model.ENVMONITOR_5000:
             # More prone to spike anomalies
-            if "spike" in enabled_types:
-                enabled_types["spike"] *= 1.5
+            if AnomalyType.SPIKE in enabled_types:
+                enabled_types[AnomalyType.SPIKE] *= 1.5
 
         # Adjust weights based on firmware
-        if self.firmware_version == "1.3":
+        if self.firmware_version == FirmwareVersion.V1_4:
             # More temperature spikes and noise
-            if "spike" in enabled_types:
-                enabled_types["spike"] *= 1.3
-            if "noise" in enabled_types:
-                enabled_types["noise"] *= 1.5
-        elif self.firmware_version == "1.4":
+            if AnomalyType.SPIKE in enabled_types:
+                enabled_types[AnomalyType.SPIKE] *= 1.3
+            if AnomalyType.NOISE in enabled_types:
+                enabled_types[AnomalyType.NOISE] *= 1.5
+        elif self.firmware_version == FirmwareVersion.V1_5:
             # Fewer spikes, more stable
-            if "spike" in enabled_types:
-                enabled_types["spike"] *= 0.7
-            if "noise" in enabled_types:
-                enabled_types["noise"] *= 0.8
+            if AnomalyType.SPIKE in enabled_types:
+                enabled_types[AnomalyType.SPIKE] *= 0.7
+            if AnomalyType.NOISE in enabled_types:
+                enabled_types[AnomalyType.NOISE] *= 0.8
 
         # Normalize weights
         total_weight = sum(enabled_types.values())
@@ -135,7 +164,7 @@ class AnomalyGenerator:
 
         self.active_anomalies[anomaly_type] = True
         self.start_times[anomaly_type] = time.time()
-        logging.info(f"Started {anomaly_type} anomaly")
+        logging.info(f"Started {anomaly_type.value} anomaly")
 
     def is_anomaly_active(self, anomaly_type):
         """Check if an anomaly is currently active."""
@@ -147,26 +176,26 @@ class AnomalyGenerator:
 
         # Check if the anomaly duration has expired
         start_time = self.start_times.get(anomaly_type, 0)
-        duration = self.types.get(anomaly_type, {}).get("duration_seconds", 60)
+        duration = self.types.get(anomaly_type.value, {}).get("duration_seconds", 60)
 
         if time.time() - start_time > duration:
             self.active_anomalies[anomaly_type] = False
-            logging.info(f"Ended {anomaly_type} anomaly")
+            logging.info(f"Ended {anomaly_type.value} anomaly")
             return False
 
         return True
 
     def apply_anomaly(self, reading, anomaly_type):
         """Apply the specified anomaly to the sensor reading."""
-        if anomaly_type == AnomalyType.SPIKE.value:
+        if anomaly_type == AnomalyType.SPIKE:
             return self._apply_spike_anomaly(reading)
-        elif anomaly_type == AnomalyType.TREND.value:
+        elif anomaly_type == AnomalyType.TREND:
             return self._apply_trend_anomaly(reading)
-        elif anomaly_type == AnomalyType.PATTERN.value:
+        elif anomaly_type == AnomalyType.PATTERN:
             return self._apply_pattern_anomaly(reading)
-        elif anomaly_type == AnomalyType.MISSING_DATA.value:
+        elif anomaly_type == AnomalyType.MISSING_DATA:
             return self._apply_missing_data_anomaly(reading)
-        elif anomaly_type == AnomalyType.NOISE.value:
+        elif anomaly_type == AnomalyType.NOISE:
             return self._apply_noise_anomaly(reading)
         else:
             return reading, False, None
@@ -174,14 +203,18 @@ class AnomalyGenerator:
     def _apply_spike_anomaly(self, reading):
         """Apply a spike anomaly to the reading."""
         # Choose a random parameter to spike
-        params = ["temperature", "vibration", "voltage"]
+        params = [
+            ParameterType.TEMPERATURE,
+            ParameterType.HUMIDITY,
+            ParameterType.VOLTAGE,
+        ]
 
         # For firmware 1.3, temperature spikes are more common
-        if self.firmware_version == "1.3":
+        if self.firmware_version == FirmwareVersion.V1_4:
             if random.random() < 0.6:  # 60% chance to choose temperature
-                param = "temperature"
+                param = ParameterType.TEMPERATURE
             else:
-                param = random.choice(["vibration", "voltage"])
+                param = random.choice([ParameterType.HUMIDITY, ParameterType.VOLTAGE])
         else:
             param = random.choice(params)
 
@@ -190,7 +223,7 @@ class AnomalyGenerator:
 
         # Apply a spike (multiply by a factor between 1.5 and 3)
         # For firmware 1.3, spikes are more severe
-        if self.firmware_version == "1.3":
+        if self.firmware_version == FirmwareVersion.V1_4:
             spike_factor = random.uniform(1.8, 3.5)
         else:
             spike_factor = random.uniform(1.5, 3.0)
@@ -198,21 +231,25 @@ class AnomalyGenerator:
         if random.random() < 0.5:  # 50% chance of negative spike
             spike_factor = 1 / spike_factor
 
-        modified[param] = reading[param] * spike_factor
+        modified[param.value] = reading[param.value] * spike_factor
 
-        return modified, True, AnomalyType.SPIKE.value
+        return modified, True, AnomalyType.SPIKE
 
     def _apply_trend_anomaly(self, reading):
         """Apply a trend anomaly to the reading."""
         # Choose a random parameter for the trend
-        params = ["temperature", "vibration", "voltage"]
+        params = [
+            ParameterType.TEMPERATURE,
+            ParameterType.HUMIDITY,
+            ParameterType.VOLTAGE,
+        ]
         param = random.choice(params)
 
         # Create a copy of the reading
         modified = reading.copy()
 
         # Calculate how far into the anomaly we are (0 to 1)
-        start_time = self.start_times.get(AnomalyType.TREND.value, time.time())
+        start_time = self.start_times.get(AnomalyType.TREND, time.time())
         duration = self.types.get(AnomalyType.TREND.value, {}).get(
             "duration_seconds", 300
         )
@@ -223,9 +260,9 @@ class AnomalyGenerator:
         if random.random() < 0.5:  # 50% chance of downward trend
             trend_factor = 1.0 / trend_factor
 
-        modified[param] = reading[param] * trend_factor
+        modified[param.value] = reading[param.value] * trend_factor
 
-        return modified, True, AnomalyType.TREND.value
+        return modified, True, AnomalyType.TREND
 
     def _apply_pattern_anomaly(self, reading):
         """Apply a pattern anomaly to the reading."""
@@ -233,24 +270,24 @@ class AnomalyGenerator:
         modified = reading.copy()
 
         # Calculate how far into the anomaly we are
-        start_time = self.start_times.get(AnomalyType.PATTERN.value, time.time())
+        start_time = self.start_times.get(AnomalyType.PATTERN, time.time())
         elapsed = time.time() - start_time
 
         # Apply a sinusoidal pattern to temperature
-        modified["temperature"] = reading["temperature"] * (
-            1 + 0.2 * np.sin(elapsed / 10)
-        )
+        modified[ParameterType.TEMPERATURE.value] = reading[
+            ParameterType.TEMPERATURE.value
+        ] * (1 + 0.2 * np.sin(elapsed / 10))
 
-        # Apply an opposite pattern to vibration
-        modified["vibration"] = reading["vibration"] * (
-            1 + 0.2 * np.sin(elapsed / 10 + np.pi)
-        )
+        # Apply an opposite pattern to humidity
+        modified[ParameterType.HUMIDITY.value] = reading[
+            ParameterType.HUMIDITY.value
+        ] * (1 + 0.2 * np.sin(elapsed / 10 + np.pi))
 
-        return modified, True, AnomalyType.PATTERN.value
+        return modified, True, AnomalyType.PATTERN
 
     def _apply_missing_data_anomaly(self, reading):
         """Simulate missing data by returning None."""
-        return None, True, AnomalyType.MISSING_DATA.value
+        return None, True, AnomalyType.MISSING_DATA
 
     def _apply_noise_anomaly(self, reading):
         """Apply increased noise to all parameters."""
@@ -258,20 +295,27 @@ class AnomalyGenerator:
         modified = reading.copy()
 
         # Add extra noise to all parameters
-        for param in ["temperature", "vibration", "voltage"]:
-            base_value = reading[param]
+        for param in [
+            ParameterType.TEMPERATURE,
+            ParameterType.HUMIDITY,
+            ParameterType.VOLTAGE,
+        ]:
+            base_value = reading[param.value]
 
             # Firmware 1.3 has more noise
-            if self.firmware_version == "1.3":
+            if self.firmware_version == FirmwareVersion.V1_4:
                 noise_factor = 0.15  # 15% of the value as noise
             else:
                 noise_factor = 0.1  # 10% of the value as noise
 
             # VibrationPlus sensors have more vibration noise
-            if param == "vibration" and self.manufacturer == "VibrationPlus":
+            if (
+                param == ParameterType.HUMIDITY
+                and self.manufacturer == Manufacturer.ENVMONITORS
+            ):
                 noise_factor *= 1.5
 
             noise = np.random.normal(0, base_value * noise_factor)
-            modified[param] = base_value + noise
+            modified[param.value] = base_value + noise
 
-        return modified, True, AnomalyType.NOISE.value
+        return modified, True, AnomalyType.NOISE

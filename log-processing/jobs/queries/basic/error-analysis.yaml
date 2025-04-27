@@ -1,0 +1,28 @@
+# If your site serves files, identify the most downloaded ones.
+Name: Most Downloaded Files
+Type: ops
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ghcr.io/bacalhau-project/nginx-access-log-query:1.0.0
+        Parameters:
+          - --query
+          - >
+            SELECT request, COUNT(*) AS error_count
+            FROM logs
+            WHERE status = 404
+            GROUP BY request
+            ORDER BY error_count DESC
+            LIMIT 10;
+
+    # InputSources lists remote artifacts that should be downloaded before task execution and mounted within the task
+    # Here we are mounting the logs directory to /app/output
+    InputSources:
+      - Target: /logs
+        Source:
+          Type: localDirectory
+          Params:
+            SourcePath: /data/log-processing/logs
+            ReadWrite: true

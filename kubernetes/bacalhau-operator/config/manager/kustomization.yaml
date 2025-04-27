@@ -10,13 +10,19 @@ configMapGenerator:
   - controller_manager_config.yaml
   name: manager-config
 - literals:
-  - APIHost=bootstrap.production.bacalhau.org
-  - APIPort=1234
+  - API_Endpoint=http://bootstrap.production.bacalhau.org:1234/
   name: api-config
+
+secretGenerator:
+- literals:
+  - API_KEY=""
+  - API_USERNAME=""
+  - API_PASSWORD=""
+  name: api-credentials
 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: job-controller-image
-  newName: kdrezewski/bacalhau-job-controller
+  newName: ghcr.io/bacalhau-project/bacalhau-k8s-operator
   newTag: 0.1.0

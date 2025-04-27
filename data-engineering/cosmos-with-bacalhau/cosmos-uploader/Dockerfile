@@ -1,16 +1,17 @@
 # syntax=docker/dockerfile:1.4
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-# Set working directory
+# Set working directory 
 WORKDIR /cosmos-uploader
 
-# Copy csproj and restore dependencies
+# Copy sln, csproj and restore dependencies using the solution file
+COPY cosmos-uploader.sln .
 COPY *.csproj .
-RUN dotnet restore
+RUN dotnet restore cosmos-uploader.sln
 
-# Copy all source files and build
+# Copy all source files and build using the project file
 COPY . .
-RUN dotnet publish -c Release -o /app
+RUN dotnet publish CosmosUploader.csproj -c Release -o /app
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
