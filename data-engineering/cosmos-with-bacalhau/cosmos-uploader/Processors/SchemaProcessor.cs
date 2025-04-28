@@ -81,8 +81,6 @@ namespace CosmosUploader.Processors
                          }
                          
                          fixedCount++;
-                         _logger.LogWarning("Item missing required key '{Key}'. Added default value. Item ID: {ItemId}", 
-                             key, processedItem["id"]);
                      }
                  }
                  
