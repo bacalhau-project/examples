@@ -17,7 +17,7 @@ sleep "$(awk "BEGIN{print ${INITIAL_DELAY_MS}/1000.0}")"
 
 # --- INSTALL DEPENDENCIES ---
 apk add --no-cache s3fs-fuse py3-pip
-pip install --break-system-packages flask flask_cors gunicorn
+pip install --break-system-packages flask flask_cors gunicorn uvicorn fastapi
 
 # --- INIT DIRECTORIES & FILES ---
 mkdir -p /mnt/bufor /bacalhau_data/ /bacalhau_data/metadata /cache /mnt/s3_low /mnt/s3_high
@@ -34,7 +34,7 @@ s3fs low-bandwitch /mnt/s3_low -o url=http://storage:9000 -o use_path_request_st
 s3fs high-bandwitch /mnt/s3_high -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
 # --- START GUNICORN IN BACKGROUND ---
 echo "Starting Flask healthz service..."
-gunicorn --chdir /scripts healthz-web-server:app -b 0.0.0.0:9123 -w 8 --log-level critical &
+gunicorn --chdir /scripts server:app -b 0.0.0.0:9123 -w 8 -k uvicorn.workers.UvicornWorker --log-level critical &
 
 # --- WRITE HEALTHCHECK FILE ---
 #echo "ok" > /mnt/data/.healthcheck
