@@ -7,7 +7,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: registry-proxy:5000/bacalhau-project/cosmos-uploader:202504270007
+        Image: registry-proxy:5000/bacalhau-project/cosmos-uploader:202504280057
         Entrypoint: ["/bin/bash", "-c"]
         Parameters:
           - "jitter_max_seconds=60; jitter_seconds=$((RANDOM % jitter_max_seconds)); echo \"Applying initial jitter delay of ${jitter_seconds} seconds before starting CosmosUploader...\"; sleep $jitter_seconds; /app/entrypoint.sh --config /root/cosmos-config.yaml --sqlite /root/sensor_data.db --continuous --interval 30"
