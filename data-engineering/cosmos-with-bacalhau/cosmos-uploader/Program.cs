@@ -368,57 +368,50 @@ namespace CosmosUploader
                         {
                             if (File.Exists(settings.UpdateNotificationFilePath))
                             {
-                                DateTime fileWriteTimeUtc = File.GetLastWriteTimeUtc(settings.UpdateNotificationFilePath);
-                                logger.LogDebug("Update notification file found ({File}). LastWriteTimeUTC: {WriteTime}, LastConfigLoadUTC: {LoadTime}", 
-                                    settings.UpdateNotificationFilePath, fileWriteTimeUtc, lastConfigLoadTimeUtc);
+                                logger.LogInformation("Configuration update triggered by presence of notification file: {File}", settings.UpdateNotificationFilePath);
 
-                                if (fileWriteTimeUtc > lastConfigLoadTimeUtc)
+                                // --- Attempt Reload --- 
+                                // Rebuild services collection for reload (safer than modifying existing)
+                                var updatedServices = new ServiceCollection();
+                                updatedServices.AddLogging(builder => // Re-add basic logging config
                                 {
-                                    logger.LogInformation("Configuration update triggered by notification file: {File}", settings.UpdateNotificationFilePath);
-                                    
-                                    // Rebuild services collection for reload (safer than modifying existing)
-                                    var updatedServices = new ServiceCollection();
-                                    updatedServices.AddLogging(builder => // Re-add basic logging config
-                                    {
-                                        builder.ClearProviders();
-                                        builder.AddConsole(options => { options.FormatterName = "custom"; })
-                                            .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
-                                        // Level will be set within LoadAndConfigureServices
-                                    });
+                                    builder.ClearProviders();
+                                    builder.AddConsole(options => { options.FormatterName = "custom"; })
+                                        .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
+                                    // Level will be set within LoadAndConfigureServices
+                                });
 
-                                    var reloadResult = LoadAndConfigureServices(configPath, settings.DevelopmentMode, settings.DebugMode, settings.UpdateNotificationFilePath, updatedServices, serviceProvider); // Use current provider for reload messages
+                                var reloadResult = LoadAndConfigureServices(configPath, settings.DevelopmentMode, settings.DebugMode, settings.UpdateNotificationFilePath, updatedServices, serviceProvider); // Use current provider for reload messages
 
-                                    if (reloadResult.AppSettings != null && reloadResult.ServiceProvider != null)
-                                    {
-                                        settings = reloadResult.AppSettings; // Update settings reference
-                                        serviceProvider = reloadResult.ServiceProvider; // Update service provider reference
-                                        lastConfigLoadTimeUtc = DateTime.UtcNow; // Update load time
+                                if (reloadResult.AppSettings != null && reloadResult.ServiceProvider != null)
+                                {
+                                    settings = reloadResult.AppSettings; // Update settings reference
+                                    serviceProvider = reloadResult.ServiceProvider; // Update service provider reference
+                                    lastConfigLoadTimeUtc = DateTime.UtcNow; // Update load time
 
-                                        // Re-resolve services that might depend on the new configuration
-                                        logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // IMPORTANT: Update logger instance
-                                        sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
-                                        processDataService = serviceProvider.GetRequiredService<ProcessData>();
-                                        cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
-                                        archiverService = serviceProvider.GetRequiredService<Archiver>();
+                                    // Re-resolve services that might depend on the new configuration
+                                    logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // IMPORTANT: Update logger instance
+                                    sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
+                                    processDataService = serviceProvider.GetRequiredService<ProcessData>();
+                                    cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
+                                    archiverService = serviceProvider.GetRequiredService<Archiver>();
 
-                                        logger.LogInformation("Configuration successfully reloaded.");
+                                    logger.LogInformation("Configuration successfully reloaded.");
+                                }
+                                else
+                                {
+                                    logger.LogError("Configuration reload failed. Continuing with previous configuration.");
+                                }
 
-                                        // Attempt to delete the notification file
-                                        try
-                                        {
-                                            File.Delete(settings.UpdateNotificationFilePath);
-                                            logger.LogInformation("Deleted configuration notification file: {File}", settings.UpdateNotificationFilePath);
-                                        }
-                                        catch (Exception deleteEx)
-                                        {
-                                            logger.LogWarning(deleteEx, "Failed to delete configuration notification file {File} after reload.", settings.UpdateNotificationFilePath);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        logger.LogError("Configuration reload failed. Continuing with previous configuration.");
-                                        // Do not delete the notification file if reload failed
-                                    }
+                                // --- Always Attempt Delete After Reload Attempt --- 
+                                try
+                                {
+                                    File.Delete(settings.UpdateNotificationFilePath);
+                                    logger.LogInformation("Attempted deletion of configuration notification file: {File}", settings.UpdateNotificationFilePath);
+                                }
+                                catch (Exception deleteEx)
+                                {
+                                    logger.LogWarning(deleteEx, "Failed during attempt to delete configuration notification file {File} after reload attempt.", settings.UpdateNotificationFilePath);
                                 }
                             }
                         }
