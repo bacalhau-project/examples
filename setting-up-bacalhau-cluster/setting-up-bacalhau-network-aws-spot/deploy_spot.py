@@ -2866,7 +2866,6 @@ async def main():
         machines = await machine_state.load()
 
         if args.action == "print-database":
-            print_machines_table()
             return 0
 
         # For 'create' action, check if database exists and would be overwritten
@@ -2938,6 +2937,12 @@ async def main():
             logger.info(f"Completed {args.action} operation successfully")
 
         print_machines_table()
+
+        machines = machine_state.get_all()
+        if args.action == "destroy" and machines:
+            print(
+                "Machines still exist in the database because AWS timed out while destroying. Please execute the same command again."
+            )
 
         logger.debug("Script completed successfully")
 

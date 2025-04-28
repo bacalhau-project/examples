@@ -1,24 +1,10 @@
 {
-  "ap-southeast-4": {
-    "x86_64": {
-      "image_id": "ami-0233de1cef4c66d36",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250211",
-      "creation_date": "2025-02-11T13:29:49.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-0103a1f5cb039ada9",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250219",
-      "creation_date": "2025-02-19T04:13:53.000Z"
-    }
-  },
   "ap-south-2": {
     "x86_64": {
-      "image_id": "ami-04ffec0a25cce6d63",
+      "image_id": "ami-04f2d600815717907",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250211",
-      "creation_date": "2025-02-11T13:29:13.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250327",
+      "creation_date": "2025-03-27T06:51:24.000Z"
     },
     "arm64": {
       "image_id": "ami-04c160748c6577ca1",
@@ -29,16 +15,72 @@
   },
   "ap-southeast-3": {
     "x86_64": {
-      "image_id": "ami-033755cdcb174e10d",
+      "image_id": "ami-016d4e65fffbc5e15",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:45.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:20.000Z"
     },
     "arm64": {
       "image_id": "ami-0420798201a5fc677",
       "architecture": "arm64",
       "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250225",
       "creation_date": "2025-02-25T04:04:30.000Z"
+    }
+  },
+  "ap-southeast-4": {
+    "x86_64": {
+      "image_id": "ami-018a85c23bd3b2fd6",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:41:16.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-003b48a7fa8ed3085",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250327",
+      "creation_date": "2025-03-27T06:51:58.000Z"
+    }
+  },
+  "ap-east-1": {
+    "x86_64": {
+      "image_id": "ami-01d68682f934b3a2b",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:41:05.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-0141a3e54568bbb0a",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:45.000Z"
+    }
+  },
+  "me-south-1": {
+    "x86_64": {
+      "image_id": "ami-00792840a531060f7",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:41:00.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-031063253b051e63d",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:40:04.000Z"
+    }
+  },
+  "eu-central-2": {
+    "x86_64": {
+      "image_id": "ami-0364bae682a36ee38",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:40:48.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-02224544c23711861",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:39:52.000Z"
     }
   },
   "eu-south-1": {
@@ -55,110 +97,68 @@
       "creation_date": "2025-03-05T03:14:07.000Z"
     }
   },
-  "ap-east-1": {
-    "x86_64": {
-      "image_id": "ami-04b98cae6468c0101",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:29:07.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-0226d9e408e1c2c85",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250305",
-      "creation_date": "2025-03-05T03:14:31.000Z"
-    }
-  },
-  "eu-central-2": {
-    "x86_64": {
-      "image_id": "ami-02456e303cf03c8a8",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:21.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-04ef4dc91b961c97a",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250108",
-      "creation_date": "2025-01-08T17:04:53.000Z"
-    }
-  },
   "me-central-1": {
     "x86_64": {
-      "image_id": "ami-00d02a3bda488c2db",
+      "image_id": "ami-0409f9a4b18d99d22",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:28:44.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:40:43.000Z"
     },
     "arm64": {
-      "image_id": "ami-05993bacea00932b1",
+      "image_id": "ami-02cfe100c4f59d60c",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250305",
-      "creation_date": "2025-03-05T03:14:09.000Z"
-    }
-  },
-  "me-south-1": {
-    "x86_64": {
-      "image_id": "ami-016aa4e1efb11cfb3",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:33.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-05441e42766350dba",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250211",
-      "creation_date": "2025-02-11T13:29:35.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:23.000Z"
     }
   },
   "ca-west-1": {
     "x86_64": {
-      "image_id": "ami-061d379ee7ed33be5",
+      "image_id": "ami-01b00cae20bee5353",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:29:08.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:15.000Z"
     },
     "arm64": {
-      "image_id": "ami-050a3023dc7f1ba13",
+      "image_id": "ami-00603a50e619cbd3a",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:28.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:40:11.000Z"
     }
   },
   "af-south-1": {
     "x86_64": {
-      "image_id": "ami-002c34f0ce319f0ad",
+      "image_id": "ami-0250af06e8e464a0f",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:25.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:01.000Z"
     },
     "arm64": {
-      "image_id": "ami-00f00d317a767cf75",
+      "image_id": "ami-02b807603a9a7cdca",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250225",
-      "creation_date": "2025-02-25T04:04:10.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:32.000Z"
     }
   },
   "ap-southeast-5": {
     "x86_64": {
-      "image_id": "ami-0341b817745e1597b",
+      "image_id": "ami-00e316cf2f04fd187",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250108",
-      "creation_date": "2025-01-08T17:04:34.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:41:19.000Z"
     },
     "arm64": {
-      "image_id": "ami-02c53abc7c7a02974",
+      "image_id": "ami-0129526bbf0da8103",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:40.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250327",
+      "creation_date": "2025-03-27T06:52:01.000Z"
     }
   },
   "ap-northeast-3": {
     "x86_64": {
-      "image_id": "ami-044a4aa1dc7cddaa9",
+      "image_id": "ami-03b71db8c3af83d94",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:29.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:05.000Z"
     },
     "arm64": {
       "image_id": "ami-04e399c868c7e93bc",
@@ -169,58 +169,30 @@
   },
   "eu-north-1": {
     "x86_64": {
-      "image_id": "ami-04542995864e26699",
+      "image_id": "ami-034afa84ca3c1f21f",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:26.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250327",
+      "creation_date": "2025-03-27T06:51:38.000Z"
     },
     "arm64": {
-      "image_id": "ami-0465922f90fe7a04d",
+      "image_id": "ami-04b9abf8f68c906e5",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250225",
-      "creation_date": "2025-02-25T04:04:11.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:33.000Z"
     }
   },
   "ap-south-1": {
     "x86_64": {
-      "image_id": "ami-03193735e93a78955",
+      "image_id": "ami-031b56dd75b1de81c",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250225",
-      "creation_date": "2025-02-25T04:04:41.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:40:40.000Z"
     },
     "arm64": {
-      "image_id": "ami-03cae1bb2387bab30",
+      "image_id": "ami-048571700acfd2027",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:01.000Z"
-    }
-  },
-  "us-east-2": {
-    "x86_64": {
-      "image_id": "ami-03fea1580c4614788",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:29:21.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-014997e9e4213f4e0",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250225",
-      "creation_date": "2025-02-25T04:04:37.000Z"
-    }
-  },
-  "sa-east-1": {
-    "x86_64": {
-      "image_id": "ami-022f00934863679f8",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20241217",
-      "creation_date": "2024-12-17T04:07:14.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-04d1bc0e151921904",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250305",
-      "creation_date": "2025-03-05T03:14:29.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:20.000Z"
     }
   },
   "ap-northeast-2": {
@@ -231,32 +203,74 @@
       "creation_date": "2025-01-12T04:14:32.000Z"
     },
     "arm64": {
-      "image_id": "ami-022e9d7267d316fdd",
+      "image_id": "ami-00f6f2d3deace950c",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:19.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:40:03.000Z"
     }
   },
   "us-west-1": {
     "x86_64": {
-      "image_id": "ami-021033e27ce1a48eb",
+      "image_id": "ami-01a9ee0a6e52c4320",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250108",
-      "creation_date": "2025-01-08T17:04:05.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:40:49.000Z"
     },
     "arm64": {
-      "image_id": "ami-0389531f2df0f6ac5",
+      "image_id": "ami-028305c5959b00957",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:10.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:39:54.000Z"
+    }
+  },
+  "eu-west-3": {
+    "x86_64": {
+      "image_id": "ami-031e7dbab5571668f",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250327",
+      "creation_date": "2025-03-27T06:51:39.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-055cce57d5f2211b5",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250327",
+      "creation_date": "2025-03-27T06:51:37.000Z"
+    }
+  },
+  "eu-west-2": {
+    "x86_64": {
+      "image_id": "ami-019a63e66799737f9",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:03.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-0419d9d6ba69c5559",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:34.000Z"
+    }
+  },
+  "us-east-2": {
+    "x86_64": {
+      "image_id": "ami-0376da4f943e28a68",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:26.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-010755a3881216bba",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:58.000Z"
     }
   },
   "ca-central-1": {
     "x86_64": {
-      "image_id": "ami-048d2b60a58148709",
+      "image_id": "ami-00a8f8ec53d00a658",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:18.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250419",
+      "creation_date": "2025-04-19T06:40:45.000Z"
     },
     "arm64": {
       "image_id": "ami-0086af577f1f819e4",
@@ -265,144 +279,130 @@
       "creation_date": "2025-03-05T03:14:11.000Z"
     }
   },
-  "us-east-1": {
-    "x86_64": {
-      "image_id": "ami-04552bb4f4dd38925",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20241120",
-      "creation_date": "2024-11-20T02:44:04.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-010f8f76d7f4486c8",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:38.000Z"
-    }
-  },
-  "eu-west-3": {
-    "x86_64": {
-      "image_id": "ami-03d7ea734de02d272",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:28:55.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-0304cc3ca822a6399",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250228",
-      "creation_date": "2025-02-28T03:39:15.000Z"
-    }
-  },
-  "eu-west-2": {
-    "x86_64": {
-      "image_id": "ami-04da26f654d3383cf",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:27.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-00f187893a184aa2e",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250211",
-      "creation_date": "2025-02-11T13:29:29.000Z"
-    }
-  },
   "ap-southeast-1": {
     "x86_64": {
-      "image_id": "ami-0370332a491a9327b",
+      "image_id": "ami-013d590bbcbfa9792",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250228",
-      "creation_date": "2025-02-28T03:29:10.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:16.000Z"
     },
     "arm64": {
-      "image_id": "ami-05c0c6dec1211bbe0",
+      "image_id": "ami-0259091a1f5261725",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250305",
-      "creation_date": "2025-03-05T03:14:34.000Z"
-    }
-  },
-  "eu-south-2": {
-    "x86_64": {
-      "image_id": "ami-01bfa473cd77d6efc",
-      "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:15.000Z"
-    },
-    "arm64": {
-      "image_id": "ami-002a6aa0b9ca92be8",
-      "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250305",
-      "creation_date": "2025-03-05T03:14:08.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:48.000Z"
     }
   },
   "us-west-2": {
     "x86_64": {
-      "image_id": "ami-03f8acd418785369b",
+      "image_id": "ami-016d360a89daa11ba",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:24.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:00:59.000Z"
     },
     "arm64": {
-      "image_id": "ami-054136d4bdcfd7639",
+      "image_id": "ami-01fe3a68306f139d4",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250108",
-      "creation_date": "2025-01-08T17:04:55.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:39:55.000Z"
     }
   },
-  "eu-central-1": {
+  "eu-south-2": {
     "x86_64": {
-      "image_id": "ami-04a5bacc58328233d",
+      "image_id": "ami-02b53baa1eb946ad5",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250305",
-      "creation_date": "2025-03-05T03:14:20.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:00:50.000Z"
     },
     "arm64": {
-      "image_id": "ami-02d2483b6a1edec55",
+      "image_id": "ami-04618d360b952009d",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250219",
-      "creation_date": "2025-02-19T04:13:26.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:22.000Z"
+    }
+  },
+  "us-east-1": {
+    "x86_64": {
+      "image_id": "ami-02029c87fa31fb148",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:24.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-04416155061bf627a",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:55.000Z"
     }
   },
   "ap-southeast-2": {
     "x86_64": {
-      "image_id": "ami-01e2093820bf84df1",
+      "image_id": "ami-01e18439d02247dee",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250112",
-      "creation_date": "2025-01-12T04:14:44.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:18.000Z"
     },
     "arm64": {
-      "image_id": "ami-036f7470d40c93850",
+      "image_id": "ami-024d3d7ea86da38aa",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20241113",
-      "creation_date": "2024-11-13T17:33:29.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250419",
+      "creation_date": "2025-04-19T06:40:15.000Z"
     }
   },
-  "ap-northeast-1": {
+  "eu-central-1": {
     "x86_64": {
-      "image_id": "ami-010a4b0c2749001f5",
+      "image_id": "ami-01179af425b2ee025",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250219",
-      "creation_date": "2025-02-19T04:13:48.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:00:55.000Z"
     },
     "arm64": {
-      "image_id": "ami-0250df909421e8cd6",
+      "image_id": "ami-053a930223e62365b",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250108",
-      "creation_date": "2025-01-08T17:05:06.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250327",
+      "creation_date": "2025-03-27T06:51:31.000Z"
+    }
+  },
+  "sa-east-1": {
+    "x86_64": {
+      "image_id": "ami-01d0400732d6d9396",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250327",
+      "creation_date": "2025-03-27T06:51:49.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-031ee677632107960",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:43.000Z"
     }
   },
   "eu-west-1": {
     "x86_64": {
-      "image_id": "ami-032a56ad5e480189c",
+      "image_id": "ami-0043735dd4439caed",
       "architecture": "x86_64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250112",
-      "creation_date": "2025-01-12T04:14:29.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:04.000Z"
     },
     "arm64": {
-      "image_id": "ami-0336482046f91c7b8",
+      "image_id": "ami-03f365d0c37a4edc6",
       "architecture": "arm64",
-      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20241120",
-      "creation_date": "2024-11-20T02:44:07.000Z"
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:35.000Z"
+    }
+  },
+  "ap-northeast-1": {
+    "x86_64": {
+      "image_id": "ami-044ffe1dd15859af4",
+      "architecture": "x86_64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-20250425",
+      "creation_date": "2025-04-25T07:01:10.000Z"
+    },
+    "arm64": {
+      "image_id": "ami-023a59fc3e26dc547",
+      "architecture": "arm64",
+      "name": "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-20250425",
+      "creation_date": "2025-04-25T07:02:41.000Z"
     }
   }
 }
