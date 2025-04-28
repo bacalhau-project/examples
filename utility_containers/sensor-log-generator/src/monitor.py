@@ -12,9 +12,41 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
     # Class variable to store reference to simulator
     simulator = None
 
+class MonitoringRequestHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for the monitoring server."""
+
+    # Class variable to store reference to simulator
+    simulator = None
+
     def log_message(self, format, *args):
         """Override to use the application's logger instead of stderr."""
-        logging.info(f"Monitor server: {format % args}")
+        # CHANGED: Only log successful requests (status codes 200-299)
+        if args and len(args) > 1:
+            try:
+                status_code = int(args[1])
+                if 200 <= status_code < 300:
+                    logging.info(f"Monitor server: {format % args}")
+            except (ValueError, IndexError):
+                pass
+        # ORIGINAL CODE WAS: logging.info(f"Monitor server: {format % args}")
+
+    # ADDED: New method to suppress error logging
+    def log_error(self, format, *args):
+        """Override to suppress error logging."""
+        # Completely suppress error logging
+        pass
+
+    # ADDED: New method to handle malformed requests silently
+    def handle_one_request(self):
+        """Handle a single HTTP request.
+
+        Override to silently ignore malformed requests.
+        """
+        try:
+            super().handle_one_request()
+        except Exception:
+            # Silently drop any exception during request parsing
+            self.close_connection = True
 
     def _send_response(self, status_code, content_type, content):
         """Helper method to send a response with the given status code and content."""
