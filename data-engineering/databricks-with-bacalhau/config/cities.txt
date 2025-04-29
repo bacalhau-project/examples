@@ -1,0 +1,24 @@
+Amsterdam
+Beijing
+Berlin
+Cairo
+Chicago
+Dallas
+Dubai
+Hong Kong
+London
+Madrid
+Mexico City
+Moscow
+Mumbai
+New York
+Paris
+Rome
+San Francisco
+Seoul
+Singapore
+Sydney
+Tokyo
+Toronto
+Vancouver
+Zurich
