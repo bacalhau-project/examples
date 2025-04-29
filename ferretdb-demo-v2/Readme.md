@@ -11,7 +11,16 @@ The entire stack is orchestrated using Docker Compose and includes a user-friend
 1. [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed.
 2. A [Google Maps API Key](https://developers.google.com/maps/documentation/embed/get-api-key?hl=en).
 
----
+### Configure Google Maps API Key
+
+To load and use the Google Maps JavaScript API in your project, follow these steps:
+
+**Enable the API & Obtain a Key**
+- Go to the [Google Cloud Console](https://console.cloud.google.com/).
+- Create (or select) a project.
+- In the **APIs & Services** dashboard, click **Enable APIs and Services** and search for **Maps JavaScript API**.
+- Click **Enable**, then navigate to **Keys & Credentials** → **Create credentials** → **API key**.
+- Copy the generated key to docker compose file
 
 ## ⚙️ Setup
 

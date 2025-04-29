@@ -1,5 +1,5 @@
-IMAGE_NAME ?= ghcr.io/bacalhau-project/examples/ferretdb-demo-sensor-monitoring-dashboard
-TAG ?= 2504101425
+IMAGE_NAME ?= ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard
+TAG ?= 2504291030
 FULL_IMAGE ?= $(IMAGE_NAME):$(TAG)
 
 build:
