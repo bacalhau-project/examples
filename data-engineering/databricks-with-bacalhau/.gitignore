@@ -1,0 +1,93 @@
+# .NET build outputs
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+*.CopyComplete
+*.FileListAbsolute.txt
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+.idea/
+
+# Project-specific files
+.env
+.envrc
+config.yaml
+*.log
+backup.bundle
+debug.sh
+.current-project-name
+
+# Build and temporary files
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Dependencies
+packages/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.assets.json
+*.nuget.cache
+
+# Runtime files
+*.dll.config
+*.exe.config
+*.json.user
+*.runtimeconfig.json
+*.deps.json
+
+# Archive files
+*.zip
+*.tar.gz
+*.7z
+*.rar
+
+# Backup files
+*~
+*.bak
+*.backup
+*.orig
+*.original
+
+# Local development files
+local.settings.json
+appsettings.Development.json
+*.Development.json
+
+# Cosmos DB specific
+cosmos-uploader/**/bin/
+cosmos-uploader/**/obj/
+cosmos-uploader-old/
+cosmos-uploader/.cspell/
+cosmos-uploader/bin/
+cosmos-uploader/obj/
+cosmos-uploader/cosmos-config.yaml
+demo-network/files/cosmos-config.yaml
+config/cosmos-config.yaml
+
+# Logs and data
+logs/
+data/
+archive/
+*.log
+
+data/*
+docker-compose.yaml
+sample-sensor/*
+
