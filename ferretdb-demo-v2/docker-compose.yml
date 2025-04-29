@@ -137,7 +137,7 @@ services:
     <<: *sensor-template
 
   frontend:
-    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-sensor-monitoring-dashboard:2504291030
+    image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2504291030
     container_name: ferret-demo-frontend
     environment:
       <<: *common-env-variables
