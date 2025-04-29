@@ -5,7 +5,7 @@ x-common-env-variables: &common-env-variables
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
   FERRETDB_URI: "mongodb://username:password@172.30.0.100:27017/postgres"
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
+  GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
 
 x-sensor-template: &sensor-template
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
@@ -137,7 +137,7 @@ services:
     <<: *sensor-template
 
   frontend:
-    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-sensor-monitoring-dashboard:2504101425
+    image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2504291030
     container_name: ferret-demo-frontend
     environment:
       <<: *common-env-variables

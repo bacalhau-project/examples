@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { GoogleMap, Marker, OverlayView, useLoadScript } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
-import {useEnv} from "@/providers/EnvProvider";
 
 const mapContainerStyle = {
   width: "100%",
@@ -138,7 +137,7 @@ const SensorMarker = memo(function SensorMarker({ sensor, data, zoom, onHover, o
   );
 });
 
-export default function DetailedWorldMap() {
+export default function DetailedWorldMap({apiKey}: {apiKey: string}) {
   const [sensorLocations, setSensorLocations] = useState<Sensor[]>([]);
   const [sensorsLoading, setSensorsLoading] = useState<boolean>(true);
   const [sensorData, setSensorData] = useState<Record<string, SensorDataItem>>({});
@@ -146,10 +145,8 @@ export default function DetailedWorldMap() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [hoveredSensor, setHoveredSensor] = useState<{ sensor: Sensor; data?: SensorDataItem } | null>(null);
 
-  const {GOOGLE_MAPS_API_KEY} = useEnv()
-
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: apiKey || "",
     language: "en",
   });
 
