@@ -48,20 +48,50 @@
 - Delete the `cosmos-uploader/` project directory.
 - Clean up references in build scripts and documentation.
 
-## Phase 3: Python Uploader Script
+## Phase 3: Uploader Container
 
-*3.1 Design and implement a Python uploader:*
-- CLI parameters: `--input-dir`, `--cloud-bucket`, `--prefix`, `--region` or storage account details.
-- Use `boto3` for S3 or `azure-storage-blob` for ADLS Gen2.
+*3.1 Build a Docker container to perform SQLite→Parquet conversion and upload to S3:*
+  - Base image: `python:3.11-slim`.
+  - Install dependencies: `pandas`, `pyarrow`, `boto3`.
+  - Copy the Python upload script into `/app` and set
+    ```Dockerfile
+    WORKDIR /app
+    COPY requirements.txt ./
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY upload_sqlite_to_s3.py ./
+    ENTRYPOINT ["python", "upload_sqlite_to_s3.py"]
+    ```
 
-*3.2 Upload resilience:*
-- Automatic retries with exponential backoff.
-- Verify checksum or file size post-upload.
-- On success, optionally delete or archive local Parquet file.
+*3.2 Container invocation pattern (continuous mode):*
+  - Create a host directory for state (last upload timestamp):
+    ```bash
+    mkdir -p /path/to/state
+    ```
+  - Run the uploader container with mounts and environment variables:
+    ```bash
+    docker run --rm \
+      -v /path/to/sensor_data.db:/data/sensor.db:ro \
+      -v /path/to/state:/state \
+      -e AWS_REGION=<region> \
+      -e BUCKET=<s3-bucket> \
+      -e PREFIX=<s3-prefix> \
+      -e UPLOAD_INTERVAL=300 \
+      uploader-image:latest \
+      --sqlite /data/sensor.db \
+      --table sensor_readings \
+      --bucket $BUCKET \
+      --prefix $PREFIX \
+      --state-dir /state \
+      --interval $UPLOAD_INTERVAL
+    ```
+  - The container will:
+    1. Read `/state/last_upload.json` to determine the last uploaded timestamp (or initialize to epoch).
+    2. Query `/data/sensor.db` for new rows in `sensor_readings` with `timestamp > last_upload_timestamp`.
+    3. Convert these rows to an in-memory Parquet file and upload to `s3://$BUCKET/$PREFIX/` using a timestamped filename.
+    4. Update `/state/last_upload.json` with the maximum timestamp from the uploaded batch.
+    5. Sleep for `$UPLOAD_INTERVAL` seconds and repeat indefinitely.
 
-*3.3 Logging and monitoring:*
-- Emit logs to stdout/stderr in JSON or plain text.
-- Integrate with remote-node monitoring/alerting.
+*3.3 Remove any standalone uploader scripts; utilize the container image exclusively for uploads.*
 
 ## Phase 4: Databricks Data Ingestion
 
