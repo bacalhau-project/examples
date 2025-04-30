@@ -17,17 +17,9 @@ if [[ $# -lt 1 ]]; then
 fi
 
 CONFIG_PATH="$1"
-DB_FILE="${DB_FILE:-./sensor_data.db}"
-STATE_DIR="${STATE_DIR:-./state}"
-UPLOAD_INTERVAL="${UPLOAD_INTERVAL:-300}"
-UPLOADER_IMAGE="${UPLOADER_IMAGE:-uploader-image:latest}"
-
-mkdir -p "$STATE_DIR"
+CONFIG_DIR=$(dirname "$CONFIG_PATH")
 
 docker run --rm \
-  -v "$DB_FILE":/data/sensor.db:ro \
-  -v "$STATE_DIR":/state \
-  -v "$CONFIG_PATH":/app/config.yaml:ro \
-  -e UPLOAD_INTERVAL="$UPLOAD_INTERVAL" \
-  "$UPLOADER_IMAGE" \
-  --config /app/config.yaml
+  -v "$CONFIG_DIR":/app \
+  uploader-image:latest \
+  --config /app/$(basename "$CONFIG_PATH")
