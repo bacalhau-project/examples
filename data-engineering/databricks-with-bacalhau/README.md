@@ -2,6 +2,18 @@
 
 This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engineering workloads. It includes tools for processing sensor data from SQLite databases and uploading it efficiently to Cosmos DB.
 
+## Environment Variables
+Before proceeding, export the following environment variables in your shell:
+
+- export S3_BUCKET_NAME=<your-s3-bucket-name>
+- export AWS_REGION=<your-aws-region>
+- export AWS_PROFILE=<your-aws-cli-profile>       # optional, if using a named CLI profile
+
+If not using instance profiles for remote-node uploads, also set:
+
+- export AWS_ACCESS_KEY_ID=<your-access-key-id>
+- export AWS_SECRET_ACCESS_KEY=<your-secret-access-key>
+
 ## Project Structure
 
 - `cosmos-uploader/`: Contains the C# application for uploading data to Cosmos DB.
@@ -11,7 +23,14 @@ This project demonstrates how to use Azure Cosmos DB with Bacalhau for data engi
 - `archive/`: Directory intended for archiving processed data.
   - `{city}/`: Example structure for Parquet archive files.
 - `sensor_manager/`: Python-based sensor manager/simulator (optional).
-- `utility_scripts/`: Miscellaneous helper scripts.
+ - `utility_scripts/`: Miscellaneous helper scripts.
+
+## Roadmap & Next Steps
+
+This project follows a re-architecture plan to transition Bacalhau job results to the Databricks Lakehouse. For the full plan and progress checklist, see [REARCHITECTURE.md](REARCHITECTURE.md).
+
+**Next Immediate Step:** Configure and test the secure connection from Databricks to AWS S3 (Phase 1.2.2 in the roadmap).
+See [Databricks S3 Connectivity Guide](docs/databricks-s3-connect.md) for a sample notebook snippet.
 
 ## Build Commands
 
@@ -217,6 +236,233 @@ These features significantly improve ingestion performance compared to single-it
     *   **Solutions**:
         1.  **(Recommended)** **Adjust External Firewall/NSG**: Modify the outbound rules for the host machine (where Docker is running) to ALLOW UDP traffic on destination port 53, originating from the host's IP address, to the required DNS server IPs (e.g., `1.1.1.1`, `1.0.0.1`) or to `0.0.0.0/0` for general DNS access.
         2.  **(Workaround)** **Configure Docker Daemon DNS**: Configure the Docker daemon to use a specific DNS server (e.g., `1.1.1.1`).
+
+## Cloud Storage & Databricks Foundation Setup (AWS S3)
+
+The new architecture targets Bacalhau job outputs → AWS S3 bucket → Databricks Lakehouse.
+
+### 1. AWS S3 Bucket Provisioning
+
+1. Install and configure AWS CLI:
+   ```bash
+   pip install awscli
+   aws configure
+   ```
+2. Create an S3 bucket (using `$S3_BUCKET_NAME` and `$AWS_REGION`):
+   ```bash
+   aws s3api create-bucket \
+     --bucket $S3_BUCKET_NAME \
+     --region $AWS_REGION \
+     --create-bucket-configuration LocationConstraint=$AWS_REGION
+   ```
+3. (Optional) Enable versioning and lifecycle policies:
+   ```bash
+   aws s3api put-bucket-versioning \
+     --bucket $S3_BUCKET_NAME \
+     --versioning-configuration Status=Enabled
+
+   aws s3api put-bucket-lifecycle-configuration \
+     --bucket $S3_BUCKET_NAME \
+     --lifecycle-configuration '{
+       "Rules": [
+         {
+           "ID": "cleanup-old-data",
+          "Prefix": "",
+           "Status": "Enabled",
+           "Expiration": {"Days": 365}
+         }
+       ]
+     }'
+   ```
+
+### 2. Designing a Folder Structure
+
+For simplicity, store all Parquet output files flat at the bucket root, named by sensor ID:
+```
+s3://$S3_BUCKET_NAME/<SENSOR_ID>.parquet
+```
+
+### 3. IAM Roles & Credentials
+
+#### 3.1 Remote Node Upload Role
+- Create an IAM role or user with an inline policy granting PutObject/ListBucket on the bucket path.
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": ["s3:PutObject", "s3:ListBucket"],
+        "Resource": [
+          "arn:aws:s3:::${S3_BUCKET_NAME}",
+          "arn:aws:s3:::${S3_BUCKET_NAME}/*"
+        ]
+      }
+    ]
+  }
+  ```
+- For non-AWS hosts, configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.
+
+#### 3.2 Databricks Access via Instance Profile
+1. In AWS IAM, create an instance profile role with the same S3 read permissions.
+2. In Databricks account console, configure the role as a cluster IAM role (Instance Profile).
+3. Attach the instance profile to your Databricks cluster.
+
+#### 3.3 Unity Catalog IAM Role Setup
+Below are AWS CLI commands to create an IAM role with the permissions needed for Unity Catalog and to verify setup.
+
+1. (If not already created) Create the S3 bucket:
+```bash
+aws s3api create-bucket \
+  --bucket $S3_BUCKET_NAME \
+  --region $AWS_REGION \
+  --create-bucket-configuration LocationConstraint=$AWS_REGION
+```
+
+2. Create an IAM trust policy for Databricks (save as `trust-policy.json`).
+Replace `414351767826` with the Databricks AWS account ID for your region, and `YOUR_DATABRICKS_ACCOUNT_ID` with your Databricks account ID.
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::414351767826:root" },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": { "sts:ExternalId": "YOUR_DATABRICKS_ACCOUNT_ID" }
+      }
+    }
+  ]
+}
+```
+
+3. Create the IAM role:
+```bash
+aws iam create-role \
+  --role-name DatabricksUnityCatalogRole \
+  --assume-role-policy-document file://trust-policy.json
+```
+
+4. Create an IAM policy for S3 access (save as `uc-s3-policy.json`):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+        "s3:ListBucket", "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::$S3_BUCKET_NAME",
+        "arn:aws:s3:::$S3_BUCKET_NAME/*"
+      ]
+    }
+  ]
+}
+```
+
+5. Attach the policy to the role:
+```bash
+aws iam put-role-policy \
+  --role-name DatabricksUnityCatalogRole \
+  --policy-name DatabricksUnityCatalogS3Access \
+  --policy-document file://uc-s3-policy.json
+```
+
+6. Retrieve the role ARN (for use in the Databricks metastore):
+```bash
+aws iam get-role --role-name DatabricksUnityCatalogRole --query 'Role.Arn' --output text
+```
+
+7. (Optional) Enable S3 bucket versioning:
+```bash
+aws s3api put-bucket-versioning \
+  --bucket $S3_BUCKET_NAME \
+  --versioning-configuration Status=Enabled
+```
+
+**Verification:**
+- Check the bucket exists:
+  ```bash
+  aws s3 ls s3://$S3_BUCKET_NAME
+  ```
+- Verify the role policy:
+  ```bash
+  aws iam get-role-policy \
+    --role-name DatabricksUnityCatalogRole \
+    --policy-name DatabricksUnityCatalogS3Access
+  ```
+
+Use the S3 path `s3://$S3_BUCKET_NAME/unity-catalog` (or a subpath) and the Role ARN from step 6 when configuring Unity Catalog in Databricks.
+
+### 4. Configuring Databricks
+
+#### 4.1 Secret Scopes (if using keys)
+```bash
+databricks secrets create-scope --scope aws-credentials
+databricks secrets put --scope aws-credentials --key aws_access_key_id
+databricks secrets put --scope aws-credentials --key aws_secret_access_key
+```
+
+#### 4.2 Spark Configuration (Cluster init script or Notebook)
+```python
+spark.conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
+spark.conf.set("spark.hadoop.fs.s3a.access.key", dbutils.secrets.get("aws-credentials","aws_access_key_id"))
+spark.conf.set("spark.hadoop.fs.s3a.secret.key", dbutils.secrets.get("aws-credentials","aws_secret_access_key"))
+# optional optimizations:
+spark.conf.set("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+```
+
+#### 4.3 Accessing Data in Notebooks
+```python
+# Reading Parquet
+df = spark.read.parquet("s3a://$S3_BUCKET_NAME/<SENSOR_ID>.parquet")
+display(df)
+
+# Using Auto Loader (cloudFiles)
+df_stream = (
+  spark.readStream
+    .format("cloudFiles")
+    .option("cloudFiles.format", "parquet")
+    .option("cloudFiles.schemaLocation", "s3a://$S3_BUCKET_NAME/_schemas/")
+    .load("s3a://$S3_BUCKET_NAME/")
+)
+df_stream.writeStream.format("delta") \
+    .option("checkpointLocation", "s3a://$S3_BUCKET_NAME/_checkpoints/") \
+    .toTable("bacalhau_results")
+```
+
+#### 4.4 Setting Up Delta Lake Tables
+
+Before running your Auto Loader jobs, ensure the target Delta Lake table exists on Databricks. In a notebook or the SQL editor, run:
+```sql
+-- Create a database/schema if needed
+CREATE DATABASE IF NOT EXISTS bacalhau_results
+  LOCATION 's3a://$S3_BUCKET_NAME/delta/bacalhau_results';
+
+-- Create a Delta table for sensor readings
+CREATE TABLE IF NOT EXISTS bacalhau_results.sensor_readings
+USING DELTA
+LOCATION 's3a://$S3_BUCKET_NAME/delta/bacalhau_results';
+```
+If using Unity Catalog, register in your catalog instead:
+```sql
+CREATE SCHEMA IF NOT EXISTS catalog_name.bacalhau_results;
+CREATE TABLE IF NOT EXISTS catalog_name.bacalhau_results.sensor_readings
+USING DELTA
+LOCATION 's3a://$S3_BUCKET_NAME/delta/bacalhau_results';
+```
+This setup guarantees your ingestion jobs have a pre-existing Delta Lake target.
+
+### 5. Next Steps
+
+- Implement Bacalhau job output to Parquet on remote nodes.
+- Build a resilient upload script that writes to the S3 path.
+- Develop Databricks Auto Loader notebooks to ingest and write Delta tables.
+- Set up Databricks Workflows for orchestration.
 
 ## License
 
