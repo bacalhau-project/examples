@@ -50,19 +50,26 @@
 
 ## Phase 3: Uploader Container
 
-*3.1 Build a Docker container based on the UV base image:*
-  - Base image: `uv:latest`.
-  - Copy the Python upload script into `/app`:
+3.1 Build a multi-stage Docker container using the UV base image:
+  - **Builder stage** (named `builder`): install dependencies by running UV-run once to cache packages.
+  - **Runtime stage** (named `runtime`): start from `uv:latest`, copy Python packages from `builder`, and include only the script.
+  - Example `uploader/Dockerfile`:
     ```Dockerfile
+    ### Builder stage: install dependencies
+    FROM uv:latest AS builder
     WORKDIR /app
     COPY upload_sqlite_to_s3.py ./
-    ```
-  - Pre-cache Python dependencies via UV-run:
-    ```Dockerfile
+    # Cache Python dependencies
     RUN uv run -s upload_sqlite_to_s3.py --help || true
-    ```
-  - Entrypoint using UV-run:
-    ```Dockerfile
+
+    ### Runtime stage: minimal image with pre-installed deps
+    FROM uv:latest AS runtime
+    WORKDIR /app
+    # Copy installed site-packages from builder
+    COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+    # Copy uploader script
+    COPY upload_sqlite_to_s3.py ./
+    # Entrypoint using UV-run
     ENTRYPOINT ["uv", "run", "-s", "upload_sqlite_to_s3.py"]
     ```
 
