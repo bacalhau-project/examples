@@ -67,27 +67,24 @@
     ```bash
     mkdir -p /path/to/state
     ```
-  - Run the uploader container with mounts and environment variables:
+  - Run the uploader container with mounts and arguments:
     ```bash
     docker run --rm \
       -v /path/to/sensor_data.db:/data/sensor.db:ro \
       -v /path/to/state:/state \
-      -e AWS_REGION=<region> \
-      -e BUCKET=<s3-bucket> \
-      -e PREFIX=<s3-prefix> \
       -e UPLOAD_INTERVAL=300 \
       uploader-image:latest \
       --sqlite /data/sensor.db \
       --table sensor_readings \
-      --bucket $BUCKET \
-      --prefix $PREFIX \
+      --timestamp-field timestamp \
+      --table-path s3://<bucket>/<delta-table> \
       --state-dir /state \
       --interval $UPLOAD_INTERVAL
     ```
   - The container will:
-    1. Read `/state/last_upload.json` to determine the last uploaded timestamp (or initialize to epoch).
-    2. Query `/data/sensor.db` for new rows in `sensor_readings` with `timestamp > last_upload_timestamp`.
-    3. Convert these rows to an in-memory Parquet file and upload to `s3://$BUCKET/$PREFIX/` using a timestamped filename.
+    1. Read `/state/last_upload.json` to determine the last upload timestamp (initialize to epoch if missing).
+    2. Query `/data/sensor.db` for new rows where `timestamp > last_upload_timestamp`.
+    3. Append these new rows directly to the Delta Lake table specified by `--table-path`.
     4. Update `/state/last_upload.json` with the maximum timestamp from the uploaded batch.
     5. Sleep for `$UPLOAD_INTERVAL` seconds and repeat indefinitely.
 
