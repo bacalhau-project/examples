@@ -50,16 +50,20 @@
 
 ## Phase 3: Uploader Container
 
-*3.1 Build a Docker container to perform SQLite→Parquet conversion and upload to S3:*
-  - Base image: `python:3.11-slim`.
-  - Install dependencies: `pandas`, `pyarrow`, `boto3`.
-  - Copy the Python upload script into `/app` and set
+*3.1 Build a Docker container based on the UV base image:*
+  - Base image: `uv:latest`.
+  - Copy the Python upload script into `/app`:
     ```Dockerfile
     WORKDIR /app
-    COPY requirements.txt ./
-    RUN pip install --no-cache-dir -r requirements.txt
     COPY upload_sqlite_to_s3.py ./
-    ENTRYPOINT ["python", "upload_sqlite_to_s3.py"]
+    ```
+  - Pre-cache Python dependencies via UV-run:
+    ```Dockerfile
+    RUN uv run -s upload_sqlite_to_s3.py --help || true
+    ```
+  - Entrypoint using UV-run:
+    ```Dockerfile
+    ENTRYPOINT ["uv", "run", "-s", "upload_sqlite_to_s3.py"]
     ```
 
 *3.2 Container invocation pattern (continuous mode):*
