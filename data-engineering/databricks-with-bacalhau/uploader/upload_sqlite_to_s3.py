@@ -83,7 +83,6 @@ def main():
         logging.error(f"SQLite file not found: {sqlite_path}")
         sys.exit(1)
 
-    # Read data into DataFrame
     logging.info("Reading data from SQLite: %s", sqlite_path)
     try:
         df = read_data(str(sqlite_path), args.query, args.table)
@@ -95,7 +94,6 @@ def main():
         logging.warning("No data read from source. Exiting.")
         sys.exit(0)
 
-    # Convert to in-memory Parquet
     logging.info("Converting DataFrame with %d rows to Parquet", len(df))
     buffer = io.BytesIO()
     try:
@@ -104,7 +102,6 @@ def main():
         logging.error("Failed to serialize to Parquet: %s", e)
         sys.exit(1)
 
-    # Determine upload key
     base_name = sqlite_path.stem
     key_name = f"{args.prefix.rstrip('/')}/{base_name}.parquet" if args.prefix else f"{base_name}.parquet"
     key_name = key_name.lstrip('/')
@@ -116,7 +113,6 @@ def main():
     except Exception as e:
         logging.error("Failed to upload to S3: %s", e, exc_info=True)
         sys.exit(1)
-
 
 if __name__ == '__main__':
     main()
