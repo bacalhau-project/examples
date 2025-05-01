@@ -457,6 +457,39 @@ LOCATION 's3a://$S3_BUCKET_NAME/delta/bacalhau_results';
 ```
 This setup guarantees your ingestion jobs have a pre-existing Delta Lake target.
 
+#### 4.5 Managing Delta Tables via Databricks CLI (Docker)
+
+You can also create and list Delta tables using the Databricks CLI in a Docker container.
+Ensure you have a `~/.databrickscfg` configured with your workspace host and token.
+
+1. Create a Delta table in Unity Catalog:
+    ```bash
+    docker run --rm -it \
+      -v ~/.databrickscfg:/home/databricks/.databrickscfg:ro \
+      databricks/databricks-cli unity-catalog tables create \
+        --catalog <catalog_name> \
+        --schema bacalhau_results \
+        --name sensor_readings \
+        --table-type DELTA \
+        --storage-location s3://$S3_BUCKET_NAME/delta/bacalhau_results
+    ```
+
+2. List tables in the schema:
+    ```bash
+    docker run --rm -it \
+      -v ~/.databrickscfg:/home/databricks/.databrickscfg:ro \
+      databricks/databricks-cli unity-catalog tables list \
+        --catalog <catalog_name> \
+        --schema bacalhau_results
+    ```
+
+3. (Optional) Inspect the underlying storage path using `fs ls`:
+    ```bash
+    docker run --rm -it \
+      -v ~/.databrickscfg:/home/databricks/.databrickscfg:ro \
+      databricks/databricks-cli fs ls s3://$S3_BUCKET_NAME/delta/bacalhau_results/
+    ```
+
 ### 5. Next Steps
 
 - Implement Bacalhau job output to Parquet on remote nodes.
