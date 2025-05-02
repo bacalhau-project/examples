@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging.Abstractions;
 using CosmosUploader.Processors; // Add using for processors
+using System.Globalization; // Add for CultureInfo
 
 namespace CosmosUploader
 {
@@ -439,6 +440,61 @@ namespace CosmosUploader
             return await rootCommand.InvokeAsync(args);
         }
 
+        // +++ NEW HELPER FUNCTION +++
+        private static TimeSpan? ParseTimeSpan(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return null;
+
+            input = input.Trim().ToLowerInvariant();
+            long value;
+            TimeSpan result;
+
+            try
+            {
+                if (input.EndsWith("ms"))
+                {
+                    value = long.Parse(input.Substring(0, input.Length - 2), CultureInfo.InvariantCulture);
+                    result = TimeSpan.FromMilliseconds(value);
+                }
+                else if (input.EndsWith("s"))
+                {
+                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
+                    result = TimeSpan.FromSeconds(value);
+                }
+                else if (input.EndsWith("m"))
+                {
+                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
+                    result = TimeSpan.FromMinutes(value);
+                }
+                else if (input.EndsWith("h"))
+                {
+                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
+                    result = TimeSpan.FromHours(value);
+                }
+                else if (input.EndsWith("d"))
+                {
+                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
+                    result = TimeSpan.FromDays(value);
+                }
+                else
+                {
+                    // Fallback to standard TimeSpan parsing
+                    result = TimeSpan.Parse(input, CultureInfo.InvariantCulture);
+                }
+
+                return result > TimeSpan.Zero ? result : null; // Ensure positive duration
+            }
+            catch (FormatException)
+            {
+                return null; // Parsing failed
+            }
+            catch (OverflowException)
+            {
+                 return null; // Value too large
+            }
+        }
+        // +++ END HELPER FUNCTION +++
+
         // --- Refactored Configuration Loading and Service Setup ---  
         private static (AppSettings? AppSettings, IServiceProvider? ServiceProvider) LoadAndConfigureServices(
             string configPath, 
@@ -492,8 +548,16 @@ namespace CosmosUploader
                     }
                     try
                     {                       
-                        var converter = new System.ComponentModel.TimeSpanConverter();
-                        aggregationWindow = (TimeSpan?)converter.ConvertFromString(aggregationConfig.Window);
+                        // Use the new helper function for parsing
+                        aggregationWindow = ParseTimeSpan(aggregationConfig.Window); 
+                        
+                        if (!aggregationWindow.HasValue) // Check if parsing failed
+                        {
+                            logger.LogCritical("Invalid configuration: Could not parse aggregation window '{Window}'. Use formats like '30s', '5m', '1h', '1.5h', or standard TimeSpan format.", aggregationConfig.Window);
+                            Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'.");
+                            return (null, null);
+                        }
+                        
                         if (aggregationWindow <= TimeSpan.Zero)
                         {
                             logger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be positive.", aggregationConfig.Window);
@@ -546,6 +610,8 @@ namespace CosmosUploader
                          effectiveLevel = configLevel;
                     }
                     builder.SetMinimumLevel(effectiveLevel);
+                    // Add HttpClientFactory registration
+                    services.AddHttpClient();
                     if (appSettings.Logging != null)
                     {
                         appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
