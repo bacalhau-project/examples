@@ -1,0 +1,60 @@
+cosmos:
+  endpoint: "https://your-cosmos-account.documents.azure.com:443/"
+  key: "your-cosmos-key"
+  database: "SensorData"
+  container: "SensorReadings"
+  partition_key: "/city"
+
+performance:
+  upload_interval_seconds: 30  # Base interval between uploads
+  upload_jitter_seconds: 10    # Maximum random jitter to add/subtract from interval
+  disable_indexing_during_bulk: false # Optional: Can improve write RU cost but affects reads
+  sleep_interval: 60 # Seconds between polls in continuous mode
+
+logging:
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR
+  log_request_units: true
+  log_latency: true
+
+# --- Data Processing Configuration (Optional) ---
+processing:
+  # List of processors to apply sequentially.
+  # Available processors (case-insensitive): Schematize, Sanitize
+  # If this list is empty or omitted, raw data is used (after initial conversion).
+  processors:
+    - Schematize
+    # - Sanitize # Uncomment to add sanitization (depends on Schematize)
+
+  # Optional aggregation step, runs *after* the processors list.
+  # If this section is present, 'window' is required.
+  # aggregation:
+  #   window: "5m" # Aggregation time window (e.g., 30s, 5m, 1h)
+
+# Example 1: No processing pipeline, no aggregation (raw data)
+# processing: {}
+# or omit the 'processing' section entirely
+
+# Example 2: Schematize and Sanitize pipeline, no aggregation
+# processing:
+#  processors:
+#    - Schematize
+#    - Sanitize
+
+# Example 3: Schematize pipeline followed by 10-minute aggregation
+# processing:
+#   processors:
+#     - Schematize
+#   aggregation:
+#     window: "10m"
+
+# Example 4: Aggregation only (no pipeline processors)
+# processing:
+#   processors: [] # Empty list or omit
+#   aggregation:
+#     window: "1h"
+
+# --- Configuration File Watching (Optional) ---
+# This section is optional. If omitted, watching is enabled by default.
+config_watch:
+  enabled: true # Default: true. Set to false to disable.
+  poll_interval_seconds: 5 # Default: 5. How often to check for changes. 
