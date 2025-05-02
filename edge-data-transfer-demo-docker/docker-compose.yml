@@ -61,7 +61,7 @@ services:
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
     ports:
-      - "8438:8438"
+      - "8818:8818"
     volumes:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
     healthcheck:
@@ -146,4 +146,4 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.29.0.0/16
+        - subnet: 172.39.0.0/16
