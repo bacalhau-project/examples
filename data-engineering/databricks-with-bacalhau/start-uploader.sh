@@ -21,5 +21,5 @@ CONFIG_DIR=$(dirname "$CONFIG_PATH")
 
 docker run --rm \
   -v "$CONFIG_DIR":/app \
-  uploader-image:latest \
+  ghcr.io/bacalhau-project/databricks-uploader:latest \
   --config /app/$(basename "$CONFIG_PATH")

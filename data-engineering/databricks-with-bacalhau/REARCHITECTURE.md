@@ -73,7 +73,10 @@
     ENTRYPOINT ["uv", "run", "-s", "upload_sqlite_to_s3.py"]
     ```
 
-*3.2 Container invocation pattern (continuous mode):*
+*3.2 Schema auto-detection and container invocation:*
+  - The uploader script automatically detects the only user table and its timestamp column via SQLite schema introspection; no need to pass those flags.
+*3.3 Container invocation pattern (continuous mode):*
+  - The uploader script auto-detects the SQLite table and timestamp column via schema introspection; no need to pass those flags.
   - Create a host directory for state (last upload timestamp):
     ```bash
     mkdir -p /path/to/state
@@ -86,8 +89,6 @@
       -e UPLOAD_INTERVAL=300 \
       uploader-image:latest \
       --sqlite /data/sensor.db \
-      --table sensor_readings \
-      --timestamp-field timestamp \
       --table-path s3://<bucket>/<delta-table> \
       --state-dir /state \
       --interval $UPLOAD_INTERVAL
