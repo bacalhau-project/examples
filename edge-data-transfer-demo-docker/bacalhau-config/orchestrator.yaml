@@ -9,6 +9,7 @@ API:
   Port: 1234
 WebUI:
   Enabled: true
+  Listen: 0.0.0.0:8818
 UpdateConfig:
   Interval: 0
 JobDefaults:

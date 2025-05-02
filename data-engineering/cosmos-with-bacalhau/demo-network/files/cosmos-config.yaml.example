@@ -1,42 +1,52 @@
 # Azure Cosmos DB Configuration
 cosmos:
-  # Connection details
-  endpoint: "${COSMOS_ENDPOINT}"
-  key: "${COSMOS_KEY}"
-  database_name: "${COSMOS_DATABASE:-SensorData}"
-  container_name: "${COSMOS_CONTAINER:-SensorReadings}"
-  partition_key: "/city"
-  
-  # Connection settings
-  connection:
-    mode: "direct"  # Options: direct, gateway
-    protocol: "Https"  # Options: Https, Tcp
-    retry_total: 10
-    retry_backoff_max: 30
-    max_retry_attempts: 10
-    max_retry_wait_time: 30
-  
-  # Performance settings
-  performance:
-    preferred_regions: []  # List of preferred regions, e.g. ["East US", "West US"]
-    enable_endpoint_discovery: true
-    bulk_execution: true
+  # Connection details - Use environment variables or direct values
+  endpoint: "https://your-cosmos-account.documents.azure.com:443/" # Replace with your Cosmos DB endpoint
+  key: "YourCosmosAccountKey"          # Replace with your Cosmos DB primary or secondary key
+  database_name: "SensorDataDB"     # The name of the database to use
+  container_name: "SensorReadingsContainer" # The name of the container to use
+  partition_key: "/city" # The path to the partition key (e.g., /sensorId, /location/city)
 
-# Performance configuration
+  # Connection settings (Optional - Defaults shown)
+  # connection:
+  #   mode: "direct"             # Options: direct, gateway
+  #   protocol: "Https"          # Options: Https, Tcp
+  #   max_retry_attempts: 9      # Max retries on transient errors
+  #   max_retry_wait_time: 30    # Max total wait time (seconds) across retries
+  #   enable_endpoint_discovery: true
+  #   preferred_regions: []      # List of preferred regions, e.g. ["East US", "West US"]
+  #   bulk_execution: true       # Enable efficient bulk operations
+
+# Performance configuration (Top Level)
 performance:
-  throughput: 5000  # Provisioned throughput (RU/s) - optimized for high performance
-  batch_size: 1000  # Number of documents to upload in a single batch - maximum recommended
-  max_parallel_operations: 20  # Maximum number of parallel operations - increased for better throughput
-  autoscale: true  # Enable autoscale for handling variable workloads
-  disable_indexing_during_bulk: true  # Optimize bulk operations
+  # throughput: 5000             # Provisioned throughput (RU/s) - Required if autoscale is false
+  # autoscale: true              # Enable autoscale (Recommended) - If true, throughput is ignored
+  # autoscale_max_throughput: 10000 # Required if autoscale is true - Max RU/s for autoscale
+  batch_size: 1000             # Number of documents per upload batch (Default: 1000)
+  max_parallel_operations: 20  # Max concurrent uploads (Default: 20)
+  # disable_indexing_during_bulk: true # Temporarily disable indexing for faster bulk ingest (Default: false) - Use with caution!
 
 # Logging configuration
 logging:
-  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  log_request_units: true  # Whether to log request units consumed
-  log_latency: true  # Whether to log latency metrics
+  level: "Information"         # Options: Debug, Information, Warning, Error, Critical
+  log_request_units: false     # Log RU cost per operation (Default: false)
+  log_latency: false           # Log latency per operation (Default: false)
 
-Processing:
-  Schematize: false
-  Sanitize: false
-  Aggregate: false
+# Data Processing Configuration (Optional)
+processing:
+  # List of processors to apply sequentially. Case-insensitive.
+  # Available processors: Schematize, Sanitize
+  # If empty or omitted, raw data is converted and uploaded directly.
+  processors:
+    - Schematize             # Example: Apply schema validation/enforcement
+    - Sanitize               # Example: Cleanse data after schematization
+
+  # Aggregation configuration (Optional)
+  # If defined, pipeline output is aggregated before upload. Only aggregated data is uploaded.
+  aggregation:
+    window: "5m"             # Aggregation time window (e.g., 30s, 5m, 1h). Required if 'aggregation' section exists.
+
+# Configuration File Watching (Optional - Defaults shown)
+config_watch:
+  enabled: true              # Check for config changes via notification file (Default: true)
+  # poll_interval_seconds: 5 # How often to check if watching is enabled (Default: 5) - Note: Uses file system events primarily.
