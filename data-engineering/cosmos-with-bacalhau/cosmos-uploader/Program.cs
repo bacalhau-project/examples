@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging.Abstractions;
 using CosmosUploader.Processors; // Add using for processors
 using System.Globalization; // Add for CultureInfo
+using Humanizer; // <-- Add Humanizer
 
 namespace CosmosUploader
 {
@@ -299,7 +300,7 @@ namespace CosmosUploader
                                             {
                                                 // Format Timestamp in ISO 8601 Round-trip format
                                                 LastProcessedTimestampIso = lastRecord.Timestamp.ToUniversalTime().ToString("o"), 
-                                                LastProcessedId = lastRecord.Id
+                                                LastProcessedId = lastRecord.OriginalSqliteId.ToString()
                                             };
 
                                             // Serialize and overwrite the status file
@@ -440,61 +441,6 @@ namespace CosmosUploader
             return await rootCommand.InvokeAsync(args);
         }
 
-        // +++ NEW HELPER FUNCTION +++
-        private static TimeSpan? ParseTimeSpan(string? input)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return null;
-
-            input = input.Trim().ToLowerInvariant();
-            long value;
-            TimeSpan result;
-
-            try
-            {
-                if (input.EndsWith("ms"))
-                {
-                    value = long.Parse(input.Substring(0, input.Length - 2), CultureInfo.InvariantCulture);
-                    result = TimeSpan.FromMilliseconds(value);
-                }
-                else if (input.EndsWith("s"))
-                {
-                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
-                    result = TimeSpan.FromSeconds(value);
-                }
-                else if (input.EndsWith("m"))
-                {
-                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
-                    result = TimeSpan.FromMinutes(value);
-                }
-                else if (input.EndsWith("h"))
-                {
-                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
-                    result = TimeSpan.FromHours(value);
-                }
-                else if (input.EndsWith("d"))
-                {
-                    value = long.Parse(input.Substring(0, input.Length - 1), CultureInfo.InvariantCulture);
-                    result = TimeSpan.FromDays(value);
-                }
-                else
-                {
-                    // Fallback to standard TimeSpan parsing
-                    result = TimeSpan.Parse(input, CultureInfo.InvariantCulture);
-                }
-
-                return result > TimeSpan.Zero ? result : null; // Ensure positive duration
-            }
-            catch (FormatException)
-            {
-                return null; // Parsing failed
-            }
-            catch (OverflowException)
-            {
-                 return null; // Value too large
-            }
-        }
-        // +++ END HELPER FUNCTION +++
-
         // --- Refactored Configuration Loading and Service Setup ---  
         private static (AppSettings? AppSettings, IServiceProvider? ServiceProvider) LoadAndConfigureServices(
             string configPath, 
@@ -547,29 +493,24 @@ namespace CosmosUploader
                          return (null, null);
                     }
                     try
-                    {                       
-                        // Use the new helper function for parsing
-                        aggregationWindow = ParseTimeSpan(aggregationConfig.Window); 
-                        
-                        if (!aggregationWindow.HasValue) // Check if parsing failed
-                        {
-                            logger.LogCritical("Invalid configuration: Could not parse aggregation window '{Window}'. Use formats like '30s', '5m', '1h', '1.5h', or standard TimeSpan format.", aggregationConfig.Window);
-                            Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'.");
-                            return (null, null);
-                        }
-                        
-                        if (aggregationWindow <= TimeSpan.Zero)
-                        {
-                            logger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be positive.", aggregationConfig.Window);
-                            Console.Error.WriteLine($"ERROR: Aggregation window '{aggregationConfig.Window}' must be positive.");
-                            return (null, null);
-                        }
-                        logger.LogInformation("Aggregation configured with window: {Window}", aggregationWindow);
-                    }
-                    catch (Exception ex)
                     {
-                        logger.LogCritical(ex, "Invalid configuration: Could not parse aggregation window '{Window}'.", aggregationConfig.Window);
-                        Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'.");
+                        // Use TimeSpan.TryParse for robust parsing
+                        if (TimeSpan.TryParse(aggregationConfig.Window, out var parsedWindow) && parsedWindow > TimeSpan.Zero)
+                        {
+                            aggregationWindow = parsedWindow;
+                        }
+                        else
+                        {
+                             logger.LogCritical("Invalid configuration: Could not parse aggregation window '{Window}' or it was not positive. Use formats like '00:05:00' (5 minutes) or '1.00:00:00' (1 day).", aggregationConfig.Window);
+                             Console.Error.WriteLine($"ERROR: Invalid format or non-positive value for aggregation window '{aggregationConfig.Window}'. Use standard TimeSpan formats (e.g., '00:05:00', '1.00:00:00').");
+                             return (null, null);
+                        }
+
+                        logger.LogInformation("Aggregation configured with window: {Window} ({WindowHumanized})", aggregationWindow, aggregationWindow.Value.Humanize());
+                    }
+                    catch (Exception ex) // Catch potential errors during parsing
+                    {
+                        logger.LogCritical(ex, "Error processing aggregation window configuration '{Window}'.", aggregationConfig.Window);
                         return (null, null);
                     }
                 }

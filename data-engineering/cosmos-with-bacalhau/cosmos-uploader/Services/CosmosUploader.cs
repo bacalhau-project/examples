@@ -74,7 +74,7 @@ namespace CosmosUploader.Services
                 _logger.LogError(ex, "[Connectivity Check] Connection attempt to {Endpoint} timed out.", endpointUri);
                 return false;
             }
-            catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogWarning("[Connectivity Check] Connectivity check cancelled.");
                 cancellationToken.ThrowIfCancellationRequested();
@@ -285,8 +285,8 @@ namespace CosmosUploader.Services
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Store local_reading_id for logging/error context before potentially removing 'id' key
-                string logItemId = item.TryGetValue("local_reading_id", out object? localId) && localId != null ? localId.ToString() ?? "unknown" : "unknown";
+                // Store sqlite_id for logging/error context before potentially removing 'id' key
+                string logItemId = item.TryGetValue("sqlite_id", out object? sqliteIdObj) && sqliteIdObj != null ? sqliteIdObj.ToString() ?? "unknown" : "unknown";
 
                 try
                 {
@@ -295,16 +295,16 @@ namespace CosmosUploader.Services
                     {
                         string newId = Guid.NewGuid().ToString();
                         item["id"] = newId;
-                        _logger.LogTrace("Generated new GUID '{NewId}' for item with local_reading_id {LogItemId}.", newId, logItemId);
+                        _logger.LogTrace("Generated new GUID '{NewId}' for item with sqlite_id {LogItemId}.", newId, logItemId);
                     }
                     else
                     {
-                         _logger.LogTrace("Using existing 'id' '{ExistingId}' for item with local_reading_id {LogItemId}.", item["id"], logItemId);
+                         _logger.LogTrace("Using existing 'id' '{ExistingId}' for item with sqlite_id {LogItemId}.", item["id"], logItemId);
                     }
 
                     if (!item.TryGetValue(partitionKeyName, out object? pkValue) || pkValue == null)
                     {
-                         _logger.LogWarning("Item missing partition key field '{PartitionKeyName}' or value is null. Skipping item with local_reading_id: {LogItemId}", partitionKeyName, logItemId);
+                         _logger.LogWarning("Item missing partition key field '{PartitionKeyName}' or value is null. Skipping item with sqlite_id: {LogItemId}", partitionKeyName, logItemId);
                          failedUploads++;
                          continue;
                     }
@@ -315,10 +315,28 @@ namespace CosmosUploader.Services
                     }
                     if (string.IsNullOrEmpty(partitionKeyValue))
                     {
-                        _logger.LogWarning("Partition key value for field '{PartitionKeyName}' is empty. Skipping item: {LogItemId}", partitionKeyName, logItemId);
+                        _logger.LogWarning("Partition key value for field '{PartitionKeyName}' is empty. Skipping item with sqlite_id: {LogItemId}", partitionKeyName, logItemId);
                         failedUploads++;
                         continue;
                     }
+
+                    // --- DIAGNOSTIC LOGGING --- 
+                    // Log the item content right before the upload attempt
+                    try 
+                    {
+                        var pkForLog = item.TryGetValue(partitionKeyName, out var pkValLog) ? pkValLog?.ToString() : "<missing_pk>";
+                        var idForLog = item.TryGetValue("id", out var idValLog) ? idValLog?.ToString() : "<missing_id>";
+                        var pressureForLog = item.TryGetValue("pressure", out var pressureValLog) ? pressureValLog?.ToString() : "<missing_pressure>";
+                        var humidityForLog = item.TryGetValue("humidity", out var humidityValLog) ? humidityValLog?.ToString() : "<missing_humidity>";
+                        
+                        _logger.LogDebug("Preparing to upload item. SQLiteID: {SqliteId}, DocID: {DocId}, PK ({PKName}): {PKValue}, Pressure: {Pressure}, Humidity: {Humidity}", 
+                            logItemId, idForLog, partitionKeyName, pkForLog, pressureForLog, humidityForLog);
+                    }
+                    catch(Exception logEx)
+                    {
+                        _logger.LogWarning(logEx, "Error during diagnostic logging for item SQLiteID {SqliteId}", logItemId);
+                    }
+                    // --- END DIAGNOSTIC LOGGING ---
 
                     // Use the batch-specific token for the create operation
                     tasks.Add(_container.CreateItemAsync(item, new PartitionKey(partitionKeyValue), cancellationToken: batchToken)
@@ -341,7 +359,7 @@ namespace CosmosUploader.Services
                                 }
                                 
                                 totalRU += task.Result.RequestCharge;
-                                _logger.LogTrace("Successfully uploaded item (Local ID: {LogItemId}, Cosmos ID: {CosmosId}). RU: {RU}", 
+                                _logger.LogTrace("Successfully uploaded item (SQLite ID: {LogItemId}, Cosmos ID: {CosmosId}). RU: {RU}", 
                                     logItemId, cosmosId, task.Result.RequestCharge);
                             }
                             else if (task.IsFaulted)
@@ -351,7 +369,7 @@ namespace CosmosUploader.Services
                                 {
                                     Interlocked.Increment(ref failedUploads); // Still count as failed for this batch attempt report
                                     // Log as Warning since we intend to retry
-                                    _logger.LogWarning("Service Unavailable (503) detected for item (Local ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
+                                    _logger.LogWarning("Service Unavailable (503) detected for item (SQLite ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
                                     // Cancel the rest of the batch
                                     try { batchCts.Cancel(); } catch (ObjectDisposedException) { /* Ignore if already disposed */ }
                                 }
@@ -359,7 +377,7 @@ namespace CosmosUploader.Services
                                 else if (task.Exception?.InnerException is CosmosException cosmosEx429 && cosmosEx429.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                                 {
                                     Interlocked.Increment(ref failedUploads); // Count as failed for this batch attempt report
-                                    _logger.LogWarning("TooManyRequests (429) detected for item (Local ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
+                                    _logger.LogWarning("TooManyRequests (429) detected for item (SQLite ID: {LogItemId}). Halting batch upload for this cycle. Will retry later.", logItemId);
                                     // Cancel the rest of the batch
                                     try { batchCts.Cancel(); } catch (ObjectDisposedException) { /* Ignore if already disposed */ }
                                 }
@@ -368,7 +386,7 @@ namespace CosmosUploader.Services
                                 {
                                     Interlocked.Increment(ref conflictUploads);
                                     // Log conflict, which might occur if the explicitly provided/generated ID already exists.
-                                    _logger.LogWarning(task.Exception?.InnerException, "Conflict (409) detected for item (Local ID: {LogItemId}, Document ID: {DocumentId}). Skipping.", logItemId, item.TryGetValue("id", out var docId) ? docId : "unknown");
+                                    _logger.LogWarning(task.Exception?.InnerException, "Conflict (409) detected for item (SQLite ID: {LogItemId}, Document ID: {DocumentId}). Skipping.", logItemId, item.TryGetValue("id", out var docId) ? docId : "unknown");
                                 }
                                 // Add specific handling for BadRequest (400)
                                 else if (task.Exception?.InnerException is CosmosException cosmosEx400 && cosmosEx400.StatusCode == System.Net.HttpStatusCode.BadRequest)
@@ -376,20 +394,20 @@ namespace CosmosUploader.Services
                                     string errorMessage = cosmosEx400.ResponseBody ?? cosmosEx400.Message;
                                     // Handle BadRequest errors normally now that we explicitly set 'id'
                                     Interlocked.Increment(ref failedUploads);
-                                    _logger.LogError(cosmosEx400, "BadRequest (400) detected for item (Local ID: {LogItemId}, Document ID: {DocumentId}). Reason: {Reason}", logItemId, item.TryGetValue("id", out var docId400) ? docId400 : "unknown", errorMessage);
+                                    _logger.LogError(cosmosEx400, "BadRequest (400) detected for item (SQLite ID: {LogItemId}, Document ID: {DocumentId}). Reason: {Reason}", logItemId, item.TryGetValue("id", out var docId400) ? docId400 : "unknown", errorMessage);
                                 }
                                 // Handle other failures
                                 else
                                 {
                                     Interlocked.Increment(ref failedUploads);
-                                    _logger.LogError(task.Exception?.InnerException ?? task.Exception, "Failed to upload item (Local ID: {LogItemId})", logItemId);
+                                    _logger.LogError(task.Exception?.InnerException ?? task.Exception, "Failed to upload item (SQLite ID: {LogItemId})", logItemId);
                                 }
                             }
                             else if (task.IsCanceled && task.Exception == null)
                             {
                                 // Log cancellation specifically if it wasn't due to an exception (e.g., external cancellation)
                                 // Don't increment failure count here, as it might be intended cancellation.
-                                _logger.LogWarning("Upload task cancelled for item (Local ID: {LogItemId}) (external request or 503 propagation).", logItemId);
+                                _logger.LogWarning("Upload task cancelled for item (SQLite ID: {LogItemId}) (external request or 503 propagation).", logItemId);
                             }
                             // Note: If task.IsCanceled is true AND task.Exception is not null, it's likely due to the token passed
                             // to CreateItemAsync being cancelled (e.g., by our batchCts.Cancel()), which is handled by IsFaulted.
@@ -398,7 +416,7 @@ namespace CosmosUploader.Services
                 catch (Exception ex)
                 {
                     failedUploads++;
-                    _logger.LogError(ex, "Error processing or adding task for item (Local ID: {LogItemId})", logItemId);
+                    _logger.LogError(ex, "Error processing or adding task for item (SQLite ID: {LogItemId})", logItemId);
                 }
             }
 

@@ -111,7 +111,7 @@ class SensorDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS sensor_readings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp REAL,
+                    timestamp TEXT,
                     sensor_id TEXT,
                     temperature REAL,
                     humidity REAL,
@@ -147,6 +147,7 @@ class SensorDatabase:
 
     def store_reading(
         self,
+        timestamp: float,
         sensor_id: str,
         temperature: float,
         humidity: float,
@@ -162,10 +163,12 @@ class SensorDatabase:
         location: str,
         latitude: float,
         longitude: float,
+        timezone_str: str,
     ):
         """Store a sensor reading in the database.
 
         Args:
+            timestamp: Time of the reading (Unix timestamp)
             sensor_id: ID of the sensor
             temperature: Temperature reading
             humidity: Humidity reading
@@ -179,8 +182,14 @@ class SensorDatabase:
             model: Model of the sensor
             manufacturer: Manufacturer of the sensor
             location: Location of the sensor in format "City (lat, lon)"
+            latitude: Latitude of the sensor
+            longitude: Longitude of the sensor
+            timezone_str: Timezone string (e.g., 'UTC', 'America/New_York')
         """
         try:
+            # Convert timestamp to ISO 8601 string with milliseconds
+            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(timespec='milliseconds')
+
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
@@ -193,7 +202,7 @@ class SensorDatabase:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    time.time(),
+                    iso_timestamp,
                     sensor_id,
                     temperature,
                     humidity,
