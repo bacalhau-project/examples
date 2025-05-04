@@ -11,7 +11,7 @@ import json
 import base64
 import time
 from tabulate import tabulate
-from datetime import datetime
+from datetime import datetime, timezone
 
 def run_job_on_nodes(count=5):
     # Read and base64 encode the script
@@ -88,10 +88,35 @@ def main():
         latest = result["latest_entry"]
         if latest:
             readings = latest["readings"]
+            
+            # Parse and format timestamp
+            ts_value = latest["timestamp"]
+            iso_timestamp = str(ts_value) # Default to string representation
+            try:
+                if isinstance(ts_value, (int, float)):
+                    # Assume UTC if it's a number (Unix timestamp)
+                    dt_object = datetime.fromtimestamp(ts_value, tz=timezone.utc)
+                    iso_timestamp = dt_object.isoformat()
+                elif isinstance(ts_value, str):
+                    # Try parsing string, handling 'Z' for UTC
+                    dt_object = datetime.fromisoformat(ts_value.replace('Z', '+00:00'))
+                    # If it's naive after parsing, assume UTC
+                    if dt_object.tzinfo is None:
+                        dt_object = dt_object.replace(tzinfo=timezone.utc)
+                    iso_timestamp = dt_object.isoformat()
+                else:
+                    # Handle unexpected type
+                    print(f"Warning: Unexpected timestamp type '{type(ts_value)}'. Using original value.")
+            except ValueError:
+                 # Handle parsing errors
+                 print(f"Warning: Could not parse timestamp '{ts_value}'. Using original value.")
+            except Exception as e:
+                print(f"Warning: Error processing timestamp '{ts_value}': {e}. Using original value.")
+
             table_data.append([
                 result["node_id"][:12],  # Truncate node ID for better display
                 result["row_count"],
-                latest["timestamp"],
+                iso_timestamp, # Use formatted timestamp
                 latest["sensor_id"],
                 readings["temperature"],
                 readings["humidity"],

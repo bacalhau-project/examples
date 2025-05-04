@@ -39,7 +39,6 @@ docker run --rm \
   --update-notification-file-path /data/update-notification.json \
   --sqlite /data/sensor_data.db \
   --continuous \
-  --debug \
   --interval 60 # Interval is now handled inside the C# app
   # --debug
 
