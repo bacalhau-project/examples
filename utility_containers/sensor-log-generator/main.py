@@ -6,6 +6,10 @@
 #     "numpy",
 #     "pyyaml",
 #     "psutil",
+#     "pytz",
+#     "numpy",
+#     "psutil",
+#     "requests",
 # ]
 # ///
 

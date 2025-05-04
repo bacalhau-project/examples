@@ -26,7 +26,8 @@ class SensorSimulator:
         Args:
             config: Configuration dictionary loaded from YAML
             identity: Identity dictionary loaded from JSON, including keys:
-                'id', 'location', 'manufacturer', 'model', 'firmware_version'
+                'id', 'location', 'latitude', 'longitude', 'timezone',
+                'manufacturer', 'model', 'firmware_version'
         """
         # Store configuration and identity
         self.config = config
@@ -37,10 +38,11 @@ class SensorSimulator:
         self.firmware_version = identity.get("firmware_version")
         self.running = False
 
-        # Initialize location properties
-        self.city_name = None
-        self.latitude = None
-        self.longitude = None
+        # Initialize location properties including timezone
+        self.city_name = identity.get("location") # Keep city name separate if needed elsewhere
+        self.latitude = identity.get("latitude")
+        self.longitude = identity.get("longitude")
+        self.timezone = identity.get("timezone", "UTC") # Store timezone, default UTC
 
         # Get database path from config
         db_path = config.get("database", {}).get("path")
@@ -420,11 +422,6 @@ class SensorSimulator:
             True if successful, False otherwise
         """
         try:
-            # Check for missing data anomaly
-            if reading is None:
-                logger.info("Missing data anomaly detected")
-                return True
-
             # Get current location
             location = self._get_location()
             logger.debug(f"Current location: {location}")
@@ -437,7 +434,7 @@ class SensorSimulator:
             if anomaly_flag:
                 reading["status_code"] = 1  # 1 = anomaly
 
-            # Store in database with sensor identity fields
+            # Store in database with sensor identity fields and timezone
             self.database.store_reading(
                 sensor_id=reading["sensor_id"],
                 temperature=reading["temperature"],
@@ -451,9 +448,10 @@ class SensorSimulator:
                 firmware_version=self.identity.get("firmware_version"),
                 model=self.identity.get("model"),
                 manufacturer=self.identity.get("manufacturer"),
-                location=self.identity.get("location"),  # Use the current location
-                latitude=self.identity.get("latitude"),
-                longitude=self.identity.get("longitude"),
+                location=self.city_name, # Pass city name
+                latitude=self.latitude,
+                longitude=self.longitude,
+                timezone_str=self.timezone, # Pass the stored timezone
             )
 
             self.readings_count += 1

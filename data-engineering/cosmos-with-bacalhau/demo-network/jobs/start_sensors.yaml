@@ -7,7 +7,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2504271648
+        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505040034
     Env:
       CONFIG_FILE: "/root/config.yaml"
       IDENTITY_FILE: "/root/node_identity.json"
