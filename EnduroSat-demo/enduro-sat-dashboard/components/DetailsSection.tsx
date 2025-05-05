@@ -1,17 +1,17 @@
 "use client"
 
 // Component for rendering the detail section
-import { Play } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import type { Job, Satellite, SelectedItem } from "@/types"
-import { JobTable } from "./JobTable"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import type {ConnectionStatus, Job, Satellite, SelectedItem} from "@/types"
+import {JobTable} from "./JobTable"
+import {SatelliteTable} from "@/components/SateliteTable";
 
 type DetailSectionProps = {
     selectedItem: SelectedItem
     satellites: Satellite[]
     jobs: Job[]
-    onStartJob: (satelliteId: number) => void
+    connections: { [key: number]: ConnectionStatus }
+    onConnectionChange: (satelliteId: number, status: ConnectionStatus) => void
 }
 const colorMap: Record<string, string> = {
     node1: '#E57373',  // czerwony
@@ -21,88 +21,74 @@ const colorMap: Record<string, string> = {
     node5: '#BA68C8',  // fioletowy
 };
 
-export function DetailSection({ selectedItem, satellites, onStartJob }: DetailSectionProps) {
+export function DetailSection({ selectedItem, satellites, connections, onConnectionChange  }: DetailSectionProps) {
     if (!selectedItem.type) return null
-
-    const getSelectedSatelliteColor = () => {
-        if (selectedItem.type === "satellite" && selectedItem.id) {
-            const satellite = satellites?.find((s) => s.Info.NodeID === selectedItem.id) ?? null
-            return satellite ? colorMap[satellite.Info.NodeID] : undefined
-        }
-        return undefined
-    }
 
     return (
         <Card
             className="mb-8 overflow-hidden border-0 shadow-lg transition-all"
             style={{
-                backgroundColor: selectedItem.type === "satellite" ? `${getSelectedSatelliteColor()}10` : undefined,
+                backgroundColor: selectedItem.type === "satellite" ? `#1e293b10` : undefined,
             }}
         >
             <CardHeader
                 className="py-3 px-4 border-b"
                 style={{
-                    backgroundColor: selectedItem.type === "satellite" ? `${getSelectedSatelliteColor()}20` : undefined,
+                    backgroundColor: selectedItem.type === "satellite" ? `#1e293b` : undefined,
                 }}
             >
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
                         {selectedItem.type === "satellite" && selectedItem.id && (
-                            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: getSelectedSatelliteColor() }}></div>
+                            <div className="w-3 h-3 rounded-full mr-2"></div>
                         )}
-                        <CardTitle className="text-base">
+                        <CardTitle
+                            className={`text-base ${selectedItem.type === "satellite" ? "text-white" : ""}`}
+                        >
                             {selectedItem.type === "ground-station"
                                 ? "Ground Station Details"
-                                : `Satellite ${selectedItem.id} Details`}
+                                : `Satellites control panel`}
                         </CardTitle>
                     </div>
-
-                    {/* Add Start Job button only for satellite details */}
-                    {selectedItem.type === "satellite" && selectedItem.id && (
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => onStartJob(selectedItem.id!)}
-                        >
-                            <Play className="h-3.5 w-3.5" />
-                            <span>Start Job</span>
-                        </Button>
-                    )}
                 </div>
             </CardHeader>
             <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* First Table: To Do or Queue */}
-                    <JobTable
-                        title={selectedItem.type === "ground-station" ? "Queue" : "To Do"}
-                        headerColor="#1e293b" // slate-800
-                        satellites={satellites}
-                        showSatelliteColumn={selectedItem.type === "ground-station"}
-                        nodeName={selectedItem.id}
-                        statuses={['Job Submitted', 'Running']}
-                    />
+                {selectedItem.type === "ground-station" ? (
+                    /* Job Tables when ground station is selected */
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* First Table: Queue */}
+                        <JobTable
+                            title="Queue"
+                            headerColor="#1e293b" // slate-800
+                            satellites={satellites}
+                            showSatelliteColumn={true}
+                        />
 
-                    {/* Second Table: Low Priority */}
-                    <JobTable
-                        title="Low Priority"
-                        headerColor="#d97706" // amber-600
-                        satellites={satellites}
-                        nodeName={selectedItem.id}
-                        jobName={'data-transfer-low'}
-                        statuses={['Completed']}
-                    />
+                        {/* Second Table: Low Priority */}
+                        <JobTable
+                            title="Low Priority"
+                            headerColor="#d97706" // amber-600
+                            satellites={satellites}
+                            showSatelliteColumn={true}
+                        />
 
-                    {/* Third Table: High Priority */}
-                    <JobTable
-                        title="High Priority"
-                        headerColor="#dc2626" // red-600
+                        {/* Third Table: High Priority */}
+                        <JobTable
+                            title="High Priority"
+                            headerColor="#dc2626" // red-600
+                            satellites={satellites}
+                            showSatelliteColumn={true}
+                        />
+                    </div>
+                ) : (
+                    /* Satellite Table for all other cases */
+                    <SatelliteTable
                         satellites={satellites}
-                        nodeName={selectedItem.id}
-                        jobName={'data-transfer-high'}
-                        statuses={['Completed']}
+                        connections={connections}
+                        onConnectionChange={onConnectionChange}
+                        selectedSatelliteId={selectedItem.id}
                     />
-                </div>
+                )}
             </CardContent>
         </Card>
     )
