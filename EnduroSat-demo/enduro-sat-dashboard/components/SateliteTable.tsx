@@ -1,0 +1,157 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Wifi, WifiOff, WifiHigh as WifiLow, ChevronDown, ChevronUp } from "lucide-react"
+import type { ConnectionStatus, Job, Satellite } from "@/types"
+import { cn } from "@/lib/utils"
+import { JobTable } from "./JobTable"
+import {colorMap} from "@/app/page";
+
+type SatelliteTableProps = {
+    satellites: Satellite[]
+    connections: { [key: number]: ConnectionStatus }
+    onConnectionChange: (satelliteId: number, status: ConnectionStatus, ip: string) => void
+    selectedSatelliteId: number | null
+}
+
+export function SatelliteTable({
+                                   satellites,
+                                   connections,
+                                   onConnectionChange,
+                                   selectedSatelliteId,
+                               }: SatelliteTableProps) {
+    // State to track which satellite rows are expanded
+    const [expandedSatellites, setExpandedSatellites] = useState<number[]>([])
+
+    // Toggle expanded state for a satellite
+    const toggleExpand = (satelliteId: number) => {
+        setExpandedSatellites((prev) =>
+            prev.includes(satelliteId) ? prev.filter((id) => id !== satelliteId) : [...prev, satelliteId],
+        )
+    }
+
+    return (
+        <Card className="border shadow-md">
+            <CardContent className="p-0">
+                <div className="overflow-hidden">
+                    <table className="min-w-full">
+                        <thead className="bg-slate-100 border-b">
+                        <tr>
+                            <th className="w-10 px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"></th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Satellite
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Model
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Connection Control
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                        {satellites.map((satellite) => {
+                            const isExpanded = expandedSatellites.includes(satellite.Info.NodeID)
+                            const satelliteId = satellite.Info.NodeID
+                            const nodeIP = satellite.Info.Labels.PUBLIC_IP
+                            return (
+                                <>
+                                    <tr
+                                        key={satellite.id}
+                                        className={cn(
+                                            "hover:bg-slate-50 transition-colors",
+                                            selectedSatelliteId === satelliteId ? "bg-slate-50" : "",
+                                        )}
+                                    >
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <button
+                                                onClick={() => toggleExpand(satelliteId)}
+                                                className="text-slate-500 hover:text-slate-700 transition-colors"
+                                            >
+                                                {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                            </button>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: colorMap[satelliteId] }}></div>
+                                                <span className="text-sm font-medium text-slate-900">{satellite.Info.Labels.SATTELITE_NAME}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{'Yolo'}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                            <div className="flex space-x-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant={connections[satelliteId] === "No Connection" ? "default" : "outline"}
+                                                    className="h-7 text-xs"
+                                                    onClick={() => onConnectionChange(satelliteId , "No Connection", nodeIP)}
+                                                >
+                                                    <WifiOff className="h-3 w-3 mr-1" />
+                                                    Disable connection
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant={connections[satelliteId] === "Low Bandwidth" ? "default" : "outline"}
+                                                    className="h-7 text-xs"
+                                                    onClick={() => onConnectionChange(satelliteId , "Low Bandwidth", nodeIP)}
+                                                >
+                                                    <WifiLow className="h-3 w-3 mr-1" />
+                                                    Low Bandwidth
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant={connections[satelliteId] === "High Bandwidth" ? "default" : "outline"}
+                                                    className="h-7 text-xs"
+                                                    onClick={() => onConnectionChange(satelliteId, "High Bandwidth", nodeIP)}
+                                                >
+                                                    <Wifi className="h-3 w-3 mr-1" />
+                                                    High Bandwidth
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {isExpanded && (
+                                        <tr>
+                                            <td colSpan={4} className="p-0 bg-slate-50 border-b">
+                                                <div className="p-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        {/* To Do Jobs */}
+                                                        <JobTable
+                                                            title="To Do"
+                                                            headerColor="#1e293b" // slate-800
+                                                            satellites={[satellite]}
+                                                            showSatelliteColumn={false}
+                                                        />
+
+                                                        {/* Low Priority Jobs */}
+                                                        <JobTable
+                                                            title="Low Priority"
+                                                            headerColor="#d97706" // amber-600
+                                                            satellites={[satellite]}
+                                                            showSatelliteColumn={false}
+                                                        />
+
+                                                        {/* High Priority Jobs */}
+                                                        <JobTable
+                                                            title="High Priority"
+                                                            headerColor="#dc2626" // red-600
+                                                            satellites={[satellite]}
+                                                            showSatelliteColumn={false}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </>
+                            )
+                        })}
+                        </tbody>
+                    </table>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
