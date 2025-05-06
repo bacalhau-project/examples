@@ -11,14 +11,8 @@ Tasks:
         Parameters:
           - /bin/sh
           - -c
-          sed -i 's/Sanitize: false/Sanitize: true/g' cosmos-config.yaml
-    InputSources:
-      - Source:
-          Type: "localDirectory"
-          Params:
-            SourcePath: "/root"
-            ReadWrite: true
-        Target: "/root"
+          - |
+            sed -i 's/Sanitize: false/Sanitize: true/g' cosmos-config.yaml
     Resources:
       CPU: "0.5"
       Memory: "128mb"
