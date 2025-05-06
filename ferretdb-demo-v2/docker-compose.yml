@@ -83,10 +83,10 @@ services:
     image: ghcr.io/bacalhau-project/examples/ferretdb-demo-minio:2504162218
     container_name: ferret-demo-storage
     entrypoint: sh
-    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9005"'
     environment: *common-env-variables
     ports:
-      - "9001:9001"
+      - "9005:9005"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -96,44 +96,7 @@ services:
     networks:
       - ferret-demo-net
 
-  sensor1:
-    container_name: ferret-demo-sensor1
-    environment:
-      <<: *common-env-variables
-      SENSOR_LOCATION: "52.163727,20.947274"
-      SENSOR_ID: "Warsaw-1"
-    <<: *sensor-template
-
-  sensor2:
-    container_name: ferret-demo-sensor2
-    environment:
-      <<: *common-env-variables
-      SENSOR_LOCATION: "50.057266,8.563769"
-      SENSOR_ID: "Frankfurt-1"
-    <<: *sensor-template
-
-  sensor3:
-    container_name: ferret-demo-sensor3
-    environment:
-      <<: *common-env-variables
-      SENSOR_LOCATION: "47.356790,8.505521"
-      SENSOR_ID: "Zurich-1"
-    <<: *sensor-template
-
-  sensor4:
-    container_name: ferret-demo-sensor4
-    environment:
-      <<: *common-env-variables
-      SENSOR_LOCATION: "47.610083,-122.328678"
-      SENSOR_ID: "Seattle-1"
-    <<: *sensor-template
-
-  sensor5:
-    container_name: ferret-demo-sensor5
-    environment:
-      <<: *common-env-variables
-      SENSOR_LOCATION: "51.485097,-0.214456"
-      SENSOR_ID: "London-1"
+  sensors:
     <<: *sensor-template
 
   frontend:
