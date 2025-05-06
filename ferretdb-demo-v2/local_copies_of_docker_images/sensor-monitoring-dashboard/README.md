@@ -25,7 +25,7 @@ Before building the Docker image, make sure to set the required environment vari
 ### 2. `FERRETDB_URI`
 
 - Set this to the IP address or hostname of your FerretDB Node.
-- Example: `mongodb://username:password@127.0.0.1/postgres`.
+- Example: `mongodb://expansouser:safepassword@127.0.0.1/postgres`.
 
 #### (obsolete!) Create a .env file in the project directory with the following content:
 ```dotenv

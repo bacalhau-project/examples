@@ -5,7 +5,7 @@
 #
 
 if [ "x${FERRETDB_URI}" == "x" ]; then
-  echo "There is no FERRETDB_URI defined (i.e. mongodb://username:password@127.0.0.1/postgres)"
+  echo "There is no FERRETDB_URI defined (i.e. mongodb://expansouser:safepassword@127.0.0.1/postgres)"
   exit 1
 fi
 

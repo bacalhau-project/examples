@@ -71,14 +71,22 @@ output:
   csv_export_path: "/app/data/exports/"
   csv_export_interval_minutes: 60
 
-# Configuration for dynamic reloading
-config_reload:
-  enabled: true
-  check_interval_seconds: 60
+## Configuration for dynamic reloading
+#config_reload:
+#  enabled: true
+#  check_interval_seconds: 60
 
-# Configuration for monitoring server
-monitoring:
+## Configuration for monitoring server
+#monitoring:
+#  enabled: true
+#  host: "0.0.0.0"
+#  port: 8080
+#  metrics_interval_seconds: 60
+
+# Configuration for location generation
+random_location:
   enabled: true
-  host: "0.0.0.0"
-  port: 8080
-  metrics_interval_seconds: 60
+  number_of_cities: 10
+  gps_variation: 100 # meters
+  cities_file: "src/cities.json"
+#  cities_file: "app/data/cities.json"

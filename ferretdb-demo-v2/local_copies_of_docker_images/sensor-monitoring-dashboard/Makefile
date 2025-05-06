@@ -1,5 +1,5 @@
 IMAGE_NAME ?= ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard
-TAG ?= 2504291030
+TAG ?= 2505052259
 FULL_IMAGE ?= $(IMAGE_NAME):$(TAG)
 
 build:

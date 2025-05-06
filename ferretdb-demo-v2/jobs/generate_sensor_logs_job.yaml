@@ -5,18 +5,20 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ghcr.io/bacalhau-project/sensor-log-generator:2503120914
+        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505042147
         EnvironmentVariables:
           - CONFIG={{.config}}
+          - IDENTITY={{.identity}}
         Entrypoint:
           - /bin/bash
         Parameters:
           - -c
           - |
             echo $CONFIG | base64 -d > /app/data/sensor_config.yaml
-            export SENSOR_CONFIG=/app/data/sensor_config.yaml
-            export $(cat /app/environment | grep -v "#")
-            /app/start.sh --config=/app/data/sensor_config.yaml
+            echo $IDENTITY | base64 -d > /app/data/node_identity.json
+            export CONFIG_FILE=/app/data/sensor_config.yaml
+            export IDENTITY_FILE=/app/data/node_identity.json
+            /app/src/startup.sh
     Resources:
       Memory: 256mb
     InputSources:
