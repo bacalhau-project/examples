@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wifi, WifiOff, WifiHigh as WifiLow, ChevronDown, ChevronUp } from "lucide-react"
-import type { ConnectionStatus, Job, Satellite } from "@/types"
-import { cn } from "@/lib/utils"
-import { JobTable } from "./JobTable"
+import {useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent} from "@/components/ui/card"
+import {ChevronDown, ChevronUp, Wifi, WifiHigh as WifiLow, WifiOff} from "lucide-react"
+import type {ConnectionStatus, Satellite} from "@/types"
+import {cn} from "@/lib/utils"
+import {JobTable} from "./JobTable"
 import {colorMap} from "@/app/page";
+import {QueueTable} from "@/components/QueueTable";
 
 type SatelliteTableProps = {
     satellites: Satellite[]
@@ -21,9 +22,12 @@ export function SatelliteTable({
                                    connections,
                                    onConnectionChange,
                                    selectedSatelliteId,
+    jobs
                                }: SatelliteTableProps) {
     // State to track which satellite rows are expanded
     const [expandedSatellites, setExpandedSatellites] = useState<number[]>([])
+
+    console.log('JOBS', jobs)
 
     // Toggle expanded state for a satellite
     const toggleExpand = (satelliteId: number) => {
@@ -118,11 +122,11 @@ export function SatelliteTable({
                                                 <div className="p-4">
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                         {/* To Do Jobs */}
-                                                        <JobTable
+                                                        <QueueTable
                                                             title="To Do"
                                                             headerColor="#1e293b" // slate-800
                                                             satellites={[satellite]}
-                                                            showSatelliteColumn={false}
+                                                            jobs={jobs && jobs.Items}
                                                         />
 
                                                         {/* Low Priority Jobs */}
@@ -130,15 +134,18 @@ export function SatelliteTable({
                                                             title="Low Priority"
                                                             headerColor="#d97706" // amber-600
                                                             satellites={[satellite]}
-                                                            showSatelliteColumn={false}
+                                                            jobs={jobs && jobs.Items}
+                                                            jobName={'data-transfer-low'}
+                                                            statuses={['Completed']}
                                                         />
 
-                                                        {/* High Priority Jobs */}
                                                         <JobTable
                                                             title="High Priority"
                                                             headerColor="#dc2626" // red-600
                                                             satellites={[satellite]}
-                                                            showSatelliteColumn={false}
+                                                            jobs={jobs && jobs.Items}
+                                                            jobName={'data-transfer-high'}
+                                                            statuses={['Completed']}
                                                         />
                                                     </div>
                                                 </div>

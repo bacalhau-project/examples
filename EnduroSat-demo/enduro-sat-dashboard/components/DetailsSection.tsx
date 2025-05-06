@@ -5,6 +5,8 @@ import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import type {ConnectionStatus, Job, Satellite, SelectedItem} from "@/types"
 import {JobTable} from "./JobTable"
 import {SatelliteTable} from "@/components/SateliteTable";
+import {useJobs} from "@/hooks/useGetJobs";
+import {QueueTable} from "@/components/QueueTable";
 
 type DetailSectionProps = {
     selectedItem: SelectedItem
@@ -23,7 +25,7 @@ const colorMap: Record<string, string> = {
 
 export function DetailSection({ selectedItem, satellites, connections, onConnectionChange  }: DetailSectionProps) {
     if (!selectedItem.type) return null
-
+    const {jobs, loading} = useJobs()
     return (
         <Card
             className="mb-8 overflow-hidden border-0 shadow-lg transition-all"
@@ -57,27 +59,29 @@ export function DetailSection({ selectedItem, satellites, connections, onConnect
                     /* Job Tables when ground station is selected */
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* First Table: Queue */}
-                        <JobTable
+                        <QueueTable
                             title="Queue"
-                            headerColor="#1e293b" // slate-800
+                            headerColor="#1e293b" // slate-800WWW
                             satellites={satellites}
-                            showSatelliteColumn={true}
+                            jobs={jobs && jobs.Items}
                         />
 
-                        {/* Second Table: Low Priority */}
                         <JobTable
                             title="Low Priority"
                             headerColor="#d97706" // amber-600
                             satellites={satellites}
-                            showSatelliteColumn={true}
+                            jobs={jobs && jobs.Items}
+                            jobName={'data-transfer-low'}
+                            statuses={['Completed']}
                         />
 
-                        {/* Third Table: High Priority */}
                         <JobTable
                             title="High Priority"
                             headerColor="#dc2626" // red-600
                             satellites={satellites}
-                            showSatelliteColumn={true}
+                            jobs={jobs && jobs.Items}
+                            jobName={'data-transfer-high'}
+                            statuses={['Completed']}
                         />
                     </div>
                 ) : (
@@ -87,6 +91,7 @@ export function DetailSection({ selectedItem, satellites, connections, onConnect
                         connections={connections}
                         onConnectionChange={onConnectionChange}
                         selectedSatelliteId={selectedItem.id}
+                        jobs={jobs}
                     />
                 )}
             </CardContent>
