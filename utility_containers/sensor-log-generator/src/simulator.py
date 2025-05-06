@@ -2,7 +2,7 @@ import logging
 import os
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 import numpy as np
@@ -251,26 +251,24 @@ class SensorSimulator:
             min_val = param_config.get("min", float("-inf"))
             max_val = param_config.get("max", float("inf"))
 
-            # Generate value from normal distribution
-            value = np.random.normal(mean, std_dev)
+            # Generate base value with normal distribution
+            value = random.gauss(mean, std_dev)
 
-            # Apply daily pattern (e.g., temperature higher during the day)
-            if param_name == "temperature":
-                hour = datetime.now().hour
-                # Add a sinusoidal pattern based on hour of day
-                # Peak at 3 PM (hour 15), trough at 3 AM (hour 3)
-                hour_factor = np.sin((hour - 3) * np.pi / 12)
-                value += hour_factor * std_dev
+            # Seasonal variation based on hour of the day (UTC)
+            hour = datetime.now(timezone.utc).hour
+            seasonal_factor = (
+                np.sin(2 * np.pi * (hour - 6) / 24) * std_dev * 0.1
+            )  # Peak around midday
+            value += seasonal_factor
 
-            # Ensure value is within min/max bounds
-            value = max(min_val, min(max_val, value))
+            # Clamp value within min/max range
+            value = max(min_val, min(value, max_val))
 
             return value
         except Exception as e:
-            logger.error(f"Error generating parameter value for {param_name}: {e}")
-            # Return default values based on parameter type
-            defaults = {"temperature": 65.0, "vibration": 2.5, "voltage": 12.0}
-            return defaults.get(param_name, 0)
+            logger.error(f"Error generating value for {param_name}: {e}")
+            # Return mean value as fallback
+            return self.normal_params.get(param_name, {}).get("mean", 0)
 
     def _get_memory_usage(self):
         """Get current memory usage in MB.
