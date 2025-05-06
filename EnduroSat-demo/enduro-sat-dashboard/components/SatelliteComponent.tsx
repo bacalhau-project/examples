@@ -1,11 +1,10 @@
 "use client"
 
 // Component for rendering individual satellites
-import { SatelliteIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { ConnectionStatus, Satellite, SelectedItem } from "@/types"
-import { calculateLabelPosition, calculateNameLabelPosition, calculateSatellitePosition } from "@/utils/calculations"
-import { ConnectionLabel } from "./ConnectionLabel"
+import {SatelliteIcon} from "lucide-react"
+import {cn} from "@/lib/utils"
+import type {ConnectionStatus, Satellite, SelectedItem} from "@/types"
+import {calculateLabelPosition, calculateNameLabelPosition, calculateSatellitePosition} from "@/utils/calculations"
 import {colorMap} from "@/app/page";
 
 type SatelliteComponentProps = {
@@ -24,10 +23,8 @@ export function SatelliteComponent({
                                        satellite,
                                        index,
                                        totalSatellites,
-                                       connectionStatus,
                                        selectedItem,
                                        onItemSelect,
-                                       onConnectionChange,
                                        panelWidth,
                                    }: SatelliteComponentProps) {
     // Calculate positions in the new layout
@@ -73,14 +70,6 @@ export function SatelliteComponent({
                     <span className="text-xs font-bold text-slate-700">{satelliteName}</span>
                 </div>
             </div>
-
-            {/*/!* Connection Label *!/*/}
-            {/*<ConnectionLabel*/}
-            {/*    satellite={satellite}*/}
-            {/*    position={{ x: labelPos.x, y: labelPos.y }}*/}
-            {/*    connectionStatus={connectionStatus}*/}
-            {/*    onConnectionChange={onConnectionChange}*/}
-            {/*/>*/}
         </div>
     )
 }

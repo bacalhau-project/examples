@@ -1,9 +1,8 @@
 // Component for rendering job tables
-import { Download } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import type { Job, Satellite } from "@/types"
-import {useEffect, useState} from "react";
+import {Download} from "lucide-react"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Button} from "@/components/ui/button"
+import type {Satellite} from "@/types"
 
 type JobTableProps = {
     title: string
@@ -12,6 +11,7 @@ type JobTableProps = {
     showSatelliteColumn?: boolean
     nodeName?: string
     jobName?: string
+    jobs: RawJob[]
     statuses?: string[]
 }
 
@@ -22,11 +22,20 @@ interface RawJob {
     Meta?: Record<string, string>;
 }
 
-function getJobsSummary(data, jobName, statuses) {
-    let items = data.Items;
+function getJobsSummary(data, jobName, statuses, satNames) {
+    let items = data;
+
     if (jobName) {
         items = items.filter(j => j.Name === jobName);
     }
+
+    if (Array.isArray(satNames) && satNames.length > 0) {
+        items = items.filter(j =>
+            j.Labels &&
+            satNames.includes(j.Labels.sattelite_number)
+        );
+    }
+
     if (Array.isArray(statuses) && statuses.length > 0) {
         items = items.filter(j =>
             j.State &&
@@ -40,44 +49,18 @@ function getJobsSummary(data, jobName, statuses) {
     }));
 }
 
-export function JobTable({ title, headerColor, satellites, showSatelliteColumn = false, nodeName, jobName, statuses }: JobTableProps) {
-    const [jobs, setJobs] = useState<Job[]>([]);
-    const [loading, setLoading] = useState<boolean>(!!nodeName);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!nodeName) return;
-
-        const fetchJobs = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const params = new URLSearchParams({
-                    labels: `sattelite_number=${encodeURIComponent(nodeName)}`,
-                });
-                const res = await fetch(`http://localhost:8438/api/v1/orchestrator/jobs?${params.toString()}`);
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-                }
-                const data: { Jobs: RawJob[] } = await res.json();
-                const mapped = getJobsSummary(data, jobName, statuses);
-                setJobs(mapped);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchJobs();
-    }, [nodeName]);
-
-    if (loading) {
-        return <div>Loading jobs for node “{nodeName}”…</div>;
+export function JobTable({ title, headerColor, satellites, showSatelliteColumn = false, jobs, jobName, statuses = [] }: JobTableProps) {
+    if (!jobs || jobs.length === 0) {
+        return null;
     }
-    if (error) {
-        return <div style={{ color: "red" }}>Error loading jobs: {error}</div>;
-    }
+
+    // Collect all satellite names
+    const satNames = satellites
+        .map(s => s.Info?.Labels?.SATTELITE_NAME)
+        .filter(Boolean);
+
+    // Filter jobs by jobName, statuses, and matching any satellite
+    const filteredJobs = getJobsSummary(jobs, jobName, statuses, satNames);
 
     return (
         <Card className="border shadow-md">
@@ -90,14 +73,14 @@ export function JobTable({ title, headerColor, satellites, showSatelliteColumn =
                         <thead className="bg-slate-100 border-b">
                         <tr>
                             <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                {title === "Queue" || title === "To Do" ? "Job ID" : "Job Name"}
+                                {title === "To Do" ? "Job ID" : "Job Name"}
                             </th>
                             {showSatelliteColumn && (
                                 <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                     Satellite
                                 </th>
                             )}
-                            {title !== "Queue" && title !== "To Do" && (
+                            {title !== "To Do" && (
                                 <>
                                     <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Thumbnail
@@ -111,7 +94,7 @@ export function JobTable({ title, headerColor, satellites, showSatelliteColumn =
                         </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                        {jobs.map((job) => (
+                        {filteredJobs.map((job) => (
                             <tr
                                 key={job.id}
                                 className="hover:bg-slate-50 transition-colors"
@@ -122,21 +105,8 @@ export function JobTable({ title, headerColor, satellites, showSatelliteColumn =
                                 }
                             >
                                 <td className="px-3 py-2 text-xs font-medium">
-                                    {title === "Queue" || title === "To Do" ? `${job.id} - ${job.name}` : job.id}
+                                    {title === "To Do" ? `${job.id} - ${job.name}` : job.id}
                                 </td>
-                                {/*{showSatelliteColumn && satellites && (*/}
-                                {/*    <td className="px-3 py-2 text-xs">*/}
-                                {/*        <div className="flex items-center">*/}
-                                {/*            <div*/}
-                                {/*                className="w-2 h-2 rounded-full mr-1"*/}
-                                {/*                style={{*/}
-                                {/*                    backgroundColor: satellites.find((s) => s.id === job.satelliteId)?.color,*/}
-                                {/*                }}*/}
-                                {/*            ></div>*/}
-                                {/*            Sat-{job.satelliteId}*/}
-                                {/*        </div>*/}
-                                {/*    </td>*/}
-                                {/*)}*/}
 
                                     <>
                                     {(title === 'High Priority' || title === 'Low Priority') && (

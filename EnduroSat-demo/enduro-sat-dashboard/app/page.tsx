@@ -3,7 +3,6 @@
 import {useEffect, useState} from "react"
 import {useSatellitesNodes} from "@/hooks/useGetSatelites";
 import {highJob, lowJob, shipDetectJob} from "@/jobs";
-import {JobModal} from "@/components/JobModal";
 import {DetailSection} from "@/components/DetailsSection";
 import {GroundStationPanel} from "@/components/GroundStationPanel";
 
@@ -177,13 +176,6 @@ export default function Dashboard() {
           />
 
           <DetailSection selectedItem={selectedItem} satellites={satellites} connections={connections} onConnectionChange={handleConnectionChange} />
-          <JobModal
-              open={jobModalOpen}
-              onOpenChange={setJobModalOpen}
-              selectedJobType={selectedJobType}
-              onJobSelection={handleJobSelection}
-              onJobSubmit={handleJobSubmit}
-          />
         </div>
     )
 }

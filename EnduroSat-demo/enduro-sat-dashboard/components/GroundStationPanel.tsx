@@ -1,14 +1,14 @@
 "use client"
 
 // Component for rendering the ground station panel
-import { useRef, useEffect, useState } from "react"
-import { Antenna } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import type { ConnectionStatus, Satellite, SelectedItem } from "@/types"
-import { SatelliteComponent } from "./SatelliteComponent"
-import { ConnectionLine } from "./ConnectionLine"
-import { calculateSatellitePosition } from "@/utils/calculations"
+import {useEffect, useRef, useState} from "react"
+import {Antenna} from "lucide-react"
+import {Card, CardContent} from "@/components/ui/card"
+import {cn} from "@/lib/utils"
+import type {ConnectionStatus, Satellite, SelectedItem} from "@/types"
+import {SatelliteComponent} from "./SatelliteComponent"
+import {ConnectionLine} from "./ConnectionLine"
+import {calculateSatellitePosition} from "@/utils/calculations"
 
 type GroundStationPanelProps = {
     satellites: Satellite[]
