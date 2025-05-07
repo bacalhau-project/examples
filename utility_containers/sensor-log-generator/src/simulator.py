@@ -7,6 +7,8 @@ from typing import Dict
 
 import numpy as np
 import psutil
+from psutil import Process
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from .anomaly import AnomalyGenerator
 from .config import ConfigManager
@@ -39,10 +41,12 @@ class SensorSimulator:
         self.running = False
 
         # Initialize location properties including timezone
-        self.city_name = identity.get("location") # Keep city name separate if needed elsewhere
+        self.city_name = identity.get(
+            "location"
+        )  # Keep city name separate if needed elsewhere
         self.latitude = identity.get("latitude")
         self.longitude = identity.get("longitude")
-        self.timezone = identity.get("timezone", "UTC") # Store timezone, default UTC
+        self.timezone = identity.get("timezone", "UTC")  # Store timezone, default UTC
 
         # Get database path from config
         db_path = config.get("database", {}).get("path")
@@ -79,11 +83,6 @@ class SensorSimulator:
             logger.error(str(e))
             raise
 
-        # Initialize location generator with the correct config section
-        self.location_generator = LocationGenerator(
-            self.config.get("random_location", {})
-        )
-
         # Generate and store the location once at initialization
         self._get_initial_location()
 
@@ -96,16 +95,17 @@ class SensorSimulator:
         )
 
         # Get replica configuration
-        self.replica_config = self.config.get("replicas", {})
+        self.replica_config = self.config.get("replicas") or {}
         self.replica_count = self.replica_config.get("count", 1)
         self.replica_prefix = self.replica_config.get("prefix", "SENSOR")
         self.replica_start_index = self.replica_config.get("start_index", 1)
 
         try:
-            # Load configuration
-            self.config_manager = ConfigManager(None, None)
-            self.config_manager.config = self.config
-            self.config_manager.identity = self.identity
+            # Initialize ConfigManager with pre-loaded config and identity
+            self.config_manager = ConfigManager(
+                initial_config=self.config, initial_identity=self.identity
+            )
+
             logging_config = self.config_manager.get_logging_config()
             logging.getLogger().setLevel(
                 getattr(logging, logging_config.get("level", "INFO"))
@@ -116,6 +116,7 @@ class SensorSimulator:
 
             # Get normal parameters
             self.normal_params = self.config_manager.get_normal_parameters()
+            self.normal_params = self.normal_params or {}
 
             # Update identity with location information
             self.identity.update(
@@ -128,6 +129,7 @@ class SensorSimulator:
 
             # Initialize anomaly generator with sensor config
             anomaly_config = self.config_manager.get_anomaly_config()
+            anomaly_config = anomaly_config or {}
             self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
 
             # Initialize state
@@ -371,6 +373,7 @@ class SensorSimulator:
 
                 # Update normal parameters
                 self.normal_params = self.config_manager.get_normal_parameters()
+                self.normal_params = self.normal_params or {}
 
                 # Update sensor configuration
                 old_sensor_id = self.sensor_id
@@ -384,6 +387,7 @@ class SensorSimulator:
 
                 # Update anomaly generator with new configuration
                 anomaly_config = self.config_manager.get_anomaly_config()
+                anomaly_config = anomaly_config or {}
                 self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
 
                 # Update monitoring configuration
@@ -434,6 +438,7 @@ class SensorSimulator:
 
             # Store in database with sensor identity fields and timezone
             self.database.store_reading(
+                timestamp=reading["timestamp"],
                 sensor_id=reading["sensor_id"],
                 temperature=reading["temperature"],
                 humidity=reading.get("humidity"),
@@ -446,10 +451,10 @@ class SensorSimulator:
                 firmware_version=self.identity.get("firmware_version"),
                 model=self.identity.get("model"),
                 manufacturer=self.identity.get("manufacturer"),
-                location=self.city_name, # Pass city name
+                location=self.city_name,  # Pass city name
                 latitude=self.latitude,
                 longitude=self.longitude,
-                timezone_str=self.timezone, # Pass the stored timezone
+                timezone_str=self.timezone,  # Pass the stored timezone
             )
 
             self.readings_count += 1
@@ -657,41 +662,44 @@ class SensorSimulator:
                 return value
 
     def _get_initial_location(self) -> None:
-        """Get the initial location for the sensor.
-        If random_location is enabled in config, generate a random location.
-        Otherwise, use the configured location from node_identity.json.
+        """Get the initial location for the sensor from the provided identity.
+        The identity object is expected to have complete and valid location
+        information (location, latitude, longitude) as processed by main.py.
 
         Sets the location properties (city_name, latitude, longitude) on the instance.
+        Raises ValueError if the identity object has incomplete location information.
         """
-        # Check if random location is enabled in config
-        if self.config.get("random_location", {}).get("enabled", False):
-            location_info = self.location_generator.generate_location()
-            if location_info:
-                self.city_name, self.latitude, self.longitude = location_info
-                logger.info(
-                    f"Generated random location: {self.city_name} ({self.latitude:.6f}, {self.longitude:.6f})"
-                )
-                return
-            else:
-                logger.warning(
-                    "Location generator returned None, using configured location"
-                )
-
-        # Use the configured location from identity
         self.city_name = self.identity.get("location")
         self.latitude = self.identity.get("latitude")
         self.longitude = self.identity.get("longitude")
 
-        if not self.city_name:
-            raise ValueError("Location is required in node_identity.json")
-        if self.latitude is None:
-            raise ValueError("Latitude is required in node_identity.json")
-        if self.longitude is None:
-            raise ValueError("Longitude is required in node_identity.json")
+        if not (
+            isinstance(self.city_name, str)
+            and self.city_name.strip()
+            and isinstance(self.latitude, (int, float))
+            and isinstance(self.longitude, (int, float))
+        ):
+            missing_fields = []
+            if not (isinstance(self.city_name, str) and self.city_name.strip()):
+                missing_fields.append("'location' (non-empty string)")
+            if not isinstance(self.latitude, (int, float)):
+                missing_fields.append("'latitude' (number)")
+            if not isinstance(self.longitude, (int, float)):
+                missing_fields.append("'longitude' (number)")
 
-        logger.info(f"   Location: {self.city_name}")
-        logger.info(f"   Latitude: {self.latitude:.6f}")
-        logger.info(f"   Longitude: {self.longitude:.6f}")
+            error_msg = (
+                f"SensorSimulator received identity with incomplete location information. "
+                f"Missing/invalid fields: {', '.join(missing_fields)}. "
+                "This should have been resolved by main.py before simulator initialization."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        logger.info(
+            f"SensorSimulator using location from processed identity: {self.city_name} "
+            f"(Lat: {self.latitude:.6f}, Lon: {self.longitude:.6f})"
+        )
+        # No need to update self.identity here as it's expected to be correct from the input.
 
     def _get_location(self) -> str:
         """Get the current location for the sensor.

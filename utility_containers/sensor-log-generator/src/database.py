@@ -111,13 +111,8 @@ class SensorDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS sensor_readings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-<<<<<<< HEAD
-                    timestamp TEXT,
-                    sensor_id TEXT,
-=======
                     timestamp TEXT NOT NULL,
                     sensor_id TEXT NOT NULL,
->>>>>>> 121a33b5 (updates for queuing)
                     temperature REAL,
                     humidity REAL,
                     pressure REAL,
@@ -129,7 +124,10 @@ class SensorDatabase:
                     firmware_version TEXT,
                     model TEXT,
                     manufacturer TEXT,
-                    location TEXT
+                    location TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    synced INTEGER DEFAULT 0
                 )
                 """
             )
@@ -190,7 +188,9 @@ class SensorDatabase:
         """
         try:
             # Convert timestamp to ISO 8601 string with milliseconds
-            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(timespec='milliseconds')
+            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(
+                timespec="milliseconds"
+            )
 
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
