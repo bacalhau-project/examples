@@ -13,7 +13,7 @@ export async function GET() {
         // Updated collection name
         {
           $group: {
-            _id: { sensor_id: "$sensor_id", location: "$location" },
+            _id: { sensor_id: "$sensor_id", location: "$location", latitude: "$latitude", longitude: "$longitude" },
             count: { $sum: 1 },
           },
         },
@@ -21,6 +21,8 @@ export async function GET() {
           $project: {
             sensor_id: "$_id.sensor_id",
             location: "$_id.location",
+            latitude: "$_id.latitude",
+            longitude: "$_id.longitude",
             count: 1,
             _id: 0,
           },

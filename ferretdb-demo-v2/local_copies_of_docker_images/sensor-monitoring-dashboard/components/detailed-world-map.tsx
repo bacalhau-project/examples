@@ -29,7 +29,8 @@ const options = {
 interface SensorApiResponse {
   count: number;
   sensor_id: string;
-  location: string; // np. "50.025629,8.561904"
+  longitude: number;
+  latitude: number;// np. "50.025629,8.561904"
 }
 
 interface Sensor {
@@ -168,8 +169,9 @@ export default function DetailedWorldMap({apiKey}: {apiKey: string}) {
         if (!res.ok) throw new Error("Error fetching sensors list");
         const data = await res.json();
         const sensors: Sensor[] = data.data.map((item: SensorApiResponse) => {
-          const [lat, lng] = item.location.split(",").map(Number);
-          return { id: item.sensor_id, location: { lat, lng } };
+          const lat = item.latitude
+          const lng = item.longitude
+          return { id: item.sensor_id, location: {lat, lng }};
         });
         setSensorLocations(sensors);
         setSensorsLoading(false);
