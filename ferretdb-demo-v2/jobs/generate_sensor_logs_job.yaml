@@ -5,7 +5,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505042147
+        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505071810
         EnvironmentVariables:
           - CONFIG={{.config}}
           - IDENTITY={{.identity}}
@@ -18,6 +18,7 @@ Tasks:
             echo $IDENTITY | base64 -d > /app/data/node_identity.json
             export CONFIG_FILE=/app/data/sensor_config.yaml
             export IDENTITY_FILE=/app/data/node_identity.json
+            chmod +x /app/src/startup.sh
             /app/src/startup.sh
     Resources:
       Memory: 256mb

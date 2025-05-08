@@ -18,7 +18,7 @@ fi
 # List of images to warm up (extracted from your job files)
 IMAGES=(
     "ghcr.io/astral-sh/uv:python3.13-bookworm-slim"
-    "ghcr.io/bacalhau-project/sensor-log-generator:2505042147"
+    "ghcr.io/bacalhau-project/sensor-log-generator:2505071810"
     "bash:devel-alpine3.21"
 )
 # Pull and push each image

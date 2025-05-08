@@ -1,7 +1,5 @@
 {
-  "type": "environmental",
   "manufacturer": "SensorTech",
   "model": "EnvMonitor-3000",
-  "firmware_version": "1.4",
-  "location": "New York"
+  "firmware_version": "1.4"
 }

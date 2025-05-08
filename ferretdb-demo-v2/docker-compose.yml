@@ -4,7 +4,7 @@ x-common-env-variables: &common-env-variables
   AWS_ACCESS_KEY_ID: "minioadmin"
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
-  FERRETDB_URI: "mongodb://expansouser:safepassword@172.28.0.100:27017/postgres"
+  FERRETDB_URI: "mongodb://expansouser:safepassword@172.30.0.100:27017/postgres"
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
 
 x-sensor-template: &sensor-template
@@ -88,7 +88,7 @@ services:
       - FERRETDB_POSTGRESQL_URL=postgres://expansouser:safepassword@postgres:5432/postgres
     networks:
       ferret-demo-net:
-        ipv4_address: 172.28.0.100
+        ipv4_address: 172.30.0.100
 
   storage:
     image: ghcr.io/bacalhau-project/examples/ferretdb-demo-minio:2504162218
@@ -112,46 +112,6 @@ services:
       <<: *common-env-variables
     <<: *sensor-template
 
-#  sensor1:
-#    container_name: ferret-demo-sensor1
-#    environment:
-#      <<: *common-env-variables
-#      SENSOR_LOCATION: "52.163727,20.947274"
-#      SENSOR_ID: "Warsaw-1"
-#    <<: *sensor-template
-#
-#  sensor2:
-#    container_name: ferret-demo-sensor2
-#    environment:
-#      <<: *common-env-variables
-#      SENSOR_LOCATION: "50.057266,8.563769"
-#      SENSOR_ID: "Frankfurt-1"
-#    <<: *sensor-template
-#
-#  sensor3:
-#    container_name: ferret-demo-sensor3
-#    environment:
-#      <<: *common-env-variables
-#      SENSOR_LOCATION: "47.356790,8.505521"
-#      SENSOR_ID: "Zurich-1"
-#    <<: *sensor-template
-#
-#  sensor4:
-#    container_name: ferret-demo-sensor4
-#    environment:
-#      <<: *common-env-variables
-#      SENSOR_LOCATION: "47.610083,-122.328678"
-#      SENSOR_ID: "Seattle-1"
-#    <<: *sensor-template
-#
-#  sensor5:
-#    container_name: ferret-demo-sensor5
-#    environment:
-#      <<: *common-env-variables
-#      SENSOR_LOCATION: "51.485097,-0.214456"
-#      SENSOR_ID: "London-1"
-#    <<: *sensor-template
-
   frontend:
     image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2505081200
     container_name: ferret-demo-frontend
@@ -161,7 +121,7 @@ services:
       - "3010:3000"
     depends_on:
       ferretdb:
-        condition: service_started
+        condition: service_healthy
     networks:
       - ferret-demo-net
 
@@ -193,4 +153,4 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.28.0.0/16
+        - subnet: 172.30.0.0/16

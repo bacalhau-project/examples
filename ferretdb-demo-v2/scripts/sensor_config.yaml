@@ -1,57 +1,53 @@
-# Sensor Simulator Configuration
-
-sensor:
-  id: "SENSOR001"
-  type: "temperature_vibration"
-  location: "Factory A - Machine 1"
-  manufacturer: "SensorTech"
-  model: "TempVibe-2025"
-  firmware_version: "1.45"
-
 simulation:
   readings_per_second: 1
-  run_time_seconds: 86400 # a week
+  run_time_seconds: 360000 # 100 hours
 
 normal_parameters:
   temperature:
-    mean: 65.0 # Celsius
+    mean: 61.0 # Celsius
     std_dev: 2.0
     min: 50.0
     max: 80.0
-  vibration:
-    mean: 2.5 # mm/s²
+  humidity:
+    mean: 3.0 # Percentage
     std_dev: 0.5
-    min: 0.1
-    max: 10.0
+    min: 0.0
+    max: 100.0
+  pressure:
+    mean: 12.0 # Bar
+    std_dev: 0.5
+    min: 10.0
+    max: 15.0
   voltage:
     mean: 12.0 # Volts
     std_dev: 0.1
     min: 11.5
     max: 12.5
+  vibration:
+    mean: 1.5 # G
+    std_dev: 0.5
+    min: 0.0
+    max: 3.0
 
 anomalies:
   enabled: true
-  probability: 0.05 # 5% chance of anomaly per reading
+  probability: 0.05
   types:
     spike:
-      enabled: true
-      weight: 0.4
+      weight: 0.3
+      duration_seconds: 60
     trend:
-      enabled: true
       weight: 0.2
-      duration_seconds: 300 # 5 minutes
+      duration_seconds: 300
     pattern:
-      enabled: true
-      weight: 0.1
-      duration_seconds: 600 # 10 minutes
-    missing_data:
-      enabled: true
-      weight: 0.1
-      duration_seconds: 30 # 30 seconds
-    noise:
-      enabled: true
       weight: 0.2
-      duration_seconds: 180 # 3 minutes
+      duration_seconds: 600
+    missing_data:
+      weight: 0.15
+      duration_seconds: 30
+    noise:
+      weight: 0.15
+      duration_seconds: 120
 
 database:
   path: "/app/data/sensor_data.db"
@@ -66,27 +62,21 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   console_output: true
 
-output:
-  csv_export_enabled: false
-  csv_export_path: "/app/data/exports/"
-  csv_export_interval_minutes: 60
+# Configuration for dynamic reloading
+dynamic_reloading:
+  enabled: true
+  check_interval_seconds: 5
 
-## Configuration for dynamic reloading
-#config_reload:
-#  enabled: true
-#  check_interval_seconds: 60
-
-## Configuration for monitoring server
-#monitoring:
-#  enabled: true
-#  host: "0.0.0.0"
-#  port: 8080
-#  metrics_interval_seconds: 60
+# Configuration for monitoring server
+monitoring:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  metrics_interval_seconds: 60
 
 # Configuration for location generation
 random_location:
   enabled: true
   number_of_cities: 10
   gps_variation: 100 # meters
-  cities_file: "src/cities.json"
-#  cities_file: "app/data/cities.json"
+  cities_file: "src/cities.json" # Path to cities file in src directory
