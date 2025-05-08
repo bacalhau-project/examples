@@ -4,6 +4,7 @@ bacalhau
 bacalhauproject
 buildcache
 buildx
+chainguard
 ENVMONITOR
 ENVMONITORS
 IOTPRO

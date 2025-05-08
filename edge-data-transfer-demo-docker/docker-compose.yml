@@ -8,9 +8,6 @@ x-common-env-variables: &common-env-variables
 
 
 
-
-
-
 x-sensor-template: &sensor-template
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
     entrypoint: "/scripts/start.sh"
@@ -60,8 +57,6 @@ services:
     container_name: edge-demo-orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
-    ports:
-      - "8818:8818"
     volumes:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
     healthcheck:
@@ -70,8 +65,21 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     networks:
       - edge-demo-net
+    ports:
+      - "1234:1234"
+      - "8818:8818"
+    # Orchestrator keeps logging enabled
 
 
   node1:

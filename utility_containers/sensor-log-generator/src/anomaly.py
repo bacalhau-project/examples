@@ -1,10 +1,13 @@
 import logging
 import random
 import time
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 from .enums import AnomalyType, FirmwareVersion, Manufacturer, Model, ParameterType
+
+logger = logging.getLogger(__name__)
 
 
 class AnomalyGenerator:
@@ -68,13 +71,13 @@ class AnomalyGenerator:
         self.start_times = {}
 
         # Log sensor identity
-        logging.info(f"Initializing anomaly generator for sensor: {self.id}")
-        logging.info(f"  Firmware: {self.firmware_version.value}")
-        logging.info(f"  Model: {self.model.value}")
-        logging.info(f"  Manufacturer: {self.manufacturer.value}")
-        logging.info(f"  Location: {self.location}")
-        logging.info(f"  Latitude: {self.latitude}")
-        logging.info(f"  Longitude: {self.longitude}")
+        logger.info(f"Initializing anomaly generator for sensor: {self.id}")
+        logger.info(f"  Firmware: {self.firmware_version.value}")
+        logger.info(f"  Model: {self.model.value}")
+        logger.info(f"  Manufacturer: {self.manufacturer.value}")
+        logger.info(f"  Location: {self.location}")
+        logger.info(f"  Latitude: {self.latitude}")
+        logger.info(f"  Longitude: {self.longitude}")
 
     def should_generate_anomaly(self):
         """Determine if an anomaly should be generated based on probability and firmware version."""
@@ -164,7 +167,7 @@ class AnomalyGenerator:
 
         self.active_anomalies[anomaly_type] = True
         self.start_times[anomaly_type] = time.time()
-        logging.info(f"Started {anomaly_type.value} anomaly")
+        logger.info(f"Started {anomaly_type.value} anomaly")
 
     def is_anomaly_active(self, anomaly_type):
         """Check if an anomaly is currently active."""
@@ -180,7 +183,7 @@ class AnomalyGenerator:
 
         if time.time() - start_time > duration:
             self.active_anomalies[anomaly_type] = False
-            logging.info(f"Ended {anomaly_type.value} anomaly")
+            logger.info(f"Ended {anomaly_type.value} anomaly")
             return False
 
         return True

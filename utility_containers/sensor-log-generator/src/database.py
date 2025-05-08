@@ -3,7 +3,7 @@ import os
 import sqlite3
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Dict, List, Optional
 
@@ -111,8 +111,8 @@ class SensorDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS sensor_readings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT,
-                    sensor_id TEXT,
+                    timestamp TEXT NOT NULL,
+                    sensor_id TEXT NOT NULL,
                     temperature REAL,
                     humidity REAL,
                     pressure REAL,
@@ -188,7 +188,9 @@ class SensorDatabase:
         """
         try:
             # Convert timestamp to ISO 8601 string with milliseconds
-            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(timespec='milliseconds')
+            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(
+                timespec="milliseconds"
+            )
 
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -450,7 +452,13 @@ class SensorDatabase:
         Raises:
             sqlite3.Error: If the database operation fails after retries
         """
-        timestamp = datetime.now().isoformat()
+        firmware_version = firmware_version or "1.0.0"
+        model = model or "Standard Sensor"
+        manufacturer = manufacturer or "Acme Corp"
+        location = location or "Unknown"
+
+        # Use UTC for ISO format timestamps
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         # Add to batch buffer
         self.batch_buffer.append(
@@ -849,15 +857,40 @@ class SensorDatabase:
             stats["total_readings"] = self.cursor.fetchone()[0]
 
             # Get last write timestamp
-            self.cursor.execute("""
-                SELECT MAX(timestamp) 
+            self.cursor.execute(
+                """
+                SELECT MAX(timestamp)
                 FROM sensor_readings
-            """)
-            result = self.cursor.fetchone()
-            if result and result[0]:
-                stats["last_write_timestamp"] = datetime.fromtimestamp(
-                    result[0]
-                ).isoformat()
+                """
+            )
+            last_write = self.cursor.fetchone()[0]
+            if last_write:
+                # Assume timestamp is stored as Unix epoch (REAL) or ISO string (TEXT)
+                try:
+                    # Try parsing as float (Unix timestamp)
+                    ts_float = float(last_write)
+                    stats["last_write_timestamp"] = datetime.fromtimestamp(
+                        ts_float, tz=timezone.utc
+                    ).isoformat()
+                except ValueError:
+                    # Try parsing as ISO string (if stored as TEXT)
+                    try:
+                        stats["last_write_timestamp"] = (
+                            datetime.fromisoformat(
+                                last_write.replace(
+                                    "Z", "+00:00"
+                                )  # Ensure timezone awareness
+                            )
+                            .astimezone(timezone.utc)
+                            .isoformat()
+                        )
+                    except ValueError:
+                        logging.warning(
+                            f"Could not parse last_write timestamp: {last_write}"
+                        )
+                        stats["last_write_timestamp"] = str(last_write)  # Fallback
+            else:
+                stats["last_write_timestamp"] = None
 
             # Get index sizes
             try:
