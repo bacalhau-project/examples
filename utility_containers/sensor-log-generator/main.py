@@ -11,21 +11,24 @@
 #     "psutil",
 #     "requests",
 #     "pydantic",
+#     "tenacity",
 # ]
 # ///
 
-import argparse
 import json
 import logging
 import os
 import random
 import string
 import sys
-from typing import Any, Dict, Optional, Union
+import threading
+import time
+from typing import Any, Callable, Dict, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
+from src.config import ConfigManager
 from src.location import LocationGenerator
 from src.simulator import SensorSimulator
 
@@ -68,11 +71,11 @@ class ParameterDetail(BaseModel):
 
 
 class NormalParametersConfig(BaseModel):
-    temperature: Optional[ParameterDetail] = None
-    vibration: Optional[ParameterDetail] = None
-    humidity: Optional[ParameterDetail] = None
-    pressure: Optional[ParameterDetail] = None
-    voltage: Optional[ParameterDetail] = None
+    temperature: ParameterDetail
+    vibration: ParameterDetail
+    humidity: ParameterDetail
+    pressure: ParameterDetail
+    voltage: ParameterDetail
 
 
 class AnomaliesConfig(BaseModel):
@@ -123,21 +126,6 @@ class IdentityData(BaseModel):
 
     class Config:
         extra = "forbid"  # Forbid any extra fields
-
-
-def check_required_env_vars():
-    """Check for required environment variables and exit if any are missing."""
-    required_vars = {
-        "CONFIG_FILE": "Path to the configuration file",
-        "IDENTITY_FILE": "Path to the identity file",
-    }
-
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        logging.error("Missing required environment variables:")
-        for var in missing_vars:
-            logging.error(f"- {var}: {required_vars[var]}")
-        sys.exit(1)
 
 
 def load_config(config_path: str) -> Dict:
@@ -382,69 +370,272 @@ def setup_logging(config):
         logger.addHandler(file_handler)
 
 
+def file_watcher_thread(
+    file_path: str,
+    load_function: Callable[[str], Dict],
+    config_manager_instance: ConfigManager,
+    update_type: str,  # "config" or "identity"
+    simulator_instance: SensorSimulator,
+    simulator_update_method_name: str,  # "handle_config_updated" or "handle_identity_updated"
+    stop_event: threading.Event,
+    check_interval: Union[int, float],
+):
+    """
+    Monitors a file for changes and updates the ConfigManager and SensorSimulator.
+    """
+    logger = logging.getLogger(__name__)
+    last_mtime = None
+    if os.path.exists(file_path):
+        last_mtime = os.path.getmtime(file_path)
+    else:
+        logger.warning(
+            f"File watcher: Initial file not found at {file_path}. Will watch for creation."
+        )
+
+    while not stop_event.is_set():
+        try:
+            if not os.path.exists(file_path):
+                if last_mtime is not None:  # File was deleted
+                    logger.warning(
+                        f"File watcher: Watched file {file_path} has been deleted."
+                    )
+                    last_mtime = None  # Reset mtime so recreation is detected
+                # Wait and check again
+                stop_event.wait(check_interval)
+                continue
+
+            current_mtime = os.path.getmtime(file_path)
+            if last_mtime is None or current_mtime > last_mtime:
+                if last_mtime is None:
+                    logger.info(
+                        f"File watcher: File {file_path} has been created/appeared."
+                    )
+                else:
+                    logger.info(
+                        f"File watcher: File {file_path} has changed. Reloading..."
+                    )
+
+                try:
+                    new_data = load_function(file_path)
+                    if update_type == "config":
+                        config_manager_instance.config = new_data
+                        # Potentially re-process identity if config affects it, e.g., random location settings
+                        # For now, assuming direct update is sufficient for config.
+                        # If identity processing logic in main needs to be rerun, that's more complex.
+                        # The main config doesn't usually change identity structure, but identity file does.
+                    elif update_type == "identity":
+                        # When identity file changes, it might need re-processing (e.g. ID generation, location fixing)
+                        # This requires the *current app_config* for process_identity_and_location
+                        # It's safer to re-run the original processing logic from main.py for identity.
+                        # However, process_identity_and_location takes app_config, not config_manager.config.
+                        # For now, we'll assume `load_identity` gives the final, processed identity.
+                        # A more robust solution would re-run `process_identity_and_location`.
+                        # Let's keep it simple: just load and set.
+                        # The `config_manager.identity` will be updated by the simulator's handler.
+
+                        # We need to pass the *raw loaded data* to `process_identity_and_location`
+                        # and the *current config dictionary* from ConfigManager.
+                        current_app_config = config_manager_instance.config
+                        processed_new_identity = process_identity_and_location(
+                            new_data, current_app_config
+                        )
+                        config_manager_instance.identity = processed_new_identity
+                    else:
+                        logger.error(
+                            f"File watcher: Unknown update type '{update_type}' for {file_path}"
+                        )
+                        last_mtime = (
+                            current_mtime  # Update mtime to avoid reprocessing error
+                        )
+                        stop_event.wait(check_interval)
+                        continue
+
+                    logger.info(
+                        f"File watcher: Successfully reloaded {file_path}. Notifying simulator."
+                    )
+                    update_method = getattr(
+                        simulator_instance, simulator_update_method_name
+                    )
+                    update_method()  # Call handle_config_updated() or handle_identity_updated()
+
+                    last_mtime = current_mtime
+                except Exception as e:
+                    logger.error(
+                        f"File watcher: Error reloading {file_path}: {e}. Using previous configuration for this source."
+                    )
+                    # last_mtime should not be updated here, so it tries again next interval
+                    # unless the file truly hasn't changed, in which case an mtime update is needed
+                    if os.path.exists(file_path):  # If error was not file not found
+                        last_mtime = os.path.getmtime(
+                            file_path
+                        )  # Avoid loop if file is bad but mtime same
+
+        except Exception as e:
+            logger.error(f"File watcher: Unexpected error for {file_path}: {e}")
+            # Avoid tight loop on unexpected errors
+
+        stop_event.wait(check_interval)
+    logger.info(f"File watcher: Thread for {file_path} is stopping.")
+
+
 def main():
     """Main entry point for the sensor simulator."""
     # If the --exit flag is provided, exit after the simulator is run
     # This is a simple check, consider proper argparse for CLI flags
     if "--exit" in sys.argv:
-        logging.info("Received --exit flag. Exiting script after setup (if any).")
+        # Logging isn't set up yet here.
+        print("Received --exit flag. Exiting script early.")
         sys.exit(0)
 
-    # Check for required environment variables
-    check_required_env_vars()
+    config_file_path = os.environ.get("CONFIG_FILE")
+    identity_file_path = os.environ.get("IDENTITY_FILE")
 
-    config_path = os.getenv("CONFIG_FILE")
-    identity_path = os.getenv("IDENTITY_FILE")
+    if not config_file_path:
+        print("Error: CONFIG_FILE environment variable is not set", file=sys.stderr)
+        sys.exit(1)
 
-    # Load configuration
-    try:
-        config = load_config(config_path)
-    except Exception as e:
-        # load_config already logs, but we add context for exiting
-        logging.error(
-            f"Failed to load configuration from {config_path}. Exiting. Error: {e}"
+    if not identity_file_path:
+        print("Error: IDENTITY_FILE environment variable is not set", file=sys.stderr)
+        sys.exit(1)
+
+    if not os.path.isfile(config_file_path):
+        print(f"Error: Config file not found at {config_file_path}", file=sys.stderr)
+        sys.exit(1)
+
+    if not os.path.isfile(identity_file_path):
+        print(
+            f"Error: Identity file not found at {identity_file_path}", file=sys.stderr
         )
         sys.exit(1)
 
-    # Set up logging as early as possible after getting config
-    setup_logging(config)  # Uses the loaded config
+    initial_config = {}
+    initial_identity = {}
+    config_manager = None
+    simulator = None
+    watcher_threads = []
+    stop_watcher_event = None
 
-    # Load raw identity data
     try:
-        raw_identity = load_identity(identity_path)
-    except Exception as e:
-        logging.error(
-            f"Failed to load identity from {identity_path}. Exiting. Error: {e}"
+        # Load initial configuration
+        try:
+            initial_config = load_config(config_file_path)
+        except Exception as e:
+            # load_config logs, but print for early exit before logger is fully set
+            print(
+                f"Critical: Failed to load initial configuration from {config_file_path}. Exiting. Error: {e}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        # Set up logging as early as possible after getting config
+        setup_logging(initial_config)  # Uses the loaded config
+
+        # Load initial raw identity data
+        try:
+            raw_identity = load_identity(identity_file_path)
+        except Exception as e:
+            logging.error(
+                f"Failed to load initial identity from {identity_file_path}. Exiting. Error: {e}"
+            )
+            sys.exit(1)
+
+        # Process initial identity, handle location, and generate ID if needed
+        try:
+            initial_identity = process_identity_and_location(
+                raw_identity, initial_config
+            )
+        except (ValueError, RuntimeError) as e:  # Catch errors from processing
+            logging.error(
+                f"Failed to process initial identity or generate ID. Exiting. Error: {e}"
+            )
+            sys.exit(1)
+
+        # Create ConfigManager with initial data
+        config_manager = ConfigManager(config=initial_config, identity=initial_identity)
+
+        logging.info(
+            f"Using sensor ID: {config_manager.get_identity().get('id', 'Not Set')}"
         )
-        sys.exit(1)
+        logging.info(
+            f"Sensor Location: {config_manager.get_identity().get('location', 'Not Set')}"
+        )
 
-    # Process identity, handle location, and generate ID if needed
-    try:
-        identity = process_identity_and_location(raw_identity, config)
-    except (ValueError, RuntimeError) as e:  # Catch errors from processing
-        logging.error(f"Failed to process identity or generate ID. Exiting. Error: {e}")
-        sys.exit(1)
+        # Create and run the simulator, passing the ConfigManager
+        simulator = SensorSimulator(config_manager)
 
-    logging.info(f"Using sensor ID: {identity.get('id', 'Not Set')}")
-    logging.info(f"Sensor Location: {identity.get('location', 'Not Set')}")
+        # Setup and start file watcher threads if dynamic reloading is enabled
+        dynamic_reload_settings = config_manager.config.get("dynamic_reloading", {})
+        if dynamic_reload_settings.get("enabled", False):
+            check_interval = dynamic_reload_settings.get("check_interval_seconds", 5)
+            logging.info(
+                f"Dynamic reloading enabled. Check interval: {check_interval}s."
+            )
+            stop_watcher_event = threading.Event()
 
-    # Get data directory path from config
-    data_dir_config = config.get("database", {})
-    data_dir = data_dir_config.get("path", "data")
-    if not data_dir:
-        logging.error("Data directory path not specified in config.yaml")
-        sys.exit(1)
+            # Config file watcher
+            config_watcher = threading.Thread(
+                target=file_watcher_thread,
+                args=(
+                    config_file_path,
+                    load_config,  # function to load config
+                    config_manager,
+                    "config",  # type of update
+                    simulator,
+                    "handle_config_updated",  # simulator's method
+                    stop_watcher_event,
+                    check_interval,
+                ),
+                daemon=True,
+            )
+            watcher_threads.append(config_watcher)
+            config_watcher.start()
 
-    # Ensure the data directory exists
-    try:
-        os.makedirs(os.path.dirname(data_dir), exist_ok=True)
+            # Identity file watcher
+            identity_watcher = threading.Thread(
+                target=file_watcher_thread,
+                args=(
+                    identity_file_path,
+                    load_identity,  # function to load identity (raw)
+                    config_manager,
+                    "identity",  # type of update
+                    simulator,
+                    "handle_identity_updated",  # simulator's method
+                    stop_watcher_event,
+                    check_interval,
+                ),
+                daemon=True,
+            )
+            watcher_threads.append(identity_watcher)
+            identity_watcher.start()
+        else:
+            logging.info("Dynamic reloading is disabled.")
+
+        simulator.run()
+
+    except KeyboardInterrupt:
+        logging.info("Main: Simulation interrupted by user.")
+        if simulator:
+            simulator.stop()  # Gracefully stop simulator if possible
     except Exception as e:
-        logging.error(f"Failed to create data directory: {e}")
-        sys.exit(1)
+        logging.critical(f"Main: Unhandled exception: {e}", exc_info=True)
+    finally:
+        logging.info("Main: Shutting down...")
+        if stop_watcher_event:
+            logging.info("Main: Signaling watcher threads to stop...")
+            stop_watcher_event.set()
+            for thread in watcher_threads:
+                if thread.is_alive():
+                    logging.info(
+                        f"Main: Waiting for watcher thread {thread.name} to join..."
+                    )
+                    thread.join(timeout=5)  # Wait for threads to finish
+                    if thread.is_alive():
+                        logging.warning(
+                            f"Main: Watcher thread {thread.name} did not join in time."
+                        )
 
-    # Create and run the simulator
-    simulator = SensorSimulator(config, identity)
-    simulator.run()
+        # Simulator's own cleanup (like DB close) happens in its run() finally block.
+        logging.info("Main: Shutdown complete.")
 
 
 if __name__ == "__main__":

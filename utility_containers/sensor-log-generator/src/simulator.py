@@ -8,13 +8,11 @@ from typing import Dict
 import numpy as np
 import psutil
 from psutil import Process
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 from .anomaly import AnomalyGenerator
 from .config import ConfigManager
 from .database import SensorDatabase
 from .enums import FirmwareVersion, Manufacturer, Model
-from .location import LocationGenerator
 from .monitor import MonitoringServer
 
 # Set up global logger
@@ -22,34 +20,29 @@ logger = logging.getLogger(__name__)
 
 
 class SensorSimulator:
-    def __init__(self, config: Dict, identity: Dict):
+    def __init__(self, config_manager: ConfigManager):
         """Initialize the sensor simulator.
 
         Args:
-            config: Configuration dictionary loaded from YAML
-            identity: Identity dictionary loaded from JSON, including keys:
-                'id', 'location', 'latitude', 'longitude', 'timezone',
-                'manufacturer', 'model', 'firmware_version'
+            config_manager: An instance of ConfigManager providing configuration and identity.
         """
-        # Store configuration and identity
-        self.config = config
-        self.identity = identity
-        self.sensor_id = identity.get("id")
-        self.manufacturer = identity.get("manufacturer")
-        self.model = identity.get("model")
-        self.firmware_version = identity.get("firmware_version")
+        self.config_manager = config_manager
+        self.identity = self.config_manager.get_identity()  # Get initial identity
+
+        self.sensor_id = self.identity.get("id")
+        self.manufacturer = self.identity.get("manufacturer")
+        self.model = self.identity.get("model")
+        self.firmware_version = self.identity.get("firmware_version")
         self.running = False
 
         # Initialize location properties including timezone
-        self.city_name = identity.get(
-            "location"
-        )  # Keep city name separate if needed elsewhere
-        self.latitude = identity.get("latitude")
-        self.longitude = identity.get("longitude")
-        self.timezone = identity.get("timezone", "UTC")  # Store timezone, default UTC
+        self.city_name = self.identity.get("location")
+        self.latitude = self.identity.get("latitude")
+        self.longitude = self.identity.get("longitude")
+        self.timezone = self.identity.get("timezone", "UTC")
 
         # Get database path from config
-        db_path = config.get("database", {}).get("path")
+        db_path = self.config_manager.get_database_config().get("path")
         if not db_path:
             raise ValueError("Database path not specified in config.yaml")
 
@@ -61,10 +54,9 @@ class SensorSimulator:
         # Initialize database
         self.database = SensorDatabase(db_path)
 
-        # Set up logging to file
-        log_file = config.get("logging", {}).get("file")
+        # Set up logging to file (using config from ConfigManager)
+        log_file = self.config_manager.get_logging_config().get("file")
         if log_file:
-            # Ensure the log directory exists
             log_dir = os.path.dirname(log_file)
             if log_dir:
                 os.makedirs(log_dir, exist_ok=True)
@@ -76,61 +68,41 @@ class SensorSimulator:
             )
             logger.addHandler(file_handler)
 
-        # Validate sensor configuration
+        # Validate sensor configuration (uses self.identity, which is from config_manager)
         try:
             self._validate_sensor_config()
         except ValueError as e:
             logger.error(str(e))
             raise
 
-        # Generate and store the location once at initialization
+        # Generate and store the location once at initialization (validates and logs)
         self._get_initial_location()
 
         # Get simulation parameters
-        self.readings_per_second = self.config.get("simulation", {}).get(
-            "readings_per_second", 1
-        )
-        self.run_time_seconds = self.config.get("simulation", {}).get(
-            "run_time_seconds", 3600
-        )
+        sim_config = self.config_manager.get_simulation_config()
+        self.readings_per_second = sim_config.get("readings_per_second", 1)
+        self.run_time_seconds = sim_config.get("run_time_seconds", 3600)
 
         # Get replica configuration
-        self.replica_config = self.config.get("replicas") or {}
+        self.replica_config = self.config_manager.config.get("replicas") or {}
         self.replica_count = self.replica_config.get("count", 1)
         self.replica_prefix = self.replica_config.get("prefix", "SENSOR")
         self.replica_start_index = self.replica_config.get("start_index", 1)
 
         try:
-            # Initialize ConfigManager with pre-loaded config and identity
-            self.config_manager = ConfigManager(
-                initial_config=self.config, initial_identity=self.identity
-            )
+            # ConfigManager is now passed in, no internal initialization.
 
             logging_config = self.config_manager.get_logging_config()
             logging.getLogger().setLevel(
                 getattr(logging, logging_config.get("level", "INFO"))
             )
 
-            # Get sensor configuration
             self.sensor_config = self.config_manager.get_sensor_config()
+            self.normal_params = self.config_manager.get_normal_parameters() or {}
 
-            # Get normal parameters
-            self.normal_params = self.config_manager.get_normal_parameters()
-            self.normal_params = self.normal_params or {}
-
-            # Update identity with location information
-            self.identity.update(
-                {
-                    "latitude": self.latitude,
-                    "longitude": self.longitude,
-                    "city_name": self.city_name,
-                }
-            )
-
-            # Initialize anomaly generator with sensor config
-            anomaly_config = self.config_manager.get_anomaly_config()
-            anomaly_config = anomaly_config or {}
-            self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
+            # Anomaly generator initialized with config and current identity
+            anomaly_cfg = self.config_manager.get_anomaly_config() or {}
+            self.anomaly_generator = AnomalyGenerator(anomaly_cfg, self.identity)
 
             # Initialize state
             self.start_time = None
@@ -139,10 +111,6 @@ class SensorSimulator:
             self.max_consecutive_errors = 10
             self.consecutive_errors = 0
 
-            # Last config check time
-            self.last_config_check = time.time()
-            self.config_check_interval = 5  # Check for config updates every 5 seconds
-
             # Memory usage monitoring
             self.process = psutil.Process(os.getpid())
             self.memory_usage = {
@@ -150,17 +118,17 @@ class SensorSimulator:
                 "current_mb": 0,
                 "peak_mb": 0,
                 "last_check_time": time.time(),
-                "check_interval": 60,  # Check memory usage every 60 seconds
+                "check_interval": 60,
             }
 
             # Initialize monitoring server if enabled
-            monitoring_config = self.config.get("monitoring", {})
-            self.monitoring_enabled = monitoring_config.get("enabled", False)
+            monitoring_cfg = self.config_manager.config.get("monitoring", {})
+            self.monitoring_enabled = monitoring_cfg.get("enabled", False)
             self.monitoring_server = None
 
             if self.monitoring_enabled:
-                host = monitoring_config.get("host", "0.0.0.0")
-                port = monitoring_config.get("port", 8080)
+                host = monitoring_cfg.get("host", "0.0.0.0")
+                port = monitoring_cfg.get("port", 8080)
                 self.monitoring_server = MonitoringServer(self, host, port)
 
             logger.info("Sensor simulator initialized successfully")
@@ -169,45 +137,49 @@ class SensorSimulator:
             raise
 
     def _validate_sensor_config(self):
-        """Validate the sensor configuration."""
-        # Check for required location
-        location = self.identity.get("location")
+        """Validate the sensor configuration using self.identity."""
+        current_identity = (
+            self.identity
+        )  # Use the local copy, sourced from config_manager
+        location = current_identity.get("location")
         if not location:
             raise ValueError("Location is required in identity configuration")
 
-        # Check manufacturer, model, and firmware version
         try:
-            manufacturer = Manufacturer(self.identity.get("manufacturer"))
-            if manufacturer is None:
+            manufacturer_val = current_identity.get("manufacturer")
+            if manufacturer_val is None:  # Check for None before passing to Enum
                 raise ValueError("Manufacturer is required in identity configuration")
+            Manufacturer(manufacturer_val)
         except ValueError:
             valid_manufacturers = [m.value for m in Manufacturer]
             raise ValueError(
-                f"Invalid manufacturer: {self.identity.get('manufacturer')}. "
+                f"Invalid or missing manufacturer: {current_identity.get('manufacturer')}. "
                 f"Valid manufacturers are: {valid_manufacturers}"
             )
 
         try:
-            model = Model(self.identity.get("model"))
-            if model is None:
+            model_val = current_identity.get("model")
+            if model_val is None:
                 raise ValueError("Model is required in identity configuration")
+            Model(model_val)
         except ValueError:
             valid_models = [m.value for m in Model]
             raise ValueError(
-                f"Invalid model: {self.identity.get('model')}. "
+                f"Invalid or missing model: {current_identity.get('model')}. "
                 f"Valid models are: {valid_models}"
             )
 
         try:
-            firmware = FirmwareVersion(self.identity.get("firmware_version"))
-            if firmware is None:
+            firmware_val = current_identity.get("firmware_version")
+            if firmware_val is None:
                 raise ValueError(
                     "Firmware version is required in identity configuration"
                 )
+            FirmwareVersion(firmware_val)
         except ValueError:
             valid_versions = [v.value for v in FirmwareVersion]
             raise ValueError(
-                f"Invalid firmware version: {self.identity.get('firmware_version')}. "
+                f"Invalid or missing firmware version: {current_identity.get('firmware_version')}. "
                 f"Valid versions are: {valid_versions}"
             )
 
@@ -326,93 +298,107 @@ class SensorSimulator:
             logger.error(f"Error checking memory usage: {e}")
             return self.memory_usage
 
-    def check_for_config_updates(self):
-        """Check if configuration has been updated and apply changes.
-        Note: Location will not be changed even if config is reloaded.
+    def handle_config_updated(self):
+        """Apply changes after the main configuration (config.yaml) has been updated."""
+        logger.info(
+            "Applying configuration changes to simulator (triggered externally)"
+        )
 
-        Returns:
-            Boolean indicating if configuration was updated
-        """
+        # Update logging configuration
+        logging_config = self.config_manager.get_logging_config()
+        logging.getLogger().setLevel(
+            getattr(logging, logging_config.get("level", "INFO"))
+        )
+
+        # Update simulation parameters
+        simulation_config = self.config_manager.get_simulation_config()
+        self.readings_per_second = simulation_config.get(
+            "readings_per_second", self.readings_per_second
+        )
+        # Note: run_time_seconds is typically set at init and not changed mid-simulation.
+
+        # Update normal parameters
+        self.normal_params = self.config_manager.get_normal_parameters() or {}
+
+        # Update sensor configuration (from config.yaml's "sensor" section if used for this)
+        self.sensor_config = self.config_manager.get_sensor_config()
+        # If sensor_id could be overridden by general config, handle here.
+        # For now, assuming sensor_id is primarily from identity.
+
+        # Update anomaly generator with new configuration (it uses current identity)
+        anomaly_config = self.config_manager.get_anomaly_config() or {}
+        self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
+
+        # Update monitoring configuration
+        monitoring_config = self.config_manager.config.get("monitoring", {})
+        monitoring_enabled = monitoring_config.get("enabled", False)
+        current_monitoring_host = (
+            self.monitoring_server.host if self.monitoring_server else None
+        )
+        current_monitoring_port = (
+            self.monitoring_server.port if self.monitoring_server else None
+        )
+
+        if monitoring_enabled:
+            new_host = monitoring_config.get("host", "0.0.0.0")
+            new_port = monitoring_config.get("port", 8080)
+            if not self.monitoring_enabled or (
+                self.monitoring_server
+                and (
+                    current_monitoring_host != new_host
+                    or current_monitoring_port != new_port
+                )
+            ):
+                logger.info(
+                    f"Monitoring server config changed or being enabled. Host: {new_host}, Port: {new_port}"
+                )
+                if self.monitoring_server and self.monitoring_server.running:
+                    self.monitoring_server.stop()
+                self.monitoring_server = MonitoringServer(self, new_host, new_port)
+                if self.running:
+                    self.monitoring_server.start()
+            self.monitoring_enabled = True
+        elif not monitoring_enabled and self.monitoring_enabled:
+            logger.info("Disabling monitoring server.")
+            if self.monitoring_server and self.monitoring_server.running:
+                self.monitoring_server.stop()
+            self.monitoring_server = None
+            self.monitoring_enabled = False
+
+        logger.info("Configuration update processed.")
+
+    def handle_identity_updated(self):
+        """Apply changes after the node identity (identity.json) has been updated."""
+        logger.info("Applying identity changes to simulator (triggered externally)")
+        self.identity = self.config_manager.get_identity()  # Update local copy
+
+        # Re-initialize attributes based on the new identity
+        self.sensor_id = self.identity.get("id")
+        self.manufacturer = self.identity.get("manufacturer")
+        self.model = self.identity.get("model")
+        self.firmware_version = self.identity.get("firmware_version")
+
+        self.city_name = self.identity.get("location")
+        self.latitude = self.identity.get("latitude")
+        self.longitude = self.identity.get("longitude")
+        self.timezone = self.identity.get("timezone", "UTC")
+
         try:
-            current_time = time.time()
+            self._validate_sensor_config()  # Uses the new self.identity
+        except ValueError as e:
+            logger.error(f"Error validating sensor config after identity update: {e}")
+            # Decide how to handle: stop simulator? For now, log and continue.
+            # External watcher should ideally ensure valid identity.
 
-            # Only check periodically to avoid overhead
-            if current_time - self.last_config_check < self.config_check_interval:
-                return False
+        # Re-initialize AnomalyGenerator as it depends on identity
+        anomaly_config = (
+            self.config_manager.get_anomaly_config()
+        )  # Get current anomaly config
+        self.anomaly_generator = AnomalyGenerator(anomaly_config or {}, self.identity)
 
-            self.last_config_check = current_time
-
-            # Check if config has changed (reload_config returns True if changes were applied)
-            if not hasattr(self.config_manager, "reload_config"):
-                return False
-
-            if self.config_manager.reload_config():
-                logger.info("Applying configuration changes to simulator")
-
-                # Update configuration references
-                self.config = self.config_manager.config
-                self.identity = self.config_manager.identity
-
-                # Update logging configuration
-                logging_config = self.config_manager.get_logging_config()
-                logging.getLogger().setLevel(
-                    getattr(logging, logging_config.get("level", "INFO"))
-                )
-
-                # Update simulation parameters
-                self.simulation_config = self.config_manager.get_simulation_config()
-                self.readings_per_second = self.simulation_config.get(
-                    "readings_per_second", 1
-                )
-
-                # Only update run_time if simulation hasn't started yet
-                if self.start_time is None:
-                    self.run_time_seconds = self.simulation_config.get(
-                        "run_time_seconds", 3600
-                    )
-
-                # Update normal parameters
-                self.normal_params = self.config_manager.get_normal_parameters()
-                self.normal_params = self.normal_params or {}
-
-                # Update sensor configuration
-                old_sensor_id = self.sensor_id
-                self.sensor_config = self.config_manager.get_sensor_config()
-                self.sensor_id = self.sensor_config.get("id", "SENSOR001")
-
-                if old_sensor_id != self.sensor_id:
-                    logger.info(
-                        f"Sensor ID changed from {old_sensor_id} to {self.sensor_id}"
-                    )
-
-                # Update anomaly generator with new configuration
-                anomaly_config = self.config_manager.get_anomaly_config()
-                anomaly_config = anomaly_config or {}
-                self.anomaly_generator = AnomalyGenerator(anomaly_config, self.identity)
-
-                # Update monitoring configuration
-                monitoring_config = self.config.get("monitoring", {})
-                monitoring_enabled = monitoring_config.get("enabled", False)
-
-                # Start or stop monitoring server if needed
-                if monitoring_enabled and not self.monitoring_enabled:
-                    self.monitoring_enabled = True
-                    host = monitoring_config.get("host", "0.0.0.0")
-                    port = monitoring_config.get("port", 8080)
-                    self.monitoring_server = MonitoringServer(self, host, port)
-                    if self.running:
-                        self.monitoring_server.start()
-                elif not monitoring_enabled and self.monitoring_enabled:
-                    self.monitoring_enabled = False
-                    if self.monitoring_server and self.monitoring_server.running:
-                        self.monitoring_server.stop()
-
-                return True
-
-            return False
-        except Exception as e:
-            logger.error(f"Error checking for configuration updates: {e}")
-            return False
+        logger.info(
+            f"Identity update processed. New Sensor ID: {self.sensor_id}, Location: {self.city_name}"
+        )
 
     def process_reading(self, reading: Dict) -> bool:
         """Process a single reading.
@@ -517,10 +503,6 @@ class SensorSimulator:
             if self.monitoring_server and self.monitoring_server.running:
                 self.monitoring_server.stop()
 
-            # Stop the config file watcher if it's running
-            if hasattr(self.config_manager, "stop_file_watcher"):
-                self.config_manager.stop_file_watcher()
-
             # Close database connection
             if hasattr(self, "database"):
                 self.database.close()
@@ -593,18 +575,18 @@ class SensorSimulator:
         """Generate a single sensor reading.
 
         Args:
-            sensor_id: ID of the sensor
+            sensor_id: ID of the sensor (note: self.sensor_id is the primary one)
 
         Returns:
             Dictionary containing the reading data
         """
-        # Get normal parameters
-        normal_params = self.config.get("normal_parameters", {})
+        # Get normal parameters from ConfigManager
+        normal_params = self.config_manager.get_normal_parameters()
 
         # Generate base reading
         reading = {
             "timestamp": time.time(),
-            "sensor_id": sensor_id,
+            "sensor_id": sensor_id,  # Use provided sensor_id, usually self.sensor_id
             "temperature": self._generate_normal_value(
                 normal_params.get("temperature", {})
             ),
@@ -617,16 +599,17 @@ class SensorSimulator:
             "status_code": 0,
             "anomaly_flag": False,
             "anomaly_type": None,
+            # Use current identity for these fields
             "firmware_version": self.identity.get("firmware_version"),
             "model": self.identity.get("model"),
             "manufacturer": self.identity.get("manufacturer"),
-            "location": self.city_name,  # Just the city name
-            "latitude": self.latitude,  # Latitude as separate field
-            "longitude": self.longitude,  # Longitude as separate field
+            "location": self.city_name,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
             "synced": False,
         }
 
-        # Check for anomalies
+        # Check for anomalies (AnomalyGenerator uses current config and identity)
         if self.anomaly_generator.should_generate_anomaly():
             anomaly_type = self.anomaly_generator.select_anomaly_type()
             if anomaly_type:
@@ -662,16 +645,23 @@ class SensorSimulator:
                 return value
 
     def _get_initial_location(self) -> None:
-        """Get the initial location for the sensor from the provided identity.
-        The identity object is expected to have complete and valid location
-        information (location, latitude, longitude) as processed by main.py.
+        """Get and validate the initial location for the sensor from self.identity.
+        self.identity is expected to have complete and valid location information
+        as processed by main.py and passed via ConfigManager.
 
         Sets the location properties (city_name, latitude, longitude) on the instance.
-        Raises ValueError if the identity object has incomplete location information.
+        Raises ValueError if self.identity has incomplete location information.
         """
-        self.city_name = self.identity.get("location")
-        self.latitude = self.identity.get("latitude")
-        self.longitude = self.identity.get("longitude")
+        # self.identity is already set from config_manager in __init__
+        # This method now primarily validates and logs the location from self.identity.
+        current_identity_data = self.identity
+
+        # Re-assign to ensure these are set from the validated identity data if needed,
+        # though __init__ already does this. This is more for validation and logging.
+        self.city_name = current_identity_data.get("location")
+        self.latitude = current_identity_data.get("latitude")
+        self.longitude = current_identity_data.get("longitude")
+        # self.timezone is already set in __init__ from self.identity
 
         if not (
             isinstance(self.city_name, str)
@@ -699,7 +689,6 @@ class SensorSimulator:
             f"SensorSimulator using location from processed identity: {self.city_name} "
             f"(Lat: {self.latitude:.6f}, Lon: {self.longitude:.6f})"
         )
-        # No need to update self.identity here as it's expected to be correct from the input.
 
     def _get_location(self) -> str:
         """Get the current location for the sensor.
