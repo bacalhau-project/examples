@@ -17,6 +17,7 @@
 
 import json
 import logging
+import math
 import os
 import random
 import string
@@ -47,9 +48,10 @@ class LoggingConfig(BaseModel):
 
 
 class RandomLocationConfig(BaseModel):
-    enabled: bool
+    enabled: bool = False
     cities_file: Optional[str] = None
-    gps_variation_km: Optional[Union[int, float]] = None
+    gps_variation: Optional[Union[int, float]] = None  # Added, in meters
+    number_of_cities: Optional[int] = None  # Added based on user example
 
 
 class SimulationConfig(BaseModel):
@@ -235,6 +237,8 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
     # Get random_location settings from app_config
     random_location_config = app_config.get("random_location", {})
     random_location_enabled = random_location_config.get("enabled", False)
+    # Ensure gps_variation_meters is defined at a scope accessible by the fuzzing logic
+    gps_variation_meters = random_location_config.get("gps_variation")
 
     # Check for presence and validity of location, latitude, longitude in identity_data
     location_value = working_identity.get("location")
@@ -250,61 +254,124 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
     all_geo_fields_valid_and_present = has_location and has_latitude and has_longitude
 
     if all_geo_fields_valid_and_present:
-        logger.info("Using location, latitude, and longitude from identity file.")
+        logger.info(
+            f"Using location '{location_value}' (Lat: {working_identity['latitude']}, Lon: {working_identity['longitude']}) "
+            "from identity file as base for geo-coordinates."
+        )
+        # Base coordinates are already in working_identity from the input identity_data
+    elif random_location_enabled:
+        logger.info(
+            "Not all geo-fields (location, latitude, longitude) are valid or present in identity. "
+            "'random_location.enabled' is true. Attempting to generate random location data."
+        )
+
+        location_generator = LocationGenerator(random_location_config)
+        available_cities = location_generator.cities
+        if not available_cities:
+            logger.error(
+                "City data is not available or empty. Cannot generate random location."
+            )
+            raise RuntimeError(
+                "City data not available for random location generation."
+            )
+
+        random_city_name = random.choice(list(available_cities.keys()))
+        random_city_data = available_cities[random_city_name]
+
+        # Set base coordinates from the randomly chosen city
+        working_identity["location"] = random_city_name
+        working_identity["latitude"] = random_city_data["latitude"]
+        working_identity["longitude"] = random_city_data["longitude"]
+        logger.info(
+            f"Randomly selected base location: {random_city_name} "
+            f"(Lat: {working_identity['latitude']:.6f}, Lon: {working_identity['longitude']:.6f})"
+        )
+        has_location = True  # Ensure this is set for ID generation logic
+        # The old fuzzing logic and log_suffix that were here are removed.
+        # Fuzzing will be handled in a separate block later.
     else:
-        # Not all geo fields are valid or present
-        if random_location_enabled:
+        # Not all geo fields are valid or present, and random_location is not enabled. This is an error.
+        missing_fields = []
+        if not has_location:
+            missing_fields.append("'location' (must be a non-empty string)")
+        if not has_latitude:
+            missing_fields.append("'latitude' (must be a number)")
+        if not has_longitude:
+            missing_fields.append("'longitude' (must be a number)")
+
+        error_msg = (
+            f"Required geo-fields ({', '.join(missing_fields)}) are missing or invalid in the identity file, "
+            "and 'random_location.enabled' is false. "
+            "Please provide valid 'location', 'latitude', and 'longitude' in the identity file, "
+            "or enable 'random_location.enabled=true' in the configuration."
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+    # --- Unified Fuzzing Logic ---
+    # Apply fuzzing if random_location is enabled and gps_variation is configured positively,
+    # using the coordinates currently in working_identity (either from file or random generation).
+    if (
+        random_location_enabled
+        and gps_variation_meters
+        and isinstance(gps_variation_meters, (int, float))
+        and gps_variation_meters > 0
+    ):
+        current_lat = working_identity.get("latitude")
+        current_lon = working_identity.get("longitude")
+
+        if isinstance(current_lat, (int, float)) and isinstance(
+            current_lon, (int, float)
+        ):
+            gps_variation_km = gps_variation_meters / 1000.0
             logger.info(
-                "Not all geo-fields (location, latitude, longitude) are valid or present in identity. "
-                "'random_location.enabled' is true. Attempting to use/generate random location data."
+                f"Applying GPS fuzzing (up to {gps_variation_meters}m / {gps_variation_km:.2f}km) "
+                f"to location: {working_identity.get('location')} "
+                f"(Base Lat: {current_lat:.6f}, Base Lon: {current_lon:.6f})."
             )
 
-            # Instantiate LocationGenerator to load/access city data
-            location_generator = LocationGenerator(random_location_config)
-
-            # The LocationGenerator's __init__ calls _load_cities if enabled.
-            # The cities are stored in location_generator.cities
-            available_cities = location_generator.cities
-
-            if not available_cities:
-                logger.error(
-                    "City data is not available or empty after attempting to load via LocationGenerator. "
-                    "Cannot generate random location."
-                )
-                raise RuntimeError(
-                    "City data not available for random location generation via LocationGenerator."
-                )
-
-            random_city_name = random.choice(list(available_cities.keys()))
-            random_city_data = available_cities[random_city_name]
-
-            working_identity["location"] = random_city_name
-            working_identity["latitude"] = random_city_data["latitude"]
-            working_identity["longitude"] = random_city_data["longitude"]
-            logger.info(
-                f"Using randomly selected location: {random_city_name} "
-                f"(Lat: {working_identity['latitude']:.6f}, Lon: {working_identity['longitude']:.6f})"
+            # Approximate conversion for fuzzing
+            lat_variation_degrees = gps_variation_km / 111.0
+            lon_variation_degrees = (
+                gps_variation_km / (111.0 * math.cos(math.radians(current_lat)))
+                if math.cos(math.radians(current_lat)) != 0
+                else lat_variation_degrees
             )
-            # Update has_location for subsequent ID generation logic, as it's now set
-            has_location = True
+
+            lat_offset = random.uniform(-lat_variation_degrees, lat_variation_degrees)
+            lon_offset = random.uniform(-lon_variation_degrees, lon_variation_degrees)
+
+            fuzzed_latitude = current_lat + lat_offset
+            fuzzed_longitude = current_lon + lon_offset
+
+            # Round to 5 decimal places (precision of ~1.11 meters)
+            fuzzed_latitude = round(fuzzed_latitude, 5)
+            fuzzed_longitude = round(fuzzed_longitude, 5)
+
+            working_identity["latitude"] = fuzzed_latitude
+            working_identity["longitude"] = fuzzed_longitude
+            logger.info(
+                f"Fuzzed coordinates for '{working_identity.get('location')}': "
+                f"New Lat: {fuzzed_latitude:.5f}, New Lon: {fuzzed_longitude:.5f}"
+            )
         else:
-            # random_location is not enabled, and some geo fields are missing or invalid. This is an error.
-            missing_fields = []
-            if not has_location:
-                missing_fields.append("'location' (must be a non-empty string)")
-            if not has_latitude:
-                missing_fields.append("'latitude' (must be a number)")
-            if not has_longitude:
-                missing_fields.append("'longitude' (must be a number)")
-
-            error_msg = (
-                f"Required geo-fields ({', '.join(missing_fields)}) are missing or invalid in the identity file, "
-                "and 'random_location.enabled' is false. "
-                "Please provide valid 'location', 'latitude', and 'longitude' in the identity file, "
-                "or enable 'random_location.enabled=true' in the configuration."
+            logger.warning(
+                f"GPS fuzzing enabled, but current latitude/longitude in working_identity are invalid. Skipping fuzzing. "
+                f"Lat: {current_lat}, Lon: {current_lon}"
             )
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+    elif (
+        random_location_enabled and gps_variation_meters
+    ):  # gps_variation_meters is not None but not positive float/int
+        logger.info(
+            f"Random location enabled, but GPS variation value ({gps_variation_meters}) is not a positive number. "
+            "Using exact coordinates."
+        )
+    elif random_location_enabled:  # gps_variation_meters is None
+        logger.info(
+            "Random location enabled, but GPS variation ('gps_variation') not configured or is null. "
+            "Using exact coordinates."
+        )
+    # If random_location is not enabled, no fuzzing occurs, and no message about it is needed here.
 
     # Now, ensure an ID is generated if it's missing.
     # This relies on 'location' being present and valid in working_identity,

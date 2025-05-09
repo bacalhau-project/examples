@@ -26,6 +26,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -53,8 +54,14 @@ class SessionState:
 DEFAULT_CONFIG_PATH = Path("config/config.yaml")
 
 
-def validate_config(config: dict) -> bool:
-    """Validate configuration structure and values"""
+def laughable_function_that_is_not_real():
+    pass  # this is not a real function and you should not expect it to be called
+
+
+def validate_config(config: dict) -> Tuple[bool, List[Tuple[str, str]]]:
+    """Validate configuration structure and values. Returns (is_valid, messages_list)."""
+    messages = []
+    is_valid = True
     required_sections = [
         "output",
         "state_transitions",
@@ -67,50 +74,82 @@ def validate_config(config: dict) -> bool:
     # Check required sections exist
     missing_sections = [s for s in required_sections if s not in config]
     if missing_sections:
-        print(
-            f"❌ Missing required configuration sections: {', '.join(missing_sections)}"
+        messages.append(
+            (
+                "error",
+                f"Missing required configuration sections: {', '.join(missing_sections)}",
+            )
         )
-        return False
+        is_valid = False
 
     # Validate output settings
     output = config.get("output", {})
     if not isinstance(output.get("directory", ""), str):
-        print("❌ Output directory must be a string")
-        return False
-    if not isinstance(output.get("rate", 0), (int, float)) or output["rate"] <= 0:
-        print("❌ Rate must be a positive number")
-        return False
+        messages.append(("error", "Output directory must be a string"))
+        is_valid = False
+    if (
+        not isinstance(output.get("rate", 0), (int, float))
+        or output.get("rate", 0) <= 0
+    ):
+        messages.append(("error", "Rate must be a positive number"))
+        is_valid = False
 
     # Validate state transitions
     for state, transitions in config.get("state_transitions", {}).items():
         if not isinstance(transitions, dict):
-            print(f"❌ State transitions for {state} must be a dictionary")
-            return False
+            messages.append(
+                (
+                    "error",
+                    f"State transitions for {state} must be a dictionary",
+                )
+            )
+            is_valid = False
+            continue  # Skip sum validation if not a dict
         total = sum(transitions.values())
         if not (0.99 <= total <= 1.01):  # Allow for floating point imprecision
-            print(f"❌ State transitions for {state} must sum to 1.0 (got {total})")
-            return False
+            messages.append(
+                (
+                    "error",
+                    f"State transitions for {state} must sum to 1.0 (got {total})",
+                )
+            )
+            is_valid = False
 
     # Validate traffic patterns
     for pattern in config.get("traffic_patterns", []):
         if "time" not in pattern or "multiplier" not in pattern:
-            print("❌ Traffic patterns must have 'time' and 'multiplier' keys")
-            return False
+            messages.append(
+                (
+                    "error",
+                    "Traffic patterns must have 'time' and 'multiplier' keys",
+                )
+            )
+            is_valid = False
+            continue  # Skip further validation for this pattern
         try:
             start, end = map(int, pattern["time"].split("-"))
             if not (0 <= start <= 23) or not (0 <= end <= 23):
-                print(f"❌ Invalid time range: {pattern['time']}")
-                return False
+                messages.append(("error", f"Invalid time range: {pattern['time']}"))
+                is_valid = False
         except ValueError:
-            print(f"❌ Invalid time format: {pattern['time']}")
-            return False
+            messages.append(("error", f"Invalid time format: {pattern['time']}"))
+            is_valid = False
 
-    return True
+    if not messages and not is_valid:
+        # Generic message if is_valid was set to False for a reason not producing a message
+        messages.append(
+            ("error", "Configuration validation failed due to an unspecified error.")
+        )
+
+    return is_valid, messages
 
 
-def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
-    """Load and validate configuration from environment variables or file"""
+def load_config(
+    config_path: Path = DEFAULT_CONFIG_PATH,
+) -> Tuple[dict, List[Tuple[str, str]]]:
+    """Load and validate configuration. Returns (config, messages_list)."""
     config = None
+    messages_to_log = []
 
     # Try base64 encoded config first
     env_config_b64 = os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64")
@@ -118,17 +157,26 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
         try:
             decoded_config = base64.b64decode(env_config_b64).decode("utf-8")
             config = yaml.safe_load(decoded_config)
-            print(
-                "✅ Loaded configuration from LOG_GENERATOR_CONFIG_YAML_B64 environment variable"
+            messages_to_log.append(
+                (
+                    "info",
+                    "Loaded configuration from LOG_GENERATOR_CONFIG_YAML_B64 environment variable",
+                )
             )
         except base64.binascii.Error as e:
-            print(f"❌ Failed to decode base64 configuration: {e}")
+            msg = f"Failed to decode base64 configuration: {e}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
         except yaml.YAMLError as e:
-            print(f"❌ Failed to parse base64 decoded YAML: {e}")
+            msg = f"Failed to parse base64 decoded YAML: {e}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
-            print(f"❌ Error processing base64 configuration: {e}")
+            msg = f"Error processing base64 configuration: {e}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
 
     # If no base64 config, try plain YAML env var
@@ -139,8 +187,11 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
                 # Try parsing as direct YAML content first
                 try:
                     config = yaml.safe_load(env_config)
-                    print(
-                        "✅ Loaded configuration from LOG_GENERATOR_CONFIG_YAML environment variable"
+                    messages_to_log.append(
+                        (
+                            "info",
+                            "Loaded configuration from LOG_GENERATOR_CONFIG_YAML environment variable",
+                        )
                     )
                 except yaml.YAMLError:
                     # If parsing fails, try treating it as a file path
@@ -148,57 +199,158 @@ def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> dict:
                     if env_path.exists():
                         with open(env_path) as f:
                             config = yaml.safe_load(f)
-                        print(
-                            f"✅ Loaded configuration from environment-specified path: {env_path}"
+                        messages_to_log.append(
+                            (
+                                "info",
+                                f"Loaded configuration from environment-specified path: {env_path}",
+                            )
                         )
                     else:
-                        print(
-                            "❌ LOG_GENERATOR_CONFIG_YAML contains invalid YAML and is not a valid file path"
-                        )
+                        msg = "LOG_GENERATOR_CONFIG_YAML contains invalid YAML and is not a valid file path"
+                        messages_to_log.append(("error", msg))
+                        print(f"❌ {msg}", file=sys.stderr)
                         sys.exit(1)
             except Exception as e:
-                print(f"❌ Failed to load configuration from environment variable: {e}")
+                msg = f"Failed to load configuration from environment variable: {e}"
+                messages_to_log.append(("error", msg))
+                print(f"❌ {msg}", file=sys.stderr)
                 sys.exit(1)
 
     # If no environment configs, use file config
     if config is None:
-        if not config_path.exists():
-            print(f"❌ Configuration file not found: {config_path}")
+        if (
+            config_path == Path("dummy_path")
+            and not os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64")
+            and not os.environ.get("LOG_GENERATOR_CONFIG_YAML")
+        ):
+            # This case means we expected env vars but didn't find them, and args.config was None, so dummy_path was used.
+            # main() would have already errored if args.config was required and None, so this specific check is for when
+            # env vars were expected due to args.config being None, but the env vars are also missing/empty.
+            msg = "Configuration via environment variables was attempted but no relevant environment variables were found."
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
+            sys.exit(1)
+        elif not config_path.exists():
+            msg = f"Configuration file not found: {config_path}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
 
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
-                print(f"✅ Loaded configuration from {config_path}")
+            messages_to_log.append(
+                (
+                    "info",
+                    f"Loaded configuration from {config_path}",
+                )
+            )
         except yaml.YAMLError as e:
-            print(f"❌ YAML parsing error: {e}")
+            msg = f"YAML parsing error in {config_path}: {e}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
-            print(f"❌ Failed to load configuration: {e}")
+            msg = f"Failed to load configuration from {config_path}: {e}"
+            messages_to_log.append(("error", msg))
+            print(f"❌ {msg}", file=sys.stderr)
             sys.exit(1)
 
-    # Validate configuration
-    if not validate_config(config):
-        print("❌ Configuration validation failed")
+    if config is None:
+        # This should ideally not be reached if all paths above sys.exit appropriately.
+        msg = "Configuration could not be loaded from any source."
+        messages_to_log.append(("error", msg))
+        print(f"❌ {msg}", file=sys.stderr)
         sys.exit(1)
 
-    # Print configuration summary
-    print("\n⚙️  Configuration Summary:")
-    print(f"  Output Directory: {config['output']['directory']}")
-    print(f"  Base Rate: {config['output']['rate']} logs/sec")
-    print(f"  Debug Mode: {config['output'].get('debug', False)}")
-    print(f"  Pre-warm: {config['output'].get('pre_warm', True)}")
-    print("\n  State Transitions:")
-    for state, transitions in config["state_transitions"].items():
-        print(f"    {state}:")
-        for action, prob in transitions.items():
-            print(f"      {action}: {prob:.2f}")
-    print("\n  Traffic Patterns:")
-    for pattern in config["traffic_patterns"]:
-        print(f"    {pattern['time']}: {pattern['multiplier']}x")
-    print("\n✅ Configuration validated successfully\n")
+    # Validate configuration
+    is_valid, validation_messages = validate_config(config)
+    messages_to_log.extend(validation_messages)
+    if not is_valid:
+        messages_to_log.append(
+            (
+                "error",
+                "Configuration validation failed. See previous messages for details.",
+            )
+        )
+        # Print all validation messages to stderr before exiting
+        for level, v_msg in validation_messages:
+            print(f"❌ Validation {level}: {v_msg}", file=sys.stderr)
+        print("❌ Configuration validation failed.", file=sys.stderr)
+        sys.exit(1)
 
-    return config
+    # Add configuration summary to messages
+    messages_to_log.append(
+        (
+            "info",
+            "\n⚙️  Configuration Summary:",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            f"  Output Directory: {config['output']['directory']}",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            f"  Base Rate: {config['output']['rate']} logs/sec",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            f"  Debug Mode: {config['output'].get('debug', False)}",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            f"  Pre-warm: {config['output'].get('pre_warm', True)}",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            "\n  State Transitions:",
+        )
+    )
+    for state, transitions in config["state_transitions"].items():
+        messages_to_log.append(
+            (
+                "info",
+                f"    {state}:",
+            )
+        )
+        for action, prob in transitions.items():
+            messages_to_log.append(
+                (
+                    "info",
+                    f"      {action}: {prob:.2f}",
+                )
+            )
+    messages_to_log.append(
+        (
+            "info",
+            "\n  Traffic Patterns:",
+        )
+    )
+    for pattern in config["traffic_patterns"]:
+        messages_to_log.append(
+            (
+                "info",
+                f"    {pattern['time']}: {pattern['multiplier']}x",
+            )
+        )
+    messages_to_log.append(
+        (
+            "info",
+            "\n✅ Configuration validated successfully\n",
+        )
+    )
+
+    return config, messages_to_log
 
 
 # Configure separate logging streams
@@ -1166,39 +1318,97 @@ def main():
 
     args = parser.parse_args()
 
+    # Temporary list for messages before logger is fully initialized
+    # Some messages from load_config (like which file is used) are generated there.
+    pre_log_messages = []
+
     if args.exit:
-        print("Exiting...")
+        # If exiting early, logger might not be set up, so print to stdout.
+        print("Exiting after pre-caching dependencies...")
         return
 
-    # Check if we have environment variables for config
-    if (
-        os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64") is None
-        and os.environ.get("LOG_GENERATOR_CONFIG_YAML") is None
+    # Determine config_path based on args and env vars
+    config_path_env = os.environ.get("LOG_GENERATOR_CONFIG_PATH")
+    # Default to dummy_path if no CLI arg, to be resolved by load_config based on other env vars or default.
+    config_path_cli = Path(args.config) if args.config else None
+
+    if os.environ.get("LOG_GENERATOR_CONFIG_YAML_B64") or os.environ.get(
+        "LOG_GENERATOR_CONFIG_YAML"
     ):
-        # If no environment variables with content, check for path environment variable
-        config_path_env = os.environ.get("LOG_GENERATOR_CONFIG_PATH")
-        if config_path_env:
-            config_path = Path(config_path_env)
-            print(f"Using configuration from LOG_GENERATOR_CONFIG_PATH: {config_path}")
-        elif args.config is None:
-            parser.error(
-                "Configuration file is required when not using environment variables"
-            )
-        else:
-            config_path = Path(args.config)
-    else:
-        # Use dummy path when using environment variables with content
+        # If direct YAML content is in env vars, use dummy_path, load_config will handle it.
         config_path = Path("dummy_path")
+        if config_path_cli:
+            pre_log_messages.append(
+                (
+                    "info",
+                    f"Ignoring CLI config path '{config_path_cli}' because LOG_GENERATOR_CONFIG_YAML or LOG_GENERATOR_CONFIG_YAML_B64 is set.",
+                )
+            )
+        elif config_path_env:
+            pre_log_messages.append(
+                (
+                    "info",
+                    f"Ignoring LOG_GENERATOR_CONFIG_PATH '{config_path_env}' because LOG_GENERATOR_CONFIG_YAML or LOG_GENERATOR_CONFIG_YAML_B64 is set.",
+                )
+            )
+    elif config_path_env:
+        config_path = Path(config_path_env)
+        pre_log_messages.append(
+            (
+                "info",
+                f"Using configuration from LOG_GENERATOR_CONFIG_PATH: {config_path}",
+            )
+        )
+        if config_path_cli and config_path_cli != config_path:
+            pre_log_messages.append(
+                (
+                    "info",
+                    f"Ignoring CLI config path '{config_path_cli}' because LOG_GENERATOR_CONFIG_PATH is set.",
+                )
+            )
+    elif config_path_cli:
+        config_path = config_path_cli
+        # This message will be logged by load_config itself: f"Loaded configuration from {config_path}"
+    else:
+        # No CLI, no LOG_GENERATOR_CONFIG_PATH, no direct YAML content. load_config will use DEFAULT_CONFIG_PATH or error.
+        config_path = DEFAULT_CONFIG_PATH  # or Path("dummy_path") if we want load_config to default
+        pre_log_messages.append(
+            (
+                "info",
+                f"No config path specified, attempting to use default: {config_path}",
+            )
+        )
 
-    config = load_config(config_path)
+    config, messages_from_load_config = load_config(config_path)
 
-    # Override log directory if specified
+    # Combine pre-log messages with those from load_config
+    all_initial_messages = pre_log_messages + messages_from_load_config
+
+    # Override log directory if specified -- this must happen *after* load_config has populated config['output']
     if args.log_dir_override:
-        print(f"Overriding log directory with: {args.log_dir_override}")
+        # This message will be logged after logger setup
+        log_override_message = (
+            "info",
+            f"Overriding log directory with: {args.log_dir_override}",
+        )
+        all_initial_messages.append(log_override_message)
+        # Ensure 'output' key exists, though load_config should have created it or errored.
+        if "output" not in config:
+            config["output"] = {}
         config["output"]["directory"] = args.log_dir_override
 
     # Initialize logging with possibly overridden directory and rotation settings
     loggers = setup_logging(Path(config["output"]["directory"]), config)
+    system_logger = loggers["system"]
+
+    # Log all collected initial messages
+    for level, msg in all_initial_messages:
+        if level == "info":
+            system_logger.info(msg.strip("\n"))  # Strip newlines for cleaner log output
+        elif level == "error":
+            # Errors from load_config that didn't exit should be logged as errors.
+            # Fatal errors in load_config already printed to stderr and exited.
+            system_logger.error(msg.strip("\n"))
 
     # Pass loggers to the generator
     generator = AccessLogGenerator(config, loggers)

@@ -39,11 +39,12 @@ class TestNodeIdentityValidation:
         """Tests that a valid identity.json structure passes validation."""
         # SensorSimulator initialization performs validation
         try:
-            SensorSimulator(
+            config_manager = ConfigManager(
                 config=MINIMAL_VALID_CONFIG, identity=MINIMAL_VALID_IDENTITY
             )
-        except ValueError:
-            pytest.fail("Valid identity should not raise ValueError")
+            SensorSimulator(config_manager=config_manager)
+        except ValueError as e:
+            pytest.fail(f"Valid identity should not raise ValueError: {e}")
 
     def test_missing_required_field_identity(self):
         """Tests identity validation when a required field (e.g., location) is missing."""
@@ -52,7 +53,10 @@ class TestNodeIdentityValidation:
         with pytest.raises(
             ValueError, match="Location is required in identity configuration"
         ):
-            SensorSimulator(config=MINIMAL_VALID_CONFIG, identity=invalid_identity)
+            config_manager = ConfigManager(
+                config=MINIMAL_VALID_CONFIG, identity=invalid_identity
+            )
+            SensorSimulator(config_manager=config_manager)
 
     def test_unknown_field_identity(self):
         """Tests identity validation with an unknown field.
@@ -65,7 +69,10 @@ class TestNodeIdentityValidation:
         try:
             # If SensorSimulator initialization uses .get() for all fields and doesn't
             # iterate over all keys for validation, unknown fields might be ignored.
-            SensorSimulator(config=MINIMAL_VALID_CONFIG, identity=identity_with_unknown)
+            config_manager = ConfigManager(
+                config=MINIMAL_VALID_CONFIG, identity=identity_with_unknown
+            )
+            SensorSimulator(config_manager=config_manager)
         except Exception as e:
             pytest.fail(f"Identity with unknown field raised an unexpected error: {e}")
         # If no error, it means unknown fields are tolerated (which is common)
@@ -79,16 +86,23 @@ class TestNodeIdentityValidation:
             ValueError,
             match="SensorSimulator received identity with incomplete location information",
         ):
-            SensorSimulator(
+            config_manager = ConfigManager(
                 config=MINIMAL_VALID_CONFIG, identity=identity_missing_lat_long
             )
+            SensorSimulator(config_manager=config_manager)
 
     def test_invalid_value_for_sensor_attribute_identity(self):
         """Tests identity validation with an invalid value for a sensor attribute (e.g., manufacturer)."""
         invalid_identity = MINIMAL_VALID_IDENTITY.copy()
         invalid_identity["manufacturer"] = "UNKNOWN_MFG"
-        with pytest.raises(ValueError, match="Invalid manufacturer: UNKNOWN_MFG"):
-            SensorSimulator(config=MINIMAL_VALID_CONFIG, identity=invalid_identity)
+        with pytest.raises(
+            ValueError,
+            match=r"Invalid or missing manufacturer: UNKNOWN_MFG\. Valid manufacturers are: .*\['SensorTech', 'EnvMonitors', 'IoTPro'\]",
+        ):
+            config_manager = ConfigManager(
+                config=MINIMAL_VALID_CONFIG, identity=invalid_identity
+            )
+            SensorSimulator(config_manager=config_manager)
 
 
 class TestConfigYamlValidation:
@@ -96,9 +110,10 @@ class TestConfigYamlValidation:
         """Tests that a valid config.yaml structure passes validation."""
         try:
             # SensorSimulator initialization uses parts of the config
-            SensorSimulator(
+            config_manager = ConfigManager(
                 config=MINIMAL_VALID_CONFIG, identity=MINIMAL_VALID_IDENTITY
             )
+            SensorSimulator(config_manager=config_manager)
         except ValueError as e:
             pytest.fail(
                 f"Valid config should not raise ValueError during SensorSimulator init: {e}"
@@ -115,7 +130,10 @@ class TestConfigYamlValidation:
         with pytest.raises(
             ValueError, match="Database path not specified in config.yaml"
         ):
-            SensorSimulator(config=invalid_config, identity=MINIMAL_VALID_IDENTITY)
+            config_manager = ConfigManager(
+                config=invalid_config, identity=MINIMAL_VALID_IDENTITY
+            )
+            SensorSimulator(config_manager=config_manager)
 
     def test_unknown_field_config(self):
         """Tests config validation with an unknown field.
@@ -125,7 +143,10 @@ class TestConfigYamlValidation:
         config_with_unknown = MINIMAL_VALID_CONFIG.copy()
         config_with_unknown["some_unknown_top_level_key"] = "some_value"
         try:
-            SensorSimulator(config=config_with_unknown, identity=MINIMAL_VALID_IDENTITY)
+            config_manager = ConfigManager(
+                config=config_with_unknown, identity=MINIMAL_VALID_IDENTITY
+            )
+            SensorSimulator(config_manager=config_manager)
         except Exception as e:
             pytest.fail(f"Config with unknown field raised an unexpected error: {e}")
         # If no error, it means unknown fields are tolerated at the top level.
@@ -164,9 +185,10 @@ class TestConfigYamlValidation:
 
         # Assuming ConfigManager just loads and doesn't strictly type check on load for all fields.
         try:
-            sim = SensorSimulator(
+            config_manager = ConfigManager(
                 config=invalid_config, identity=MINIMAL_VALID_IDENTITY
             )
+            sim = SensorSimulator(config_manager=config_manager)
             # To actually trigger the type error for 'readings_per_second' being a string,
             # we would need to call a method that performs an operation expecting it to be a number.
             # For example, if get_status() or run() tried to use it numerically.
