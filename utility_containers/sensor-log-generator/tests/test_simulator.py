@@ -111,7 +111,8 @@ class TestSensorSimulator(unittest.TestCase):
         # SensorSimulator expects config and identity dicts directly.
         # No need for ConfigManager instantiation here for this basic test if not using its dynamic update features.
 
-        simulator = SensorSimulator(config=config, identity=identity)
+        config_manager = ConfigManager(config=config, identity=identity)
+        simulator = SensorSimulator(config_manager=config_manager)
         simulator.run()  # Runs for config["simulation"]["run_time_seconds"]
 
         # Check database for entries
@@ -155,7 +156,8 @@ class TestSensorSimulator(unittest.TestCase):
         for identity in scenarios:
             with self.subTest(identity=identity):
                 with self.assertRaises(ValueError) as context:
-                    SensorSimulator(config=config, identity=identity)
+                    config_manager = ConfigManager(config=config, identity=identity)
+                    SensorSimulator(config_manager=config_manager)
                 self.assertTrue(
                     "incomplete location information" in str(context.exception).lower()
                     or "valid manufacturers are" in str(context.exception).lower()
