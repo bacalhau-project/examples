@@ -6,7 +6,8 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+        Image: registry-proxy:5000/astral-sh/uv:python3.13-bookworm-slim
+#        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
         EnvironmentVariables:
           - SCRIPT={{.code}}
           - FERRETDB_URI={{.ferretdb_uri}}

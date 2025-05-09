@@ -4,31 +4,45 @@ x-common-env-variables: &common-env-variables
   AWS_ACCESS_KEY_ID: "minioadmin"
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
-  FERRETDB_URI: "mongodb://username:password@172.30.0.100:27017/postgres"
-  GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
+  FERRETDB_URI: "mongodb://expansouser:safepassword@172.30.0.100:27017/postgres"
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
 
 x-sensor-template: &sensor-template
-  image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
-  entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
-  command: >
-    "env >> /etc/environment &&
-    mkdir -p /mnt/data &&
-    bacalhau serve -c /etc/bacalhau/config.yaml"
-  depends_on:
-    orchestrator:
-      condition: service_healthy
-    storage:
-      condition: service_healthy
-    ferretdb:
-      condition: service_started
-  privileged: true
-  restart: on-failure
-  volumes:
-    - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
-  networks:
-    - ferret-demo-net
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
+    entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
+    command: >
+      "env >> /etc/environment &&
+      mkdir -p /mnt/data &&
+      bacalhau serve -c /etc/bacalhau/config.yaml"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+      ferretdb:
+        condition: service_started
+    privileged: true
+    restart: on-failure
+    volumes:
+      - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
+    dns:
+      - 1.1.1.1
+    networks:
+      - ferret-demo-net
 
 services:
+
+  registry-proxy:
+    image: registry:2
+    container_name: ferret-demo-registry-proxy
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./registry-data:/var/lib/registry
+    networks:
+      - ferret-demo-net
+
   orchestrator:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
     container_name: ferret-demo-orchestrator
@@ -38,24 +52,28 @@ services:
       - "8438:8438"
     volumes:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
     healthcheck:
-      test: ["CMD", "bacalhau", "agent", "alive"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
+      test: [ "CMD", "bacalhau", "agent", "alive" ]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+      start_period: 15s
     networks:
       - ferret-demo-net
 
+
   postgres:
-    image: ghcr.io/bacalhau-project/examples/ferretdb-demo-documentdb:2504162218
+    image: ghcr.io/ferretdb/postgres-documentdb:17-0.102.0-ferretdb-2.1.0
     container_name: ferret-demo-postgres
-    #     WARNING: This image is built only for x86_64 ####
+#     WARNING: This image is built only for x86_64 ####
     platform: linux/amd64
     restart: on-failure
+    ports:
+      - 5432:5432
     environment:
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=expansouser
+      - POSTGRES_PASSWORD=safepassword
       - POSTGRES_DB=postgres
     networks:
       - ferret-demo-net
@@ -67,25 +85,19 @@ services:
     ports:
       - 27217:27017
     environment:
-      - FERRETDB_POSTGRESQL_URL=postgres://username:password@postgres:5432/postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8088/debug/livez"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      - FERRETDB_POSTGRESQL_URL=postgres://expansouser:safepassword@postgres:5432/postgres
     networks:
       ferret-demo-net:
-        ipv4_address: 172.28.0.100
+        ipv4_address: 172.30.0.100
 
   storage:
     image: ghcr.io/bacalhau-project/examples/ferretdb-demo-minio:2504162218
     container_name: ferret-demo-storage
     entrypoint: sh
-    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9005"'
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
     environment: *common-env-variables
     ports:
-      - "9005:9005"
+      - "9001:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -95,11 +107,13 @@ services:
     networks:
       - ferret-demo-net
 
-  sensors:
+  sensor:
+    environment:
+      <<: *common-env-variables
     <<: *sensor-template
 
   frontend:
-    image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2504291030
+    image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2505081200
     container_name: ferret-demo-frontend
     environment:
       <<: *common-env-variables
@@ -107,7 +121,7 @@ services:
       - "3010:3000"
     depends_on:
       ferretdb:
-        condition: service_started
+        condition: service_healthy
     networks:
       - ferret-demo-net
 
@@ -137,3 +151,6 @@ services:
 networks:
   ferret-demo-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

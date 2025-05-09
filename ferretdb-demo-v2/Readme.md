@@ -34,7 +34,13 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your-google-maps-api-key>
 
 ### 2. Start the Services
 
-Run the following command:
+There is a possibility to scale sensors to given number of instances (there will be one instance by default)
+
+```bash
+docker compose up -d --scale sensor=5
+```
+
+With the following command you will run only one instance of sensor:
 
 ```bash
 docker compose up -d
@@ -58,34 +64,47 @@ Ensure the following TCP ports are free:
 - **8438** – Bacalhau Web Interface
 - **27217** – FerretDB (optional external access)
 - **9001** – MinIO Web interface
-- **Docker subnet `172.28.0.0/16`** must also be available.
+- **Docker subnet `172.30.0.0/16`** must also be available.
 
-> ⚠️ **Note:** FerretDB/PostgreSQL does not currently offer a Docker image for the ARM64 architecture.
+> ⚠️ **Note:** FerretDB/PostgreSQL might not currently offer a Docker image for the ARM64 architecture.
 
 ---
 
 ## 🚀 Running the Demo
 
-### 1. Access the Frontend & Bacalhau Interface
+### 1. Preparation
+
+As all Bacalhau jobs are using local private registry it is crucial to populate it before running them.
+After bringing up all services with docker compose, run from the host machine:
+```bash
+private_registry_mirror_warmup.sh
+```
+This script will pull all job images from the Internet and push them to local registry.
+> Volume for registry is exposed to the host machine, so data will still be there after removing everything with docker compose down.
+
+### 2. Access the Frontend & Bacalhau Interface
 
 - Frontend: [http://localhost:3010](http://localhost:3010)
 - Bacalhau Web UI: [http://localhost:8438](http://localhost:8438)
 
-### 2. Connect to the Client Container
+### 3. Connect to the Client Container
+**All jobs are to be run from client container.**
 
+This is because the required environment variables are defined in their environment.
 ```bash
 docker exec -ti ferret-demo-client bash
 ```
 
-### 3. Start the Sensor Log Generator
+### 4. Start the Sensor Log Generator
 
 ```bash
 /1_run_generate_sensor_logs_job.sh
 ```
 
-This starts a **daemon job** that launches a sensor simulator on every sensor container. It may take time to pull necessary images and initialize.
+This starts a **daemon job** that launches a sensor simulator on every sensor container. 
+This should start very quickly, as job pulls image from local registry.
 
-### 4. Start Data Transfer to FerretDB
+### 5. Start Data Transfer to FerretDB
 
 ```bash
 /2_run_sync_sensor_logs_job.sh
@@ -93,7 +112,7 @@ This starts a **daemon job** that launches a sensor simulator on every sensor co
 
 This launches another **daemon job** that periodically transfers sensor data to FerretDB.
 
-Once running, sensors will start appearing on the frontend map and sensor list.
+**Once second job is running, sensors will start appearing on the frontend map and sensor list.**
 
 ---
 
@@ -101,7 +120,7 @@ Once running, sensors will start appearing on the frontend map and sensor list.
 
 To reduce transfer volume, you can switch to an **averaged data sync** (once every 30 seconds):
 
-### 5. Replace Sync Script with Averaged Transfer
+### 6. Replace Sync Script with Averaged Transfer
 
 ```bash
 /3_replace_sync_sensor_logs_script.sh
@@ -140,10 +159,6 @@ This runs a **batch job** scheduled on one sensor node to purge all stored data.
 
 ![Map View](docs/screen_map_list.png)
 ![Sensor Detail](docs/screen_sensor_chart.png)
-
----
-
-Sure! Here's an updated version of the `README.md` with a new section about tearing everything down using `docker compose down`. I’ve placed it near the end for logical flow:
 
 ---
 
