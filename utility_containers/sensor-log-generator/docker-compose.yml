@@ -1,13 +1,10 @@
 services:
-  sensor-simulator:
-    image: ghcr.io/bacalhau-project/sensor-log-generator:2504151801
+  sensor-simulators:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:2505081831
     pull_policy: always
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: sensor-simulator
     restart: unless-stopped
+    environment:
+      - CONFIG_FILE=/config/config.yaml
+      - IDENTITY_FILE=/config/node-identity.json
     volumes:
-      - ./logs:/var/log/app
-      - ./config:/app/config
-      - ./data:/app/data
+      - ./config:/config
