@@ -5,7 +5,8 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: bash:devel-alpine3.21
+        Image: registry-proxy:5000/library/bash:devel-alpine3.21
+#        Image: bash:devel-alpine3.21
         EnvironmentVariables:
           - SCRIPT={{.code}}
         Entrypoint:

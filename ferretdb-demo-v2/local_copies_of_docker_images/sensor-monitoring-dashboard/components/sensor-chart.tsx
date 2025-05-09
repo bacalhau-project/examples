@@ -59,35 +59,39 @@ export default function SensorChart({ sensorId }: SensorChartProps) {
         }
 
         // Get current time to filter for last 2 hours
-              const now = new Date();
-              const nowUTC = new Date(Date.UTC(
-                  now.getUTCFullYear(),
-                  now.getUTCMonth(),
-                  now.getUTCDate(),
-                  now.getUTCHours(),
-                  now.getUTCMinutes(),
-                  now.getUTCSeconds()
-              ));
+        const now = new Date();
+        const nowUTC = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate(),
+            now.getUTCHours(),
+            now.getUTCMinutes(),
+            now.getUTCSeconds()
+        ));
 
+      const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       // Subtract the desired number of hours (e.g., 2 hours) using the universal timestamp
       const twoHoursAgo = subHours(nowUTC, 2);
 
       // Format and filter data using UTC formatting
         const formattedData = data
             .map((reading) => {
-              // Append "Z" if missing to ensure it's treated as UTC
-              const timestampStr = reading.timestamp.endsWith('Z') ? reading.timestamp : reading.timestamp + 'Z';
+              const hasTimezone = /[+-]\d{2}:\d{2}$|Z$/.test(reading.timestamp);
+              const timestampStr = hasTimezone
+                  ? reading.timestamp
+                  : reading.timestamp + 'Z';
+
               const timestamp = parseISO(timestampStr);
+
               return {
                 ...reading,
-                formattedTime: formatInTimeZone(timestamp, 'UTC', "yyyy-MM-dd HH:mm"),
                 parsedTimestamp: timestamp,
+                formattedTime: formatInTimeZone(timestamp, browserTimeZone, 'yyyy-MM-dd HH:mm'),
               };
             })
             .filter((reading) => reading.parsedTimestamp.getTime() >= twoHoursAgo.getTime())
-            .sort((a, b) => a.parsedTimestamp.getTime() - b.parsedTimestamp.getTime());
+            .sort((a, b) => a.parsedTimestamp - b.parsedTimestamp);
 
-        // Process data to create anomaly data series (ignoring "trend" type)
         const processedData = formattedData.map((reading: any) => {
           const isAnomaly = reading.anomaly_flag === 1 && reading.anomaly_type !== "trend"
 
