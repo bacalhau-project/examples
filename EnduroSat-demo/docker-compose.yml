@@ -5,6 +5,7 @@ x-common-env-variables: &common-env-variables
   AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
   LABELS: "role=sensor,region=Sat"
+  BANDWIDTH: "LOW"
 
 
 
@@ -78,6 +79,8 @@ services:
     environment: *common-env-variables
     ports:
       - "8438:8438"
+      - "4222:4222"
+      - "1234:1234"
     volumes:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
     healthcheck:
@@ -96,10 +99,12 @@ services:
     environment:
       <<: *common-env-variables
     volumes:
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
       - ./node1-data:/mnt/local_files
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./scripts:/scripts
       - ./jobs:/jobs
+      - ./app:/app
     <<: *sensor-template
   node2:
     hostname: node2
@@ -107,10 +112,12 @@ services:
     environment:
       <<: *common-env-variables
     volumes:
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
       - ./node2-data:/mnt/local_files
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./scripts:/scripts
       - ./jobs:/jobs
+      - ./app:/app
     <<: *sensor-template
 
   node3:
@@ -119,10 +126,12 @@ services:
     environment:
       <<: *common-env-variables
     volumes:
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
       - ./node3-data:/mnt/local_files
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./scripts:/scripts
       - ./jobs:/jobs
+      - ./app:/app
     <<: *sensor-template
   node4:
     hostname: node4
@@ -130,10 +139,12 @@ services:
     environment:
       <<: *common-env-variables
     volumes:
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
       - ./node4-data:/mnt/local_files
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./scripts:/scripts
       - ./jobs:/jobs
+      - ./app:/app
     <<: *sensor-template
 
   node5:
@@ -142,10 +153,12 @@ services:
     environment:
       <<: *common-env-variables
     volumes:
-      - ./node4-data:/mnt/local_files
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
+      - ./node5-data:/mnt/local_files
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
       - ./scripts:/scripts
       - ./jobs:/jobs
+      - ./app:/app
     <<: *sensor-template
 
   client:
@@ -165,6 +178,16 @@ services:
       - orchestrator
     networks:
       - sat-demo-net
+
+  registry-proxy:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./registry-data:/var/lib/registry
+    networks:
+      - sat-demo-net
+
 
 networks:
   sat-demo-net:

@@ -1,35 +1,59 @@
-name: Ship Detection Job
-type: batch
-
-constraints:
-  - key: SATTELITE_NAME
-    operator: '='
-    values:
-      - "{{ .SATELLITE_NAME }}"
-
-labels:
-  sattelite_number: "{{ .SATELLITE_NAME }}"
-
-
+name: Ship Detection Job-4
+type: daemon
+Constraints:
+- Key: "system"
+  Operator: "="
+  Values: ["linux"]
 tasks:
   - name: Detect Ships
     engine:
       type: docker
       params:
-        Image: kitsune242/detect
+        Image: registry-proxy:5000/detect
+        Entrypoint:
+          - /usr/bin/bash
+        Parameters:
+          - -c
+          - |
+              set -euxo pipefail
+
+              WATCH_DIR="/mnt/local_files/input"
+              SCRIPT="/app/detect-${HOSTNAME}.py"
+
+              while true; do
+                  if find "$WATCH_DIR" -type f | grep -q .; then
+                      echo "$(date) - Files detected in $WATCH_DIR. Running $SCRIPT..."
+                      python3 -u "$SCRIPT" || echo "$(date) - Script failed"
+                  else
+                      echo "$(date) - No files in $WATCH_DIR in ${HOSTNAME}"
+                  fi
+
+                  sleep 10
+              done
+    env:
+      HOSTNAME: "env:HOSTNAME"
     InputSources:
       - Target: /mnt/local_files
         Source:
           Type: localdirectory
           Params:
             SourcePath: /mnt/local_files
-            readWrite: true
+            ReadWrite: true
+      - Target: /app
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /app
+            ReadWrite: true
+
     Resources:
       # CPU can be specified in cores (e.g. 1) or in milliCPU units (e.g. 250m or 0.25)
       CPU: 4000m
-      
+#      
       # Memory highlights amount of RAM for a job. Can be specified in Kb, Mb, Gb, Tb
       Memory: 3Gb
       
       # Disk states disk storage space, needed for the task.
       Disk: 1000mb
+    Timeouts:
+      QueueTimeout: 1800
