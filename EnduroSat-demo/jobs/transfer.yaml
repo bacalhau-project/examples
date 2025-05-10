@@ -4,9 +4,6 @@ Constraints:
   - Key: "system"
     Operator: "="
     Values: ["linux"]
-  - Key: "SATTELITE_NAME"
-    Operator: "="
-    Values: ["node2"]
 tasks:
   - name: Detect Ships
     engine:
