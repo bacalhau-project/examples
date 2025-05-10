@@ -13,6 +13,12 @@ Compute:
     - /mnt/s3_high:rw
     - /input:rw
     - /output:rw
+    - /app:rw
+  Env:
+    AllowList:
+      - "HOSTNAME"
+      - "AWS_SECRET_ACCESS_KEY"
+      - "BANDWIDTH"
 UpdateConfig:
   Interval: 0
 JobAdmissionControl:

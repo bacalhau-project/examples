@@ -96,4 +96,4 @@ fi
 IP=$(hostname -i | awk '{print $1}')
 NAME=$(hostname | awk '{print $1}')
 echo "Starting bacalhau with IP=$IP"
-exec bacalhau serve -c /etc/bacalhau/config.yaml -c "LABELS=PUBLIC_IP=$IP,SATTELITE_NAME=$NAME"
+exec bacalhau serve -c /etc/bacalhau/config.yaml -c "LABELS=PUBLIC_IP=$IP,SATTELITE_NAME=$NAME,system=linux"
