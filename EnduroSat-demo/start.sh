@@ -2,6 +2,7 @@
 # Script to warm up the Docker registry cache + prepare edge environment
 set -e
 echo "Starting registry mirroring and edge node preparation..."
+docker compose up -d registry-proxy
 
 # Define registry address
 REGISTRY_ADDRESS="localhost:5000"
@@ -29,10 +30,10 @@ echo "✅ Edge node folders created"
 # Step 2: Download and prepare model files
 #############################
 echo "Downloading model files..."
-mkdir -p /app
-mkdir -p /app/models
+mkdir -p app
+mkdir -p app/models
 
-# Pobranie 4 modeli do /app/models/
+
 MODELS=(
     "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11x-obb.pt"
     "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l-obb.pt"
@@ -42,7 +43,7 @@ MODELS=(
 
 for MODEL_URL in "${MODELS[@]}"; do
     FILENAME=$(basename "$MODEL_URL")
-    DEST_PATH="/app/models/$FILENAME"
+    DEST_PATH="app/models/$FILENAME"
     if [ ! -f "$DEST_PATH" ]; then
         echo "Downloading $FILENAME..."
         curl -L -o "$DEST_PATH" "$MODEL_URL"
@@ -52,10 +53,10 @@ for MODEL_URL in "${MODELS[@]}"; do
     fi
 done
 
-echo "✅ All base models downloaded to /app/models"
+echo "✅ All base models downloaded to app/models"
 
-# Dodatkowo: utworzenie 5 kopii yolo11x-obb.pt jako model-nodeX.pt
-MODEL_TMP="/app/models/yolo11x-obb.pt"
+
+MODEL_TMP="app/models/yolo11x-obb.pt"
 if [ ! -f "$MODEL_TMP" ]; then
     echo "❌ ERROR: Base model $MODEL_TMP not found. Cannot create node models."
     exit 1
@@ -63,9 +64,9 @@ fi
 
 echo "Creating model copies for each node..."
 for i in {1..5}; do
-    cp "$MODEL_TMP" "/app/model-node${i}.pt"
+    cp "$MODEL_TMP" "app/model-node${i}.pt"
 done
-echo "✅ Model copies created at /app/model-nodeX.pt"
+echo "✅ Model copies created at app/model-nodeX.pt"
 
 #############################
 # Step 3: Mirror container images to local registry
@@ -131,6 +132,6 @@ for IMAGE in "${IMAGES[@]}"; do
     fi
     echo "-----------------------------"
 done
-
+chmod +x /sc
 echo "🎉 All preparation complete! Edge folders and models ready. Images mirrored to local registry."
 

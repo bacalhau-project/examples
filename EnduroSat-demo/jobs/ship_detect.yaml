@@ -9,7 +9,7 @@ tasks:
     engine:
       type: docker
       params:
-        Image: registry-proxy:5000/detect
+        Image: registry-proxy:5000/bacalhau-project/examples/enduro-sat-torch:10052025
         Entrypoint:
           - /usr/bin/bash
         Parameters:
