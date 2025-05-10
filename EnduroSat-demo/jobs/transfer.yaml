@@ -1,0 +1,124 @@
+name: TRANSFER
+type: daemon
+Constraints:
+  - Key: "system"
+    Operator: "="
+    Values: ["linux"]
+  - Key: "SATTELITE_NAME"
+    Operator: "="
+    Values: ["node2"]
+tasks:
+  - name: Detect Ships
+    engine:
+      type: docker
+      params:
+        Image: ubuntu
+        Entrypoint:
+          - /usr/bin/bash
+        Parameters:
+          - -c
+          - |
+              set -euxo pipefail
+
+              CONFIG_FILE="/mnt/local_files/config/bandwidth.txt"
+              OUTPUT_DIR="/mnt/local_files/output"
+              LOGS_DIR="$OUTPUT_DIR/logs"
+              LOW_DIR="$OUTPUT_DIR/LOW_bandwidth"
+              HIGH_DIR="$OUTPUT_DIR/HIGH_bandwidth"
+              S3_LOW="/mnt/s3_low"
+              S3_HIGH="/mnt/s3_high"
+
+              timestamp() {
+                  date -u +"%Y-%m-%d %H:%M:%S UTC"
+              }
+
+              append_log() {
+                  local file_name="$1"
+                  local message="$2"
+                  local log_file="$LOGS_DIR/$file_name/file.log"
+                  if [ -f "$log_file" ]; then
+                      echo "[$(timestamp)] $message" >> "$log_file"
+                  fi
+              }
+
+              while true; do
+                  BANDWIDTH=$(cat "$CONFIG_FILE" 2>/dev/null || echo "HIGH")
+                  echo "$(timestamp) - BANDWIDTH mode is $BANDWIDTH"
+
+                  if [ "$BANDWIDTH" = "HIGH" ]; then
+                      WATCH_DIR="$HIGH_DIR"
+                  else
+                      WATCH_DIR="$LOW_DIR"
+                  fi
+
+                  echo "$(timestamp) - Watching directory: $WATCH_DIR"
+
+                  if find "$WATCH_DIR" -mindepth 1 -type d | grep -q .; then
+                      echo "$(timestamp) - Directories detected in $WATCH_DIR. Starting transfer..."
+
+                      if [ "$BANDWIDTH" = "HIGH" ]; then
+                          echo "$(timestamp) - Transferring both LOW and HIGH directories..."
+
+                          for dir in "$LOW_DIR"/*/; do
+                              [ -d "$dir" ] || continue
+                              [ -f "$dir/result.json" ] || continue
+                              folder_name=$(basename "$dir")
+                              cp -r "$dir" "$S3_LOW/" || echo "$(timestamp) - LOW copy failed"
+                              append_log "$folder_name" "DIRECTORY TRANSFERRED to /mnt/s3_low/"
+                              rm -rf "$dir" || echo "$(timestamp) - Failed to delete LOW directory"
+                              append_log "$folder_name" "DIRECTORY REMOVED from $dir"
+                          done
+
+                          for dir in "$HIGH_DIR"/*/; do
+                              [ -d "$dir" ] || continue
+                              [ -f "$dir/result.json" ] || continue
+                              folder_name=$(basename "$dir")
+                              cp -r "$dir" "$S3_HIGH/" || echo "$(timestamp) - HIGH copy failed"
+                              append_log "$folder_name" "DIRECTORY TRANSFERRED to /mnt/s3_high/"
+                              rm -rf "$dir" || echo "$(timestamp) - Failed to delete HIGH directory"
+                              append_log "$folder_name" "DIRECTORY REMOVED from $dir"
+                          done
+
+                      else
+                          echo "$(timestamp) - Transferring LOW directories only..."
+
+                          for dir in "$LOW_DIR"/*/; do
+                              [ -d "$dir" ] || continue
+                              [ -f "$dir/result.json" ] || continue
+                              folder_name=$(basename "$dir")
+                              cp -r "$dir" "$S3_LOW/" || echo "$(timestamp) - LOW copy failed"
+                              append_log "$folder_name" "DIRECTORY TRANSFERRED to /mnt/s3_low/"
+                              rm -rf "$dir" || echo "$(timestamp) - Failed to delete LOW directory"
+                              append_log "$folder_name" "DIRECTORY REMOVED from $dir"
+                          done
+                      fi
+                  else
+                      echo "$(timestamp) - No directories in $WATCH_DIR on ${HOSTNAME}"
+                  fi
+
+                  sleep 10
+              done
+    env:
+      HOSTNAME: "env:HOSTNAME"
+    InputSources:
+      - Target: /mnt/local_files
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /mnt/local_files
+            ReadWrite: true
+      - Target: /mnt/s3_low
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /mnt/s3_low
+            readWrite: true
+      - Target: /mnt/s3_high
+        Source:
+          Type: localdirectory
+          Params:
+            SourcePath: /mnt/s3_high
+            readWrite: true
+
+    env:
+      BANDWIDTH: "env:BANDWIDTH"

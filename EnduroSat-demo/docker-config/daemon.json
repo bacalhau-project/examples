@@ -1,0 +1,4 @@
+{
+  "registry-mirrors": ["http://registry-proxy:5000"],
+  "insecure-registries": ["registry-proxy:5000"]
+}
