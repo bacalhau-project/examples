@@ -6,7 +6,7 @@ Tasks:
       Type: docker
       Params:
         Image: registry-proxy:5000/astral-sh/uv:python3.13-bookworm-slim
-#        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+        #        Image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
         EnvironmentVariables:
           - LOOP_SCRIPT={{.loop_code}}
           - SCRIPT={{.code}}

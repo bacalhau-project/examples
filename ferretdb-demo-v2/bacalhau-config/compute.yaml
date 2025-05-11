@@ -6,6 +6,7 @@ Compute:
   AllowListedLocalPaths:
     - /mnt/data:rw
     - /etc/environment:ro
+  Platform: linux/amd64
 UpdateConfig:
   Interval: 0
 JobAdmissionControl:

@@ -2,10 +2,10 @@
 # Script to warm up the Docker registry cache
 # This will pull images used by your Bacalhau jobs and push them to your local registry
 set -e
-echo "Starting registry mirroring process..."
+echo "Starting registry mirroring process..."   
 
-# Define registry address
-REGISTRY_ADDRESS="localhost:5000"
+# Define registry address1
+REGISTRY_ADDRESS="localhost:5001"
 
 # Check if registry is accessible
 echo "Checking registry connectivity..."
@@ -18,7 +18,7 @@ fi
 # List of images to warm up (extracted from your job files)
 IMAGES=(
     "ghcr.io/astral-sh/uv:python3.13-bookworm-slim"
-    "ghcr.io/bacalhau-project/sensor-log-generator:2505071810"
+    "ghcr.io/bacalhau-project/sensor-log-generator:2505081831"
     "bash:devel-alpine3.21"
 )
 # Pull and push each image
