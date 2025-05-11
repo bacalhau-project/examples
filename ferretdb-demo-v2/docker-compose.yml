@@ -1,43 +1,46 @@
 x-common-env-variables: &common-env-variables
-  MINIO_ROOT_USER: "minioadmin"
-  MINIO_ROOT_PASSWORD: "minioadmin"
-  AWS_ACCESS_KEY_ID: "minioadmin"
-  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  MINIO_ROOT_USER: "Willow_Hauck"
+  MINIO_ROOT_PASSWORD: "zyMa_wA4_qFxEuV"
+  AWS_ACCESS_KEY_ID: "Willow_Hauck"
+  AWS_SECRET_ACCESS_KEY: "zyMa_wA4_qFxEuV"
   BACALHAU_DISABLEANALYTICS: true
-  FERRETDB_URI: "mongodb://expansouser:safepassword@ferretdb:27017/postgres"
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-set-your-own-google-maps-api-key}
+  POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER must be set. Please provide it in your .env file or shell environment.}"
+  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set. Please provide it in your .env file or shell environment.}"
+  FERRETDB_URI: "mongodb://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ferretdb:27017/postgres"
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:?GOOGLE_MAPS_API_KEY must be set. Please provide it in your .env file or shell environment.}"
 
 x-sensor-template: &sensor-template
-    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
-    entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
-    command: >
-      "env >> /etc/environment &&
-      mkdir -p /mnt/data &&
-      bacalhau serve -c /etc/bacalhau/config.yaml"
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-      storage:
-        condition: service_healthy
-      ferretdb:
-        condition: service_started
-    privileged: true
-    restart: on-failure
-    volumes:
-      - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./docker-config/daemon.json:/etc/docker/daemon.json
-    dns:
-      - 1.1.1.1
-    networks:
-      - ferret-demo-net
+  image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
+  platform: linux/amd64
+  entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
+  command: >
+    "env >> /etc/environment &&
+    mkdir -p /mnt/data &&
+    bacalhau serve -c /etc/bacalhau/config.yaml"
+  depends_on:
+    orchestrator:
+      condition: service_healthy
+    storage:
+      condition: service_healthy
+    ferretdb:
+      condition: service_started
+  privileged: true
+  restart: on-failure
+  volumes:
+    - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+    - ./docker-config/daemon.json:/etc/docker/daemon.json
+  dns:
+    - 1.1.1.1
+  networks:
+    - ferret-demo-net
 
 services:
-
   registry-proxy:
     image: registry:2
+    platform: linux/amd64
     container_name: ferret-demo-registry-proxy
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./registry-data:/var/lib/registry
     networks:
@@ -45,6 +48,7 @@ services:
 
   orchestrator:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    platform: linux/amd64
     container_name: ferret-demo-orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
@@ -54,7 +58,7 @@ services:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
       - ./docker-config/daemon.json:/etc/docker/daemon.json
     healthcheck:
-      test: [ "CMD", "bacalhau", "agent", "alive" ]
+      test: ["CMD", "bacalhau", "agent", "alive"]
       interval: 30s
       timeout: 20s
       retries: 10
@@ -62,35 +66,36 @@ services:
     networks:
       - ferret-demo-net
 
-
   postgres:
     image: ghcr.io/ferretdb/postgres-documentdb:17-0.102.0-ferretdb-2.1.0
     container_name: ferret-demo-postgres
-#     WARNING: This image is built only for x86_64 ####
+    #     WARNING: This image is built only for x86_64 ####
     platform: linux/amd64
     restart: on-failure
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_USER=expansouser
-      - POSTGRES_PASSWORD=safepassword
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=postgres
     networks:
       - ferret-demo-net
 
   ferretdb:
     image: ghcr.io/bacalhau-project/examples/ferretdb-demo-ferretdb:2504162218
+    platform: linux/amd64
     container_name: ferret-demo-ferretdb
     restart: on-failure
     ports:
       - 27217:27017
     environment:
-      - FERRETDB_POSTGRESQL_URL=postgres://expansouser:safepassword@postgres:5432/postgres
+      - FERRETDB_POSTGRESQL_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postgres
     networks:
-      ferret-demo-net:
+      - ferret-demo-net
 
   storage:
     image: ghcr.io/bacalhau-project/examples/ferretdb-demo-minio:2504162218
+    platform: linux/amd64
     container_name: ferret-demo-storage
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -101,12 +106,10 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
     networks:
       - ferret-demo-net
 
-  sensor:
+  sensors:
     environment:
       <<: *common-env-variables
     <<: *sensor-template
@@ -114,6 +117,7 @@ services:
   frontend:
     image: ghcr.io/bacalhau-project/examples/sensor-monitoring-dashboard:2505081200
     container_name: ferret-demo-frontend
+    platform: linux/amd64
     environment:
       <<: *common-env-variables
     ports:
@@ -126,6 +130,7 @@ services:
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    platform: linux/amd64
     container_name: ferret-demo-client
     entrypoint: /bin/sh
     stdin_open: true

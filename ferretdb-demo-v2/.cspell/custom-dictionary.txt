@@ -1,0 +1,12 @@
+bacalhau
+dind
+DISABLEANALYTICS
+documentdb
+expansouser
+ferretdb
+FERRETDB
+Hauck
+healthcheck
+minioadmin
+safepassword
+syncer

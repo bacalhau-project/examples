@@ -92,3 +92,4 @@ docker-compose.yaml
 sample-sensor/*
 
 .databrickscfg
+*cosmos-with-bacalhau
