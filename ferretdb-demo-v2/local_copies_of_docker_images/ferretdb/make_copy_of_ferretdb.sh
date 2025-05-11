@@ -2,7 +2,9 @@ docker login ghcr.io
 
 SOURCE_IMAGE="ghcr.io/ferretdb/ferretdb:2.1.0"
 
-TARGET_IMAGE="ghcr.io/bacalhau-project/examples/ferretdb-demo-ferretdb:2504162218"
+TIMESTAMP=$(date +%Y%m%d%H%M)
+
+TARGET_IMAGE="ghcr.io/bacalhau-project/examples/ferretdb-demo-ferretdb:$TIMESTAMP"
 
 # Pull the source image
 docker pull $SOURCE_IMAGE
@@ -11,4 +13,7 @@ docker pull $SOURCE_IMAGE
 PLATFORMS="linux/amd64,linux/arm64"
 
 # Build and push multi-arch image
-docker buildx build --platform $PLATFORMS --tag $TARGET_IMAGE --push .
+docker buildx build \
+  --platform $PLATFORMS \
+  --tag $TARGET_IMAGE \
+  --push .

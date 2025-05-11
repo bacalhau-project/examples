@@ -5,7 +5,7 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505071810
+        Image: registry-proxy:5000/bacalhau-project/sensor-log-generator:2505081831
         EnvironmentVariables:
           - CONFIG={{.config}}
           - IDENTITY={{.identity}}
@@ -34,7 +34,6 @@ Tasks:
           Type: localDirectory
           Params:
             SourcePath: /etc/environment
-
 # https://blog.bacalhau.org/p/introducing-new-job-types-new-horizons
 
 ##
