@@ -139,18 +139,6 @@ Replace `NEW_SYNC_SCRIPT` as needed and rerun the script.
 
 ---
 
-## 🧹 Optional: Clear All Sensor Data
-
-To clear all sensor data from FerretDB:
-
-```bash
-/4_run_cleanup_whole_mongodb_job.sh
-```
-
-This runs a **batch job** scheduled on one sensor node to purge all stored data.
-
----
-
 ## 📊 Frontend Dashboard
 
 - Each sensor appears on a Google Map and blinks when new data arrives.
