@@ -99,6 +99,18 @@ Use this checklist to track progress. Check each box as you complete the task.
 
 ## Phase 1: Cloud Environment Setup
 
+### Local Lakehouse (dev only)
+- Run `docker-compose -f tools/local-lakehouse/docker-compose.yml up -d`
+- Console: http://localhost:9001 (user/pass `minioadmin`)
+- Point uploader at `s3://bacalhau-local/delta/<table>` with:
+  ```bash
+  export STORAGE_URI="s3://bacalhau-local/delta/sensor_readings"
+  export AWS_ACCESS_KEY_ID=minioadmin
+  export AWS_SECRET_ACCESS_KEY=minioadmin
+  export AWS_REGION=us-east-1
+  ```
+- Spark master URL inside notebooks: `spark://spark-master:7077`
+
 *1.1 Cloud Storage Setup (AWS S3 or ADLS Gen2)*
 - Provision storage container/bucket with a flat, sensor-centric folder layout, e.g.:
   `s3://<BUCKET>/<SENSOR_ID>/`
