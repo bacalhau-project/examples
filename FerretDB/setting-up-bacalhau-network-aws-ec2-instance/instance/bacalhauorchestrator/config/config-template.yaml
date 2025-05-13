@@ -1,7 +1,0 @@
-logging:
-  logdebuginfointerval: 1s
-orchestrator:
-  auth:
-    token: {bacalhau_token}
-  evaluationbroker:
-    visibilitytimeout: 1s
