@@ -35,8 +35,7 @@ Use this checklist to track progress. Check each box as you complete the task.
 - [ ] Add `GitHub Actions` workflow:  
   - [ ] Run `pre-commit` checks  
   - [ ] Run Python unit tests  
-  - [ ] Execute `uploader/build.sh --push` on tagged commits  
-  - [ ] Publish `.latest-image-tag` and `.latest-registry-image` artifacts  
+- Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – no build step required; uv installs dependencies on first run.
 - [ ] Validate Alpine runtime compatibility; if deltalake wheels fail, switch to Debian-slim base  
 
 ## 5. Testing  
