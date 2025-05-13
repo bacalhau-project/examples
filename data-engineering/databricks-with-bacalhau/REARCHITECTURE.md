@@ -1,23 +1,103 @@
-## Project: Refactor Bacalhau Workflow Results to Databricks Lakehouse
+# Migration Checklist: CosmosDB → Databricks/Delta Lake
 
-**Goal:** Remove all Azure Cosmos DB sinks. Replace the existing C# Cosmos uploader with a Python-based uploader that transfers Parquet result files to Cloud Storage, and orchestrate ingestion and analytics entirely within Databricks Lakehouse.
-
-**Current State:**
-- Raw sensor data is ingested by remote Sensor processes and staged into local SQLite databases.
-- Bacalhau jobs execute on remote nodes, mounting and processing SQLite data via the C# CosmosUploader:
-  - C# code reads rows from SQLite and writes JSON documents to Azure Cosmos DB.
-
-**Target State:**
-- Raw sensor data on remote nodes → Sensor → Local SQLite (Staging) → Bacalhau jobs output Parquet files.
-- **NEW:** A Python uploader script runs on the remote node immediately after Bacalhau completes, uploading Parquet files to Cloud Storage (AWS S3 or Azure Data Lake Storage Gen2).
-- **NEW:** Databricks Auto Loader incrementally ingests Parquet files into Delta Lake tables.
-- **NEW:** All downstream analytics, transformations, and reporting are performed in Databricks using PySpark/SQL on Delta Lake.
-- **NEW:** Databricks Workflows orchestrate ingestion and subsequent analytics notebooks.
-- C# CosmosUploader project is removed.
+Use this checklist to track progress. Check each box as you complete the task.
 
 ---
 
-## Phase 1: Cloud Storage & Databricks Foundation
+## 1. Cleanup & Deprecation
+- [X] Archive or delete the old CosmosDB/C# uploader
+  - [X] Moved `example-cosmos-with-bacalhau/` to `legacy/cosmos-uploader/` (to be removed entirely in Finalization phase)
+  - [X] Remove C# build scripts (`start-cosmos-uploader.sh`, `cosmos-uploader/build.sh`, etc.)  
+- [X] Archived all scripts from `utility_scripts/` to `legacy/utility_scripts/`. The `utility_scripts/` directory is now empty and can be removed or repurposed. (Original scripts included: `bulk_delete_cosmos.py`, `distribute_credentials.sh`, `enable_db_access.py`, `force_clean_bacalhau_data.py`, `list_azure_resources.py`, `postgres_optimizations.sql`, `sample_tables.sh`, `setup_log_uploader.sh`, `tune_postgres.py`, `confirm_tables.py`, `debug_postgres.py`, and its `README.md`)
+- [X] Removed `rebuild_cosmos.py` and the entire `.specstory/` directory (added `.specstory/` to `.gitignore`). Original: Remove any references to CosmosDB in root‐level scripts (`rebuild_cosmos.py`, `.specstory/`, etc.)
+
+## 2. Update Documentation
+### Top-Level README.md
+- [X] Rewrite introduction to describe Python uploader + Databricks architecture
+- [X] Replace CosmosDB/C# instructions with S3/ADLS & Delta Lake examples  
+- [X] Add usage sample: build/push container, run uploader, query Delta using Spark  
+
+### REARCHITECTURE.md
+- [ ] Update phases to reference actual paths (`uploader/`, `Dockerfile`, test scripts)
+- [ ] Link to new demo-network YAML examples for Databricks uploader  
+
+## 3. Python Uploader Enhancements (`uploader/`)  
+- [ ] Rename config fields for generality (e.g. `table_path` → `storage_uri`)  
+- [ ] Add CLI flags `--table NAME` and `--timestamp-col NAME` to override introspection  
+- [ ] Document credential injection:  
+  - [ ] AWS: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`  
+  - [ ] Azure: environment vars or MSI for ADLS Gen2  
+- [ ] Consider chunked writes or PySpark fallback for large data volumes  
+- [ ] Add basic metrics/logging endpoint or integrate Prometheus client  
+
+## 4. Container Build & CI  
+- [ ] Add `.pre-commit-config.yaml` (black, isort, flake8) at repo root  
+- [ ] Add `GitHub Actions` workflow:  
+  - [ ] Run `pre-commit` checks  
+  - [ ] Run Python unit tests  
+  - [ ] Execute `uploader/build.sh --push` on tagged commits  
+  - [ ] Publish `.latest-image-tag` and `.latest-registry-image` artifacts  
+- [ ] Validate Alpine runtime compatibility; if deltalake wheels fail, switch to Debian-slim base  
+
+## 5. Testing  
+### Unit Tests  
+- [ ] Create `tests/` directory alongside `uploader/`  
+- [ ] Test schema introspection on a small SQLite DB fixture  
+- [ ] Test incremental logic: mocking `write_deltalake` to local file and verifying DataFrame contents  
+- [ ] Test error conditions: missing config, no tables, no timestamp column, unreadable DB  
+
+### Integration / Smoke Tests  
+- [ ] Write a shell/Python script that:  
+  1. Creates a temporary SQLite DB with known rows and timestamps  
+  2. Runs the uploader container in "once" mode against `file:///tmp/delta_test`  
+  3. Uses PyArrow or Delta-Standalone to verify record count in `tmp/delta_test`  
+- [ ] Hook this smoke test into CI (GitHub Actions) after image build  
+
+## 6. Bacalhau Jobs & Demo-Network  
+- [ ] Create `demo-network/jobs/start_databricks_uploader.yaml` by copying `start_cosmos_uploader.yaml`  
+- [ ] Update in the new YAML:  
+  - `Image:` → your new Python uploader image (e.g. `ghcr.io/org/uploader:latest`)  
+  - `Entrypoint:` parameters → `--config /root/uploader-config.yaml --interval 300 [--once]`  
+- [ ] Rename and update scripts in `demo-network/`:  
+  - `3_deploy_cosmos_uploader.sh` → `3_deploy_databricks_uploader.sh`  
+  - `start-cosmos-uploader.sh` → `start-databricks-uploader.sh`  
+  - Adjust file names in `1_upload_files.sh`, `2_start_sensors.sh` as needed  
+- [ ] Remove or repurpose any jobs that directly edit `cosmos-config.yaml` (e.g. sanitize/schema toggles)  
+
+## 7. Sample-Sensor & Sensor Manager  
+- [ ] Ensure `pyproject.toml` lists your `sensor_manager/` package and entrypoints  
+- [ ] Confirm sample-sensor writes to `/root/sensor_data.db` to match uploader mounts  
+- [ ] Add a README section in `sample-sensor/` showing how to run the Python uploader container  
+
+## 8. Credentials & Secrets  
+- [ ] Document S3/ADLS credential injection:  
+  - Environment variables vs. IAM roles / Azure MSI  
+  - Example `uploader-config.yaml` snippet with placeholders  
+- [ ] Provide guidance on storing Databricks tokens in Databricks Secrets (if using DBFS)  
+
+## 9. Databricks Ingestion & Workflows  
+- [ ] Add a sample PySpark notebook illustrating Auto Loader:  
+    ```python  
+    df = (spark.readStream  
+          .format("cloudFiles")  
+          .option("cloudFiles.format","parquet")  
+          .option("cloudFiles.schemaLocation","s3a://<bucket>/_schemas/")  
+          .load("s3a://<bucket>/"))  
+    df.writeStream.format("delta")\\  
+      .option("checkpointLocation","s3a://<bucket>/_checkpoints/")\\  
+      .toTable("bacalhau_results")  
+    ```  
+- [ ] Document initial batch load (one-off) vs continuous streaming  
+- [ ] Provide example Databricks Job/Workflow JSON or CLI commands to schedule ingestion + analysis notebooks  
+
+## 10. Finalization & Rollout  
+- [ ] Remove all residual CosmosDB/C# artifacts from repo  
+- [ ] Update or remove legacy utility scripts no longer in scope  
+- [ ] Announce deprecation of old pipeline to stakeholders  
+- [ ] Monitor CI pipelines and dashboards for any build/test failures  
+- [ ] Tag and release v1.0.0 of the new Python‐Databricks pipeline  
+
+## Phase 1: Cloud Environment Setup
 
 *1.1 Cloud Storage Setup (AWS S3 or ADLS Gen2)*
 - Provision storage container/bucket with a flat, sensor-centric folder layout, e.g.:
@@ -58,9 +138,9 @@
     ### Builder stage: install dependencies
     FROM uv:latest AS builder
     WORKDIR /app
-    COPY upload_sqlite_to_s3.py ./
+    COPY sqlite_to_delta_uploader.py ./
     # Cache Python dependencies
-    RUN uv run -s upload_sqlite_to_s3.py --help || true
+    RUN uv run -s sqlite_to_delta_uploader.py --help || true
 
     ### Runtime stage: minimal image with pre-installed deps
     FROM uv:latest AS runtime
@@ -68,9 +148,9 @@
     # Copy installed site-packages from builder
     COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
     # Copy uploader script
-    COPY upload_sqlite_to_s3.py ./
+    COPY sqlite_to_delta_uploader.py ./
     # Entrypoint using UV-run
-    ENTRYPOINT ["uv", "run", "-s", "upload_sqlite_to_s3.py"]
+    ENTRYPOINT ["uv", "run", "-s", "sqlite_to_delta_uploader.py"]
     ```
 
 *3.2 Schema auto-detection and container invocation:*
@@ -100,7 +180,7 @@
     4. Update `/state/last_upload.json` with the maximum timestamp from the uploaded batch.
     5. Sleep for `$UPLOAD_INTERVAL` seconds and repeat indefinitely.
 
-*3.3 Remove any standalone uploader scripts; utilize the container image exclusively for uploads.*
+*3.4 Remove any standalone uploader scripts; utilize the container image exclusively for uploads.*
 
 ## Phase 4: Databricks Data Ingestion
 
@@ -133,7 +213,7 @@ df.writeStream.format("delta") \
 ## Phase 6: Testing & Validation
 
 *6.1 Local end-to-end tests:*
-- Run Bacalhau job → Parquet output → Python uploader → verify in S3.
+- Run Bacalhau job → Parquet output → Python uploader → verify Parquet files in cloud storage (S3/ADLS).
 - Trigger Databricks ingestion → verify delta table contents.
 
 *6.2 Data quality checks and monitoring.*
