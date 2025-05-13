@@ -8,7 +8,7 @@
 #     "pyyaml>=6.0"
 # ]
 """
-Continuously export new sensor log entries from a SQLite database and append them to a Delta Lake table.
+Continuously export new sensor log entries from a SQLite database and append them to a Delta Lake table (S3 / ADLS / local).
 Parameters and paths are read from a YAML config file, with optional environment variable overrides.
 Only command-line flag is --config pointing to the YAML file.
 """
@@ -29,14 +29,17 @@ from deltalake import write_deltalake
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run uploader with configuration file"
-    )
-    parser.add_argument(
-        "--config", required=True,
-        help="Path to the YAML configuration file"
-    )
-    return parser.parse_args()
+    p = argparse.ArgumentParser(description="SQLite → Delta uploader")
+    p.add_argument("--config", help="YAML config file (optional)")
+    p.add_argument("--sqlite", help="Path to SQLite DB")
+    p.add_argument("--storage-uri", help="Delta table URI (s3://… / abfs://… / file:///…)")
+    p.add_argument("--state-dir", help="Directory for last-upload state file")
+    p.add_argument("--interval", type=int, help="Seconds between cycles (ignored with --once)")
+    p.add_argument("--once", action="store_true",
+                   help="Upload once and exit (no loop)")
+    p.add_argument("--table", help="Override SQLite table name")
+    p.add_argument("--timestamp-col", help="Override timestamp column")
+    return p.parse_args()
 
 
 def read_data(sqlite_path, query, table_name):
