@@ -22,8 +22,8 @@ Use this checklist to track progress. Check each box as you complete the task.
 - [ ] Link to new demo-network YAML examples for Databricks uploader  
 
 ## 3. Python Uploader Enhancements (`uploader/`)  
-- [ ] Rename config fields for generality (e.g. `table_path` → `storage_uri`)  
-- [ ] Add CLI flags `--table NAME` and `--timestamp-col NAME` to override introspection  
+- [x] Rename config fields for generality (e.g. `table_path` → `storage_uri`)  
+- [x] Add CLI flags `--table NAME` and `--timestamp-col NAME` to override introspection  
 - [ ] Document credential injection:  
   - [ ] AWS: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`  
   - [ ] Azure: environment vars or MSI for ADLS Gen2  
@@ -31,12 +31,12 @@ Use this checklist to track progress. Check each box as you complete the task.
 - [ ] Add basic metrics/logging endpoint or integrate Prometheus client  
 
 ## 4. Container Build & CI  
-- [ ] Add `.pre-commit-config.yaml` (black, isort, flake8) at repo root  
-- [ ] Add `GitHub Actions` workflow:  
-  - [ ] Run `pre-commit` checks  
-  - [ ] Run Python unit tests  
-- Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – no build step required; uv installs dependencies on first run.
-- [ ] Validate Alpine runtime compatibility; if deltalake wheels fail, switch to Debian-slim base  
+- [x] Add `.pre-commit-config.yaml` (black, isort, flake8) at repo root  
+- [x] Add `GitHub Actions` workflow:  
+  - [x] Run `pre-commit` checks  
+  - [x] Run Python unit tests  
+- Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – no custom build.  
+- [x] Validate Alpine runtime compatibility; if deltalake wheels fail, switch to Debian-slim base  
 
 ## 5. Testing  
 ### Unit Tests  
