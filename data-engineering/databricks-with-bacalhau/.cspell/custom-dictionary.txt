@@ -19,6 +19,7 @@ psycopg
 pyyaml
 readwrite
 referer
+specstory
 Sproc
 UNLOGGED
 venv

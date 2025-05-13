@@ -93,3 +93,5 @@ sample-sensor/*
 
 .databrickscfg
 *cosmos-with-bacalhau
+
+.specstory/

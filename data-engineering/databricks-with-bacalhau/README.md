@@ -2,21 +2,24 @@
 # Bacalhau to Databricks Lakehouse Pipeline
 
 This repository implements a continuous data pipeline that:
-1. Reads sensor data from local SQLite databases on edge nodes.
-2. Incrementally extracts new records and appends them to a Delta Lake table in cloud storage.
-3. Enables scalable data analysis on the Databricks Lakehouse platform.
+1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes).
+2. Incrementally extracts new records using a Python uploader.
+3. Appends these records directly to a Delta Lake table in cloud storage (AWS S3 or Azure Data Lake Storage Gen2).
+4. Enables scalable data analysis and processing on the Databricks Lakehouse Platform.
 
 Key components:
-- **Uploader script**: `uploader/upload_sqlite_to_s3.py`, a self-contained UV-run script that:
-  - Automatically detects the SQLite table and timestamp column via schema introspection.
-  - Tracks the last-upload timestamp in a state file.
-  - Appends new rows to a Delta Lake table using the `deltalake` Python library.
-- **Docker multi-stage build**: `uploader/Dockerfile` caches dependencies in a builder stage and produces a minimal runtime image.
-- **Configuration**: `uploader-config.yaml.example` shows how to configure paths, table URI, state directory, and interval.
-- **Launcher**: `start-uploader.sh` wraps the Docker invocation, mounting only the config directory.
-- **Delta Lake management**: SQL snippets and Databricks CLI Docker examples to create and list tables.
+- **Python Uploader**: A script (e.g., `uploader/sqlite_to_delta_uploader.py`) designed to be run with `uv run`. It:
+  - Can automatically detect the SQLite table and its timestamp column via schema introspection.
+  - Tracks the last-upload timestamp using a state file to ensure incremental processing.
+  - Appends new rows directly to a specified Delta Lake table using the `deltalake` Python library.
+- **Containerization**: A `uploader/Dockerfile` providing a multi-stage build that:
+    - Caches Python dependencies efficiently in a builder stage.
+    - Produces a minimal runtime image for the uploader.
+- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (S3 or ADLS), state directory, and upload interval.
+- **Launcher Script**: An example `start-uploader.sh` shows how to run the uploader container, typically mounting the configuration file and necessary data volumes.
+- **Databricks Integration**: Includes SQL snippets for setting up Delta Lake tables and examples for using the Databricks CLI (via Docker) for management tasks.
 
-For design rationale and detailed roadmap, see [REARCHITECTURE.md](REARCHITECTURE.md).
+For the detailed architecture, migration checklist, and design rationale, please refer to [REARCHITECTURE.md](REARCHITECTURE.md).
 
 ---
 
@@ -153,6 +156,60 @@ docker run --rm \
   ghcr.io/databricks/cli:latest \
   tables list bacalhau_sensor_readings_workspace default
 ```
+
+### Querying the Delta Table with Spark
+
+Once data is populated in your Delta Lake table, you can query it using Spark in your Databricks environment (e.g., in a Databricks notebook).
+
+Here's a basic PySpark example:
+
+```python
+# Example: Querying the Delta table in a Databricks notebook
+
+# Make sure your Spark session has access to the catalog where the table resides.
+# Replace <CATALOG_NAME> with your actual catalog name (e.g., 'main', 'hive_metastore', 'dev').
+catalog_name = "<CATALOG_NAME>" 
+spark.sql(f"USE CATALOG {catalog_name}")
+
+# Define the schema and table name 
+# (assuming it was created as per previous SQL examples, e.g., in 'bacalhau_results' schema)
+schema_name = "bacalhau_results"
+table_name_short = "sensor_readings"
+full_table_name = f"{schema_name}.{table_name_short}" # or f"{catalog_name}.{schema_name}.{table_name_short}" if not using USE CATALOG
+
+# Read the Delta table into a Spark DataFrame
+print(f"Attempting to read Delta table: {full_table_name}")
+df = spark.read.table(full_table_name)
+
+# Display some data
+print(f"Displaying top 10 rows from {full_table_name}:")
+df.show(10)
+
+# Perform a count
+record_count = df.count()
+print(f"Total records in '{full_table_name}': {record_count}")
+
+# Example query: Find average temperature (assuming a 'temperature' column exists)
+# You might need to cast the column if it's not already a numeric type
+if 'temperature' in df.columns:
+    from pyspark.sql.functions import avg
+    print(f"Calculating average temperature from {full_table_name}:")
+    avg_temp_df = df.agg(avg("temperature"))
+    avg_temp_df.show()
+else:
+    print(f"Column 'temperature' not found in {full_table_name}. Skipping average temperature calculation.")
+
+# Example query: Find the latest timestamp (assuming a 'timestamp' column exists)
+if 'timestamp' in df.columns:
+    from pyspark.sql.functions import max
+    print(f"Finding the latest timestamp in {full_table_name}:")
+    latest_timestamp_df = df.agg(max("timestamp"))
+    latest_timestamp_df.show()
+else:
+    print(f"Column 'timestamp' not found in {full_table_name}. Skipping latest timestamp calculation.")
+```
+
+Replace `<CATALOG_NAME>` with the actual catalog you are using. This script demonstrates reading the table, showing sample data, counting records, and performing simple aggregations. You can adapt these queries for more complex analysis and visualization within your Databricks notebooks.
 
 ---
 
