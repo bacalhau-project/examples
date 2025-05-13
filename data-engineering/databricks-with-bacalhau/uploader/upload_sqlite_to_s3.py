@@ -62,33 +62,37 @@ def read_data(sqlite_path, query, table_name):
 def main():
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-    # Load YAML config with environment variable expansion
-    try:
-        text = Path(args.config).read_text()
-        def repl(match):
-            var = match.group(1)
-            default = match.group(3) or ""
-            return os.environ.get(var, default)
-        text = re.sub(r"\${([A-Za-z0-9_]+)(?::-([^}]*))?}", repl, text)
-        cfg = yaml.safe_load(text)
-    except Exception as e:
-        logging.error("Failed to load config file: %s", e)
-        sys.exit(1)
+    # 1) load YAML if supplied
+    cfg = {}
+    if args.config:
+        cfg = yaml.safe_load(Path(args.config).read_text())
+    # 2) assemble params   CLI > ENV > YAML > default
+    sqlite_path  = Path(
+        args.sqlite or os.getenv("SQLITE_PATH") or cfg.get("sqlite", "")
+    )
+    storage_uri  = (
+        args.storage_uri or os.getenv("STORAGE_URI") or cfg.get("storage_uri")
+    )
+    # Deprecation shim for old key names
+    if not storage_uri:
+        storage_uri = os.getenv("TABLE_PATH") or cfg.get("table_path")
+    state_dir    = Path(
+        args.state_dir or os.getenv("STATE_DIR") or cfg.get("state_dir", "/state")
+    )
+    interval     = int(
+        (args.interval if args.interval is not None else
+         os.getenv("UPLOAD_INTERVAL") or cfg.get("interval", 300))
+    )
+    once         = args.once
+    table_name   = args.table or cfg.get("table")
+    timestamp_col= args.timestamp_col or cfg.get("timestamp_col")
 
-    # Resolve parameters, allowing env override
-    sqlite_path = Path(os.getenv('SQLITE_PATH', cfg.get('sqlite')))
-    table_path = os.getenv('TABLE_PATH', cfg.get('table_path'))
-    state_dir = Path(os.getenv('STATE_DIR', cfg.get('state_dir', '/state')))
-    try:
-        interval = int(os.getenv('UPLOAD_INTERVAL', cfg.get('interval', 300)))
-    except Exception:
-        interval = 300
     # Validate required parameters
     if not sqlite_path or not sqlite_path.is_file():
         logging.error("SQLite file not found: %s", sqlite_path)
         sys.exit(1)
-    if not table_path:
-        logging.error("Delta table path not specified in config or environment")
+    if not storage_uri:
+        logging.error("Delta table URI not specified in config or environment")
         sys.exit(1)
 
     # Prepare state file directory
@@ -103,32 +107,42 @@ def main():
     else:
         last_ts = pd.Timestamp('1970-01-01T00:00:00Z')
 
-    # Determine table and timestamp column via SQLite introspection
-    conn = sqlite3.connect(str(sqlite_path))
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
-    tables = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    if not tables:
-        logging.error("No tables found in SQLite database.")
-        sys.exit(1)
-    if len(tables) > 1:
-        logging.error("Multiple tables found in SQLite database: %s", tables)
-        sys.exit(1)
-    table_name = tables[0]
-    logging.info("Detected table: %s", table_name)
-    # Determine timestamp field
-    conn = sqlite3.connect(str(sqlite_path))
-    cursor = conn.cursor()
-    cursor.execute(f"PRAGMA table_info('{table_name}');")
-    cols = cursor.fetchall()
-    conn.close()
-    ts_cols = [c[1] for c in cols if c[1].lower() == 'timestamp' or 'date' in (c[2] or '').lower()]
-    if not ts_cols:
-        logging.error("No suitable timestamp column found in table '%s'", table_name)
-        sys.exit(1)
-    timestamp_field = ts_cols[0]
-    logging.info("Detected timestamp field: %s", timestamp_field)
+    # Table and timestamp column introspection/override
+    if table_name is None:
+        # Only run table detection if not provided
+        conn = sqlite3.connect(str(sqlite_path))
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+        tables = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        if not tables:
+            logging.error("No tables found in SQLite database.")
+            sys.exit(1)
+        if len(tables) > 1:
+            logging.error("Multiple tables found in SQLite database: %s", tables)
+            sys.exit(1)
+        table_name = tables[0]
+        logging.info("Detected table: %s", table_name)
+    else:
+        logging.info("Using user-supplied table: %s", table_name)
+
+    if timestamp_col is None:
+        # Only run timestamp detection if not provided
+        conn = sqlite3.connect(str(sqlite_path))
+        cursor = conn.cursor()
+        cursor.execute(f"PRAGMA table_info('{table_name}');")
+        cols = cursor.fetchall()
+        conn.close()
+        ts_cols = [c[1] for c in cols if c[1].lower() == 'timestamp' or 'date' in (c[2] or '').lower()]
+        if not ts_cols:
+            logging.error("No suitable timestamp column found in table '%s'", table_name)
+            sys.exit(1)
+        timestamp_field = ts_cols[0]
+        logging.info("Detected timestamp field: %s", timestamp_field)
+    else:
+        timestamp_field = timestamp_col
+        logging.info("Using user-supplied timestamp column: %s", timestamp_field)
+
     logging.info("Starting continuous upload every %d seconds, initial timestamp=%s", interval, last_ts)
     base_name = sqlite_path.stem
     while True:
@@ -142,13 +156,13 @@ def main():
                 logging.info("No new records since %s", last_ts)
             else:
                 # Append to Delta table
-                logging.info("Appending %d new records to Delta table %s", len(df), table_path)
+                logging.info("Appending %d new records to Delta table %s", len(df), storage_uri)
                 # Pass AWS_REGION via storage_options if set
                 storage_opts = {}
                 if os.getenv('AWS_REGION'):
                     storage_opts['AWS_REGION'] = os.getenv('AWS_REGION')
                 write_deltalake(
-                    table_or_uri=table_path,
+                    table_or_uri=storage_uri,
                     data=df,
                     mode='append',
                     storage_options=storage_opts
@@ -162,6 +176,8 @@ def main():
             break
         except Exception as e:
             logging.error("Error in upload cycle: %s", e, exc_info=True)
+        if once:
+            break
         time.sleep(interval)
 
 if __name__ == '__main__':
