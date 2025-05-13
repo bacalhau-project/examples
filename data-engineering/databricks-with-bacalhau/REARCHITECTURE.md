@@ -35,8 +35,11 @@ Use this checklist to track progress. Check each box as you complete the task.
 - [x] Add `GitHub Actions` workflow:  
   - [x] Run `pre-commit` checks  
   - [x] Run Python unit tests  
-- Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – no custom build.  
+- Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – script is mounted; no custom build.  
 - [x] Validate Alpine runtime compatibility; if deltalake wheels fail, switch to Debian-slim base  
+- [x] Removed Dockerfile and build script from uploader/  
+- [x] Removed old Cosmos launcher script and YAML  
+- [x] Added new Databricks uploader YAML
 
 ## 5. Testing  
 ### Unit Tests  
@@ -141,28 +144,7 @@ Use this checklist to track progress. Check each box as you complete the task.
 
 ## Phase 3: Uploader Container
 
-3.1 Build a multi-stage Docker container using the UV base image:
-  - **Builder stage** (named `builder`): install dependencies by running UV-run once to cache packages.
-  - **Runtime stage** (named `runtime`): start from `uv:latest`, copy Python packages from `builder`, and include only the script.
-  - Example `uploader/Dockerfile`:
-    ```Dockerfile
-    ### Builder stage: install dependencies
-    FROM uv:latest AS builder
-    WORKDIR /app
-    COPY sqlite_to_delta_uploader.py ./
-    # Cache Python dependencies
-    RUN uv run -s sqlite_to_delta_uploader.py --help || true
-
-    ### Runtime stage: minimal image with pre-installed deps
-    FROM uv:latest AS runtime
-    WORKDIR /app
-    # Copy installed site-packages from builder
-    COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-    # Copy uploader script
-    COPY sqlite_to_delta_uploader.py ./
-    # Entrypoint using UV-run
-    ENTRYPOINT ["uv", "run", "-s", "sqlite_to_delta_uploader.py"]
-    ```
+3.1 Runtime image: `ghcr.io/astral-sh/uv:bookworm-slim` – script is mounted; no custom build.
 
 *3.2 Schema auto-detection and container invocation:*
   - The uploader script automatically detects the only user table and its timestamp column via SQLite schema introspection; no need to pass those flags.
