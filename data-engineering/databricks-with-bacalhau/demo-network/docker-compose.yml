@@ -80,14 +80,14 @@ services:
 
   spark-master:
     image: bitnami/spark:3.5.1
-    depends_on: [minio]
+    depends_on: [storage]
     environment:
       - SPARK_MODE=master
       - SPARK_DAEMON_MEMORY=1G
       - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
     volumes:
-      - ../../tools/local-lakehouse/spark/conf:/opt/bitnami/spark/conf:ro
-      - ../../tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
+      - ./tools/local-lakehouse/spark/conf:/opt/bitnami/spark/conf:ro
+      - ./tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
     networks:
       - bacalhau-network
 
@@ -100,7 +100,7 @@ services:
       - SPARK_WORKER_MEMORY=1G
       - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
     volumes:
-      - ../../tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
+      - ./tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
     networks:
       - bacalhau-network
 
