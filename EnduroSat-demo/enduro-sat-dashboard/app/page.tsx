@@ -17,17 +17,42 @@ type Job = {
   thumbnail: string
 }
 
-const openNetwork = async (ip: string) => {
+const openNetwork = async (satelitte: string, status: ConnectionStatus) => {
+  if( status === 'No Connection') {
+    try {
+      const res = await fetch(
+          `http://localhost/${satelitte}/open-network`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer abrakadabra1234!@#"
+            },
+            body: JSON.stringify({}),
+          }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const data = await res.json();
+      console.log("Disable network:", data);
+    } catch (err) {
+      console.error("Error when disabling network:", err);
+    }
+  }
   try {
     const res = await fetch(
-        `http://${ip}:9123/open-network`,
+        `http://localhost/${satelitte}/set-bandwidth`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer abrakadabra1234!@#"
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify({"value": status === 'High Bandwidth' ? "HIGH": "LOW" }),
         }
     );
 
@@ -43,10 +68,10 @@ const openNetwork = async (ip: string) => {
   }
 }
 
-const disableNetwork = async (ip: string) => {
+const disableNetwork = async (satelitte: string) => {
     try {
       const res = await fetch(
-          `http://${ip}:9123/close-network`,
+          `http://localhost/${satelitte}/close-network`,
           {
             method: "POST",
             headers: {
@@ -69,26 +94,21 @@ const disableNetwork = async (ip: string) => {
     }
 }
 export const colorMap: Record<string, string> = {
-  node1: '#E57373',  // czerwony
-  node2: '#64B5F6',  // niebieski
-  node3: '#81C784',  // zielony
-  node4: '#FFB74D',  // pomarańczowy
-  node5: '#BA68C8',  // fioletowy
+  node1: '#E57373',
+  node2: '#64B5F6',
+  node3: '#81C784',
+  node4: '#FFB74D',
+  node5: '#BA68C8',
 };
 export default function Dashboard() {
-  // Satellites data
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({})
   const { data: satellites, isLoading, error } = useSatellitesNodes()
-  const [jobModalOpen, setJobModalOpen] = useState(false)
-  const [selectedJobType, setSelectedJobType] = useState<string | null>(null)
-
-
 
   useEffect(() => {
     const initial: Record<string, ConnectionStatus> = satellites && satellites.reduce((acc, node) => {
       acc[node.Info.NodeID] =
           node.ConnectionState.Status === 'CONNECTED'
-              ? 'Low Bandwidth'
+              ? 'High Bandwidth'
               : 'No Connection'
       return acc
     }, {})
@@ -96,78 +116,29 @@ export default function Dashboard() {
     setConnections(initial)
   }, [satellites])
 
-  // Sample jobs data
-  const jobs: Job[] = []
-
   const [selectedItem, setSelectedItem] = useState<{ type: DetailViewType; id: string }>({
     type: null,
     id: '',
   })
 
   const handleConnectionChange = (satelliteId: string, status: ConnectionStatus, nodeIP: string) => {
-    status === 'No Connection' ?  disableNetwork(nodeIP) : openNetwork(nodeIP)
+    status === 'No Connection' ?  disableNetwork(satelliteId) : openNetwork(satelliteId, status)
     setConnections((prev) => ({
       ...prev,
       [satelliteId]: status,
     }))
   }
 
-  // Handle item selection
   const handleItemSelect = (type: DetailViewType, id: string) => {
     setSelectedItem({ type, id })
   }
 
-  // Handle job selection
-  const handleJobSelection = (jobType: string) => {
-    setSelectedJobType(jobType)
-  }
-
-  const jobPayloads = (nodeId: string) => ({
-    DETECT_SHIP: shipDetectJob(nodeId),
-    LOW_BANDWIDTH: lowJob(nodeId),
-    HIGH_BANDWIDTH: highJob(nodeId),
-  });
-
-  // Handle job submission
-  const handleJobSubmit = async () => {
-    if (selectedItem.type === "satellite" && selectedItem.id && selectedJobType) {
-      console.log(`Starting new job "${selectedJobType}" for Satellite ${selectedItem.id}`)
-      const nodeId = selectedItem.id;
-      const payload = jobPayloads(nodeId)[selectedJobType];
-      if (!payload) {
-        console.error(`Invalid job type: ${selectedJobType}`);
-        return;
-      }
-      setJobModalOpen(false)
-      setSelectedJobType(null)
-      try {
-        const res = await fetch(`http://localhost:8438/api/v1/orchestrator/jobs`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
-        }
-
-        const data = await res.json();
-        console.log("Job created:", data);
-      } catch (err) {
-        console.error("Error creating job:", err);
-      }
-    }
-  }
     if (!satellites || !connections || isLoading) {
       return null
     }
 
     return (
         <div className="container mx-auto p-4 max-w-7xl">
-          {/* Ground Station Panel */}
           <GroundStationPanel
               satellites={satellites}
               connections={connections}

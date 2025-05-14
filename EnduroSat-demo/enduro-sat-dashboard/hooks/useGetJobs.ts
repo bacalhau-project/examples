@@ -1,14 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import {getJobsSummary} from "@/components/JobTable";
-
-interface RawJob {
-}
 
 interface JobSummary {
     id: string;
     name: string;
     status: string;
-    // inne pola...
 }
 export function useJobs(options?: {
     jobName?: string;
@@ -25,11 +20,8 @@ export function useJobs(options?: {
     const intervalId = useRef<number | null>(null);
 
     const fetchJobs = async () => {
-        setLoading(true);
-        setError(null);
         try {
             const params = new URLSearchParams();
-            // params.set('labels', 'sattelite_number=node1-5');
             if (jobName) {
                 params.set('jobName', jobName);
             }
@@ -42,17 +34,18 @@ export function useJobs(options?: {
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status} – ${res.statusText}`);
             }
-            const data: { Jobs: RawJob[] } = await res.json();
+            const data= await res.json();
             setJobs(data);
+            setError(null)
         } catch (err: any) {
             setError(err.message);
-        } finally {
-            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchJobs();
+        setLoading(true);
+        setError(null);
+        fetchJobs().finally(() => setLoading(false));
         intervalId.current = window.setInterval(fetchJobs, 1000);
 
         return () => {
