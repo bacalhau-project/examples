@@ -1,4 +1,3 @@
-version: "3"
 name: bacalhau-network
 
 x-common-env-variables: &common-env-variables
@@ -133,7 +132,7 @@ services:
       - bacalhau-network
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.1
     depends_on: [minio]
     environment:
       - SPARK_MODE=master
@@ -146,7 +145,7 @@ services:
       - bacalhau-network
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.1
     depends_on: [spark-master]
     environment:
       - SPARK_MODE=worker
@@ -158,14 +157,25 @@ services:
     networks:
       - bacalhau-network
 
-  databricks:
-    image: databricksruntime/community:latest
+  delta-lake:
+    image: deltaio/delta-docker:${DELTA_IMAGE_TAG:-latest}   # use *_arm64 tag on Apple-Silicon
+    container_name: delta-lake
+    entrypoint: ["/startup.sh"]
     ports:
-      - "8080:8080"
+      - "8888:8888"    # JupyterLab
+      - "4040:4040"    # Spark UI (first app)
     volumes:
-      - ./notebooks:/root/notebooks
+      - ./notebooks:/opt/spark/work-dir/notebooks            # keep existing notebooks
+      - ./data/delta:/tmp                                    # persistent Delta tables
     environment:
-      - DATABRICKS_HOST=localhost
+      <<: *common-env-variables
+      # Make MinIO reachable from Spark-in-container
+      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    depends_on:
+      minio:
+        condition: service_started
     networks:
       - bacalhau-network
 
