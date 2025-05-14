@@ -115,7 +115,7 @@ services:
       - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
     volumes:
       - spark-delta-jars:/opt/delta/jars
-      - ./local-lakehouse/spark/conf:/opt/bitnami/spark/conf
+      - ../../tools/local-lakehouse/spark/conf:/opt/bitnami/spark/conf:ro
     networks:
       - bacalhau-network
 
@@ -145,7 +145,7 @@ services:
       DELTA_SPARK_MASTER: spark://spark-master:7077
       DELTA_STORAGE_URI: s3a://bacalhau-local
     volumes:
-      - ./local-lakehouse/notebooks:/home/jovyan/work
+      - ../../tools/local-lakehouse/notebooks:/home/jovyan/work
       - spark-delta-jars:/opt/delta/jars
     networks:
       - bacalhau-network
