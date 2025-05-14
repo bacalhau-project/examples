@@ -2,20 +2,24 @@
 # Bacalhau to Databricks Lakehouse Pipeline
 
 This repository implements a continuous data pipeline that:
-1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes).
+
+1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes)
 2. Incrementally extracts new records using a Python uploader.
 3. Appends these records directly to a Delta Lake table in cloud storage (AWS S3 or Azure Data Lake Storage Gen2).
 4. Enables scalable data analysis and processing on the Databricks Lakehouse Platform.
 
 Key components:
+
 - **Python Uploader**: A script (e.g., `uploader/sqlite_to_delta_uploader.py`) designed to be run with `uv run`. It:
   - Can automatically detect the SQLite table and its timestamp column via schema introspection.
   - Tracks the last-upload timestamp using a state file to ensure incremental processing.
   - Appends new rows directly to a specified Delta Lake table using the `deltalake` Python library.
 - **Containerization**: A `uploader/Dockerfile` providing a multi-stage build that:
-    - Caches Python dependencies efficiently in a builder stage.
-    - Produces a minimal runtime image for the uploader.
-- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (S3 or ADLS), state directory, and upload interval.
+
+  - Caches Python dependencies efficiently in a builder stage.
+  - Produces a minimal runtime image for the uploader.
+
+- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (S3 or ADSL), state directory, and upload interval.
 - **Launcher Script**: An example `start-uploader.sh` shows how to run the uploader container, typically mounting the configuration file and necessary data volumes.
 - **Databricks Integration**: Includes SQL snippets for setting up Delta Lake tables and examples for using the Databricks CLI (via Docker) for management tasks.
 
@@ -24,6 +28,7 @@ For the detailed architecture, migration checklist, and design rationale, please
 ---
 
 ## Prerequisites
+
 - Docker Engine (19.03+)
 - (Optional) Python 3.11 and the `uv` CLI for local testing
 - A Databricks workspace with a catalog/schema for Delta Lake
@@ -31,6 +36,7 @@ For the detailed architecture, migration checklist, and design rationale, please
   - Ensure credentials are configured (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or Azure service principal).
 
 ## Directory Layout
+
 ```text
 ./
 ├── uploader/                      # Python uploader and Dockerfile
@@ -45,6 +51,7 @@ For the detailed architecture, migration checklist, and design rationale, please
 ```
 
 ## Environment Variables
+
 ```bash
 S3_BUCKET_NAME=YOUR_S3_BUCKET_NAME
 AWS_REGION=YOUR_AWS_REGION
@@ -54,9 +61,10 @@ DATABRICKS_HOST=https://YOUR_DATABRICKS_HOST
 DATABRICKS_TOKEN=YOUR_DATABRICKS_TOKEN
 ```
 
-
 ## Configuration
+
 Copy `uploader-config.yaml.example` to `uploader-config.yaml` and customize:
+
 ```yaml
 # Path inside container to the SQLite DB
 sqlite: "/root/sensor.db"
@@ -70,12 +78,15 @@ state_dir: "/root"
 # Upload interval in seconds
 interval: 300
 ```
+
 You can override any value with environment variables:
+
 - `SQLITE_PATH`, `TABLE_PATH`, `STATE_DIR`, `UPLOAD_INTERVAL`
 
 ---
 
 ## Build the Uploader Container
+
 ```bash
 docker build -t uploader-image:latest uploader
 ```
@@ -83,14 +94,19 @@ docker build -t uploader-image:latest uploader
 ---
 
 ## Running the Uploader
+
 1. Make the launcher script executable:
+
    ```bash
    chmod +x start-uploader.sh
    ```
+
 2. Run with your config file:
+
    ```bash
    ./start-uploader.sh uploader-config.yaml
    ```
+
 The uploader will run continuously, appending new records each cycle.
 
 ## Delta Lake Table Setup on Databricks
@@ -103,13 +119,14 @@ You can execute the following SQL commands in a Databricks notebook or using the
 
 Navigate to the SQL Editor in your Databricks workspace using a URL like this (replace `<your-databricks-workspace-url>` with your actual workspace URL, e.g., `dbc-a1b2-c3d4.cloud.databricks.com`):
 
-```
+```code
 https://<your-databricks-workspace-url>/sql/editor
 ```
 
 **SQL Commands:**
 
 Execute the following SQL. Remember to replace:
+
 - `<CATALOG_NAME>` with the name of your desired Unity Catalog catalog (e.g., `main`, `dev`).
 - `<S3_BUCKET_NAME>` with the actual name of your S3 bucket where the Delta table data will be stored.
 
@@ -214,6 +231,7 @@ Replace `<CATALOG_NAME>` with the actual catalog you are using. This script demo
 ---
 
 ## Further Reading
+
 - [REARCHITECTURE.md](REARCHITECTURE.md): Detailed re-architecture plan and checklist.
 - `uploader-config.yaml.example`: Example config template.
 - `docs/databricks-s3-connect.md`: Guide for configuring Databricks S3 connectivity.
