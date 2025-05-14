@@ -115,8 +115,8 @@ services:
       - SPARK_DAEMON_MEMORY=1G
       - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
     volumes:
-      - spark-delta-jars:/opt/delta/jars
       - ../../tools/local-lakehouse/spark/conf:/opt/bitnami/spark/conf:ro
+      - ../../tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
     networks:
       - bacalhau-network
 
@@ -129,7 +129,7 @@ services:
       - SPARK_WORKER_MEMORY=1G
       - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
     volumes:
-      - spark-delta-jars:/opt/delta/jars
+      - ../../tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
     networks:
       - bacalhau-network
 
@@ -147,7 +147,7 @@ services:
       DELTA_STORAGE_URI: s3a://bacalhau-local
     volumes:
       - ../../tools/local-lakehouse/notebooks:/home/jovyan/work
-      - spark-delta-jars:/opt/delta/jars
+      - ../../tools/local-lakehouse/spark/jars:/opt/delta/jars:ro
     networks:
       - bacalhau-network
 
@@ -173,4 +173,3 @@ networks:
 volumes:
   registry-data:
   minio-data: {}
-  spark-delta-jars: {}
