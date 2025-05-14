@@ -96,6 +96,64 @@ services:
     networks:
       - bacalhau-network
 
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-05-27T15-15-20Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER:  minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - minio-data:/data
+    networks:
+      - bacalhau-network
+
+  spark-master:
+    image: bitnami/spark:3.5
+    depends_on: [minio]
+    environment:
+      - SPARK_MODE=master
+      - SPARK_DAEMON_MEMORY=1G
+      - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
+    volumes:
+      - spark-delta-jars:/opt/delta/jars
+      - ./local-lakehouse/spark/conf:/opt/bitnami/spark/conf
+    networks:
+      - bacalhau-network
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    depends_on: [spark-master]
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
+    volumes:
+      - spark-delta-jars:/opt/delta/jars
+    networks:
+      - bacalhau-network
+
+  notebook:
+    image: jupyter/pyspark-notebook:spark-3.5.0
+    depends_on: [spark-master, minio]
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+      AWS_ACCESS_KEY_ID:     minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_REGION:            us-east-1
+      DELTA_SPARK_MASTER:    spark://spark-master:7077
+      DELTA_STORAGE_URI:     s3a://bacalhau-local
+    volumes:
+      - ./local-lakehouse/notebooks:/home/jovyan/work
+      - spark-delta-jars:/opt/delta/jars
+    networks:
+      - bacalhau-network
+
 networks:
   bacalhau-network:
     ipam:
@@ -106,3 +164,5 @@ networks:
 
 volumes:
   registry-data:
+  minio-data: {}
+  spark-delta-jars: {}
