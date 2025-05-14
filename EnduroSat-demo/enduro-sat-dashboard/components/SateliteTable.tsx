@@ -1,14 +1,15 @@
 "use client"
 
-import {useState} from "react"
+import {Fragment, useState} from "react"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent} from "@/components/ui/card"
 import {ChevronDown, ChevronUp, Wifi, WifiHigh as WifiLow, WifiOff} from "lucide-react"
 import type {ConnectionStatus, Satellite} from "@/types"
 import {cn} from "@/lib/utils"
-import {JobTable} from "./JobTable"
 import {colorMap} from "@/app/page";
-import {QueueTable} from "@/components/QueueTable";
+import {ProcessingJobsTable} from "@/components/ProcessingJobsTable";
+import { FilesToProcessTable} from "@/components/FilesToProcessTable";
+import {FilesTable} from "@/components/FilesTables";
 
 type SatelliteTableProps = {
     satellites: Satellite[]
@@ -22,14 +23,9 @@ export function SatelliteTable({
                                    connections,
                                    onConnectionChange,
                                    selectedSatelliteId,
-    jobs
                                }: SatelliteTableProps) {
-    // State to track which satellite rows are expanded
     const [expandedSatellites, setExpandedSatellites] = useState<number[]>([])
 
-    console.log('JOBS', jobs)
-
-    // Toggle expanded state for a satellite
     const toggleExpand = (satelliteId: number) => {
         setExpandedSatellites((prev) =>
             prev.includes(satelliteId) ? prev.filter((id) => id !== satelliteId) : [...prev, satelliteId],
@@ -61,7 +57,7 @@ export function SatelliteTable({
                             const satelliteId = satellite.Info.NodeID
                             const nodeIP = satellite.Info.Labels.PUBLIC_IP
                             return (
-                                <>
+                                <Fragment key={satelliteId}>
                                     <tr
                                         key={satellite.id}
                                         className={cn(
@@ -120,39 +116,27 @@ export function SatelliteTable({
                                         <tr>
                                             <td colSpan={4} className="p-0 bg-slate-50 border-b">
                                                 <div className="p-4">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        {/* To Do Jobs */}
-                                                        <QueueTable
-                                                            title="To Do"
-                                                            headerColor="#1e293b" // slate-800
-                                                            satellites={[satellite]}
-                                                            jobs={jobs && jobs.Items}
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                        <ProcessingJobsTable
+                                                            satellites={satellites}
                                                         />
-
-                                                        {/* Low Priority Jobs */}
-                                                        <JobTable
-                                                            title="Low Priority"
+                                                        <FilesToProcessTable satelliteName={satelliteId}/>
+                                                        <FilesTable
+                                                            title="Low bandwidth"
                                                             headerColor="#d97706" // amber-600
-                                                            satellites={[satellite]}
-                                                            jobs={jobs && jobs.Items}
-                                                            jobName={'data-transfer-low'}
-                                                            statuses={['Completed']}
+                                                            satelliteName={satelliteId}
                                                         />
-
-                                                        <JobTable
-                                                            title="High Priority"
+                                                        <FilesTable
+                                                            title="High bandwidth"
                                                             headerColor="#dc2626" // red-600
-                                                            satellites={[satellite]}
-                                                            jobs={jobs && jobs.Items}
-                                                            jobName={'data-transfer-high'}
-                                                            statuses={['Completed']}
+                                                            satelliteName={satelliteId}
                                                         />
                                                     </div>
                                                 </div>
                                             </td>
                                         </tr>
                                     )}
-                                </>
+                                </Fragment>
                             )
                         })}
                         </tbody>

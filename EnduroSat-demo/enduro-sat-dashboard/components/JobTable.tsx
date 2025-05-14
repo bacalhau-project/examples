@@ -7,12 +7,8 @@ import type {Satellite} from "@/types"
 type JobTableProps = {
     title: string
     headerColor: string
-    satellites?: Satellite[]
-    showSatelliteColumn?: boolean
-    nodeName?: string
-    jobName?: string
-    jobs: RawJob[]
-    statuses?: string[]
+    files: string[]
+    satelliteName: string
 }
 
 interface RawJob {
@@ -22,45 +18,9 @@ interface RawJob {
     Meta?: Record<string, string>;
 }
 
-function getJobsSummary(data, jobName, statuses, satNames) {
-    let items = data;
-
-    if (jobName) {
-        items = items.filter(j => j.Name === jobName);
-    }
-
-    if (Array.isArray(satNames) && satNames.length > 0) {
-        items = items.filter(j =>
-            j.Labels &&
-            satNames.includes(j.Labels.sattelite_number)
-        );
-    }
-
-    if (Array.isArray(statuses) && statuses.length > 0) {
-        items = items.filter(j =>
-            j.State &&
-            statuses.includes(j.State.StateType)
-        );
-    }
-
-    return items.map(j => ({
-        id: j.ID,
-        name: j.Name,
-    }));
-}
-
-export function JobTable({ title, headerColor, satellites, showSatelliteColumn = false, jobs, jobName, statuses = [] }: JobTableProps) {
-    if (!jobs || jobs.length === 0) {
-        return null;
-    }
-
-    // Collect all satellite names
-    const satNames = satellites
-        .map(s => s.Info?.Labels?.SATTELITE_NAME)
-        .filter(Boolean);
-
-    // Filter jobs by jobName, statuses, and matching any satellite
-    const filteredJobs = getJobsSummary(jobs, jobName, statuses, satNames);
+export function JobTable({ title, headerColor, satelliteName, files }: JobTableProps) {
+    const isLow = title === 'Low bandwidth';
+    const bandwidth = isLow ? 'LOW_bandwidth' : 'HIGH_bandwidth';
 
     return (
         <Card className="border shadow-md">
@@ -68,65 +28,86 @@ export function JobTable({ title, headerColor, satellites, showSatelliteColumn =
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="overflow-hidden">
+                <div className="overflow-visible">
                     <table className="min-w-full">
                         <thead className="bg-slate-100 border-b">
                         <tr>
                             <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                {title === "To Do" ? "Job ID" : "Job Name"}
+                                Filename
                             </th>
-                            {showSatelliteColumn && (
+                            <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Thumbnail
+                            </th>
+                            {!isLow && (
                                 <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Satellite
+                                    Action
                                 </th>
-                            )}
-                            {title !== "To Do" && (
-                                <>
-                                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Thumbnail
-                                    </th>
-                                    {title === 'High Priority' && (
-                                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Action
-                                    </th>)}
-                                </>
                             )}
                         </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                        {filteredJobs.map((job) => (
+                        {files.map((file) => (
                             <tr
-                                key={job.id}
+                                key={file}
                                 className="hover:bg-slate-50 transition-colors"
-                                style={
-                                    showSatelliteColumn && satellites
-                                        ? { backgroundColor: `${satellites.find((s) => s.id === job.satelliteId)?.color}10` }
-                                        : {}
-                                }
                             >
-                                <td className="px-3 py-2 text-xs font-medium">
-                                    {title === "To Do" ? `${job.id} - ${job.name}` : job.id}
+                                {/* Filename */}
+                                <td className="px-3 py-2 text-xs font-semibold">
+                                    {file}
                                 </td>
 
-                                    <>
-                                    {(title === 'High Priority' || title === 'Low Priority') && (
-                                        <td className="px-3 py-2 text-xs">
-                                            <img
-                                                src={'./thumbnail.jpg'}
-                                                alt={job.name}
-                                                className="w-8 h-8 object-cover rounded-sm border border-slate-200"
-                                            />
-                                        </td>
-                                    )}
-                                        {title === 'High Priority' && (
-                                        <td className="px-3 py-2 text-xs">
-                                            <Button size="sm" variant="outline" className="flex items-center gap-1 h-6 text-xs">
-                                                <Download className="h-3 w-3" />
-                                            </Button>
-                                        </td>
-                                        )}
-                                    </>
+                                {/* Thumbnail + Hover Preview */}
+                                <td className="px-3 py-2 text-xs relative group overflow-visible">
+                                    <div
+                                        className="w-8 h-8 bg-gray-100 flex items-center justify-center rounded-sm border border-slate-200 overflow-hidden">
+                                        <img
+                                            src={`/api/${satelliteName}-data/output/${bandwidth}/${file}`}
+                                            alt={`${file} thumbnail`}
+                                            className="max-w-full max-h-full object-contain cursor-pointer"
+                                        />
+                                    </div>
 
+                                    {/* Tooltip preview */}
+                                    <div
+                                        className={`
+                    pointer-events-none
+                    opacity-0
+                    group-hover:opacity-100
+                    transition-opacity
+                    absolute
+                    top-1/2
+                    ${isLow ? "left-full" : "right-full"}
+                    ml-2
+                    z-50
+                    w-60
+                    h-60
+                    bg-white
+                    p-1
+                    rounded
+                    shadow-lg
+                    transform
+                    -translate-y-1/2
+                  `}
+                                    >
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <img
+                                                src={`/api/${satelliteName}-data/output/${bandwidth}/${file}`}
+                                                alt={`${file} preview`}
+                                                className="max-w-full max-h-full object-contain"
+                                            />
+                                        </div>
+                                    </div>
+                                </td>
+
+                                {/* Download button only for High bandwidth */}
+                                {!isLow && (
+                                    <td className="px-3 py-2 text-xs">
+                                        <Button size="sm" variant="outline"
+                                                className="flex items-center gap-1 h-6 text-xs">
+                                            <Download className="h-3 w-3"/>
+                                        </Button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                         </tbody>
