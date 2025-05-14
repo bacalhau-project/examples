@@ -1,113 +1,19 @@
-name: bacalhau-network
+name: bacalhau-deltalake-network
 
 x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
   BACALHAU_DISABLEANALYTICS: true
-  LOG_LEVEL: info
-  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-  AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-  AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
 
-# Common logging configuration to disable logs
-x-logging-driver: &logging-driver
-  logging:
-    driver: "none"
+x-orchestrator-image: &orchestrator-image
+  image: ghcr.io/bacalhau-project/bacalhau:${ORCHESTRATOR_IMAGE_TAG:-latest}
 
-x-sensor-template: &sensor-template
-  image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
-  platform: linux/amd64
-  entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
-  command: >
-    "env >> /etc/environment &&
-    mkdir -p /mnt/data &&
-    bacalhau serve -c /etc/bacalhau/config.yaml"
-  privileged: true
-  restart: on-failure
-  volumes:
-    - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
-    - ./docker-config/daemon.json:/etc/docker/daemon.json
-  depends_on:
-    orchestrator:
-      condition: service_healthy
-    storage:
-      condition: service_healthy
-    ferretdb:
-      condition: service_started
-  dns:
-    - 1.1.1.1
-  networks:
-    - bacalhau-network
+x-compute-image: &compute-image
+  image: ghcr.io/bacalhau-project/bacalhau:${COMPUTE_IMAGE_TAG:-latest-dind}
 
 services:
-  orchestrator:
-    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
-    platform: linux/amd64
-    hostname: orchestrator
-    container_name: ferret-demo-orchestrator
-    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
-    environment: *common-env-variables
-    ports:
-      - "8438:8438"
-    volumes:
-      - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
-      - ./docker-config/daemon.json:/etc/docker/daemon.json
-    healthcheck:
-      test: ["CMD", "bacalhau", "agent", "alive"]
-      interval: 30s
-      timeout: 20s
-      retries: 10
-      start_period: 15s
-    networks:
-      - bacalhau-network
-
-  nodes:
-    image: ghcr.io/bacalhau-project/bacalhau:latest-dind
-    privileged: true
-    command: serve -c /etc/bacalhau/config.yaml
-    volumes:
-      - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
-      - ./docker-config/daemon.json:/etc/docker/daemon.json
-    environment:
-      <<: *common-env-variables
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-    networks:
-      - bacalhau-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    dns:
-      - 1.1.1.1
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-  #    <<: *logging-driver
-
-  client:
-    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
-    platform: linux/amd64
-    container_name: ferret-demo-client
-    entrypoint: /bin/sh
-    stdin_open: true
-    tty: true
-    stop_signal: SIGTERM
-    stop_grace_period: 3s
-    environment:
-      <<: *common-env-variables
-      BACALHAU_API_HOST: orchestrator
-    volumes:
-      - ./scripts:/scripts
-      - ./jobs:/jobs
-      - ./1_run_generate_sensor_logs_job.sh:/1_run_generate_sensor_logs_job.sh
-      - ./2_run_sync_sensor_logs_job.sh:/2_run_sync_sensor_logs_job.sh
-      - ./3_replace_sync_sensor_logs_script.sh:/3_replace_sync_sensor_logs_script.sh
-      - ./4_run_cleanup_whole_mongodb_job.sh:/4_run_cleanup_whole_mongodb_job.sh
-    depends_on:
-      - orchestrator
-    networks:
-      - bacalhau-network
-
   registry-proxy:
     image: registry:2
     ports:
@@ -117,19 +23,60 @@ services:
     networks:
       - bacalhau-network
 
-  minio:
-    image: quay.io/minio/minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+  orchestrator:
+    <<: *orchestrator-image
+    hostname: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
     ports:
-      - "9000:9000" # S3 API
-      - "9001:9001" # Web console
-    volumes:
-      - minio-data:/data
+      - "8438:8438"
+      - "1234:1234"
+      - "4222:4222"
     networks:
       - bacalhau-network
+    volumes:
+      - ./config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  compute:
+    <<: *compute-image
+    command: serve -c /etc/bacalhau/config.yaml
+    volumes:
+      - ./config/compute.yaml:/etc/bacalhau/config.yaml
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    deploy:
+      replicas: 10
+    privileged: true
+    networks:
+      - bacalhau-network
+
+  storage:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      bacalhau-network:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
 
   spark-master:
     image: bitnami/spark:3.5.1
@@ -158,15 +105,15 @@ services:
       - bacalhau-network
 
   delta-lake:
-    image: deltaio/delta-docker:${DELTA_IMAGE_TAG:-latest}   # use *_arm64 tag on Apple-Silicon
+    image: deltaio/delta-docker:${DELTA_IMAGE_TAG:-latest} # use *_arm64 tag on Apple-Silicon
     container_name: delta-lake
     entrypoint: ["/startup.sh"]
     ports:
-      - "8888:8888"    # JupyterLab
-      - "4040:4040"    # Spark UI (first app)
+      - "8888:8888" # JupyterLab
+      - "4040:4040" # Spark UI (first app)
     volumes:
-      - ./notebooks:/opt/spark/work-dir/notebooks            # keep existing notebooks
-      - ./data/delta:/tmp                                    # persistent Delta tables
+      - ./notebooks:/opt/spark/work-dir/notebooks # keep existing notebooks
+      - ./data/delta:/tmp # persistent Delta tables
     environment:
       <<: *common-env-variables
       # Make MinIO reachable from Spark-in-container
