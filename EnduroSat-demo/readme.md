@@ -1,0 +1,84 @@
+## 🚀 Quick Start
+
+### 1️⃣ Prepare Environment
+
+```bash
+chmod +x start.sh
+./start.sh
+```
+This script downloads required Docker images, models, and creates necessary folders.
+
+```bash
+docker compose up -d
+```
+Starts the orchestrator, compute nodes, MinIO, and all required services.
+
+```bash
+docker exec -it sat-demo-client /bin/bash
+```
+You are now inside the Bacalhau client container and can run jobs.
+
+Run ship detection job:
+
+```bash
+bacalhau job run jobs/ship_detect.yaml
+```
+Run transfer job:
+
+```bash
+bacalhau job run jobs/transfer.yaml
+```
+
+👉 On a 20 core / 48 GB RAM machine with 1 Gb network, full processing takes ~5 minutes.
+👉 UI logs may be unstable (recommended to ignore and monitor docker inside node.
+
+## Input Data
+Place your .jpg or .bmp images inside:
+
+```
+nodex-data/input
+```
+
+
+## 📡 Network Endpoints
+You can dynamically manage the network behavior by calling the following internal APIs (only when ssh to compute-node):
+
+### Open network (allow transfer)
+```
+localhost:9123
+POST /open-network
+"Authorization: Bearer abrakadabra1234!@#"
+```
+
+### Close network (block transfer)
+```
+localhost:9123
+POST /close-network
+"Authorization: Bearer abrakadabra1234!@#"
+```
+
+### Set bandwidth level
+```bash
+curl -X POST http://localhost:9123/set-bandwidth \
+-H "Authorization: Bearer abrakadabra1234!@#" \
+-H "Content-Type: application/json" \
+-d '{"value": "HIGH"}'
+```
+Default value: HIGH → sends all processed data to MinIO.
+
+Use LOW to simulate limited satellite bandwidth.
+
+## 🎯 Models and Job Example
+Trigger a model change job from the Bacalhau client:
+
+```bash
+bacalhau job run jobs/model.yaml -V SATTELITE_NAME=nodex -V MODEL=XYZ
+```
+Available Models
+
+```
+yolo11x-obb.pt
+yolo11l-obb.pt
+yolo8x-obb.pt
+yolo8l-obb.pt
+```
