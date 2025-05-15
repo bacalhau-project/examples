@@ -4,8 +4,7 @@ Compute:
   Orchestrators:
     - orchestrator:4222
   AllowListedLocalPaths:
-    - /mnt/data:rw
-    - /etc/environment:ro
+    - /mnt:rw
   Platform: linux/amd64
 UpdateConfig:
   Interval: 0

@@ -30,5 +30,5 @@ Tasks:
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /mnt/data
+            SourcePath: /mnt
             readWrite: true
