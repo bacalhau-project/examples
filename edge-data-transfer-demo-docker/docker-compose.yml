@@ -10,6 +10,7 @@ x-common-env-variables: &common-env-variables
 
 x-sensor-template: &sensor-template
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
+    platform: linux/amd64
     entrypoint: "/scripts/start.sh"
     environment: *common-env-variables
     depends_on:
@@ -21,18 +22,31 @@ x-sensor-template: &sensor-template
     restart: on-failure
     volumes:
       - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
       - ./scripts:/scripts
       - ./jobs:/jobs
+    dns:
+      - 1.1.1.1
     networks:
       - edge-demo-net
 
 
 services:
 
-
+  registry-proxy:
+    image: registry:2
+    platform: linux/amd64
+    container_name: ferret-demo-registry-proxy
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./registry-data:/var/lib/registry
+    networks:
+      - edge-demo-net
 
   storage:
     image: quay.io/minio/minio
+    platform: linux/amd64
     container_name: edge-demo-storage
     entrypoint: sh
     command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
@@ -54,11 +68,13 @@ services:
 
   orchestrator:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    platform: linux/amd64
     container_name: edge-demo-orchestrator
     command: serve -c /etc/bacalhau/config.yaml --name orchestrator
     environment: *common-env-variables
     volumes:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+      - ./docker-config/daemon.json:/etc/docker/daemon.json
     healthcheck:
       test: ["CMD", "bacalhau", "agent", "alive"]
       interval: 5s
@@ -77,26 +93,19 @@ services:
     networks:
       - edge-demo-net
     ports:
-      - "1234:1234"
       - "8818:8818"
     # Orchestrator keeps logging enabled
-
-
-  node1:
-    container_name: edge-demo-compute-node-1
-    environment:
-      <<: *common-env-variables
-    <<: *sensor-template
 
 
   frontend:
     image: ghcr.io/bacalhau-project/examples/edge-data-transfer-frontend:250417
     container_name: edge-demo-frontend
+    platform: linux/amd64
     ports:
       - "3000:3000"
     environment:
       - BACALHAU_API_HOST=http://orchestrator
-      - BACALHAU_API_TLS_USETLS=true
+#      - BACALHAU_API_TLS_USETLS=true
     networks:
       - edge-demo-net
     depends_on:
@@ -105,6 +114,11 @@ services:
       storage:
         condition: service_healthy
 
+  node1:
+    container_name: edge-demo-compute-node-1
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
 
   node2:
     container_name: edge-demo-compute-node-2
@@ -133,6 +147,7 @@ services:
 
   client:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    platform: linux/amd64
     container_name: edge-demo-client
     entrypoint: /bin/sh
     stdin_open: true
@@ -152,6 +167,3 @@ services:
 networks:
   edge-demo-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.39.0.0/16

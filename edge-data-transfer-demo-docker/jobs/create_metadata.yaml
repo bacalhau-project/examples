@@ -6,7 +6,8 @@ tasks:
     engine:
       type: docker
       params:
-        Image: httpd:latest
+#        Image: httpd:latest
+        Image: registry-proxy:5000/library/httpd:latest
         Entrypoint:
           - /bin/bash
         Parameters:
