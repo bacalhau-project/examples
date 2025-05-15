@@ -8,6 +8,7 @@ citus
 cpus
 databrickscfg
 databricksruntime
+deltaio
 deltalake
 dind
 DISABLEANALYTICS
@@ -22,6 +23,7 @@ IRUSR
 IWUSR
 Lakehouse
 levelname
+linuxcontainers
 makedirs
 minioadmin
 multiarch

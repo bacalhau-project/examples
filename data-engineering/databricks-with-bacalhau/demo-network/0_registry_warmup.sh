@@ -33,13 +33,13 @@ for IMAGE in "${IMAGES[@]}"; do
   IMAGE_NAME="${IMAGE#ghcr.io/}"
   
   echo "Pulling ${IMAGE}..."
-  docker pull ${IMAGE}
+  docker pull "${IMAGE}"
   
   echo "Tagging as ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
-  docker tag ${IMAGE} ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+  docker tag "${IMAGE}" "${REGISTRY_ADDRESS}/${IMAGE_NAME}"
   
   echo "Pushing to local registry..."
-  docker push ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+  docker push "${REGISTRY_ADDRESS}/${IMAGE_NAME}"
   
   echo "Successfully cached ${IMAGE}"
   echo "-----------------------------"
@@ -49,10 +49,10 @@ echo "Testing pull from local registry..."
 for IMAGE in "${IMAGES[@]}"; do
   IMAGE_NAME="${IMAGE#ghcr.io/}"
   echo "Removing local image ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
-  docker rmi ${REGISTRY_ADDRESS}/${IMAGE_NAME} || true
+  docker rmi "${REGISTRY_ADDRESS}/${IMAGE_NAME}" || true
   
   echo "Pulling from local registry: ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
-  docker pull ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+  docker pull ${REGISTRY_ADDRESS}/"${IMAGE_NAME}"
   
   if [ $? -eq 0 ]; then
     echo "✅ Successfully pulled ${REGISTRY_ADDRESS}/${IMAGE_NAME} from local registry"
