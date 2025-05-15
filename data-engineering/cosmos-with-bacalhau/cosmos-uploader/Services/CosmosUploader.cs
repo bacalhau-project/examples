@@ -326,8 +326,12 @@ namespace CosmosUploader.Services
                     {
                         var pkForLog = item.TryGetValue(partitionKeyName, out var pkValLog) ? pkValLog?.ToString() : "<missing_pk>";
                         var idForLog = item.TryGetValue("id", out var idValLog) ? idValLog?.ToString() : "<missing_id>";
-                        var pressureForLog = item.TryGetValue("pressure", out var pressureValLog) ? pressureValLog?.ToString() : "<missing_pressure>";
-                        var humidityForLog = item.TryGetValue("humidity", out var humidityValLog) ? humidityValLog?.ToString() : "<missing_humidity>";
+                        // When logging aggregated items, look for the _avg suffixed fields.
+                        // The original fields (e.g., "pressure") won't exist on aggregated items.
+                        var pressureForLog = item.TryGetValue("pressure_avg", out var pressureValLog) ? pressureValLog?.ToString() : 
+                                           (item.TryGetValue("pressure", out pressureValLog) ? pressureValLog?.ToString() : "<missing_pressure>");
+                        var humidityForLog = item.TryGetValue("humidity_avg", out var humidityValLog) ? humidityValLog?.ToString() : 
+                                           (item.TryGetValue("humidity", out humidityValLog) ? humidityValLog?.ToString() : "<missing_humidity>");
                         
                         _logger.LogDebug("Preparing to upload item. SQLiteID: {SqliteId}, DocID: {DocId}, PK ({PKName}): {PKValue}, Pressure: {Pressure}, Humidity: {Humidity}", 
                             logItemId, idForLog, partitionKeyName, pkForLog, pressureForLog, humidityForLog);

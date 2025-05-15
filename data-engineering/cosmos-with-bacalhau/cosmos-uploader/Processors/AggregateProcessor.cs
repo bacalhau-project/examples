@@ -133,7 +133,7 @@ namespace CosmosUploader.Processors
 
         private void CalculateAggregates(DataTypes.DataItem aggregatedItem, IGrouping<(string SensorId, DateTime TimeWindow), DataTypes.DataItem> group)
         {
-            string[] numericFields = { "temperature", "vibration", "voltage", "humidity" };
+            string[] numericFields = { "temperature", "vibration", "voltage", "humidity", "pressure" };
             
             foreach (var field in numericFields)
             {
