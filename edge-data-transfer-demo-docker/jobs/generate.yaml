@@ -6,7 +6,8 @@ tasks:
     engine:
       type: docker
       params:
-        Image: python:latest
+        # Image: python:latest
+        Image: registry-proxy:5000/library/python:latest
         Entrypoint:
           - /bin/bash
         Parameters:
