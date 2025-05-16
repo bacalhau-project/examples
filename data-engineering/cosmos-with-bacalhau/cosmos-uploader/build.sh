@@ -96,8 +96,11 @@ RUN ls -la
 # Build and publish
 RUN dotnet publish -c Release -o /app
 
-# DEBUG: List published files
-RUN echo "Build completed. Files in /app:" && ls -la /app
+    # Write the tag to a file for other scripts to use
+    echo "$TAG" > "$SCRIPT_DIR/latest-tag"
+    if [ "$PUSH_TO_REGISTRY" = true ]; then
+        echo "$REGISTRY_IMAGE_NAME" > "$PROJECT_ROOT/.latest-registry-image"
+    fi
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/runtime:8.0

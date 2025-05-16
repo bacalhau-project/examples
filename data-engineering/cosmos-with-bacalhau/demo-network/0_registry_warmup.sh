@@ -21,7 +21,7 @@ fi
 IMAGES=(
     "ghcr.io/linuxcontainers/alpine:3.20"
     "ghcr.io/astral-sh/uv:bookworm-slim"
-    "ghcr.io/bacalhau-project/cosmos-uploader:202505032145"
+    "ghcr.io/bacalhau-project/cosmos-uploader:202505160951"
     "ghcr.io/bacalhau-project/sensor-log-generator:2505040034"
 )
 
