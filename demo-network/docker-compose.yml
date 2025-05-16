@@ -1,6 +1,49 @@
 services:
   # ✂ existing services …
 
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    networks:
+      - bacalhau
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 7077"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  spark-worker-1:
+    image: bitnami/spark:latest
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - bacalhau
+    command: ["/opt/bitnami/scripts/spark/entrypoint.sh", "spark-class", "org.apache.spark.deploy.worker.Worker", "$SPARK_MASTER_URL"]
+
+  spark-worker-2:
+    image: bitnami/spark:latest
+    container_name: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - bacalhau
+    command: ["/opt/bitnami/scripts/spark/entrypoint.sh", "spark-class", "org.apache.spark.deploy.worker.Worker", "$SPARK_MASTER_URL"]
+
   delta-lake:
     image: deltaio/delta-docker:${DELTA_DOCKER_TAG:-latest}   # arm64 users may override with *_arm64
     container_name: delta-lake
