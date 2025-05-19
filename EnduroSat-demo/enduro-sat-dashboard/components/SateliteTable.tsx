@@ -14,7 +14,7 @@ import {FilesTable} from "@/components/FilesTables";
 type SatelliteTableProps = {
     satellites: Satellite[]
     connections: { [key: number]: ConnectionStatus }
-    onConnectionChange: (satelliteId: number, status: ConnectionStatus, ip: string) => void
+    onConnectionChange: (satelliteId: number, status: ConnectionStatus, nodeStatus: "CONNECTED" | "DISCONNECTED", ip: string) => void
     selectedSatelliteId: number | null
 }
 
@@ -55,7 +55,8 @@ export function SatelliteTable({
                         {satellites.map((satellite) => {
                             const isExpanded = expandedSatellites.includes(satellite.Info.NodeID)
                             const satelliteId = satellite.Info.NodeID
-                            const nodeIP = satellite.Info.Labels.PUBLIC_IP
+                            const nodeStatus = satellite.ConnectionState.Status
+                            const nodeIp = satellite.Info.Labels.PUBLIC_IP
                             return (
                                 <Fragment key={satelliteId}>
                                     <tr
@@ -86,7 +87,7 @@ export function SatelliteTable({
                                                     size="sm"
                                                     variant={connections[satelliteId] === "No Connection" ? "default" : "outline"}
                                                     className="h-7 text-xs"
-                                                    onClick={() => onConnectionChange(satelliteId , "No Connection", nodeIP)}
+                                                    onClick={() => onConnectionChange(satelliteId , "No Connection", nodeStatus, nodeIp)}
                                                 >
                                                     <WifiOff className="h-3 w-3 mr-1" />
                                                     Disable connection
@@ -95,7 +96,7 @@ export function SatelliteTable({
                                                     size="sm"
                                                     variant={connections[satelliteId] === "Low Bandwidth" ? "default" : "outline"}
                                                     className="h-7 text-xs"
-                                                    onClick={() => onConnectionChange(satelliteId , "Low Bandwidth", nodeIP)}
+                                                    onClick={() => onConnectionChange(satelliteId , "Low Bandwidth", nodeStatus, nodeIp)}
                                                 >
                                                     <WifiLow className="h-3 w-3 mr-1" />
                                                     Low Bandwidth
@@ -104,7 +105,7 @@ export function SatelliteTable({
                                                     size="sm"
                                                     variant={connections[satelliteId] === "High Bandwidth" ? "default" : "outline"}
                                                     className="h-7 text-xs"
-                                                    onClick={() => onConnectionChange(satelliteId, "High Bandwidth", nodeIP)}
+                                                    onClick={() => onConnectionChange(satelliteId, "High Bandwidth", nodeStatus, nodeIp)}
                                                 >
                                                     <Wifi className="h-3 w-3 mr-1" />
                                                     High Bandwidth

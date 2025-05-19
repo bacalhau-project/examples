@@ -24,9 +24,9 @@ type BucketFile = {
 };
 
 export const BucketTable = ({
-                                title,
-                                headerColor,
-                            }: {
+    title,
+    headerColor,
+}: {
     title: string;
     headerColor: string;
 }) => {
@@ -185,10 +185,10 @@ export const BucketTable = ({
                                             </div>
                                         </td>
 
-                                        {/* Actions */}
-                                        <td>
-                                            <Button size={"icon"} onClick={() => downloadZip(file.id)}>
-                                                <Download className="mr-1 inline-block h-2 w-2"/>
+                                        <td className="px-3 py-2 text-xs">
+                                            <Button size="sm" variant="outline"
+                                                    className="flex items-center gap-1 h-6 text-xs"  onClick={() => downloadZip(file.id)}>
+                                                <Download className="h-3 w-2"/>
                                             </Button>
                                         </td>
                                     </tr>

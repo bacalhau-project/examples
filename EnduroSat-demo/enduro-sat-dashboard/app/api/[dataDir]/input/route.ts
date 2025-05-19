@@ -8,7 +8,7 @@ export async function GET(
     _request: Request,
     { params }: { params: { dataDir: string } }
 ) {
-    const { dataDir } = params;
+    const { dataDir } = await params;
 
     if (!DATA_DIR_REGEX.test(dataDir)) {
         return NextResponse.json(

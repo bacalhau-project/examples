@@ -7,7 +7,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params?: { params: string[] } }
 ) {
-    const parts = params?.params ?? [];
+    const parts = await params?.params ?? [];
     const [dataDir, id, fileName] = parts;
 
     // Validate dataDir
