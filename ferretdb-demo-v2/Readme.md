@@ -29,7 +29,7 @@ To load and use the Google Maps JavaScript API in your project, follow these ste
 Create a `.env` file in the root directory with your Google Maps API key:
 
 ```dotenv
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your-google-maps-api-key>
+GOOGLE_MAPS_API_KEY=<your-google-maps-api-key>
 ```
 
 ### 2. Start the Services

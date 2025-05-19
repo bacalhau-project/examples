@@ -7,7 +7,7 @@ x-common-env-variables: &common-env-variables
   POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER must be set. Please provide it in your .env file or shell environment.}"
   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set. Please provide it in your .env file or shell environment.}"
   FERRETDB_URI: "mongodb://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ferretdb:27017/postgres"
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:?GOOGLE_MAPS_API_KEY must be set. Please provide it in your .env file or shell environment.}"
+  GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:?GOOGLE_MAPS_API_KEY must be set. Please provide it in your .env file or shell environment.}"
 
 x-sensor-template: &sensor-template
   image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
