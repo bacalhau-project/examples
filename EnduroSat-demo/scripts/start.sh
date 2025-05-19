@@ -30,8 +30,8 @@ chmod 600 /etc/passwd-s3fs
 # --- MOUNT S3FS ---
 echo "Mounting s3fs..."
 s3fs my-bucket /mnt/bufor -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
-s3fs low-bandwitch /mnt/s3_low -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
-s3fs high-bandwitch /mnt/s3_high -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
+s3fs low-bandwidth /mnt/s3_low -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
+s3fs high-bandwidth /mnt/s3_high -o url=http://storage:9000 -o use_path_request_style -o passwd_file=/etc/passwd-s3fs -o nonempty  -o allow_other -o use_cache=/cache
 # --- START GUNICORN IN BACKGROUND ---
 echo "Starting Flask healthz service..."
 gunicorn --chdir /scripts server:app -b 0.0.0.0:9123 -w 8 -k uvicorn.workers.UvicornWorker --log-level critical &
