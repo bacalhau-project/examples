@@ -54,12 +54,6 @@ export function DetailSection({ selectedItem, satellites, connections, onConnect
             <CardContent className="p-4">
                 {selectedItem.type === "ground-station" ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/*<QueueTable*/}
-                        {/*    title="Queue"*/}
-                        {/*    headerColor="#1e293b" // slate-800WWW*/}
-                        {/*    satellites={satellites}*/}
-                        {/*    jobs={jobs && jobs.Items}*/}
-                        {/*/>*/}
                         <BucketTable title={'Low bandwidth'} headerColor={"#d97706"}/>
                         <BucketTable title={'High bandwidth'} headerColor={"#dc2626"} />
                     </div>

@@ -17,11 +17,11 @@ type Job = {
   thumbnail: string
 }
 
-const openNetwork = async (satelitte: string, status: ConnectionStatus) => {
-  if( status === 'No Connection') {
+const openNetwork = async (satelitte: string, status: ConnectionStatus, nodeStatus: "DISCONNECTED" | "CONNECTED", nodeIp: string) => {
+  if(nodeStatus === 'DISCONNECTED') {
     try {
       const res = await fetch(
-          `http://localhost/${satelitte}/open-network`,
+          `http://${nodeIp}:9123//open-network`,
           {
             method: "POST",
             headers: {
@@ -68,10 +68,10 @@ const openNetwork = async (satelitte: string, status: ConnectionStatus) => {
   }
 }
 
-const disableNetwork = async (satelitte: string) => {
+const disableNetwork = async (satelitte: string, nodeIp: string) => {
     try {
       const res = await fetch(
-          `http://localhost/${satelitte}/close-network`,
+          `http://${nodeIp}:9123/close-network`,
           {
             method: "POST",
             headers: {
@@ -102,13 +102,13 @@ export const colorMap: Record<string, string> = {
 };
 export default function Dashboard() {
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({})
-  const { data: satellites, isLoading, error } = useSatellitesNodes()
+  const { data: satellites, isLoading } = useSatellitesNodes()
 
   useEffect(() => {
     const initial: Record<string, ConnectionStatus> = satellites && satellites.reduce((acc, node) => {
       acc[node.Info.NodeID] =
           node.ConnectionState.Status === 'CONNECTED'
-              ? 'High Bandwidth'
+              ? 'Low Bandwidth'
               : 'No Connection'
       return acc
     }, {})
@@ -121,8 +121,8 @@ export default function Dashboard() {
     id: '',
   })
 
-  const handleConnectionChange = (satelliteId: string, status: ConnectionStatus, nodeIP: string) => {
-    status === 'No Connection' ?  disableNetwork(satelliteId) : openNetwork(satelliteId, status)
+  const handleConnectionChange = (satelliteId: string, status: ConnectionStatus, nodeStatus: 'CONNECTED' | 'DISCONNECTED', nodeIp: string) => {
+    nodeStatus === 'CONNECTED' ?  disableNetwork(satelliteId, nodeIp) : openNetwork(satelliteId, status, nodeStatus, nodeIp)
     setConnections((prev) => ({
       ...prev,
       [satelliteId]: status,
