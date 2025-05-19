@@ -63,8 +63,8 @@ services:
       /bin/sh -c "
       sleep 5;
       mc alias set localminio http://storage:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
-      mc mb localminio/low-bandwitch || true;
-      mc mb localminio/high-bandwitch || true;
+      mc mb localminio/low-bandwidth || true;
+      mc mb localminio/high-bandwidth || true;
       exit 0;
       "
     networks:
@@ -188,6 +188,19 @@ services:
     networks:
       - sat-demo-net
 
+
+#  frontend:
+#    image: satelitte-dashboard:250417
+#    container_name: satelitte-dashboard-frontend
+#    ports:
+#      - "3000:3000"
+#    networks:
+#      - sat-demo-net
+#    depends_on:
+#      orchestrator:
+#        condition: service_healthy
+#      storage:
+#        condition: service_healthy
 
 networks:
   sat-demo-net:
