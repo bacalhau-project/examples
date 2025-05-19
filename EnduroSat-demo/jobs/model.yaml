@@ -16,23 +16,26 @@ tasks:
         Parameters:
           - -c
           - |
-              set -euxo pipefail
-
-              MODEL_NAME="{{ .MODEL_NAME }}"
-              SOURCE_PATH="/app/model/$MODEL_NAME"
-              DEST_PATH="/app/model-${HOSTNAME}.pt"
-
-              echo "Switching model..."
-              echo "Requested model: $MODEL_NAME"
-              echo "Copying from $SOURCE_PATH to $DEST_PATH"
-
-              if [ ! -f "$SOURCE_PATH" ]; then
-                  echo "❌ ERROR: Model file $SOURCE_PATH does not exist."
-                  exit 1
-              fi
-
-              cp "$SOURCE_PATH" "$DEST_PATH"
-              echo "✅ Model switched successfully at $(date -u)"
+            set -euxo pipefail
+            
+            MODEL_NAME="{{ .MODEL_NAME }}"
+            SATELLITE_NAME="{{ .SATELLITE_NAME }}"
+            SOURCE_PATH="/app/model/$MODEL_NAME"
+            DEST_PATH="/app/model-${HOSTNAME}.pt"
+            METADATA_FILE="/app/model-${SATELLITE_NAME}.txt"
+            
+            echo "Switching model..."
+            echo "Requested model: $MODEL_NAME"
+            echo "Copying from $SOURCE_PATH to $DEST_PATH"
+            
+            if [ ! -f "$SOURCE_PATH" ]; then
+                echo "❌ ERROR: Model file $SOURCE_PATH does not exist."
+                exit 1
+            fi
+            
+            cp "$SOURCE_PATH" "$DEST_PATH"
+            echo "$MODEL_NAME" > "$METADATA_FILE"
+            echo "✅ Model switched successfully at $(date -u)"
     InputSources:
       - Target: /mnt/local_files
         Source:
