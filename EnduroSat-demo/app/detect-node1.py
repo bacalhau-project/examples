@@ -2,6 +2,7 @@ import os
 import json
 import cv2
 import random
+import socket
 import time
 from datetime import datetime
 from ultralytics import YOLO
@@ -70,7 +71,8 @@ def process_image(filename):
         "image": filename,
         "ship_count": ship_count,
         "ship_detect": ship_detect,
-        "model_info": model_info
+        "model_info": model_info,
+        "node": os.environ.get("HOSTNAME", socket.gethostname())
     }
     if fake_coords:
         output_json["fake_coordinates"] = fake_coords
