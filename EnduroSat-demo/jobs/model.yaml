@@ -20,7 +20,7 @@ tasks:
             
             MODEL_NAME="{{ .MODEL_NAME }}"
             SATELLITE_NAME="{{ .SATELLITE_NAME }}"
-            SOURCE_PATH="/app/model/$MODEL_NAME"
+            SOURCE_PATH="/app/models/$MODEL_NAME"
             DEST_PATH="/app/model-${HOSTNAME}.pt"
             METADATA_FILE="/app/model-${SATELLITE_NAME}.txt"
             
