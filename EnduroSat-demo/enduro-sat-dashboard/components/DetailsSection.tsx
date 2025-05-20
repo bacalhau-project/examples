@@ -3,7 +3,6 @@
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import type {ConnectionStatus, Job, Satellite, SelectedItem} from "@/types"
 import {SatelliteTable} from "@/components/SateliteTable";
-import {useJobs} from "@/hooks/useGetJobs";
 import {BucketTable} from "@/components/BucketTable";
 
 type DetailSectionProps = {

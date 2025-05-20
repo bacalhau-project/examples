@@ -1,23 +1,17 @@
-// Component for rendering connection lines between ground station and satellites
-import type { ConnectionStatus, Satellite } from "@/types"
+import type { ConnectionStatus } from "@/types"
 import { getStatusColor } from "@/utils/status-helpers"
 
 type ConnectionLineProps = {
-    satellite: Satellite
     satellitePosition: { x: number; y: number }
     groundStationPosition: { x: number; y: number; width: number; height: number }
     connectionStatus: ConnectionStatus
-    panelWidth: number
 }
 
 export function ConnectionLine({
-                                   satellite,
                                    satellitePosition,
                                    groundStationPosition,
                                    connectionStatus,
-                                   panelWidth,
                                }: ConnectionLineProps) {
-    // Determine line style based on connection status
     let strokeDasharray = ""
     const lineColor = getStatusColor(connectionStatus)
 

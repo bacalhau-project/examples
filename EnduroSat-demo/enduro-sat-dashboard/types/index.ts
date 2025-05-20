@@ -9,13 +9,23 @@ export type Job = {
     thumbnail: string
 }
 
-export type Satellite = {
-    id: number
-    name: string
-    color: string
-}
-
 export type SelectedItem = {
     type: DetailViewType
     id: number | null
+}
+
+export interface Satellite {
+    id: string
+    Info: {
+        NodeID: string;
+        NodeType: string;
+        Labels: {
+            PUBLIC_IP: string;
+            SATELLITE_NAME: string
+        };
+    };
+    Connection: string,
+    ConnectionState: {
+        Status: string
+    }
 }

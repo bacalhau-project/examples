@@ -1,8 +1,6 @@
-// Component for rendering job tables
 import {Download} from "lucide-react"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {Button} from "@/components/ui/button"
-import type {Satellite} from "@/types"
 
 type JobTableProps = {
     title: string
@@ -56,7 +54,6 @@ export function JobTable({ title, headerColor, satelliteName, files }: JobTableP
                                     {file}
                                 </td>
 
-                                {/* Thumbnail + Hover Preview */}
                                 <td className="px-3 py-2 text-xs relative group overflow-visible">
                                     <div
                                         className="w-8 h-8 bg-gray-100 flex items-center justify-center rounded-sm border border-slate-200 overflow-hidden">
@@ -67,7 +64,6 @@ export function JobTable({ title, headerColor, satelliteName, files }: JobTableP
                                         />
                                     </div>
 
-                                    {/* Tooltip preview */}
                                     <div
                                         className={`
                     pointer-events-none
@@ -99,7 +95,6 @@ export function JobTable({ title, headerColor, satelliteName, files }: JobTableP
                                     </div>
                                 </td>
 
-                                {/* Download button only for High bandwidth */}
                                 {!isLow && (
                                     <td className="px-3 py-2 text-xs">
                                         <Button size="sm" variant="outline"

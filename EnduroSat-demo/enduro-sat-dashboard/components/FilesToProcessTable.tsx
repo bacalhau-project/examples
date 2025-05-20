@@ -10,7 +10,6 @@ export function FilesToProcessTable({ satelliteName }: FilesTableProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Funkcja fetchująca bez zmiany stanu `loading`
     const fetchData = async () => {
         try {
             const res = await fetch(`/api/${satelliteName}-data/input`);
@@ -25,17 +24,14 @@ export function FilesToProcessTable({ satelliteName }: FilesTableProps) {
     };
 
     useEffect(() => {
-        // 1️⃣ Pierwsze wywołanie: pokazujemy loading
         setLoading(true);
         setError(null);
         fetchData().finally(() => {
             setLoading(false);
         });
 
-        // 2️⃣ Ustawiamy interwał, który fetchuje **tylko** dane
         const intervalId = setInterval(fetchData, 1000);
 
-        // Cleanup przy zmianie satelliteName lub unmount
         return () => clearInterval(intervalId);
     }, [satelliteName]);
 

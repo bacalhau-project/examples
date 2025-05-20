@@ -5,20 +5,6 @@ import {useJobs} from "@/hooks/useGetJobs";
 
 type JobTableProps = {
     satellites?: Satellite[]
-    showSatelliteColumn?: boolean
-    nodeName?: string
-    jobName?: string
-    jobs: RawJob[]
-    statuses?: string[]
-    jobsLoading: boolean
-    jobsError: boolean
-}
-
-interface RawJob {
-    ID: string;
-    Name: string;
-    Labels?: Record<string, string>;
-    Meta?: Record<string, string>;
 }
 
 function getJobSummary(data, statuses) {
