@@ -21,7 +21,7 @@ const openNetwork = async (satelitte: string, status: ConnectionStatus, nodeStat
   if(nodeStatus === 'DISCONNECTED') {
     try {
       const res = await fetch(
-          `http://localhost/${satelitte}/open-network`,
+          `http://${nodeIp}:9123/open-network`,
           {
             method: "POST",
             headers: {
@@ -45,7 +45,7 @@ const openNetwork = async (satelitte: string, status: ConnectionStatus, nodeStat
   }
   try {
     const res = await fetch(
-        `http://localhost/${satelitte}/set-bandwidth`,
+        `http://${nodeIp}:9123/set-bandwidth`,
         {
           method: "POST",
           headers: {
@@ -71,7 +71,7 @@ const openNetwork = async (satelitte: string, status: ConnectionStatus, nodeStat
 const disableNetwork = async (satelitte: string, nodeIp: string) => {
     try {
       const res = await fetch(
-          `http://localhost/${satelitte}/close-network`,
+          `http://${nodeIp}:9123/close-network`,
           {
             method: "POST",
             headers: {
