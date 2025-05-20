@@ -1,6 +1,5 @@
 "use client"
 
-// Component for rendering individual satellites
 import {SatelliteIcon} from "lucide-react"
 import {cn} from "@/lib/utils"
 import type {ConnectionStatus, Satellite, SelectedItem} from "@/types"
@@ -18,7 +17,6 @@ type SatelliteComponentProps = {
     panelWidth: number
 }
 
-// Adjust satellite component styling
 export function SatelliteComponent({
                                        satellite,
                                        index,
@@ -27,7 +25,6 @@ export function SatelliteComponent({
                                        onItemSelect,
                                        panelWidth,
                                    }: SatelliteComponentProps) {
-    // Calculate positions in the new layout
     const satellitePos = calculateSatellitePosition(index, totalSatellites, panelWidth)
     const labelPos = calculateLabelPosition(index, totalSatellites, panelWidth)
     const nameLabelPos = calculateNameLabelPosition(index, totalSatellites, panelWidth)
