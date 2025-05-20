@@ -39,7 +39,25 @@ Place your .jpg or .bmp images inside:
 nodex-data/input
 ```
 
+You can use script `copy_samples.sh` which copy images from samples directory to directory from argument
 
+```
+chmod +x copy_samples.sh
+```
+Usage
+Copy 3 random images into node3-data/input:
+
+```bash
+./copy_samples.sh node3-data/input 5
+```
+
+Copy 8 random images into node1-data/input:
+
+```bash
+./copy_samples.sh node1-data/input 10
+```
+
+The script will automatically create the target directory if it doesn’t already exist.
 ## 📡 Network Endpoints
 You can dynamically manage the network behavior by calling the following internal APIs (only when ssh to compute-node):
 
@@ -72,8 +90,14 @@ Use LOW to simulate limited satellite bandwidth.
 Trigger a model change job from the Bacalhau client:
 
 ```bash
-bacalhau job run jobs/model.yaml -V SATTELITE_NAME=nodex -V MODEL=XYZ
+bacalhau job run jobs/model.yaml -V SATELLITE_NAME=nodex -V MODEL_NAME=XYZ
 ```
+Example:
+
+```bash
+bacalhau job run jobs/model.yaml -V SATELLITE_NAME=node1 -V MODEL_NAME=yolo8x-obb.pt
+```
+
 Available Models
 
 ```
