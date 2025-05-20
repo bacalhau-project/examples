@@ -70,7 +70,20 @@ services:
     networks:
       - sat-demo-net
 
-
+  proxy:
+    image: nginx:stable
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - sat-demo-net
+    depends_on:
+      - node1
+      - node2
+      - node3
+      - node4
+      - node5
 
   orchestrator:
     image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
@@ -189,18 +202,25 @@ services:
       - sat-demo-net
 
 
-#  frontend:
-#    image: satelitte-dashboard:250417
-#    container_name: satelitte-dashboard-frontend
-#    ports:
-#      - "3000:3000"
-#    networks:
-#      - sat-demo-net
-#    depends_on:
-#      orchestrator:
-#        condition: service_healthy
-#      storage:
-#        condition: service_healthy
+  frontend:
+    image: ghcr.io/bacalhau-project/examples/satelitte-dashboard:250521
+    container_name: satelitte-dashboard-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - sat-demo-net
+    volumes:
+      - ./app:/app/models
+      - ./node1-data:/app/data/node1-data:ro
+      - ./node2-data:/app/data/node2-data:ro
+      - ./node3-data:/app/data/node3-data:ro
+      - ./node4-data:/app/data/node4-data:ro
+      - ./node5-data:/app/data/node5-data:ro
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
 
 networks:
   sat-demo-net:

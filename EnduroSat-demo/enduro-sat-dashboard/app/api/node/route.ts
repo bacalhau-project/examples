@@ -1,42 +1,37 @@
-// app/api/node/route.ts
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+
+const NODE_REGEX = /^node[1-5]$/;
+const DEFAULT_MODEL = 'Yolo';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const node = searchParams.get('node');
     const fieldsParam = searchParams.get('fields');
 
-    if (!node || !/^node[1-5]$/.test(node)) {
+    if (!node || !NODE_REGEX.test(node)) {
         return NextResponse.json(
             { error: 'Invalid node parameter. Must be one of node1–node5.' },
             { status: 400 }
         );
     }
 
-    const projectRoot = process.cwd();
-    const modelFile = path.join(projectRoot, '..', `app/model-${node}.txt`);
+    const modelFile = path.join('/app/models', `model-${node}.txt`);
     const bandwidthFile = path.join(
-        projectRoot,
-        '..',
+        '/app/data',
         `${node}-data`,
         'config',
         'bandwidth.txt'
     );
 
-    let modelName = 'Yolo';
-    let bandwidth = 'LOW';
-
+    let modelName = DEFAULT_MODEL;
     try {
-        const modelRaw = await fs.readFile(modelFile, 'utf8');
-        modelName = modelRaw.trim();
-        if (modelName.toLowerCase().endsWith('.pt')) {
-            modelName = modelName.slice(0, -3);
-        }
+        const raw = await fs.readFile(modelFile, 'utf8');
+        modelName = raw.trim().replace(/\.pt$/i, '');
     } catch (err: any) {
         if (err.code !== 'ENOENT') {
-            console.error('Error reading model file:', err);
+            console.error(err);
             return NextResponse.json(
                 { error: 'Failed to read model file.' },
                 { status: 500 }
@@ -44,12 +39,13 @@ export async function GET(request: Request) {
         }
     }
 
+    let bandwidth = 'LOW';
     try {
-        const bandwidthRaw = await fs.readFile(bandwidthFile, 'utf8');
-        bandwidth = bandwidthRaw.trim();
+        const raw = await fs.readFile(bandwidthFile, 'utf8');
+        bandwidth = raw.trim();
     } catch (err: any) {
         if (err.code !== 'ENOENT') {
-            console.error('Error reading bandwidth file:', err);
+            console.error(err);
             return NextResponse.json(
                 { error: 'Failed to read bandwidth file.' },
                 { status: 500 }
@@ -57,24 +53,22 @@ export async function GET(request: Request) {
         }
     }
 
-    const allowedFields = ['modelName', 'bandwidth'] as const;
+    const allowed = ['modelName', 'bandwidth'] as const;
     const result: Record<string, string> = {};
 
     if (fieldsParam) {
-        const requested = fieldsParam
+        const req = fieldsParam
             .split(',')
             .map(f => f.trim())
-            .filter(f => allowedFields.includes(f as typeof allowedFields[number]));
-
-        if (requested.length === 0) {
+            .filter(f => allowed.includes(f as typeof allowed[number]));
+        if (req.length === 0) {
             return NextResponse.json(
-                { error: 'Invalid fields parameter. Must include modelName and/or bandwidth.' },
+                { error: 'Invalid fields parameter.' },
                 { status: 400 }
             );
         }
-
-        if (requested.includes('modelName')) result.modelName = modelName;
-        if (requested.includes('bandwidth')) result.bandwidth = bandwidth;
+        if (req.includes('modelName')) result.modelName = modelName;
+        if (req.includes('bandwidth')) result.bandwidth = bandwidth;
     } else {
         result.modelName = modelName;
         result.bandwidth = bandwidth;
