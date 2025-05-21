@@ -7,16 +7,12 @@ x-common-env-variables: &common-env-variables
   POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER must be set. Please provide it in your .env file or shell environment.}"
   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set. Please provide it in your .env file or shell environment.}"
   FERRETDB_URI: "mongodb://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ferretdb:27017/postgres"
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:?GOOGLE_MAPS_API_KEY must be set. Please provide it in your .env file or shell environment.}"
+  GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:?GOOGLE_MAPS_API_KEY must be set. Please provide it in your .env file or shell environment.}"
 
 x-sensor-template: &sensor-template
   image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
   platform: linux/amd64
-  entrypoint: "/usr/local/bin/entrypoint.sh sh -c"
-  command: >
-    "env >> /etc/environment &&
-    mkdir -p /mnt/data &&
-    bacalhau serve -c /etc/bacalhau/config.yaml"
+  command: serve -c /etc/bacalhau/config.yaml
   depends_on:
     orchestrator:
       condition: service_healthy
@@ -58,7 +54,7 @@ services:
       - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
       - ./docker-config/daemon.json:/etc/docker/daemon.json
     healthcheck:
-      test: ["CMD", "bacalhau", "agent", "alive"]
+      test: [ "CMD", "bacalhau", "agent", "alive" ]
       interval: 30s
       timeout: 20s
       retries: 10
@@ -69,11 +65,10 @@ services:
   postgres:
     image: ghcr.io/ferretdb/postgres-documentdb:17-0.102.0-ferretdb-2.1.0
     container_name: ferret-demo-postgres
-    #     WARNING: This image is built only for x86_64 ####
     platform: linux/amd64
     restart: on-failure
     ports:
-      - 5432:5432
+      - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -87,7 +82,7 @@ services:
     container_name: ferret-demo-ferretdb
     restart: on-failure
     ports:
-      - 27217:27017
+      - "27217:27017"
     environment:
       - FERRETDB_POSTGRESQL_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/postgres
     networks:
@@ -103,7 +98,7 @@ services:
     ports:
       - "9001:9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 5s
       timeout: 5s
     networks:
@@ -142,11 +137,11 @@ services:
       BACALHAU_API_HOST: orchestrator
     volumes:
       - ./scripts:/scripts
+      - ./config:/config
       - ./jobs:/jobs
       - ./1_run_generate_sensor_logs_job.sh:/1_run_generate_sensor_logs_job.sh
       - ./2_run_sync_sensor_logs_job.sh:/2_run_sync_sensor_logs_job.sh
       - ./3_replace_sync_sensor_logs_script.sh:/3_replace_sync_sensor_logs_script.sh
-      - ./4_run_cleanup_whole_mongodb_job.sh:/4_run_cleanup_whole_mongodb_job.sh
     depends_on:
       - orchestrator
     networks:
