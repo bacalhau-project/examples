@@ -28,7 +28,7 @@ tasks:
                       echo "$(date) - No files in $WATCH_DIR in ${HOSTNAME}"
                   fi
 
-                  sleep 10
+                  sleep 30
               done
     env:
       HOSTNAME: "env:HOSTNAME"
