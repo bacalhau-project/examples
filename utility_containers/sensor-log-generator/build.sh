@@ -223,11 +223,20 @@ main() {
     
     success "Build completed successfully"
     
-    # Pull the latest image after successful build
-    if [ "$SKIP_PUSH" = "false" ]; then
-        log "Pulling latest image..."
-        docker pull "$REGISTRY/$IMAGE_NAME:latest" || warn "Failed to pull latest image"
-    fi
+    # Write image tags to files if push was successful
+    local full_image_version="$REGISTRY/$IMAGE_NAME:$VERSION_TAG"
+    local full_image_latest="$REGISTRY/$IMAGE_NAME:latest"
+
+    log "Writing tag information to files..."
+    echo "$VERSION_TAG" > .latest-image-tag
+    echo "$full_image_version" > .latest-registry-image
+    echo "$full_image_latest" > .latest-registry-image-latest
+    log " -> .latest-image-tag: $(cat .latest-image-tag)"
+    log " -> .latest-registry-image: $(cat .latest-registry-image)"
+    log " -> .latest-registry-image-latest: $(cat .latest-registry-image-latest)"
+
+    log "Pulling latest image..."
+    docker pull "$full_image_latest" || warn "Failed to pull latest image"
     
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"

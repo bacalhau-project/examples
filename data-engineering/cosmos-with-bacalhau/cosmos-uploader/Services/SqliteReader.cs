@@ -240,8 +240,36 @@ namespace CosmosUploader.Services
                             // 16: longitude (REAL)
                             // ----------------------------------------------------
 
-                            string dbRawId = reader.GetInt64(0).ToString(); // Read ID as string
-                            string? dbTimestampStr = reader.IsDBNull(1) ? null : reader.GetValue(1).ToString(); // Read as string/object first for ParseDateTime
+                            long sqliteId = reader.GetInt64(0);
+                            // Read timestamp more directly, assuming REAL column stores Unix Epoch seconds
+                            DateTime dbTimestamp = DateTime.UtcNow; // Default to UtcNow
+                            if (!reader.IsDBNull(1))
+                            {
+                                try
+                                {
+                                    double epochSeconds = reader.GetDouble(1);
+                                    // Ensure conversion respects potential fractions and lands in UTC
+                                    dbTimestamp = DateTimeOffset.FromUnixTimeSeconds((long)epochSeconds)
+                                                          .AddSeconds(epochSeconds - Math.Truncate(epochSeconds)) // Add fractional part if needed
+                                                          .UtcDateTime;
+                                }
+                                catch (InvalidCastException castEx)
+                                {
+                                    _logger.LogWarning(castEx, "Failed to read timestamp as double (Unix Epoch) at index 1 for ID {SqliteId}. Value: {Value}. Falling back.", sqliteId, reader.GetValue(1));
+                                    // Optional: Try parsing as string if cast fails?
+                                    // string fallbackTimestampStr = reader.GetValue(1)?.ToString();
+                                    // if(!string.IsNullOrEmpty(fallbackTimestampStr)) dbTimestamp = ParseDateTime(fallbackTimestampStr); 
+                                }
+                                catch (Exception ex) // Catch other potential errors like ArgumentOutOfRangeException for invalid epoch
+                                {
+                                    _logger.LogWarning(ex, "Error converting timestamp from epoch seconds at index 1 for ID {SqliteId}. Value: {Value}. Falling back.", sqliteId, reader.GetValue(1));
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Timestamp at index 1 is DBNull for ID {SqliteId}. Falling back.", sqliteId);
+                            }
+                            
                             string? dbSensorId = reader.IsDBNull(2) ? null : reader.GetString(2);
                             double? dbTemperature = reader.IsDBNull(3) ? null : reader.GetDouble(3);
                             double? dbHumidity = reader.IsDBNull(4) ? null : reader.GetDouble(4);
@@ -335,15 +363,16 @@ namespace CosmosUploader.Services
 
                             var reading = new SensorReading
                             {
-                                Id = dbRawId, // Store ID as string
+                                OriginalSqliteId = sqliteId, // Assign original SQLite id correctly
                                 SensorId = uniqueSensorId,
-                                Timestamp = ParseDateTime(dbTimestampStr ?? DateTime.UtcNow.ToString()), // Handle potential null timestamp string
+                                Timestamp = dbTimestamp, // Assign the parsed or fallback timestamp
                                 Temperature = dbTemperature,
                                 Humidity = dbHumidity, // Assign Humidity
                                 Pressure = dbPressure, // Assign Pressure
                                 Vibration = dbVibration,
                                 Voltage = dbVoltage,
-                                Status = dbStatusCode?.ToString() ?? "unknown", // Use db value or default
+                                Status = dbStatusCode?.ToString() ?? "unknown", // Keep string status for now, based on code
+                                StatusCode = dbStatusCode, // Assign original status code
                                 AnomalyFlag = dbAnomalyFlag,
                                 AnomalyType = dbAnomalyType,
                                 FirmwareVersion = dbFirmwareVersion,
@@ -351,8 +380,8 @@ namespace CosmosUploader.Services
                                 Manufacturer = dbManufacturer,
                                 Location = finalLocation, // Use determined location
                                 City = finalCity,         // Use determined city
-                                Lat = finalLat,           // Use determined lat
-                                Long = finalLng,          // Use determined lng
+                                Latitude = dbLatitude,     // Assign original latitude (double?)
+                                Longitude = dbLongitude,    // Assign original longitude (double?)
                                 RawData = rawDataString
                             };
 

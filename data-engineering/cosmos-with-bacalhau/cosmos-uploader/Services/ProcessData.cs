@@ -8,6 +8,7 @@ using CosmosUploader.Models;
 using CosmosUploader.Processors; // Required for processor interfaces
 using Microsoft.Extensions.DependencyInjection; // Required for IServiceProvider
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace CosmosUploader.Services
 {
@@ -72,18 +73,20 @@ namespace CosmosUploader.Services
                         // Cast to the appropriate interface and call ProcessAsync
                         if (processorInstance is ISchemaProcessor schemaProcessor)
                         {
-                            currentPipelineData = (await schemaProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                            var result = await schemaProcessor.ProcessAsync(dataBefore, cancellationToken);
+                            currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         }
                         else if (processorInstance is ISanitizeProcessor sanitizeProcessor)
                         {
-                            currentPipelineData = (await sanitizeProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                            var result = await sanitizeProcessor.ProcessAsync(dataBefore, cancellationToken);
+                            currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         }
                         // Aggregate case removed from pipeline loop
                         else
                         {
                             _logger.LogError("Resolved processor '{ProcessorName}' is not a recognized processor type (ISchemaProcessor or ISanitizeProcessor).", processorName);
-                            // Decide how to handle this - skip or throw?
-                            continue; // Skip this processor
+                            // Skip this processor
+                            continue;
                         }
 
                         _logger.LogDebug("Pipeline processor '{ProcessorName}' completed. Item count: {Count}", processorName, currentPipelineData.Count);
@@ -108,7 +111,8 @@ namespace CosmosUploader.Services
                     {
                         var dataBefore = currentPipelineData;
                         // Assuming AggregateProcessor now uses AppSettings for the window
-                        currentPipelineData = (await aggregateProcessor.ProcessAsync(dataBefore, cancellationToken)).ToList();
+                        var result = await aggregateProcessor.ProcessAsync(dataBefore, cancellationToken);
+                        currentPipelineData = result?.ToList() ?? new List<DataTypes.DataItem>();
                         _logger.LogDebug("Aggregation step completed. Item count: {Count}", currentPipelineData.Count);
                     }
                     else
@@ -178,9 +182,10 @@ namespace CosmosUploader.Services
                 var item = new DataTypes.DataItem
                 {
                     // Always include base fields
-                    ["local_reading_id"] = reading.Id, // Store original ID here
+                    ["sqlite_id"] = reading.OriginalSqliteId,
                     ["sensorId"] = reading.SensorId,
-                    ["timestamp"] = reading.Timestamp, // Keep original timestamp initially
+                    // Format timestamp using ISO 8601 round-trip format ("o")
+                    ["timestamp"] = reading.Timestamp.ToString("o", CultureInfo.InvariantCulture),
                     ["city"] = reading.City,
                     ["location"] = reading.Location,
                     // ["processingStage"] will be set/updated by processors
@@ -191,14 +196,15 @@ namespace CosmosUploader.Services
                 if (reading.Vibration.HasValue) item["vibration"] = reading.Vibration.Value;
                 if (reading.Voltage.HasValue) item["voltage"] = reading.Voltage.Value;
                 if (reading.Humidity.HasValue) item["humidity"] = reading.Humidity.Value; // Include if present
+                if (reading.Pressure.HasValue) item["pressure"] = reading.Pressure.Value;
                 if (!string.IsNullOrEmpty(reading.Status)) item["status"] = reading.Status;
                 item["anomalyFlag"] = reading.AnomalyFlag; // Include raw flag
                 if (!string.IsNullOrEmpty(reading.AnomalyType)) item["anomalyType"] = reading.AnomalyType; // Include raw type
                 if (!string.IsNullOrEmpty(reading.FirmwareVersion)) item["firmwareVersion"] = reading.FirmwareVersion;
                 if (!string.IsNullOrEmpty(reading.Model)) item["model"] = reading.Model;
                 if (!string.IsNullOrEmpty(reading.Manufacturer)) item["manufacturer"] = reading.Manufacturer;
-                if (!string.IsNullOrEmpty(reading.Lat)) item["lat"] = reading.Lat; // Include raw lat/long
-                if (!string.IsNullOrEmpty(reading.Long)) item["long"] = reading.Long;
+                if (reading.Latitude.HasValue) item["latitude"] = reading.Latitude.Value;
+                if (reading.Longitude.HasValue) item["longitude"] = reading.Longitude.Value;
 
                 // RawDataString was specific to the "Raw" processing stage format, skip here.
                 // Processors will add stage-specific fields like aggregation windows.
@@ -211,17 +217,21 @@ namespace CosmosUploader.Services
         private void ApplyDevelopmentModeOverrides(List<DataTypes.DataItem> dataItems)
         {
             var now = DateTime.UtcNow;
+            // Use ISO 8601 round-trip format string
+            string nowFormatted = now.ToString("o", CultureInfo.InvariantCulture);
+
             foreach (var item in dataItems)
             {
-                var localId = item.ContainsKey("local_reading_id") ? item["local_reading_id"]?.ToString() : "N/A";
+                var localId = item.ContainsKey("sqlite_id") ? item["sqlite_id"]?.ToString() : "N/A";
                 // var oldId = item.ContainsKey("id") ? item["id"]?.ToString() : "N/A"; // No longer overriding 'id'
                 // var newId = Guid.NewGuid().ToString(); // No longer overriding 'id'
                 // item["id"] = newId; // Overwrite ID <-- Remove this
 
                 var oldTs = item.ContainsKey("timestamp") ? item["timestamp"]?.ToString() : "N/A";
-                item["timestamp"] = now; // Overwrite timestamp
+                // Overwrite timestamp with formatted string
+                item["timestamp"] = nowFormatted;
 
-                _logger.LogTrace("DEV MODE: Overwrote Timestamp {OldTs} with {NewTs}. Original Local ID: {LocalId}", oldTs, now, localId);
+                _logger.LogTrace("DEV MODE: Overwrote Timestamp {OldTs} with {NewTs}. Original SQLite ID: {SqliteId}", oldTs, nowFormatted, localId); // Log the formatted string
             }
         }
     }

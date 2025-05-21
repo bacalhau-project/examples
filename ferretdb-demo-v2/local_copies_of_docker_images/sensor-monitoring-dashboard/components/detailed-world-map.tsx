@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { GoogleMap, Marker, OverlayView, useLoadScript } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
-import {useEnv} from "@/providers/EnvProvider";
 
 const mapContainerStyle = {
   width: "100%",
@@ -30,7 +29,8 @@ const options = {
 interface SensorApiResponse {
   count: number;
   sensor_id: string;
-  location: string; // np. "50.025629,8.561904"
+  longitude: number;
+  latitude: number;// np. "50.025629,8.561904"
 }
 
 interface Sensor {
@@ -138,7 +138,7 @@ const SensorMarker = memo(function SensorMarker({ sensor, data, zoom, onHover, o
   );
 });
 
-export default function DetailedWorldMap() {
+export default function DetailedWorldMap({apiKey}: {apiKey: string}) {
   const [sensorLocations, setSensorLocations] = useState<Sensor[]>([]);
   const [sensorsLoading, setSensorsLoading] = useState<boolean>(true);
   const [sensorData, setSensorData] = useState<Record<string, SensorDataItem>>({});
@@ -146,10 +146,8 @@ export default function DetailedWorldMap() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [hoveredSensor, setHoveredSensor] = useState<{ sensor: Sensor; data?: SensorDataItem } | null>(null);
 
-  const {GOOGLE_MAPS_API_KEY} = useEnv()
-
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: apiKey || "",
     language: "en",
   });
 
@@ -171,8 +169,9 @@ export default function DetailedWorldMap() {
         if (!res.ok) throw new Error("Error fetching sensors list");
         const data = await res.json();
         const sensors: Sensor[] = data.data.map((item: SensorApiResponse) => {
-          const [lat, lng] = item.location.split(",").map(Number);
-          return { id: item.sensor_id, location: { lat, lng } };
+          const lat = item.latitude
+          const lng = item.longitude
+          return { id: item.sensor_id, location: {lat, lng }};
         });
         setSensorLocations(sensors);
         setSensorsLoading(false);

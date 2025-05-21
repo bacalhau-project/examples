@@ -11,16 +11,10 @@ Tasks:
         Parameters:
           - /bin/sh
           - -c
-          enviro-tech-update-firmware.sh 2.0
-    InputSources:
-      - Source:
-          Type: "localDirectory"
-          Params:
-            SourcePath: "/root"
-            ReadWrite: true
-        Target: "/root"
+          - |
+            ./enviro-tech-update-firmware.sh 2.0
     Resources:
       CPU: "0.5"
       Memory: "128mb"
     Timeouts:
-      QueueTimeout: 300
+      QueueTimeout: 300 

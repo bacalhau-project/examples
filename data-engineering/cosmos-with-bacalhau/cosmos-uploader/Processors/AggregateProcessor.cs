@@ -75,11 +75,40 @@ namespace CosmosUploader.Processors
                 cancellationToken.ThrowIfCancellationRequested();
                 inputCount += group.Count();
 
+                var firstItemInGroup = group.FirstOrDefault();
+                if (firstItemInGroup == null)
+                {
+                    // Should not happen with a non-empty group, but good to check
+                    _logger.LogWarning("Aggregation group for SensorId {SensorId}, TimeWindow {TimeWindow} was empty. Skipping.", group.Key.SensorId, group.Key.TimeWindow);
+                    continue; 
+                }
+
                 var aggregatedItem = new DataTypes.DataItem();
                 // Add null check for safety, though group.Key shouldn't be null (group.Key is now a tuple)
                 // Access tuple elements directly
                 aggregatedItem["sensorId"] = group.Key.SensorId; // SensorId is guaranteed non-null from GroupBy
                 aggregatedItem["timestamp"] = group.Key.TimeWindow;
+                
+                // *** ADD PARTITION KEY (city) ***
+                // Assuming the partition key is "city" and it exists in the items being aggregated
+                // Get it from the first item in the group.
+                string partitionKeyField = "city"; // This should match your Cosmos DB container partition key definition
+                if (firstItemInGroup.TryGetValue(partitionKeyField, out object? partitionKeyValue) && partitionKeyValue != null)
+                {
+                    aggregatedItem[partitionKeyField] = partitionKeyValue;
+                    _logger.LogTrace("Added partition key '{Key}' with value '{Value}' to aggregated item for sensor {SensorId}", 
+                        partitionKeyField, partitionKeyValue, group.Key.SensorId);
+                }
+                else
+                {
+                    // Log a warning if the partition key is missing from the source data for this group
+                    // The upload will likely fail if this happens.
+                    _logger.LogWarning("Partition key field '{Key}' not found or is null in the source data for sensor {SensorId}, TimeWindow {TimeWindow}. Aggregated item may fail to upload.",
+                        partitionKeyField, group.Key.SensorId, group.Key.TimeWindow);
+                    // Optionally, you could skip this group entirely if the partition key is missing:
+                    // continue;
+                }
+                // *** END ADD PARTITION KEY ***
 
                 aggregatedItem["processingStage"] = ProcessingStage.Aggregated.ToString();
 
@@ -104,7 +133,7 @@ namespace CosmosUploader.Processors
 
         private void CalculateAggregates(DataTypes.DataItem aggregatedItem, IGrouping<(string SensorId, DateTime TimeWindow), DataTypes.DataItem> group)
         {
-            string[] numericFields = { "temperature", "vibration", "voltage", "humidity" };
+            string[] numericFields = { "temperature", "vibration", "voltage", "humidity", "pressure" };
             
             foreach (var field in numericFields)
             {

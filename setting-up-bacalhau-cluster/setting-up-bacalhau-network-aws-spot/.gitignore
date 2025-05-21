@@ -5,3 +5,4 @@ config*.yaml
 **/*.log
 machines.db
 **/__pycache__
+aws/*

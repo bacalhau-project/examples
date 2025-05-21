@@ -1,6 +1,8 @@
 Constraints: []
-Labels: {}
-Count: 37
+Labels:
+  purpose: "bacalhau-queuing-example"
+  type: "stress-test"
+Count: 20
 Namespace: default
 Priority: 0
 Tasks:

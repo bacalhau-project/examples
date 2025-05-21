@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb"
 
 // Use the provided MongoDB connection string
-const MONGODB_URI = process.env.FERRETDB_URI ?? `mongodb://username:password@$127.0.0.1:27017/postgres`
+const MONGODB_URI = process.env.FERRETDB_URI ?? `mongodb://expansouser:safepassword@$127.0.0.1:27017/postgres`
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>

@@ -1,0 +1,17 @@
+# uploader-config.yaml
+# Configuration for the continuous SQLite→Delta Lake uploader
+#
+# `sqlite`: Path inside the container to the mounted SQLite database file.
+# `storage_uri`: URI of the Delta Lake table (e.g., on S3 or ADLS) to append to.
+# `state_dir`: Path inside the container to persist last-upload state file.
+# `interval`: Seconds between upload cycles.
+
+sqlite: "/root/sensor.db"
+storage_uri: "s3://bacalhau-sensor-readings/delta/bacalhau_results/sensor_readings"
+state_dir: "/root"
+interval: 300
+# Optional overrides via environment variables:
+#   SQLITE_PATH       override `sqlite`
+#   STORAGE_URI       override `storage_uri`
+#   STATE_DIR         override `state_dir`
+#   UPLOAD_INTERVAL   override `interval`

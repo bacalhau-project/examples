@@ -24,6 +24,18 @@ namespace CosmosUploader.Configuration
             _configPath = Path.GetFullPath(configPath);
             _logger = logger;
             _cts = new CancellationTokenSource();
+            
+            // Check if file exists before trying to load it
+            if (!File.Exists(_configPath))
+            {
+                var errorMessage = $"Configuration file not found: {_configPath}";
+                _logger.LogCritical(errorMessage);
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine($"\nERROR: {errorMessage}\n");
+                Console.ResetColor();
+                throw new FileNotFoundException(errorMessage, _configPath);
+            }
+            
             _currentConfig = LoadConfiguration();
             _lastWriteTime = File.GetLastWriteTime(_configPath);
 

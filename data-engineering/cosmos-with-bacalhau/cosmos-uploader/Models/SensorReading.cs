@@ -1,4 +1,6 @@
+using System;
 using Newtonsoft.Json; 
+
 namespace CosmosUploader.Models
 {
     public class SensorReading
@@ -11,12 +13,16 @@ namespace CosmosUploader.Models
             Status = "UNKNOWN";
             Location = "UNKNOWN";
             City = "UNKNOWN";
-            ProcessingStage = ProcessingStages.Raw.ToString();
+            ProcessingStage = ProcessingStages.Raw;
         }
 
         [JsonProperty("id")]
         public string Id { get; set; }
         
+        // Add property to store the original ID from SQLite
+        [JsonProperty("sqlite_id")]
+        public long OriginalSqliteId { get; set; }
+
         [JsonProperty("sensorId")]
         public string SensorId { get; set; }
         
@@ -54,6 +60,10 @@ namespace CosmosUploader.Models
         [JsonProperty("status")]
         public string Status { get; set; }
         
+        // Add property for the original status code from SQLite
+        [JsonProperty("statusCode")]
+        public int? StatusCode { get; set; }
+        
         [JsonProperty("anomalyFlag")]
         public bool AnomalyFlag { get; set; }
         
@@ -72,11 +82,12 @@ namespace CosmosUploader.Models
         [JsonProperty("location")]
         public string Location { get; set; }
 
-        [JsonProperty("lat")]
-        public string? Lat { get; set; }
+        // Change Lat/Long to correct types and names
+        [JsonProperty("latitude")]
+        public double? Latitude { get; set; }
 
-        [JsonProperty("long")]
-        public string? Long { get; set; }
+        [JsonProperty("longitude")]
+        public double? Longitude { get; set; }
 
         [JsonProperty("aggregationWindowStart")]
         public DateTime? AggregationWindowStart { get; set; }
@@ -86,14 +97,5 @@ namespace CosmosUploader.Models
 
         [JsonProperty("rawData")]
         public string? RawData { get; set; }
-    }
-
-    // Define the processing stages as an enum to ensure consistency
-    public enum ProcessingStages
-    {
-        Raw,
-        Schematized,
-        Sanitized,
-        Aggregated
     }
 }
