@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const NODE_REGEX = /^node[1-5]$/;
-const DEFAULT_MODEL = 'Yolo';
+const DEFAULT_MODEL = 'yolo11x-obb';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
