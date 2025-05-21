@@ -27,13 +27,8 @@ Tasks:
         Source:
           Type: localDirectory
           Params:
-            SourcePath: /mnt/data
+            SourcePath: /mnt
             readWrite: true
-      - Target: /app/environment
-        Source:
-          Type: localDirectory
-          Params:
-            SourcePath: /etc/environment
 # https://blog.bacalhau.org/p/introducing-new-job-types-new-horizons
 
 ##
