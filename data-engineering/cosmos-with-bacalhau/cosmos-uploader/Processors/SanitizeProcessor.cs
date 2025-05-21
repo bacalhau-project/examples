@@ -37,6 +37,7 @@ namespace CosmosUploader.Processors
             _logger.LogInformation("--- Starting Sanitization (streaming) ---");
             int inputCount = 0;
             int outputCount = 0;
+            int locationSanitizedCount = 0;
 
             await foreach (var item in data.WithCancellation(cancellationToken))
             {
@@ -51,6 +52,9 @@ namespace CosmosUploader.Processors
                 // Sanitize string fields
                 SanitizeStringFields(processedItem);
 
+                // Sanitize location data
+                SanitizeLocationData(processedItem, ref locationSanitizedCount);
+
                 // Set processing stage
                 processedItem["processingStage"] = ProcessingStage.Sanitized.ToString();
 
@@ -58,8 +62,8 @@ namespace CosmosUploader.Processors
                 yield return processedItem;
             }
 
-            _logger.LogInformation("--- Finished Sanitization (streaming, Input: {InputCount}, Output: {OutputCount} items) ---",
-                inputCount, outputCount);
+            _logger.LogInformation("--- Finished Sanitization (streaming, Input: {InputCount}, Output: {OutputCount} items, Locations Sanitized: {LocationSanitizedCount}) ---",
+                inputCount, outputCount, locationSanitizedCount);
         }
 
         private void SanitizeNumericFields(DataTypes.DataItem item)
@@ -151,6 +155,58 @@ namespace CosmosUploader.Processors
                     _logger.LogTrace("Added missing string field {Field} with empty value to item {Id}",
                         field, item.TryGetValue("id", out var id3) ? id3?.ToString() ?? "unknown" : "unknown");
                 }
+            }
+        }
+
+        // Helper method to sanitize location data (reduce precision)
+        private void SanitizeLocationData(DataTypes.DataItem item, ref int sanitizedCount)
+        {
+            bool wasSanitized = false;
+            
+            // Parse and sanitize latitude if available
+            if (item.TryGetValue("lat", out object? latValue) && latValue != null)
+            {
+                if (double.TryParse(latValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double lat))
+                {
+                    // Reduce precision to 4 decimal places (roughly 11 meters accuracy)
+                    string sanitizedLat = Math.Round(lat, 4).ToString("F4", CultureInfo.InvariantCulture);
+                    item["lat"] = sanitizedLat;
+                    wasSanitized = true;
+                }
+                else
+                {
+                    _logger.LogWarning("Could not parse latitude value '{LatValue}' for item ID {ItemId}. Skipping sanitization for 'lat'.", 
+                        latValue.ToString(), item.TryGetValue("id", out var id) ? id?.ToString() ?? "unknown" : "unknown");
+                }
+            }
+            
+            // Parse and sanitize longitude if available
+            if (item.TryGetValue("long", out object? lngValue) && lngValue != null)
+            {
+                if (double.TryParse(lngValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double lng))
+                {
+                    // Reduce precision to 4 decimal places
+                    string sanitizedLong = Math.Round(lng, 4).ToString("F4", CultureInfo.InvariantCulture);
+                    item["long"] = sanitizedLong;
+                    wasSanitized = true;
+                }
+                else
+                {
+                    _logger.LogWarning("Could not parse longitude value '{LngValue}' for item ID {ItemId}. Skipping sanitization for 'long'.", 
+                        lngValue.ToString(), item.TryGetValue("id", out var id) ? id?.ToString() ?? "unknown" : "unknown");
+                }
+            }
+            
+            // Update location string to reflect sanitized coordinates
+            if (wasSanitized && item.ContainsKey("lat") && item.ContainsKey("long") && 
+                item["lat"] is string && item["long"] is string) // Ensure they were successfully sanitized to string
+            {
+                item["location"] = $"{item["lat"]},{item["long"]}";
+                sanitizedCount++;
+                _logger.LogTrace("Sanitized location coordinates for item ID {ItemId} to lat={Lat}, long={Long}", 
+                    item.TryGetValue("id", out var id) ? id?.ToString() ?? "unknown" : "unknown",
+                    item["lat"], 
+                    item["long"]);
             }
         }
     }
