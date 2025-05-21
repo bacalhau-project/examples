@@ -48,13 +48,13 @@ Usage
 Copy 3 random images into node3-data/input:
 
 ```bash
-./copy_samples.sh node3-data/input 5
+./copy_samples.sh node3-data 5
 ```
 
 Copy 8 random images into node1-data/input:
 
 ```bash
-./copy_samples.sh node1-data/input 10
+./copy_samples.sh node1-data 10
 ```
 
 The script will automatically create the target directory if it doesn’t already exist.
