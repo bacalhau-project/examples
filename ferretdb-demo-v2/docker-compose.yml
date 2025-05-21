@@ -142,6 +142,7 @@ services:
       - ./1_run_generate_sensor_logs_job.sh:/1_run_generate_sensor_logs_job.sh
       - ./2_run_sync_sensor_logs_job.sh:/2_run_sync_sensor_logs_job.sh
       - ./3_replace_sync_sensor_logs_script.sh:/3_replace_sync_sensor_logs_script.sh
+      - ./4_run_cleanup_whole_mongodb_job.sh:/4_run_cleanup_whole_mongodb_job.sh
     depends_on:
       - orchestrator
     networks:

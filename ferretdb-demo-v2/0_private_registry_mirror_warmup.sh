@@ -2,7 +2,7 @@
 # Script to warm up the Docker registry cache
 # This will pull images used by your Bacalhau jobs and push them to your local registry
 set -e
-echo "Starting registry mirroring process..."   
+echo "Starting registry mirroring process..."
 
 # Define registry address1
 REGISTRY_ADDRESS="localhost:5001"
@@ -44,19 +44,17 @@ for IMAGE in "${IMAGES[@]}"; do
         # Default Docker Hub images like "ubuntu:latest" or "nginx"
         IMAGE_NAME="library/$IMAGE"
     fi
-    
-    echo "Ensuring multi-platform image ${IMAGE} is in local registry at ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
-    # Create a local manifest list pointing to all platforms of the source image
-    # and tag it for the local registry. This command will fetch the manifest
-    # from the source and create a corresponding manifest list locally.
-    docker buildx imagetools create --tag "${REGISTRY_ADDRESS}/${IMAGE_NAME}" "${IMAGE}"
-    
-    # Push the manifest list and all its referenced platforms to the local registry.
-    # This step ensures all layers for all platforms are available in your local registry.
-    echo "Pushing ${REGISTRY_ADDRESS}/${IMAGE_NAME} to local registry..."
-    docker push "${REGISTRY_ADDRESS}/${IMAGE_NAME}"
-    
-    echo "Successfully mirrored ${IMAGE} (multi-platform) to local registry"
+
+    echo "Pulling ${IMAGE}..."
+    docker pull ${IMAGE}
+
+    echo "Tagging as ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
+    docker tag ${IMAGE} ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+
+    echo "Pushing to local registry..."
+    docker push ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+
+    echo "Successfully cached ${IMAGE}"
     echo "-----------------------------"
 done
 echo "Testing pull from local registry..."
@@ -72,18 +70,15 @@ for IMAGE in "${IMAGES[@]}"; do
     else
         IMAGE_NAME="library/$IMAGE"
     fi
-    
-    echo "Removing local cache of ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
-    # Attempt to remove the local manifest list and potentially its constituent images if not otherwise tagged.
-    # Using 'docker image rm' as it's generally preferred over 'docker rmi' for manifest lists.
-    docker image rm "${REGISTRY_ADDRESS}/${IMAGE_NAME}" 2>/dev/null || true
-    
-    echo "Pulling from local registry: ${REGISTRY_ADDRESS}/${IMAGE_NAME} (testing native platform)..."
-    docker pull "${REGISTRY_ADDRESS}/${IMAGE_NAME}"
-    
+
+    echo "Removing local image ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
+    docker rmi ${REGISTRY_ADDRESS}/${IMAGE_NAME} || true
+
+    echo "Pulling from local registry: ${REGISTRY_ADDRESS}/${IMAGE_NAME}..."
+    docker pull ${REGISTRY_ADDRESS}/${IMAGE_NAME}
+
     if [ $? -eq 0 ]; then
-        echo "✅ Successfully pulled ${REGISTRY_ADDRESS}/${IMAGE_NAME} from local registry (native platform)"
-        echo "   To inspect all available platforms, run: docker manifest inspect ${REGISTRY_ADDRESS}/${IMAGE_NAME}"
+        echo "✅ Successfully pulled ${REGISTRY_ADDRESS}/${IMAGE_NAME} from local registry"
     else
         echo "❌ Failed to pull ${REGISTRY_ADDRESS}/${IMAGE_NAME} from local registry"
     fi
