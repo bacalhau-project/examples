@@ -82,9 +82,8 @@ curl -X POST http://localhost:9123/set-bandwidth \
 -H "Content-Type: application/json" \
 -d '{"value": "HIGH"}'
 ```
-Default value: HIGH → sends all processed data to MinIO.
+Default value: LOW → sends all processed data to MinIO.
 
-Use LOW to simulate limited satellite bandwidth.
 
 ## 🎯 Models and Job Example
 Trigger a model change job from the Bacalhau client:
@@ -95,14 +94,14 @@ bacalhau job run jobs/model.yaml -V SATELLITE_NAME=nodex -V MODEL_NAME=XYZ
 Example:
 
 ```bash
-bacalhau job run jobs/model.yaml -V SATELLITE_NAME=node1 -V MODEL_NAME=yolo8x-obb.pt
+bacalhau job run jobs/model.yaml -V SATELLITE_NAME=node1 -V MODEL_NAME=yolov8x-obb.pt
 ```
 
 Available Models
 
 ```
-yolo11x-obb.pt
-yolo11l-obb.pt
-yolo8x-obb.pt
-yolo8l-obb.pt
+yolo11l-obb.pt  
+yolo11x-obb.pt  
+yolov8l-obb.pt  
+yolov8x-obb.pt
 ```

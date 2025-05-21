@@ -134,6 +134,6 @@ for IMAGE in "${IMAGES[@]}"; do
 done
 chmod +x scripts/start.sh
 chmod +x scripts/disable-network.sh
-chmod +x scripts/disable-network.sh
+chmod +x scripts/enable-network.sh
 echo "🎉 All preparation complete! Edge folders and models ready. Images mirrored to local registry."
 

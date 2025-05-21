@@ -39,7 +39,7 @@ tasks:
               }
 
               while true; do
-                  BANDWIDTH=$(cat "$CONFIG_FILE" 2>/dev/null || echo "HIGH")
+                  BANDWIDTH=$(cat "$CONFIG_FILE" 2>/dev/null || echo "LOW")
                   echo "$(timestamp) - BANDWIDTH mode is $BANDWIDTH"
 
                   if [ "$BANDWIDTH" = "HIGH" ]; then
