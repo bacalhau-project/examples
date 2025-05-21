@@ -93,7 +93,7 @@ tasks:
                       echo "$(timestamp) - No directories in $WATCH_DIR on ${HOSTNAME}"
                   fi
 
-                  sleep 10
+                  sleep 30
               done
     env:
       HOSTNAME: "env:HOSTNAME"
