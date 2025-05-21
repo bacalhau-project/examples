@@ -1,7 +1,7 @@
 .PHONY: run
 
 IMAGE_NAME ?= ghcr.io/bacalhau-project/examples/satelitte-dashboard
-TAG ?= 250521
+TAG ?= 2505211046
 FULL_IMAGE ?= $(IMAGE_NAME):$(TAG)
 
 build:

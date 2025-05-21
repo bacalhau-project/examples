@@ -203,7 +203,7 @@ services:
 
 
   frontend:
-    image: ghcr.io/bacalhau-project/examples/satelitte-dashboard:250521
+    image: ghcr.io/bacalhau-project/examples/satelitte-dashboard:2505211046
     container_name: satelitte-dashboard-frontend
     ports:
       - "3000:3000"
