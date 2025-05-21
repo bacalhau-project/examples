@@ -15,8 +15,18 @@ All components are orchestrated using **Docker Compose**, and support multi-arch
 
 ## ⚙️ Setup
 
+### 1. Preparation
 
-### 1. (Optional) Configure the Frontend
+As all Bacalhau jobs are using local private registry it is crucial to populate it before running them.
+After bringing up all services with docker compose, run from the host machine:
+```bash
+private_registry_mirror_warmup.sh
+```
+This script will pull all job images from the Internet and push them to local registry.
+> Volume for registry is exposed to the host machine, so data will still be there after removing everything with docker compose down.
+
+
+### 1a. (Optional) Configure the Frontend
 
 If needed, adjust the environment variables in `docker-compose.yml` (e.g., `BACALHAU_API_HOST`).
 Default is `orchestrator`
@@ -49,8 +59,6 @@ Ensure the following ports are available:
 | 3000 | Frontend Dashboard     |
 | 8438 | Bacalhau Web Interface |
 | 9001 | MinIO Console          |
-
-Also, the subnet `172.29.0.0/16` must be free for Docker networking.
 
 ---
 
@@ -96,8 +104,6 @@ This will:
 - Stop all running containers
 - Remove networks and volumes (MinIO storage will be wiped)
 - Reset the demo environment completely
-
-> ⚠️ Warning: This will erase all stored sensor data
 
 ---
 
