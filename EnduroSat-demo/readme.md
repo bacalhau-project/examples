@@ -105,3 +105,4 @@ yolo11x-obb.pt
 yolov8l-obb.pt  
 yolov8x-obb.pt
 ```
+WORKS ONLY ON x86 machine
