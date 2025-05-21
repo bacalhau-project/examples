@@ -1,0 +1,135 @@
+name: bacalhau-deltalake-network
+
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+
+x-orchestrator-image: &orchestrator-image
+  image: ghcr.io/bacalhau-project/bacalhau:${ORCHESTRATOR_IMAGE_TAG:-latest}
+
+x-compute-image: &compute-image
+  image: ghcr.io/bacalhau-project/bacalhau:${COMPUTE_IMAGE_TAG:-latest-dind}
+
+services:
+  registry-proxy:
+    image: registry:2
+    ports:
+      - "5002:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    networks:
+      - bacalhau-network
+
+  orchestrator:
+    <<: *orchestrator-image
+    hostname: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    ports:
+      - "8438:8438"
+      - "1234:1234"
+      - "4222:4222"
+    networks:
+      - bacalhau-network
+    volumes:
+      - ./network-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  compute:
+    <<: *compute-image
+    command: serve -c /etc/bacalhau/config.yaml
+    volumes:
+      - ./network-config/compute.yaml:/etc/bacalhau/config.yaml
+    environment:
+      <<: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    deploy:
+      replicas: 10
+    privileged: true
+    networks:
+      - bacalhau-network
+
+  storage:
+    image: quay.io/minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      bacalhau-network:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  spark-master:
+    image: bitnami/spark:latest
+    depends_on: [storage]
+    environment:
+      - SPARK_MODE=master
+      - SPARK_DAEMON_MEMORY=1G
+      - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
+    volumes:
+      - ./spark-config/conf:/opt/bitnami/spark/conf
+      - ./spark-config/jars:/opt/delta/jars:ro
+    networks:
+      - bacalhau-network
+
+  spark-worker:
+    image: bitnami/spark:latest
+    depends_on: [spark-master]
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_EXTRA_CLASSPATH=/opt/delta/jars/*
+    volumes:
+      - ./spark-config/jars:/opt/delta/jars:ro
+    networks:
+      - bacalhau-network
+
+  delta-lake:
+    image: deltaio/delta-docker:${DELTA_IMAGE_TAG:-latest} # use *_arm64 tag on Apple-Silicon
+    container_name: delta-lake
+    # entrypoint: ["/startup.sh"]
+    ports:
+      - "8888:8888" # JupyterLab
+      - "4040:4040" # Spark UI (first app)
+    volumes:
+      - ./data/delta:/tmp # persistent Delta tables
+    environment:
+      <<: *common-env-variables
+      # Make MinIO reachable from Spark-in-container
+      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    depends_on:
+      storage:
+        condition: service_started
+    networks:
+      - bacalhau-network
+
+networks:
+  bacalhau-network:
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+
+volumes:
+  registry-data:
+  minio-data: {}

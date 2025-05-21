@@ -14,7 +14,45 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         """Override to use the application's logger instead of stderr."""
-        logging.info(f"Monitor server: {format % args}")
+        # CHANGED: Only log successful requests (status codes 200-299)
+        # AND ignore common paths like / and /favicon.ico
+        if args and len(args) >= 3:  # Check length for request_line, status_code, size
+            try:
+                request_line = str(args[0]) # e.g., "GET / HTTP/1.1"
+                status_code = int(args[1])
+
+                # Extract path from request_line (e.g., "/")
+                parts = request_line.split()
+                path = parts[1] if len(parts) >= 2 else ""
+
+                # Only log if status is 2xx and path is not ignored
+                if 200 <= status_code < 300 and path not in ("/", "/favicon.ico"):
+                    logging.info(f"Monitor server: {format % args}")
+            except (ValueError, IndexError):
+                # If parsing fails, fall back to original logging for safety
+                # (This case should be rare with the standard http.server format)
+                logging.info(f"Monitor server: {format % args}")
+        else:
+             # Fall back to original logging if args format is unexpected
+            logging.info(f"Monitor server: {format % args}")
+
+    # ADDED: New method to suppress error logging
+    def log_error(self, format, *args):
+        """Override to suppress error logging."""
+        # Completely suppress error logging
+        pass
+
+    # ADDED: New method to handle malformed requests silently
+    def handle_one_request(self):
+        """Handle a single HTTP request.
+
+        Override to silently ignore malformed requests.
+        """
+        try:
+            super().handle_one_request()
+        except Exception:
+            # Silently drop any exception during request parsing
+            self.close_connection = True
 
     def _send_response(self, status_code, content_type, content):
         """Helper method to send a response with the given status code and content."""
@@ -178,6 +216,13 @@ class MonitoringRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET requests."""
+        # ADDED: Reject GET requests with a body
+        content_length = self.headers.get('Content-Length')
+        if content_length and int(content_length) > 0:
+            self.send_error(400, "GET requests must not have a body")
+            return
+        # END ADDED
+
         parsed_url = urlparse(self.path)
         path = parsed_url.path
 

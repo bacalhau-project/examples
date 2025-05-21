@@ -1,6 +1,6 @@
 # Sensor Monitoring Dashboard
 
-- **Environment Variables:** Sets `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `FERRETDB_URI` via build arguments.
+- **Environment Variables:** Sets `GOOGLE_MAPS_API_KEY` and `FERRETDB_URI` via build arguments.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@
 
 Before building the Docker image, make sure to set the required environment variables:
 
-### 1. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+### 1. `GOOGLE_MAPS_API_KEY`
 
 - This variable is required to use Google Maps services in the frontend.
 - You need to [generate an API key from the Google Cloud Console](https://console.cloud.google.com/apis/credentials) and enable the **Maps JavaScript API**.
@@ -25,11 +25,11 @@ Before building the Docker image, make sure to set the required environment vari
 ### 2. `FERRETDB_URI`
 
 - Set this to the IP address or hostname of your FerretDB Node.
-- Example: `mongodb://username:password@127.0.0.1/postgres`.
+- Example: `mongodb://expansouser:safepassword@127.0.0.1/postgres`.
 
 #### (obsolete!) Create a .env file in the project directory with the following content:
 ```dotenv
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 FERRETDB_IP=your_FERRETDB_IP
 ```
 

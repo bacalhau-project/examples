@@ -36,10 +36,10 @@ docker run --rm \
   -v "$DATA_DIR":/data \
   "$IMAGE_NAME:$LATEST_TAG" \
   --config /app/config/cosmos-config.yaml \
+  --update-notification-file-path /data/update-notification.json \
   --sqlite /data/sensor_data.db \
   --continuous \
-  --debug \
-  --interval 15 # Interval is now handled inside the C# app
+  --interval 60 # Interval is now handled inside the C# app
   # --debug
 
 echo "Cosmos Uploader container finished."

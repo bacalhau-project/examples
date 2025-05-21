@@ -45,3 +45,4 @@ config.yaml
 Thumbs.db
 
 **/*.gz
+test_db.sqlite

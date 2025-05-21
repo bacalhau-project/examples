@@ -13,6 +13,7 @@
 #   "tqdm",
 #   "pandas",
 #   "requests",
+#   "timezonefinder",
 # ]
 # ///
 import argparse
@@ -25,6 +26,7 @@ import warnings
 import aiohttp
 from dotenv import load_dotenv
 from tqdm import tqdm
+from timezonefinder import TimezoneFinder
 
 # Load environment variables
 load_dotenv()
@@ -312,6 +314,10 @@ async def process_city(session, city, pbar, abbreviations):
         population = city_info["population"]
         is_capital = city_info["is_capital"]
 
+        # Get timezone
+        tf = TimezoneFinder()
+        timezone = tf.timezone_at(lng=longitude, lat=latitude)
+
         # Get all data concurrently
         weather_data, air_quality, population_data = await asyncio.gather(
             get_weather_data(session, city, latitude, longitude),
@@ -327,6 +333,7 @@ async def process_city(session, city, pbar, abbreviations):
             "abbreviation": generate_unique_abbreviation(city, country, abbreviations),
             "population": population,
             "is_capital": is_capital,
+            "timezone": timezone,
             "weather": weather_data if weather_data else None,
             "air_quality": air_quality if air_quality else None,
             "population_data": population_data if population_data else None,
@@ -372,7 +379,7 @@ def display_city_table(cities_data):
     print("\nCity Data Summary:")
     print("-" * 150)
     print(
-        f"{'City':<20} {'Abbr':<6} {'Country':<15} {'City Pop':<12} {'Country Pop':<15} {'Pop Growth':<12} {'Density':<10} {'Urban %':<8} {'Temp (°C)':<10} {'Humidity':<10} {'AQI':<6}"
+        f"{'City':<20} {'Abbr':<6} {'Country':<15} {'Timezone':<25} {'City Pop':<12} {'Country Pop':<15} {'Pop Growth':<12} {'Density':<10} {'Urban %':<8} {'Temp (°C)':<10} {'Humidity':<10} {'AQI':<6}"
     )
     print("-" * 150)
 
@@ -419,6 +426,7 @@ def display_city_table(cities_data):
 
         print(
             f"{city['full_name']:<20} {city['abbreviation']:<6} {city['country']:<15} "
+            f"{city.get('timezone', 'N/A'):<25} "
             f"{city_pop:<12} {country_pop:<15} {pop_growth:<12} {density:<10} {urban_pct:<8} "
             f"{str(temp):<10} {str(humidity):<10} {str(aqi):<6}"
         )

@@ -1,4 +1,4 @@
-NameProvider: puuid
+NameProvider: hostname
 API:
   Port: 1234
 Compute:

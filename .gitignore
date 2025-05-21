@@ -64,3 +64,8 @@ event-pusher/*.json
 
 *.specstory*
 *debug.log*
+.minio*
+
+# local lakehouse volumes
+tools/local-lakehouse/spark-delta-jars/
+tools/local-lakehouse/minio-data/

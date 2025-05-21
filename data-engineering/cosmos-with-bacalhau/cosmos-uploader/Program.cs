@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging.Abstractions;
 using CosmosUploader.Processors; // Add using for processors
+using System.Globalization; // Add for CultureInfo
+using Humanizer; // <-- Add Humanizer
 
 namespace CosmosUploader
 {
@@ -22,9 +24,8 @@ namespace CosmosUploader
         // Define known processor names (excluding Aggregate)
         private static readonly HashSet<string> KnownProcessors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Schematize", "Sanitize" // Removed "Aggregate"
+            "Schematize", "Sanitize" // Aggregate is handled separately
         };
-        // private const string AggregateProcessorName = "Aggregate"; // No longer needed here
 
         // Add this helper class (or move it to a Models/Common file if preferred)
         internal class ProcessingStatus
@@ -122,6 +123,14 @@ namespace CosmosUploader
                     {
                         // Use the initial provider to get a logger for this critical error
                         initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical("Initial configuration failed. Exiting.");
+                        
+                        // Also write to console directly to ensure visibility even if logger configuration failed
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Error.WriteLine("\nERROR: Initial configuration failed. Application cannot start.\n");
+                        Console.Error.WriteLine("Check that the config file exists and is valid: " + configPath);
+                        Console.Error.WriteLine("Check that the SQLite path exists: " + sqlitePath + "\n");
+                        Console.ResetColor();
+                        
                         return 1;
                     }
                     settings = loadResult.AppSettings;
@@ -131,6 +140,24 @@ namespace CosmosUploader
                 catch (Exception ex) // Catch potential errors during initial load not caught inside the method
                 {
                     initialServiceProvider.GetRequiredService<ILogger<Program>>().LogCritical(ex, "Unhandled exception during initial configuration load: {Message}", ex.Message);
+                    
+                    // Also write to console directly to ensure visibility even if logger configuration failed
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine("\nERROR: Unhandled exception during startup:\n");
+                    Console.Error.WriteLine(ex.Message);
+                    
+                    if (ex is System.IO.DirectoryNotFoundException || ex is System.IO.FileNotFoundException)
+                    {
+                        Console.Error.WriteLine("\nCheck that all required files exist:");
+                        Console.Error.WriteLine("- Config file: " + configPath);
+                        Console.Error.WriteLine("- SQLite path: " + sqlitePath);
+                    }
+                    
+                    Console.Error.WriteLine("\nStack trace:");
+                    Console.Error.WriteLine(ex.StackTrace);
+                    Console.Error.WriteLine();
+                    Console.ResetColor();
+                    
                     return 1;
                 }
                 
@@ -273,7 +300,7 @@ namespace CosmosUploader
                                             {
                                                 // Format Timestamp in ISO 8601 Round-trip format
                                                 LastProcessedTimestampIso = lastRecord.Timestamp.ToUniversalTime().ToString("o"), 
-                                                LastProcessedId = lastRecord.Id
+                                                LastProcessedId = lastRecord.OriginalSqliteId.ToString()
                                             };
 
                                             // Serialize and overwrite the status file
@@ -343,57 +370,50 @@ namespace CosmosUploader
                         {
                             if (File.Exists(settings.UpdateNotificationFilePath))
                             {
-                                DateTime fileWriteTimeUtc = File.GetLastWriteTimeUtc(settings.UpdateNotificationFilePath);
-                                logger.LogDebug("Update notification file found ({File}). LastWriteTimeUTC: {WriteTime}, LastConfigLoadUTC: {LoadTime}", 
-                                    settings.UpdateNotificationFilePath, fileWriteTimeUtc, lastConfigLoadTimeUtc);
+                                logger.LogInformation("Configuration update triggered by presence of notification file: {File}", settings.UpdateNotificationFilePath);
 
-                                if (fileWriteTimeUtc > lastConfigLoadTimeUtc)
+                                // --- Attempt Reload --- 
+                                // Rebuild services collection for reload (safer than modifying existing)
+                                var updatedServices = new ServiceCollection();
+                                updatedServices.AddLogging(builder => // Re-add basic logging config
                                 {
-                                    logger.LogInformation("Configuration update triggered by notification file: {File}", settings.UpdateNotificationFilePath);
-                                    
-                                    // Rebuild services collection for reload (safer than modifying existing)
-                                    var updatedServices = new ServiceCollection();
-                                    updatedServices.AddLogging(builder => // Re-add basic logging config
-                                    {
-                                        builder.ClearProviders();
-                                        builder.AddConsole(options => { options.FormatterName = "custom"; })
-                                            .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
-                                        // Level will be set within LoadAndConfigureServices
-                                    });
+                                    builder.ClearProviders();
+                                    builder.AddConsole(options => { options.FormatterName = "custom"; })
+                                        .AddConsoleFormatter<CustomFormatter, SimpleConsoleFormatterOptions>();
+                                    // Level will be set within LoadAndConfigureServices
+                                });
 
-                                    var reloadResult = LoadAndConfigureServices(configPath, settings.DevelopmentMode, settings.DebugMode, settings.UpdateNotificationFilePath, updatedServices, serviceProvider); // Use current provider for reload messages
+                                var reloadResult = LoadAndConfigureServices(configPath, settings.DevelopmentMode, settings.DebugMode, settings.UpdateNotificationFilePath, updatedServices, serviceProvider); // Use current provider for reload messages
 
-                                    if (reloadResult.AppSettings != null && reloadResult.ServiceProvider != null)
-                                    {
-                                        settings = reloadResult.AppSettings; // Update settings reference
-                                        serviceProvider = reloadResult.ServiceProvider; // Update service provider reference
-                                        lastConfigLoadTimeUtc = DateTime.UtcNow; // Update load time
+                                if (reloadResult.AppSettings != null && reloadResult.ServiceProvider != null)
+                                {
+                                    settings = reloadResult.AppSettings; // Update settings reference
+                                    serviceProvider = reloadResult.ServiceProvider; // Update service provider reference
+                                    lastConfigLoadTimeUtc = DateTime.UtcNow; // Update load time
 
-                                        // Re-resolve services that might depend on the new configuration
-                                        logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // IMPORTANT: Update logger instance
-                                        sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
-                                        processDataService = serviceProvider.GetRequiredService<ProcessData>();
-                                        cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
-                                        archiverService = serviceProvider.GetRequiredService<Archiver>();
+                                    // Re-resolve services that might depend on the new configuration
+                                    logger = serviceProvider.GetRequiredService<ILogger<Program>>(); // IMPORTANT: Update logger instance
+                                    sqliteReader = serviceProvider.GetRequiredService<SqliteReader>();
+                                    processDataService = serviceProvider.GetRequiredService<ProcessData>();
+                                    cosmosUploaderService = serviceProvider.GetRequiredService<ICosmosUploader>();
+                                    archiverService = serviceProvider.GetRequiredService<Archiver>();
 
-                                        logger.LogInformation("Configuration successfully reloaded.");
+                                    logger.LogInformation("Configuration successfully reloaded.");
+                                }
+                                else
+                                {
+                                    logger.LogError("Configuration reload failed. Continuing with previous configuration.");
+                                }
 
-                                        // Attempt to delete the notification file
-                                        try
-                                        {
-                                            File.Delete(settings.UpdateNotificationFilePath);
-                                            logger.LogInformation("Deleted configuration notification file: {File}", settings.UpdateNotificationFilePath);
-                                        }
-                                        catch (Exception deleteEx)
-                                        {
-                                            logger.LogWarning(deleteEx, "Failed to delete configuration notification file {File} after reload.", settings.UpdateNotificationFilePath);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        logger.LogError("Configuration reload failed. Continuing with previous configuration.");
-                                        // Do not delete the notification file if reload failed
-                                    }
+                                // --- Always Attempt Delete After Reload Attempt --- 
+                                try
+                                {
+                                    File.Delete(settings.UpdateNotificationFilePath);
+                                    logger.LogInformation("Attempted deletion of configuration notification file: {File}", settings.UpdateNotificationFilePath);
+                                }
+                                catch (Exception deleteEx)
+                                {
+                                    logger.LogWarning(deleteEx, "Failed during attempt to delete configuration notification file {File} after reload attempt.", settings.UpdateNotificationFilePath);
                                 }
                             }
                         }
@@ -473,21 +493,24 @@ namespace CosmosUploader
                          return (null, null);
                     }
                     try
-                    {                       
-                        var converter = new System.ComponentModel.TimeSpanConverter();
-                        aggregationWindow = (TimeSpan?)converter.ConvertFromString(aggregationConfig.Window);
-                        if (aggregationWindow <= TimeSpan.Zero)
-                        {
-                            logger.LogCritical("Invalid configuration: Aggregation window '{Window}' must be positive.", aggregationConfig.Window);
-                            Console.Error.WriteLine($"ERROR: Aggregation window '{aggregationConfig.Window}' must be positive.");
-                            return (null, null);
-                        }
-                        logger.LogInformation("Aggregation configured with window: {Window}", aggregationWindow);
-                    }
-                    catch (Exception ex)
                     {
-                        logger.LogCritical(ex, "Invalid configuration: Could not parse aggregation window '{Window}'.", aggregationConfig.Window);
-                        Console.Error.WriteLine($"ERROR: Invalid format for aggregation window '{aggregationConfig.Window}'.");
+                        // Use TimeSpan.TryParse for robust parsing
+                        if (TimeSpan.TryParse(aggregationConfig.Window, out var parsedWindow) && parsedWindow > TimeSpan.Zero)
+                        {
+                            aggregationWindow = parsedWindow;
+                        }
+                        else
+                        {
+                             logger.LogCritical("Invalid configuration: Could not parse aggregation window '{Window}' or it was not positive. Use formats like '00:05:00' (5 minutes) or '1.00:00:00' (1 day).", aggregationConfig.Window);
+                             Console.Error.WriteLine($"ERROR: Invalid format or non-positive value for aggregation window '{aggregationConfig.Window}'. Use standard TimeSpan formats (e.g., '00:05:00', '1.00:00:00').");
+                             return (null, null);
+                        }
+
+                        logger.LogInformation("Aggregation configured with window: {Window} ({WindowHumanized})", aggregationWindow, aggregationWindow.Value.Humanize());
+                    }
+                    catch (Exception ex) // Catch potential errors during parsing
+                    {
+                        logger.LogCritical(ex, "Error processing aggregation window configuration '{Window}'.", aggregationConfig.Window);
                         return (null, null);
                     }
                 }
@@ -528,7 +551,12 @@ namespace CosmosUploader
                          effectiveLevel = configLevel;
                     }
                     builder.SetMinimumLevel(effectiveLevel);
-                    appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
+                    // Add HttpClientFactory registration
+                    services.AddHttpClient();
+                    if (appSettings.Logging != null)
+                    {
+                        appSettings.Logging.Level = effectiveLevel.ToString(); // Ensure AppSettings reflects the actual level
+                    }
                 });
 
                 // Clear potentially existing singletons/transients before adding new ones

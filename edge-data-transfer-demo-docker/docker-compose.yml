@@ -1,0 +1,157 @@
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+  LABELS: "role=sensor,region=edge"
+
+
+
+x-sensor-template: &sensor-template
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0-dind
+    entrypoint: "/scripts/start.sh"
+    environment: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    privileged: true
+    restart: on-failure
+    volumes:
+      - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./scripts:/scripts
+      - ./jobs:/jobs
+    networks:
+      - edge-demo-net
+
+
+services:
+
+
+
+  storage:
+    image: quay.io/minio/minio
+    container_name: edge-demo-storage
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - edge-demo-net
+    volumes:
+      - ./minio-data:/data
+
+
+
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    container_name: edge-demo-orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    volumes:
+      - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        reservations:
+          cpus: "2.0"
+          memory: "4G"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - edge-demo-net
+    ports:
+      - "1234:1234"
+      - "8818:8818"
+    # Orchestrator keeps logging enabled
+
+
+  node1:
+    container_name: edge-demo-compute-node-1
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
+
+
+  frontend:
+    image: ghcr.io/bacalhau-project/examples/edge-data-transfer-frontend:250417
+    container_name: edge-demo-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - BACALHAU_API_HOST=http://orchestrator
+      - BACALHAU_API_TLS_USETLS=true
+    networks:
+      - edge-demo-net
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+
+
+  node2:
+    container_name: edge-demo-compute-node-2
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
+
+  node3:
+    container_name: edge-demo-compute-node-3
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
+
+  node4:
+    container_name: edge-demo-compute-node-4
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
+
+  node5:
+    container_name: edge-demo-compute-node-5
+    environment:
+      <<: *common-env-variables
+    <<: *sensor-template
+
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    container_name: edge-demo-client
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    volumes:
+      - ./jobs:/jobs
+    depends_on:
+      - orchestrator
+    networks:
+      - edge-demo-net
+
+networks:
+  edge-demo-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.39.0.0/16
