@@ -1,0 +1,20 @@
+# SQLite source configuration
+sqlite: "example.db"
+sqlite_table: "readings" # Optional: Name of the table in SQLite to read from. If absent, script attempts to autodetect.
+timestamp_col: "event_time" # Optional: Name of the timestamp column in your SQLite table for incremental reads. If absent, script attempts to autodetect.
+
+# Databricks target configuration
+# Full three-level name of the target Delta table in Databricks (e.g., hive_metastore.default.my_delta_table or my_catalog.my_schema.my_delta_table)
+table: "your_catalog.your_schema.your_databricks_delta_table"
+
+# Databricks Connect parameters
+# These are required if running the script outside of a Databricks environment.
+# It's recommended to set DATABRICKS_HOST, DATABRICKS_TOKEN, and DATABRICKS_CLUSTER_ID as environment variables for security.
+databricks_host: "https://your-workspace-instance.cloud.databricks.com" # Or set DATABRICKS_HOST env var
+databricks_token: "YOUR_DATABRICKS_PAT_TOKEN" # Or set DATABRICKS_TOKEN env var
+cluster_id: "YOUR_CLUSTER_ID" # Or set DATABRICKS_CLUSTER_ID env var
+
+# Uploader operational parameters
+state_dir: "/tmp/sqlite_to_databricks_state" # Directory to store the last upload timestamp
+interval: 300 # Time in seconds between upload cycles. Ignored if --once is used.
+# once: false # To run once and exit, use the --once command-line flag.
