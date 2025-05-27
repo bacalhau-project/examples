@@ -2,8 +2,7 @@ bacalhau
 bacalhauproject
 buildcache
 buildx
-dateutil
-iniconfig
+duckdb
 levelname
 mult
 multiarch

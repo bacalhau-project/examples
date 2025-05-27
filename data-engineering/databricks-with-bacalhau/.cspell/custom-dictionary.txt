@@ -1,3 +1,4 @@
+abfs
 ADLS
 apprunner
 asctime
@@ -11,6 +12,7 @@ dapi
 databrickscfg
 databricksruntime
 dbfs
+dbsqlcli
 deltaio
 deltalake
 dind
@@ -24,6 +26,7 @@ gethostname
 healthcheck
 iloc
 IRUSR
+isort
 IWUSR
 Lakehouse
 levelname
@@ -35,14 +38,17 @@ Newtonsoft
 nofile
 psql
 psycopg
+pyproject
 pyspark
 pyyaml
 readwrite
 REARCHITECTURE
 referer
 specstory
+splittable
 Sproc
-tvoc
+TBLPROPERTIES
 ulimits
 UNLOGGED
 venv
+ZORDER

@@ -14,45 +14,27 @@ A sophisticated, highly configurable tool that generates realistic web server ac
 - **Multi-format Output**: Access logs, error logs, and system logs
 
 ## Backstory
+
 This container/project was born out of a need to create realistic, high-quality web server access logs for testing and development purposes. As we were trying to stress test [Bacalhau](https://bacalhau.org) and [Expanso](https://expanso.io), we needed high volumes of realistic access logs so that we could show how flexible and scalable they were. I looked around for something simple, but configurable, to generate this data couldn't find anything.  Thus, this container/project was born.
 
 ## 🚀 Quick Start
 
-### Run with Docker (recommended):
+1. Run with Docker (recommended):
+
 ```bash
 # Using docker compose (recommended)
 docker compose up
 
 # Or run directly with docker
 docker run -v ./logs:/var/log/app -v ./config:/app/config \
-  -e LOG_GENERATOR_CONFIG_PATH=/app/config/docker-config.yaml \
   ghcr.io/bacalhau-project/access-log-generator:latest
-
-# Run in detached mode
-docker compose up -d
 ```
 
-### Run directly with Python (3.12+):
+1. Or run directly with Python (3.11+):
+
 ```bash
-# Use the default config (writes to ./logs directory)
-./access-log-generator.py config/config.yaml
-
-# Or run without specifying config (uses default path)
-./access-log-generator.py
-
-# Or use the sample config with extended options
-python access-log-generator.py config/sample_config.yaml
-```
-
-### Available Config Files:
-- `config/config.yaml` - Default config for local development (writes to ./logs)
-- `config/docker-config.yaml` - Config for Docker containers (writes to /var/log/app)
-- `config/sample_config.yaml` - Example with extended options and documentation
-
-### Build the container:
-```bash
-# Multi-platform build (AMD64 and ARM64)
-./build.sh
+# Run the generator
+uv run access-log-generator.py
 ```
 
 ## 📝 Configuration
@@ -127,50 +109,22 @@ traffic_patterns:
 
 The generator creates three types of logs:
 
-### 1. Access Log (`access.log`)
-NCSA Combined Log Format compatible with Apache/Nginx:
-```
-192.168.1.100 - john_doe [10/Oct/2024:13:55:36 +0000] "GET /products/laptop HTTP/1.1" 200 5432 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-```
+- `access.log` - Main NCSA-format access logs
+- `error.log` - Error entries (4xx, 5xx status codes)
+- `system.log` - Generator status messages
 
-### 2. Error Log (`error.log`)
-Apache-style error format for 4xx/5xx responses:
-```
-[Thu Oct 10 13:55:36.123456 2024] [error] [client 192.168.1.100] File does not exist: /var/www/html/favicon.ico
-```
+Example access log entry:
 
-### 3. System Log (`system.log`)  
-Internal generator status and session tracking:
-```
-2024-10-10T13:55:36.123456Z INFO session_manager New session started: session_id=abc123
-```
-
-### Log Schema Documentation
-
-Generate detailed schema documentation:
-```bash
-# JSON format
-python log_schema_outputter.py --format json
-
-# Markdown format
-python log_schema_outputter.py --format markdown --output schemas.md
-
-# YAML format
-python log_schema_outputter.py --format yaml
+```text
+180.24.130.185 - - [20/Jan/2025:10:55:04] "GET /products HTTP/1.1" 200 352 "/search" "Mozilla/5.0"
 ```
 
 ## 🔧 Advanced Usage
 
-### Environment Variables
+Override the log directory:
+
 ```bash
-# Provide config as base64-encoded YAML
-export LOG_GENERATOR_CONFIG_YAML_B64=$(base64 < my-config.yaml)
-
-# Or provide config directly
-export LOG_GENERATOR_CONFIG_YAML="output:\n  rate: 100\n  directory: /logs"
-
-# Or specify config file path
-export LOG_GENERATOR_CONFIG_PATH=/path/to/config.yaml
+uv run access-log-generator.py config.yaml --log-dir-override ./logs
 ```
 
 ### Docker Compose
@@ -225,18 +179,8 @@ The test suite includes:
 The NCSA format works with standard tools:
 
 ```bash
-# Apache/Nginx log analyzers
-goaccess access.log
-
-# AWStats
-awstats.pl -config=mysite -LogFile=access.log
-
-# Simple grep analysis
-grep ' 404 ' access.log | wc -l  # Count 404s
-grep ' 500 ' access.log | wc -l  # Count 500s
-
-# GoAccess real-time analyzer
-tail -f access.log | goaccess -
+# Quick stats with DuckDB
+uv run test_duckdb_queries.py
 ```
 
 ## 🏗️ Architecture
@@ -259,11 +203,12 @@ Token bucket algorithm ensures precise log generation rates with configurable tr
 ## 🤝 Contributing
 
 Contributions welcome! Feel free to:
-- Open issues for bugs or feature requests
+
+- Open issues for bugs or suggestions
 - Submit pull requests
 - Share your use cases
 - Add new traffic patterns or behaviors
 
 ## 📜 License
 
-MIT License - feel free to use in your projects! 
+MIT License - feel free to use in your projects!

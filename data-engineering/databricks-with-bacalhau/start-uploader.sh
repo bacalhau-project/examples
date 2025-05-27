@@ -16,8 +16,12 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
-CONFIG_PATH="$1"
-CONFIG_DIR=$(dirname "$CONFIG_PATH")
+CONFIG_PATH="${1:-databricks-uploader/config.yaml}"
+CONFIG_DIR=$(readlink -f "$(dirname "$CONFIG_PATH")")
+
+# Determine the absolute path for the SQLite database file
+# Default to a path relative to the CONFIG_DIR if SQLITE_PATH is relative
+DB_FILE="${DB_FILE:-$CONFIG_DIR/sensor_data.db}"
 
 docker run --rm \
   -v "$CONFIG_DIR":/app \
