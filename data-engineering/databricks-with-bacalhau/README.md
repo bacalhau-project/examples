@@ -160,6 +160,7 @@ python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml -
 ```
 
 This will display:
+
 - **Tables in Database**: A list of tables in the configured `databricks_database`.
 - **Description for Table**: Detailed schema and metadata for the configured `databricks_table`.
 - **Row Count for Table**: The total number of rows in the `databricks_table`.
@@ -169,6 +170,7 @@ This will display:
 You can execute SQL queries directly against your Databricks table. Ensure your query uses fully qualified table names (e.g., `your_database.your_table`) or that the default database context is correctly set via `databricks_database`.
 
 Example:
+
 ```bash
 python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM your_database.your_table LIMIT 10"
 ```
