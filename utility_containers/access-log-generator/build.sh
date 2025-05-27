@@ -108,11 +108,22 @@ validate_requirements() {
 
 setup_builder() {
     log "Setting up buildx builder..."
+    
+    # Check if builder already exists
     if docker buildx inspect "$BUILDER_NAME" >/dev/null 2>&1; then
-        warn "Removing existing builder instance"
-        docker buildx rm "$BUILDER_NAME" >/dev/null 2>&1
+        # Check if the builder is working by listing the nodes
+        if docker buildx inspect --bootstrap "$BUILDER_NAME" | grep -q "Status: running"; then
+            log "Using existing builder instance '$BUILDER_NAME'"
+            docker buildx use "$BUILDER_NAME"
+            return 0
+        else
+            warn "Existing builder instance is not running properly, recreating it"
+            docker buildx rm "$BUILDER_NAME" >/dev/null 2>&1
+        fi
     fi
     
+    # Create new builder if needed
+    log "Creating new builder instance '$BUILDER_NAME'"
     docker buildx create --name "$BUILDER_NAME" \
         --driver docker-container \
         --bootstrap || error "Failed to create buildx builder"
@@ -212,11 +223,20 @@ main() {
     
     success "Build completed successfully"
     
-    # Pull the latest image after successful build
-    if [ "$SKIP_PUSH" = "false" ]; then
-        log "Pulling latest image..."
-        docker pull "$REGISTRY/$IMAGE_NAME:latest" || warn "Failed to pull latest image"
-    fi
+    # Write image tags to files if push was successful
+    local full_image_version="$REGISTRY/$IMAGE_NAME:$VERSION_TAG"
+    local full_image_latest="$REGISTRY/$IMAGE_NAME:latest"
+
+    log "Writing tag information to files..."
+    echo "$VERSION_TAG" > .latest-image-tag
+    echo "$full_image_version" > .latest-registry-image
+    echo "$full_image_latest" > .latest-registry-image-latest
+    log " -> .latest-image-tag: $(cat .latest-image-tag)"
+    log " -> .latest-registry-image: $(cat .latest-registry-image)"
+    log " -> .latest-registry-image-latest: $(cat .latest-registry-image-latest)"
+
+    log "Pulling latest image..."
+    docker pull "$full_image_latest" || warn "Failed to pull latest image"
     
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"

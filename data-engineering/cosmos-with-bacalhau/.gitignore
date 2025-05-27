@@ -85,4 +85,8 @@ archive/
 *.log
 
 data/*
-docker-compose*.y*ml
+docker-compose.yaml
+sample-sensor/*
+
+# SpecStory explanation file
+.specstory/.what-is-this.md
