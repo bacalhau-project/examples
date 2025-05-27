@@ -3,18 +3,20 @@
 
 This repository implements a continuous data pipeline that:
 
-1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes)
+1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes).
 2. Incrementally extracts new records using a Python uploader.
-3. Appends these records directly to a Delta Lake table in cloud storage (AWS S3 or Azure Data Lake Storage Gen2).
-4. Enables scalable data analysis and processing on the Databricks Lakehouse Platform.
+3. Performs optional local data processing (sanitization, filtering, aggregation).
+4. Appends these records directly to a table within a Databricks workspace using the Databricks SQL Connector.
+5. Enables scalable data analysis and processing on the Databricks Lakehouse Platform.
 
 Key components:
 
-- **Python Uploader**: A script (`uploader/sqlite_to_delta_uploader.py`) designed to be run with `uv run`. It:
-  - Can automatically detect the SQLite table and its timestamp column via schema introspection.
+- **Python Uploader**: A script (`uploader/sqlite_to_databricks_uploader.py`) designed to be run with `uv run`. It:
+  - Connects directly to a Databricks SQL warehouse or All-Purpose Cluster.
+  - Can automatically detect the source SQLite table and its timestamp column via schema introspection.
   - Tracks the last-upload timestamp using a state file to ensure incremental processing.
   - Can perform optional local data processing (sanitization, filtering, aggregation) before upload.
-  - Appends new rows directly to a specified Delta Lake table using the `deltalake` Python library.
+  - Inserts new rows into a specified Databricks table using the `databricks-sql-connector` Python library.
 - **Local Data Processing**: The uploader includes placeholder functions for common data processing tasks:
     - `sanitize_data`: For cleaning or transforming data.
     - `filter_data`: For selecting specific rows based on criteria.
@@ -25,11 +27,11 @@ Key components:
   - Caches Python dependencies efficiently in a builder stage.
   - Produces a minimal runtime image for the uploader.
 
-- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (`storage_uri` for S3, ADLS, or local paths), state directory, upload interval, and local processing steps.
+- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, Databricks connection parameters (host, HTTP path, token, database, table), state directory, upload interval, and local processing steps.
 - **Launcher Script**: An example `start-uploader.sh` shows how to run the uploader container, typically mounting the configuration file and necessary data volumes.
-- **Databricks Integration**: Includes SQL snippets for setting up Delta Lake tables and examples for using the Databricks CLI (via Docker) for management tasks.
+- **Databricks Integration**: The uploader directly interacts with Databricks. SQL snippets for managing tables can be run in Databricks notebooks or SQL Editor.
 
-For the detailed architecture, migration checklist, and design rationale, please refer to [REARCHITECTURE.md](REARCHITECTURE.md).
+For the original (now outdated) architecture involving Delta Lake as an intermediate step, please refer to [REARCHITECTURE.md](REARCHITECTURE.md). This document has not been updated to reflect the direct Databricks upload architecture.
 
 ---
 
@@ -37,16 +39,16 @@ For the detailed architecture, migration checklist, and design rationale, please
 
 - Docker Engine (19.03+)
 - (Optional) Python 3.11 and the `uv` CLI for local testing
-- A Databricks workspace with a catalog/schema for Delta Lake
-- Cloud storage account (AWS S3 or Azure Data Lake Storage Gen2)
-  - Ensure credentials are configured (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or Azure service principal).
+- A Databricks workspace with a SQL warehouse or All-Purpose Cluster.
+- A target database and table within Databricks.
+- Databricks Personal Access Token (PAT) for authentication.
 
 ## Directory Layout
 
 ```text
 ./
 ├── uploader/                      # Python uploader and Dockerfile
-│   └── sqlite_to_delta_uploader.py # UV-run script for incremental export
+│   └── sqlite_to_databricks_uploader.py # UV-run script for incremental export
 │   └── Dockerfile                 # Multi-stage UV-based image
 ├── uploader-config.yaml.example   # Example configuration
 ├── start-uploader.sh              # Shell wrapper to launch uploader container
@@ -72,66 +74,52 @@ DATABRICKS_TOKEN=YOUR_DATABRICKS_TOKEN
 Copy `uploader-config.yaml.example` to `uploader-config.yaml` and customize:
 
 ```yaml
-# Path inside container to the SQLite DB
-sqlite: "/data/sensor.db" # Example path
+# --- Databricks Connection Parameters ---
+# It is STRONGLY recommended to use environment variables for sensitive data like tokens.
+databricks_host: "your-workspace.azuredatabricks.net"
+databricks_http_path: "/sql/1.0/warehouses/your_sql_warehouse_http_path"
+# databricks_token: "dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Prefer DATABRICKS_TOKEN env var
+databricks_database: "your_database"
+databricks_table: "your_table"
 
-# Delta Lake table URI (e.g., S3, ADLS, or local file path like file:///data/delta/sensor_readings)
-# This was previously referred to as table_path.
-storage_uri: "s3://<your-bucket>/delta/bacalhau_results/sensor_readings"
+# --- SQLite Source Parameters ---
+sqlite_path: "/data/sensor.db"
+sqlite_table_name: "sensor_data" # Or auto-detected if commented out
+# timestamp_col: "event_timestamp" # Or auto-detected if commented out
 
-# (Optional) Name of the SQLite table to read from. Auto-detected if not provided.
-# table: "sensor_data"
-# (Optional) Name of the timestamp column. Auto-detected if not provided.
-# timestamp_col: "event_timestamp"
-
-# Directory inside container for state file (last upload timestamp)
-state_dir: "/state" # Example path
-
-# Upload interval in seconds
+# --- Uploader Control Parameters ---
+state_dir: "/state"
 interval: 300
 
 # --- Local Data Processing ---
-# Enable or disable local data processing steps.
-# For uploader-config.yaml, these configurations are best defined using native YAML structures (see uploader-config.yaml.example).
-# For CLI arguments or environment variables, these configurations should be provided as JSON strings.
-
-# Enable data sanitization (true/false)
+# (See uploader-config.yaml.example for detailed examples of YAML structures)
 enable_sanitize: false
-# Configuration for sanitization. Example (in YAML):
-# sanitize_config:
-#   column_to_clean: "pattern_to_remove"
-# (See uploader-config.yaml.example for more complex YAML structures)
-sanitize_config: {} # Default: no specific sanitization rules
+sanitize_config: {}
 
-# Enable data filtering (true/false)
 enable_filter: false
-# Configuration for filtering. Example (in YAML):
-# filter_config:
-#   numeric_column: { greater_than: 100 }
-filter_config: {}   # Default: no specific filtering rules
+filter_config: {}
 
-# Enable data aggregation (true/false)
 enable_aggregate: false
-# Configuration for aggregation. Example (in YAML):
-# aggregate_config:
-#   group_by_columns: ["category"]
-#   aggregate_functions: { "value": "sum" }
-aggregate_config: {} # Default: no specific aggregation rules
+aggregate_config: {}
 ```
 
-You can override any value with environment variables (CLI arguments also take precedence):
+Key environment variables for overriding configuration (CLI arguments also take precedence):
 
-- `SQLITE_PATH` (overrides `sqlite`)
-- `STORAGE_URI` (overrides `storage_uri`, previously `TABLE_PATH`)
-- `TABLE_NAME` (overrides `table`)
-- `TIMESTAMP_COL` (overrides `timestamp_col`)
-- `STATE_DIR` (overrides `state_dir`)
-- `UPLOAD_INTERVAL` (overrides `interval`)
-- `ENABLE_SANITIZE`, `SANITIZE_CONFIG` (JSON string)
-- `ENABLE_FILTER`, `FILTER_CONFIG` (JSON string)
-- `ENABLE_AGGREGATE`, `AGGREGATE_CONFIG` (JSON string)
+- `SQLITE_PATH` (overrides `sqlite_path` in YAML)
+- `SQLITE_TABLE_NAME` (overrides `sqlite_table_name` in YAML)
+- `TIMESTAMP_COL` (overrides `timestamp_col` in YAML)
+- `STATE_DIR` (overrides `state_dir` in YAML)
+- `UPLOAD_INTERVAL` (overrides `interval` in YAML)
+- `DATABRICKS_HOST`
+- `DATABRICKS_HTTP_PATH`
+- `DATABRICKS_TOKEN` (**Recommended method for providing the token**)
+- `DATABRICKS_DATABASE`
+- `DATABRICKS_TABLE`
+- `ENABLE_SANITIZE`, `SANITIZE_CONFIG` (JSON string for env var)
+- `ENABLE_FILTER`, `FILTER_CONFIG` (JSON string for env var)
+- `ENABLE_AGGREGATE`, `AGGREGATE_CONFIG` (JSON string for env var)
 
-Command-line arguments (e.g., `--sqlite`, `--storage-uri`, `--enable-sanitize`, `--sanitize-config`) will override both environment variables and YAML configuration.
+Command-line arguments (e.g., `--sqlite`, `--databricks-host`, `--databricks-table`) will override both environment variables and YAML configuration.
 
 ---
 
@@ -161,78 +149,63 @@ The uploader will run continuously, appending new records each cycle.
 
 ## Debugging with Query Mode
 
-The uploader script includes a `--run-query` CLI flag that allows you to directly query your Delta Lake table for debugging or inspection purposes. This mode will execute the query and then exit, without starting the continuous upload process.
-
-You'll typically need to provide your configuration file (`--config`) so the script can find the `storage_uri` for your Delta table.
+The uploader script includes a `--run-query` CLI flag that allows you to directly query your target Databricks table for debugging or inspection. This mode requires Databricks connection parameters to be configured (e.g., via `uploader-config.yaml` or environment variables). It will execute the query and then exit, without starting the continuous upload process.
 
 **1. Get Table Information:**
 
-To get general information about your Delta table, use `"INFO"` as the query string:
+To get general information about your Databricks table and database, use `"INFO"` as the query string:
 
 ```bash
-python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "INFO"
+python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "INFO"
 ```
 
 This will display:
-- **Table Schema**: The structure and data types of your columns.
-- **Table Version**: The current version of the Delta table.
-- **Table History**: The last few entries from the Delta table's transaction log (e.g., appends, schema changes).
-- **Total Rows**: The total number of rows in the table.
+- **Tables in Database**: A list of tables in the configured `databricks_database`.
+- **Description for Table**: Detailed schema and metadata for the configured `databricks_table`.
+- **Row Count for Table**: The total number of rows in the `databricks_table`.
 
-**2. Query Table Data (Limited SQL):**
+**2. Query Table Data (General SQL):**
 
-You can also run simple `SELECT *`-like queries. The script does **not** support full SQL execution. However, it attempts to parse a `LIMIT N` clause from your query to control the number of rows returned. If no `LIMIT` clause is found, it defaults to showing the top 20 rows.
+You can execute SQL queries directly against your Databricks table. Ensure your query uses fully qualified table names (e.g., `your_database.your_table`) or that the default database context is correctly set via `databricks_database`.
 
 Example:
 ```bash
-python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM table LIMIT 10"
+python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM your_database.your_table LIMIT 10"
 ```
-This will attempt to display the first 10 rows of your table.
+This will display the first 10 rows of `your_database.your_table`.
 
-If you provide a query like:
-```bash
-python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM table WHERE some_column = 'value'"
-```
-The script will currently ignore the `WHERE` clause but will display the top 20 rows (or the number specified by a `LIMIT` clause if present). For more complex querying, use dedicated analytics tools like Databricks SQL Editor or Spark notebooks.
+For more complex querying or data manipulation, use dedicated analytics tools like Databricks SQL Editor or Spark notebooks.
 
-## Delta Lake Table Setup on Databricks
+## Databricks Table Setup
 
-Before running the uploader, you need to create the target Delta Lake table and the schema (database) it belongs to in your Databricks workspace.
+Before running the uploader, you need to ensure the target database and table exist in your Databricks workspace and that the table schema is compatible with the data from your SQLite source. The uploader script will attempt to insert data based on matching column names.
 
-You can execute the following SQL commands in a Databricks notebook or using the Databricks SQL Editor.
-
-**Accessing the SQL Editor:**
-
-Navigate to the SQL Editor in your Databricks workspace using a URL like this (replace `<your-databricks-workspace-url>` with your actual workspace URL, e.g., `dbc-a1b2-c3d4.cloud.databricks.com`):
-
-```code
-https://<your-databricks-workspace-url>/sql/editor
-```
-
-**SQL Commands:**
-
-Execute the following SQL. Remember to replace:
-
-- `<CATALOG_NAME>` with the name of your desired Unity Catalog catalog (e.g., `main`, `dev`).
-- `<S3_BUCKET_NAME>` with the actual name of your S3 bucket where the Delta table data will be stored.
-
+**1. Create Database (if it doesn't exist):**
+Use the Databricks SQL Editor or a notebook:
 ```sql
--- Ensure the sch ema (database) exists within your chosen catalog
-CREATE SCHEMA IF NOT EXISTS <CATALOG_NAME>.bacalhau_results;
-
--- Create the external Delta table pointing to your S3 location
--- The uploader script will create the table schema upon first write if it doesn't exist,
--- but explicitly defining it here ensures the location is correctly set up.
-CREATE TABLE IF NOT EXISTS <CATALOG_NAME>.bacalhau_results.sensor_readings
-USING DELTA
-LOCATION 's3://$S3_BUCKET_NAME/delta/bacalhau_results/sensor_readings';
+CREATE DATABASE IF NOT EXISTS your_database_name;
 ```
 
-**Note:** The `LOCATION` should point to the *specific directory* where the `sensor_readings` table data will reside within your `bacalhau_results` structure in S3.
+**2. Create Table (Example):**
+The table schema should match the columns in your SQLite database that you intend to upload. Data type mapping will be handled by the Databricks SQL connector, but ensure they are compatible (e.g., SQLite `TEXT` to Databricks `STRING`, SQLite `REAL` to Databricks `DOUBLE` or `FLOAT`, SQLite `INTEGER` to Databricks `INT` or `BIGINT`).
+
+Example DDL for a table (execute in Databricks SQL Editor or notebook):
+```sql
+CREATE TABLE IF NOT EXISTS your_database_name.your_table_name (
+    id BIGINT,
+    device_id STRING,
+    timestamp TIMESTAMP,
+    temperature DOUBLE,
+    humidity DOUBLE,
+    -- Add other columns as per your SQLite schema
+    PRIMARY KEY (id) -- Optional: Define primary keys if applicable
+);
+```
+**Note:** The uploader script itself does not create the table or schema. You are responsible for defining the target table structure in Databricks.
 
 ## Managing Tables via Databricks CLI (Docker)
 
-The following commands use the official Databricks CLI running inside a Docker container to interact with your Databricks workspace, for example, to list tables or inspect storage after the table has been created and populated.
+The Databricks CLI can be used for various workspace management tasks. Ensure it is configured with your workspace host and token.
 
 These commands mount your local `.databrickscfg` file into the container. This file is the standard configuration file for the Databricks CLI and should contain your Databricks workspace host URL and a personal access token (PAT) to authenticate the CLI calls. It typically looks like this:
 
@@ -260,9 +233,9 @@ docker run --rm \
   tables list bacalhau_sensor_readings_workspace default
 ```
 
-### Querying the Delta Table with Spark
+### Querying the Table with Spark
 
-Once data is populated in your Delta Lake table, you can query it using Spark in your Databricks environment (e.g., in a Databricks notebook).
+Once data is populated in your Databricks table by the uploader, you can query it using Spark in your Databricks environment (e.g., in a Databricks notebook).
 
 Here's a basic PySpark example:
 
@@ -318,6 +291,6 @@ Replace `<CATALOG_NAME>` with the actual catalog you are using. This script demo
 
 ## Further Reading
 
-- [REARCHITECTURE.md](REARCHITECTURE.md): Detailed re-architecture plan and checklist.
-- `uploader-config.yaml.example`: Example config template.
-- `docs/databricks-s3-connect.md`: Guide for configuring Databricks S3 connectivity.
+- [REARCHITECTURE.md](REARCHITECTURE.md): Original (now outdated) re-architecture plan.
+- `uploader-config.yaml.example`: Example config template for the uploader.
+- `docs/databricks-s3-connect.md`: (May be less relevant now) Guide for configuring Databricks S3 connectivity, primarily for external tables.

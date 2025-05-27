@@ -1,31 +1,46 @@
 # uploader-config.yaml.example
-# Configuration for the continuous SQLite→Delta Lake uploader
+# Configuration for the continuous SQLite→Databricks uploader
 #
-# `sqlite`: Path inside the container to the mounted SQLite database file.
-# `storage_uri`: URI of the Delta Lake table (e.g., on S3 or ADLS or local file://) to append to.
+# `sqlite_path`: Path inside the container to the mounted SQLite database file.
 # `state_dir`: Path inside the container to persist last-upload state file.
 # `interval`: Seconds between upload cycles.
-# `table`: (Optional) Name of the SQLite table to read from. If not provided, attempts to auto-detect.
+# `sqlite_table_name`: (Optional) Name of the SQLite table to read from. If not provided, attempts to auto-detect.
 # `timestamp_col`: (Optional) Name of the timestamp column in the SQLite table. If not provided, attempts to auto-detect.
 
-sqlite: "/data/sensor.db"
-storage_uri: "s3://<your-bucket>/delta/bacalhau_results/sensor_readings" # Or e.g., file:///data/delta/sensor_readings
+# --- Databricks Connection Parameters ---
+# It is STRONGLY recommended to use environment variables for sensitive data like tokens.
+databricks_host: "your-workspace.azuredatabricks.net" # Example: "adb-xxxx.azuredatabricks.net"
+databricks_http_path: "/sql/1.0/warehouses/your_sql_warehouse_http_path" # Example: "/sql/1.0/warehouses/12345abcde"
+# databricks_token: "dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Example: "dapi123..."
+# IMPORTANT: Avoid hardcoding tokens. Prefer DATABRICKS_TOKEN environment variable.
+databricks_database: "your_database" # Example: "default" or "bronze_layer"
+databricks_table: "your_table"     # Example: "sensor_readings"
+
+# --- SQLite Source Parameters ---
+sqlite_path: "/data/sensor.db"
+sqlite_table_name: "sensor_data" # Example: "my_sqlite_table_name", uncomment to use
+# timestamp_col: "event_timestamp" # Example: "created_at", uncomment to use
+
+# --- Uploader Control Parameters ---
 state_dir: "/state"
 interval: 300
-# table: "sensor_data" # Example: "my_table_name"
-# timestamp_col: "event_timestamp" # Example: "created_at"
 
 # Optional overrides via environment variables:
-#   SQLITE_PATH       override `sqlite`
-#   STORAGE_URI       override `storage_uri` (this replaces the old TABLE_PATH)
-#   TABLE_NAME        override `table`
-#   TIMESTAMP_COL     override `timestamp_col`
-#   STATE_DIR         override `state_dir`
-#   UPLOAD_INTERVAL   override `interval`
+#   SQLITE_PATH              override `sqlite_path`
+#   SQLITE_TABLE_NAME        override `sqlite_table_name` # (previously TABLE_NAME)
+#   TIMESTAMP_COL            override `timestamp_col`
+#   STATE_DIR                override `state_dir`
+#   UPLOAD_INTERVAL          override `interval`
+#
+#   DATABRICKS_HOST          override `databricks_host`
+#   DATABRICKS_HTTP_PATH     override `databricks_http_path`
+#   DATABRICKS_TOKEN         override `databricks_token` (Recommended for security)
+#   DATABRICKS_DATABASE      override `databricks_database`
+#   DATABRICKS_TABLE         override `databricks_table`
 
 # --- Local Data Processing ---
 # Enable or disable local data processing steps before uploading.
-# Configurations for these steps can be provided as YAML structures or JSON strings.
+# Configurations for these steps can be provided as YAML structures (preferred) or JSON strings (for CLI/env).
 
 # Enable data sanitization (true/false)
 enable_sanitize: false
@@ -73,8 +88,8 @@ aggregate_config:
 
 # Optional overrides for processing steps via environment variables:
 #   ENABLE_SANITIZE   override `enable_sanitize` (e.g., "true" or "false")
-#   SANITIZE_CONFIG   override `sanitize_config` (JSON string OR native YAML if env var parser supports it - typically JSON string)
+#   SANITIZE_CONFIG   override `sanitize_config` (JSON string for env var, YAML structure for file)
 #   ENABLE_FILTER     override `enable_filter`
-#   FILTER_CONFIG     override `filter_config` (JSON string OR native YAML)
+#   FILTER_CONFIG     override `filter_config` (JSON string for env var, YAML structure for file)
 #   ENABLE_AGGREGATE  override `enable_aggregate`
-#   AGGREGATE_CONFIG  override `aggregate_config` (JSON string OR native YAML)
+#   AGGREGATE_CONFIG  override `aggregate_config` (JSON string for env var, YAML structure for file)
