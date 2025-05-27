@@ -91,15 +91,32 @@ state_dir: "/state" # Example path
 interval: 300
 
 # --- Local Data Processing ---
-# Enable or disable local data processing steps. Configurations are JSON strings.
+# Enable or disable local data processing steps.
+# For uploader-config.yaml, these configurations are best defined using native YAML structures (see uploader-config.yaml.example).
+# For CLI arguments or environment variables, these configurations should be provided as JSON strings.
+
+# Enable data sanitization (true/false)
 enable_sanitize: false
-sanitize_config: "{}" # Example: '{\"column_to_clean\": \"pattern_to_remove\"}'
+# Configuration for sanitization. Example (in YAML):
+# sanitize_config:
+#   column_to_clean: "pattern_to_remove"
+# (See uploader-config.yaml.example for more complex YAML structures)
+sanitize_config: {} # Default: no specific sanitization rules
 
+# Enable data filtering (true/false)
 enable_filter: false
-filter_config: "{}"   # Example: '{\"numeric_column\": {\">\": 100}}'
+# Configuration for filtering. Example (in YAML):
+# filter_config:
+#   numeric_column: { greater_than: 100 }
+filter_config: {}   # Default: no specific filtering rules
 
+# Enable data aggregation (true/false)
 enable_aggregate: false
-aggregate_config: "{}" # Example: '{\"group_by\": [\"category\"], \"aggregations\": {\"value\": \"sum\"}}'
+# Configuration for aggregation. Example (in YAML):
+# aggregate_config:
+#   group_by_columns: ["category"]
+#   aggregate_functions: { "value": "sum" }
+aggregate_config: {} # Default: no specific aggregation rules
 ```
 
 You can override any value with environment variables (CLI arguments also take precedence):
@@ -141,6 +158,42 @@ docker build -t uploader-image:latest uploader
    ```
 
 The uploader will run continuously, appending new records each cycle.
+
+## Debugging with Query Mode
+
+The uploader script includes a `--run-query` CLI flag that allows you to directly query your Delta Lake table for debugging or inspection purposes. This mode will execute the query and then exit, without starting the continuous upload process.
+
+You'll typically need to provide your configuration file (`--config`) so the script can find the `storage_uri` for your Delta table.
+
+**1. Get Table Information:**
+
+To get general information about your Delta table, use `"INFO"` as the query string:
+
+```bash
+python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "INFO"
+```
+
+This will display:
+- **Table Schema**: The structure and data types of your columns.
+- **Table Version**: The current version of the Delta table.
+- **Table History**: The last few entries from the Delta table's transaction log (e.g., appends, schema changes).
+- **Total Rows**: The total number of rows in the table.
+
+**2. Query Table Data (Limited SQL):**
+
+You can also run simple `SELECT *`-like queries. The script does **not** support full SQL execution. However, it attempts to parse a `LIMIT N` clause from your query to control the number of rows returned. If no `LIMIT` clause is found, it defaults to showing the top 20 rows.
+
+Example:
+```bash
+python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM table LIMIT 10"
+```
+This will attempt to display the first 10 rows of your table.
+
+If you provide a query like:
+```bash
+python uploader/sqlite_to_delta_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM table WHERE some_column = 'value'"
+```
+The script will currently ignore the `WHERE` clause but will display the top 20 rows (or the number specified by a `LIMIT` clause if present). For more complex querying, use dedicated analytics tools like Databricks SQL Editor or Spark notebooks.
 
 ## Delta Lake Table Setup on Databricks
 

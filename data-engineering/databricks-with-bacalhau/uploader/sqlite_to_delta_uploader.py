@@ -25,7 +25,7 @@ from pathlib import Path
 import yaml
 import re
 import pandas as pd
-from deltalake import write_deltalake
+from deltalake import DeltaTable, write_deltalake
 
 
 def parse_args():
@@ -46,6 +46,9 @@ def parse_args():
     p.add_argument("--filter-config", default="{}", help="JSON config string for filtering")
     p.add_argument("--enable-aggregate", action="store_true", help="Enable data aggregation")
     p.add_argument("--aggregate-config", default="{}", help="JSON config string for aggregation")
+    p.add_argument("--run-query", type=str, default=None,
+                   help="Run a query against the Delta table and exit. "
+                        "Use 'INFO' for table details or a SQL-like 'SELECT * ... [LIMIT N]' query.")
     return p.parse_args()
 
 
@@ -96,15 +99,72 @@ def main():
     if args.config:
         cfg = yaml.safe_load(Path(args.config).read_text())
     # 2) assemble params   CLI > ENV > YAML > default
-    sqlite_path  = Path(
-        args.sqlite or os.getenv("SQLITE_PATH") or cfg.get("sqlite", "")
-    )
+    # storage_uri is needed for query mode and normal mode
     storage_uri  = (
         args.storage_uri or os.getenv("STORAGE_URI") or cfg.get("storage_uri")
     )
     # Deprecation shim for old key names
     if not storage_uri:
         storage_uri = os.getenv("TABLE_PATH") or cfg.get("table_path")
+
+    if not storage_uri and args.run_query:
+        logging.error("--storage-uri (or ENV/YAML equivalent) is required for --run-query mode.")
+        sys.exit(1)
+    
+    # Handle --run-query mode
+    if args.run_query:
+        logging.info(f"Entering query mode for query: '{args.run_query}'")
+        storage_opts = {}
+        if os.getenv('AWS_REGION'):
+            storage_opts['AWS_REGION'] = os.getenv('AWS_REGION')
+        # Add other necessary storage options if used, e.g., for Azure:
+        # if os.getenv('AZURE_STORAGE_ACCOUNT_NAME'):
+        #     storage_opts['AZURE_STORAGE_ACCOUNT_NAME'] = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
+        # if os.getenv('AZURE_STORAGE_ACCESS_KEY'):
+        #     storage_opts['AZURE_STORAGE_ACCESS_KEY'] = os.getenv('AZURE_STORAGE_ACCESS_KEY')
+
+        try:
+            delta_table = DeltaTable(storage_uri, storage_options=storage_opts)
+            
+            if args.run_query.strip().upper() == "INFO":
+                logging.info(f"Fetching information for Delta table at: {storage_uri}")
+                print("\n--- Table Schema ---")
+                print(delta_table.schema().to_pyarrow().to_string())
+                print(f"\n--- Table Version: {delta_table.version()} ---")
+                print("\n--- Table History (last 5) ---")
+                history = delta_table.history(limit=5)
+                for item in history:
+                    print(item)
+                
+                df_info = delta_table.to_pandas()
+                print(f"\n--- Total Rows: {len(df_info)} ---")
+
+            else: # SQL-like query
+                logging.info(f"Attempting to display data for query: {args.run_query}.")
+                logging.info("Note: Full SQL execution is not supported. Displaying table subset based on simple LIMIT clauses.")
+                df_query = delta_table.to_pandas()
+                
+                limit_match = re.search(r'LIMIT\s+(\d+)', args.run_query, re.IGNORECASE)
+                if limit_match:
+                    limit_value = int(limit_match.group(1))
+                    print(f"\n--- Query Results (LIMIT {limit_value}) ---")
+                    print(df_query.head(limit_value).to_string())
+                else:
+                    print("\n--- Query Results (Top 20 rows) ---")
+                    print(df_query.head(20).to_string())
+                    print("\nDisplaying top 20 rows. For more specific queries or advanced filtering, load data into a dedicated analytics tool.")
+        
+        except Exception as e:
+            logging.error(f"Error during query mode: {e}", exc_info=True)
+            sys.exit(1)
+        
+        sys.exit(0) # Exit after query mode
+
+    # -------- Normal operation mode (uploader) --------
+    # These parameters are only essential if not in query mode
+    sqlite_path  = Path(
+        args.sqlite or os.getenv("SQLITE_PATH") or cfg.get("sqlite", "")
+    )
     state_dir    = Path(
         args.state_dir or os.getenv("STATE_DIR") or cfg.get("state_dir", "/state")
     )
@@ -113,15 +173,15 @@ def main():
          os.getenv("UPLOAD_INTERVAL") or cfg.get("interval", 300))
     )
     once         = args.once
-    table_name   = args.table or cfg.get("table")
-    timestamp_col= args.timestamp_col or cfg.get("timestamp_col")
+    table_name   = args.table or os.getenv("TABLE_NAME") or cfg.get("table") # Updated this line from previous turn
+    timestamp_col= args.timestamp_col or os.getenv("TIMESTAMP_COL") or cfg.get("timestamp_col") # Updated this line
 
-    # Validate required parameters
+    # Validate required parameters for normal mode
     if not sqlite_path or not sqlite_path.is_file():
-        logging.error("SQLite file not found: %s", sqlite_path)
+        logging.error("SQLite file not found: %s (required for uploader mode)", sqlite_path)
         sys.exit(1)
-    if not storage_uri:
-        logging.error("Delta table URI not specified in config or environment")
+    if not storage_uri: # Should have been caught earlier if also in query mode, but double check for normal
+        logging.error("Delta table URI (--storage-uri) not specified (required for uploader mode)")
         sys.exit(1)
 
     # Prepare state file directory
@@ -185,40 +245,92 @@ def main():
                 logging.info("No new records since %s", last_ts)
             else:
                 # Data processing steps
-                # Sanitize
+
+                # Sanitize config loading
                 enable_sanitize = args.enable_sanitize or os.getenv("ENABLE_SANITIZE", cfg.get("enable_sanitize", False))
-                sanitize_config_str = args.sanitize_config or os.getenv("SANITIZE_CONFIG", cfg.get("sanitize_config", "{}"))
-                try:
-                    sanitize_config_dict = json.loads(sanitize_config_str)
-                except json.JSONDecodeError as e:
-                    logging.error("Invalid JSON for sanitize_config: %s. Error: %s", sanitize_config_str, e)
-                    sanitize_config_dict = {} # Use empty dict as fallback
+                sanitize_config_source_value = args.sanitize_config # CLI has priority (always string)
+                if sanitize_config_source_value == "{}": # Default from argparse might be "{}", check env if so
+                    sanitize_config_source_value = os.getenv("SANITIZE_CONFIG") or cfg.get("sanitize_config")
+                else: # CLI value was something other than default "{}"
+                    pass # Keep CLI value
+
+                if sanitize_config_source_value is None: # Not in CLI or ENV, try YAML
+                     sanitize_config_source_value = cfg.get("sanitize_config")
+
+                sanitize_config_dict = {} # Default
+                if isinstance(sanitize_config_source_value, (dict, list)):
+                    sanitize_config_dict = sanitize_config_source_value
+                    logging.info("Loaded sanitize_config directly as structured YAML.")
+                elif isinstance(sanitize_config_source_value, str) and sanitize_config_source_value.strip():
+                    try:
+                        sanitize_config_dict = json.loads(sanitize_config_source_value)
+                        logging.info("Loaded sanitize_config by parsing string (JSON expected).")
+                    except json.JSONDecodeError as e:
+                        logging.warning(f"Failed to parse sanitize_config string '{sanitize_config_source_value}' as JSON: {e}. Using default {{}}.")
+                elif sanitize_config_source_value is not None:
+                    logging.warning(f"Unexpected type for sanitize_config: {type(sanitize_config_source_value)}. Using default {{}}.")
+                else: # None
+                    logging.info("sanitize_config not provided. Using default {{}}.")
 
                 if enable_sanitize:
                     logging.info("Sanitizing data...")
                     df = sanitize_data(df, sanitize_config_dict)
 
-                # Filter
+                # Filter config loading
                 enable_filter = args.enable_filter or os.getenv("ENABLE_FILTER", cfg.get("enable_filter", False))
-                filter_config_str = args.filter_config or os.getenv("FILTER_CONFIG", cfg.get("filter_config", "{}"))
-                try:
-                    filter_config_dict = json.loads(filter_config_str)
-                except json.JSONDecodeError as e:
-                    logging.error("Invalid JSON for filter_config: %s. Error: %s", filter_config_str, e)
-                    filter_config_dict = {} # Use empty dict as fallback
+                filter_config_source_value = args.filter_config # CLI
+                if filter_config_source_value == "{}": # Default from argparse
+                    filter_config_source_value = os.getenv("FILTER_CONFIG") or cfg.get("filter_config")
+                else: # CLI value was not default
+                    pass
+
+                if filter_config_source_value is None: # Not in CLI or ENV
+                    filter_config_source_value = cfg.get("filter_config")
+
+                filter_config_dict = {} # Default
+                if isinstance(filter_config_source_value, (dict, list)):
+                    filter_config_dict = filter_config_source_value
+                    logging.info("Loaded filter_config directly as structured YAML.")
+                elif isinstance(filter_config_source_value, str) and filter_config_source_value.strip():
+                    try:
+                        filter_config_dict = json.loads(filter_config_source_value)
+                        logging.info("Loaded filter_config by parsing string (JSON expected).")
+                    except json.JSONDecodeError as e:
+                        logging.warning(f"Failed to parse filter_config string '{filter_config_source_value}' as JSON: {e}. Using default {{}}.")
+                elif filter_config_source_value is not None:
+                    logging.warning(f"Unexpected type for filter_config: {type(filter_config_source_value)}. Using default {{}}.")
+                else: # None
+                    logging.info("filter_config not provided. Using default {{}}.")
 
                 if enable_filter:
                     logging.info("Filtering data...")
                     df = filter_data(df, filter_config_dict)
 
-                # Aggregate
+                # Aggregate config loading
                 enable_aggregate = args.enable_aggregate or os.getenv("ENABLE_AGGREGATE", cfg.get("enable_aggregate", False))
-                aggregate_config_str = args.aggregate_config or os.getenv("AGGREGATE_CONFIG", cfg.get("aggregate_config", "{}"))
-                try:
-                    aggregate_config_dict = json.loads(aggregate_config_str)
-                except json.JSONDecodeError as e:
-                    logging.error("Invalid JSON for aggregate_config: %s. Error: %s", aggregate_config_str, e)
-                    aggregate_config_dict = {} # Use empty dict as fallback
+                aggregate_config_source_value = args.aggregate_config # CLI
+                if aggregate_config_source_value == "{}": # Default from argparse
+                    aggregate_config_source_value = os.getenv("AGGREGATE_CONFIG") or cfg.get("aggregate_config")
+                else: # CLI value was not default
+                    pass
+                
+                if aggregate_config_source_value is None: # Not in CLI or ENV
+                    aggregate_config_source_value = cfg.get("aggregate_config")
+
+                aggregate_config_dict = {} # Default
+                if isinstance(aggregate_config_source_value, (dict, list)):
+                    aggregate_config_dict = aggregate_config_source_value
+                    logging.info("Loaded aggregate_config directly as structured YAML.")
+                elif isinstance(aggregate_config_source_value, str) and aggregate_config_source_value.strip():
+                    try:
+                        aggregate_config_dict = json.loads(aggregate_config_source_value)
+                        logging.info("Loaded aggregate_config by parsing string (JSON expected).")
+                    except json.JSONDecodeError as e:
+                        logging.warning(f"Failed to parse aggregate_config string '{aggregate_config_source_value}' as JSON: {e}. Using default {{}}.")
+                elif aggregate_config_source_value is not None:
+                    logging.warning(f"Unexpected type for aggregate_config: {type(aggregate_config_source_value)}. Using default {{}}.")
+                else: # None
+                    logging.info("aggregate_config not provided. Using default {{}}.")
                 
                 if enable_aggregate:
                     logging.info("Aggregating data...")

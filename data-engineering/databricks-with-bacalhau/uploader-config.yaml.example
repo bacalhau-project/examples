@@ -25,27 +25,56 @@ interval: 300
 
 # --- Local Data Processing ---
 # Enable or disable local data processing steps before uploading.
-# Configurations for these steps are provided as JSON strings.
+# Configurations for these steps can be provided as YAML structures or JSON strings.
 
 # Enable data sanitization (true/false)
 enable_sanitize: false
-# Configuration for sanitization (JSON string). Example: '{"column_to_clean": "pattern_to_remove"}'
-sanitize_config: "{}"
+# Configuration for sanitization.
+# Example: rules to apply to specific columns.
+sanitize_config:
+  # column_to_clean: "pattern_to_remove" # Example: remove a specific pattern
+  # another_column: { "replace_value": "X", "with_value": "Y" } # Example: replace specific values
+  default_string_clean: "trim" # Example: trim whitespace from all strings, if a global string op is supported
+  # Or leave empty if no sanitization is active by default:
+  # sanitize_config: {}
 
 # Enable data filtering (true/false)
 enable_filter: false
-# Configuration for filtering (JSON string). Example: '{"numeric_column": {">": 100}}'
-filter_config: "{}"
+# Configuration for filtering.
+# Example: conditions to keep rows.
+filter_config:
+  # numeric_column: { greater_than: 100, less_than_or_equal_to: 200 } # Example: range filter
+  # string_column_equals: "specific_value" # Example: exact match filter
+  # remove_if_column_is_null: ["critical_column1", "critical_column2"] # Example: remove rows with nulls
+  # Example: keep rows where sensor_x has a value greater than 10
+  # minimum_value_for_sensor_x: 10
+  # Or leave empty if no filtering is active by default:
+  filter_config: {}
+
 
 # Enable data aggregation (true/false)
 enable_aggregate: false
-# Configuration for aggregation (JSON string). Example: '{"group_by": ["category"], "aggregations": {"value": "sum", "count": "size"}}'
-aggregate_config: "{}"
+# Configuration for aggregation.
+# Example: group by columns and define aggregate functions.
+aggregate_config:
+  # Example: Aggregate sensor readings over a category
+  # group_by_columns: ["category"]
+  # aggregate_functions:
+  #   value: "sum" # Sum of 'value' column
+  #   records: "size" # Count of records in each group
+  # More complex example:
+  # group_by_columns: ["device_id", "time_window_5min"] # Group by device and 5-min time window
+  # aggregate_functions:
+  #   temperature: "avg" # Average temperature
+  #   humidity: "max"  # Max humidity
+  #   reading_count: "count" # Number of readings
+  # Or leave empty if no aggregation is active by default:
+  aggregate_config: {}
 
 # Optional overrides for processing steps via environment variables:
 #   ENABLE_SANITIZE   override `enable_sanitize` (e.g., "true" or "false")
-#   SANITIZE_CONFIG   override `sanitize_config` (JSON string)
+#   SANITIZE_CONFIG   override `sanitize_config` (JSON string OR native YAML if env var parser supports it - typically JSON string)
 #   ENABLE_FILTER     override `enable_filter`
-#   FILTER_CONFIG     override `filter_config`
+#   FILTER_CONFIG     override `filter_config` (JSON string OR native YAML)
 #   ENABLE_AGGREGATE  override `enable_aggregate`
-#   AGGREGATE_CONFIG  override `aggregate_config`
+#   AGGREGATE_CONFIG  override `aggregate_config` (JSON string OR native YAML)
