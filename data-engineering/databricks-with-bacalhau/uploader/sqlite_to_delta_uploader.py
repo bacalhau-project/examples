@@ -39,7 +39,36 @@ def parse_args():
                    help="Upload once and exit (no loop)")
     p.add_argument("--table", help="Override SQLite table name")
     p.add_argument("--timestamp-col", help="Override timestamp column")
+    # New arguments for data processing
+    p.add_argument("--enable-sanitize", action="store_true", help="Enable data sanitization")
+    p.add_argument("--sanitize-config", default="{}", help="JSON config string for sanitization")
+    p.add_argument("--enable-filter", action="store_true", help="Enable data filtering")
+    p.add_argument("--filter-config", default="{}", help="JSON config string for filtering")
+    p.add_argument("--enable-aggregate", action="store_true", help="Enable data aggregation")
+    p.add_argument("--aggregate-config", default="{}", help="JSON config string for aggregation")
     return p.parse_args()
+
+
+# Placeholder processing functions
+def sanitize_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """Sanitizes the input DataFrame."""
+    logging.info("Sanitizing data with config: %s", config)
+    # Placeholder: actual sanitization logic will be added here
+    return df
+
+
+def filter_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """Filters the input DataFrame."""
+    logging.info("Filtering data with config: %s", config)
+    # Placeholder: actual filtering logic will be added here
+    return df
+
+
+def aggregate_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """Aggregates the input DataFrame."""
+    logging.info("Aggregating data with config: %s", config)
+    # Placeholder: actual aggregation logic will be added here
+    return df
 
 
 def read_data(sqlite_path, query, table_name):
@@ -155,6 +184,46 @@ def main():
             if df.empty:
                 logging.info("No new records since %s", last_ts)
             else:
+                # Data processing steps
+                # Sanitize
+                enable_sanitize = args.enable_sanitize or os.getenv("ENABLE_SANITIZE", cfg.get("enable_sanitize", False))
+                sanitize_config_str = args.sanitize_config or os.getenv("SANITIZE_CONFIG", cfg.get("sanitize_config", "{}"))
+                try:
+                    sanitize_config_dict = json.loads(sanitize_config_str)
+                except json.JSONDecodeError as e:
+                    logging.error("Invalid JSON for sanitize_config: %s. Error: %s", sanitize_config_str, e)
+                    sanitize_config_dict = {} # Use empty dict as fallback
+
+                if enable_sanitize:
+                    logging.info("Sanitizing data...")
+                    df = sanitize_data(df, sanitize_config_dict)
+
+                # Filter
+                enable_filter = args.enable_filter or os.getenv("ENABLE_FILTER", cfg.get("enable_filter", False))
+                filter_config_str = args.filter_config or os.getenv("FILTER_CONFIG", cfg.get("filter_config", "{}"))
+                try:
+                    filter_config_dict = json.loads(filter_config_str)
+                except json.JSONDecodeError as e:
+                    logging.error("Invalid JSON for filter_config: %s. Error: %s", filter_config_str, e)
+                    filter_config_dict = {} # Use empty dict as fallback
+
+                if enable_filter:
+                    logging.info("Filtering data...")
+                    df = filter_data(df, filter_config_dict)
+
+                # Aggregate
+                enable_aggregate = args.enable_aggregate or os.getenv("ENABLE_AGGREGATE", cfg.get("enable_aggregate", False))
+                aggregate_config_str = args.aggregate_config or os.getenv("AGGREGATE_CONFIG", cfg.get("aggregate_config", "{}"))
+                try:
+                    aggregate_config_dict = json.loads(aggregate_config_str)
+                except json.JSONDecodeError as e:
+                    logging.error("Invalid JSON for aggregate_config: %s. Error: %s", aggregate_config_str, e)
+                    aggregate_config_dict = {} # Use empty dict as fallback
+                
+                if enable_aggregate:
+                    logging.info("Aggregating data...")
+                    df = aggregate_data(df, aggregate_config_dict)
+                
                 # Append to Delta table
                 logging.info("Appending %d new records to Delta table %s", len(df), storage_uri)
                 # Pass AWS_REGION via storage_options if set

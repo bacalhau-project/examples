@@ -10,16 +10,22 @@ This repository implements a continuous data pipeline that:
 
 Key components:
 
-- **Python Uploader**: A script (e.g., `uploader/sqlite_to_delta_uploader.py`) designed to be run with `uv run`. It:
+- **Python Uploader**: A script (`uploader/sqlite_to_delta_uploader.py`) designed to be run with `uv run`. It:
   - Can automatically detect the SQLite table and its timestamp column via schema introspection.
   - Tracks the last-upload timestamp using a state file to ensure incremental processing.
+  - Can perform optional local data processing (sanitization, filtering, aggregation) before upload.
   - Appends new rows directly to a specified Delta Lake table using the `deltalake` Python library.
+- **Local Data Processing**: The uploader includes placeholder functions for common data processing tasks:
+    - `sanitize_data`: For cleaning or transforming data.
+    - `filter_data`: For selecting specific rows based on criteria.
+    - `aggregate_data`: For performing aggregations (e.g., sum, average) over data.
+    These functions can be enabled and configured via YAML, environment variables, or CLI arguments. Currently, they are placeholders and would need to be extended with specific logic for actual data manipulation.
 - **Containerization**: A `uploader/Dockerfile` providing a multi-stage build that:
 
   - Caches Python dependencies efficiently in a builder stage.
   - Produces a minimal runtime image for the uploader.
 
-- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (S3 or ADSL), state directory, and upload interval.
+- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, the target Delta Lake table URI (`storage_uri` for S3, ADLS, or local paths), state directory, upload interval, and local processing steps.
 - **Launcher Script**: An example `start-uploader.sh` shows how to run the uploader container, typically mounting the configuration file and necessary data volumes.
 - **Databricks Integration**: Includes SQL snippets for setting up Delta Lake tables and examples for using the Databricks CLI (via Docker) for management tasks.
 
@@ -40,7 +46,7 @@ For the detailed architecture, migration checklist, and design rationale, please
 ```text
 ./
 ├── uploader/                      # Python uploader and Dockerfile
-│   └── upload_sqlite_to_s3.py     # UV-run script for incremental export
+│   └── sqlite_to_delta_uploader.py # UV-run script for incremental export
 │   └── Dockerfile                 # Multi-stage UV-based image
 ├── uploader-config.yaml.example   # Example configuration
 ├── start-uploader.sh              # Shell wrapper to launch uploader container
@@ -67,21 +73,48 @@ Copy `uploader-config.yaml.example` to `uploader-config.yaml` and customize:
 
 ```yaml
 # Path inside container to the SQLite DB
-sqlite: "/root/sensor.db"
+sqlite: "/data/sensor.db" # Example path
 
-# Delta Lake table URI (e.g., S3 path or ADLS path)
-table_path: "s3://YOUR_S3_BUCKET_NAME/delta/sensor_readings"
+# Delta Lake table URI (e.g., S3, ADLS, or local file path like file:///data/delta/sensor_readings)
+# This was previously referred to as table_path.
+storage_uri: "s3://<your-bucket>/delta/bacalhau_results/sensor_readings"
+
+# (Optional) Name of the SQLite table to read from. Auto-detected if not provided.
+# table: "sensor_data"
+# (Optional) Name of the timestamp column. Auto-detected if not provided.
+# timestamp_col: "event_timestamp"
 
 # Directory inside container for state file (last upload timestamp)
-state_dir: "/root"
+state_dir: "/state" # Example path
 
 # Upload interval in seconds
 interval: 300
+
+# --- Local Data Processing ---
+# Enable or disable local data processing steps. Configurations are JSON strings.
+enable_sanitize: false
+sanitize_config: "{}" # Example: '{\"column_to_clean\": \"pattern_to_remove\"}'
+
+enable_filter: false
+filter_config: "{}"   # Example: '{\"numeric_column\": {\">\": 100}}'
+
+enable_aggregate: false
+aggregate_config: "{}" # Example: '{\"group_by\": [\"category\"], \"aggregations\": {\"value\": \"sum\"}}'
 ```
 
-You can override any value with environment variables:
+You can override any value with environment variables (CLI arguments also take precedence):
 
-- `SQLITE_PATH`, `TABLE_PATH`, `STATE_DIR`, `UPLOAD_INTERVAL`
+- `SQLITE_PATH` (overrides `sqlite`)
+- `STORAGE_URI` (overrides `storage_uri`, previously `TABLE_PATH`)
+- `TABLE_NAME` (overrides `table`)
+- `TIMESTAMP_COL` (overrides `timestamp_col`)
+- `STATE_DIR` (overrides `state_dir`)
+- `UPLOAD_INTERVAL` (overrides `interval`)
+- `ENABLE_SANITIZE`, `SANITIZE_CONFIG` (JSON string)
+- `ENABLE_FILTER`, `FILTER_CONFIG` (JSON string)
+- `ENABLE_AGGREGATE`, `AGGREGATE_CONFIG` (JSON string)
+
+Command-line arguments (e.g., `--sqlite`, `--storage-uri`, `--enable-sanitize`, `--sanitize-config`) will override both environment variables and YAML configuration.
 
 ---
 

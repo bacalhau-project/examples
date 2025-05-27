@@ -2,17 +2,50 @@
 # Configuration for the continuous SQLite→Delta Lake uploader
 #
 # `sqlite`: Path inside the container to the mounted SQLite database file.
-# `table_path`: URI of the Delta Lake table (e.g., on S3 or ADLS) to append to.
+# `storage_uri`: URI of the Delta Lake table (e.g., on S3 or ADLS or local file://) to append to.
 # `state_dir`: Path inside the container to persist last-upload state file.
 # `interval`: Seconds between upload cycles.
+# `table`: (Optional) Name of the SQLite table to read from. If not provided, attempts to auto-detect.
+# `timestamp_col`: (Optional) Name of the timestamp column in the SQLite table. If not provided, attempts to auto-detect.
 
 sqlite: "/data/sensor.db"
-table_path: "s3://<your-bucket>/delta/bacalhau_results/sensor_readings"
+storage_uri: "s3://<your-bucket>/delta/bacalhau_results/sensor_readings" # Or e.g., file:///data/delta/sensor_readings
 state_dir: "/state"
 interval: 300
+# table: "sensor_data" # Example: "my_table_name"
+# timestamp_col: "event_timestamp" # Example: "created_at"
 
 # Optional overrides via environment variables:
 #   SQLITE_PATH       override `sqlite`
-#   TABLE_PATH        override `table_path`
+#   STORAGE_URI       override `storage_uri` (this replaces the old TABLE_PATH)
+#   TABLE_NAME        override `table`
+#   TIMESTAMP_COL     override `timestamp_col`
 #   STATE_DIR         override `state_dir`
 #   UPLOAD_INTERVAL   override `interval`
+
+# --- Local Data Processing ---
+# Enable or disable local data processing steps before uploading.
+# Configurations for these steps are provided as JSON strings.
+
+# Enable data sanitization (true/false)
+enable_sanitize: false
+# Configuration for sanitization (JSON string). Example: '{"column_to_clean": "pattern_to_remove"}'
+sanitize_config: "{}"
+
+# Enable data filtering (true/false)
+enable_filter: false
+# Configuration for filtering (JSON string). Example: '{"numeric_column": {">": 100}}'
+filter_config: "{}"
+
+# Enable data aggregation (true/false)
+enable_aggregate: false
+# Configuration for aggregation (JSON string). Example: '{"group_by": ["category"], "aggregations": {"value": "sum", "count": "size"}}'
+aggregate_config: "{}"
+
+# Optional overrides for processing steps via environment variables:
+#   ENABLE_SANITIZE   override `enable_sanitize` (e.g., "true" or "false")
+#   SANITIZE_CONFIG   override `sanitize_config` (JSON string)
+#   ENABLE_FILTER     override `enable_filter`
+#   FILTER_CONFIG     override `filter_config`
+#   ENABLE_AGGREGATE  override `enable_aggregate`
+#   AGGREGATE_CONFIG  override `aggregate_config`
