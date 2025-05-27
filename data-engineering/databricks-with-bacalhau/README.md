@@ -18,10 +18,12 @@ Key components:
   - Can perform optional local data processing (sanitization, filtering, aggregation) before upload.
   - Inserts new rows into a specified Databricks table using the `databricks-sql-connector` Python library.
 - **Local Data Processing**: The uploader includes placeholder functions for common data processing tasks:
-    - `sanitize_data`: For cleaning or transforming data.
-    - `filter_data`: For selecting specific rows based on criteria.
-    - `aggregate_data`: For performing aggregations (e.g., sum, average) over data.
+  - `sanitize_data`: For cleaning or transforming data.
+  - `filter_data`: For selecting specific rows based on criteria.
+  - `aggregate_data`: For performing aggregations (e.g., sum, average) over data.
+
     These functions can be enabled and configured via YAML, environment variables, or CLI arguments. Currently, they are placeholders and would need to be extended with specific logic for actual data manipulation.
+
 - **Containerization**: A `uploader/Dockerfile` providing a multi-stage build that:
 
   - Caches Python dependencies efficiently in a builder stage.
@@ -61,12 +63,10 @@ For the original (now outdated) architecture involving Delta Lake as an intermed
 ## Environment Variables
 
 ```bash
-S3_BUCKET_NAME=YOUR_S3_BUCKET_NAME
-AWS_REGION=YOUR_AWS_REGION
-AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
 DATABRICKS_HOST=https://YOUR_DATABRICKS_HOST
 DATABRICKS_TOKEN=YOUR_DATABRICKS_TOKEN
+DATABRICKS_CATALOG=YOUR_DATABRICKS_CATALOG
+DATABRICKS_SCHEMA=YOUR_DATABRICKS_SCHEMA
 ```
 
 ## Configuration
@@ -76,16 +76,16 @@ Copy `uploader-config.yaml.example` to `uploader-config.yaml` and customize:
 ```yaml
 # --- Databricks Connection Parameters ---
 # It is STRONGLY recommended to use environment variables for sensitive data like tokens.
-databricks_host: "your-workspace.azuredatabricks.net"
-databricks_http_path: "/sql/1.0/warehouses/your_sql_warehouse_http_path"
-# databricks_token: "dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Prefer DATABRICKS_TOKEN env var
-databricks_database: "your_database"
-databricks_table: "your_table"
+databricks_host: "abc-12345678-abcd.cloud.databricks.com"
+databricks_token: "dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+databricks_catalog: "bacalhau_catalog"
+databricks_schema: "sensor_data"
+databricks_table: "sensor_readings"
 
 # --- SQLite Source Parameters ---
 sqlite_path: "/data/sensor.db"
 sqlite_table_name: "sensor_data" # Or auto-detected if commented out
-# timestamp_col: "event_timestamp" # Or auto-detected if commented out
+timestamp_col: "timestamp" # Or auto-detected if commented out
 
 # --- Uploader Control Parameters ---
 state_dir: "/state"
@@ -111,9 +111,9 @@ Key environment variables for overriding configuration (CLI arguments also take 
 - `STATE_DIR` (overrides `state_dir` in YAML)
 - `UPLOAD_INTERVAL` (overrides `interval` in YAML)
 - `DATABRICKS_HOST`
-- `DATABRICKS_HTTP_PATH`
 - `DATABRICKS_TOKEN` (**Recommended method for providing the token**)
-- `DATABRICKS_DATABASE`
+- `DATABRICKS_CATALOG`
+- `DATABRICKS_SCHEMA`
 - `DATABRICKS_TABLE`
 - `ENABLE_SANITIZE`, `SANITIZE_CONFIG` (JSON string for env var)
 - `ENABLE_FILTER`, `FILTER_CONFIG` (JSON string for env var)
@@ -184,6 +184,7 @@ Before running the uploader, you need to ensure the target database and table ex
 
 **1. Create Database (if it doesn't exist):**
 Use the Databricks SQL Editor or a notebook:
+
 ```sql
 CREATE DATABASE IF NOT EXISTS your_database_name;
 ```
@@ -192,6 +193,7 @@ CREATE DATABASE IF NOT EXISTS your_database_name;
 The table schema should match the columns in your SQLite database that you intend to upload. Data type mapping will be handled by the Databricks SQL connector, but ensure they are compatible (e.g., SQLite `TEXT` to Databricks `STRING`, SQLite `REAL` to Databricks `DOUBLE` or `FLOAT`, SQLite `INTEGER` to Databricks `INT` or `BIGINT`).
 
 Example DDL for a table (execute in Databricks SQL Editor or notebook):
+
 ```sql
 CREATE TABLE IF NOT EXISTS your_database_name.your_table_name (
     id BIGINT,
@@ -203,6 +205,7 @@ CREATE TABLE IF NOT EXISTS your_database_name.your_table_name (
     PRIMARY KEY (id) -- Optional: Define primary keys if applicable
 );
 ```
+
 **Note:** The uploader script itself does not create the table or schema. You are responsible for defining the target table structure in Databricks.
 
 ## Managing Tables via Databricks CLI (Docker)
