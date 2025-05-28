@@ -11,7 +11,7 @@ This repository implements a continuous data pipeline that:
 
 Key components:
 
-- **Python Uploader**: A script (`uploader/sqlite_to_databricks_uploader.py`) designed to be run with `uv run`. It:
+- **Python Uploader**: A script (`sqlite_to_databricks_uploader.py`) designed to be run with `uv run`. It:
   - Connects directly to a Databricks SQL warehouse or All-Purpose Cluster.
   - Can automatically detect the source SQLite table and its timestamp column via schema introspection.
   - Tracks the last-upload timestamp using a state file to ensure incremental processing.
@@ -22,7 +22,7 @@ Key components:
     - `filter_data`: For selecting specific rows based on criteria.
     - `aggregate_data`: For performing aggregations (e.g., sum, average) over data.
     These functions can be enabled and configured via YAML, environment variables, or CLI arguments. Currently, they are placeholders and would need to be extended with specific logic for actual data manipulation.
-- **Containerization**: A `uploader/Dockerfile` providing a multi-stage build that:
+- **Containerization**: A `Dockerfile` (now in the project root) providing a multi-stage build that:
 
   - Caches Python dependencies efficiently in a builder stage.
   - Produces a minimal runtime image for the uploader.
@@ -47,9 +47,10 @@ For the original (now outdated) architecture involving Delta Lake as an intermed
 
 ```text
 ./
-├── uploader/                      # Python uploader and Dockerfile
-│   └── sqlite_to_databricks_uploader.py # UV-run script for incremental export
-│   └── Dockerfile                 # Multi-stage UV-based image
+├── sqlite_to_databricks_uploader.py # UV-run script for incremental export
+├── Dockerfile                 # Multi-stage UV-based image for the uploader
+├── build.sh                   # Script to build the uploader Docker image
+├── latest-tag                 # File containing the latest Docker image tag
 ├── uploader-config.yaml.example   # Example configuration
 ├── start-uploader.sh              # Shell wrapper to launch uploader container
 ├── REARCHITECTURE.md               # Re-architecture roadmap and checklist
@@ -214,12 +215,12 @@ sqlite_table_name: "sensor_data" # Or auto-detected if commented out
 Command-line arguments offer the highest level of precedence and are useful for overriding specific settings for a single execution or for scripting. To see a full list of available arguments and their descriptions, run:
 
 ```bash
-python uploader/sqlite_to_databricks_uploader.py --help
+python sqlite_to_databricks_uploader.py --help
 ```
 
 For instance, to specify a different SQLite database file and run the uploader only once, you could use:
 ```bash
-python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --sqlite /path/to/another/sensor.db --once
+python sqlite_to_databricks_uploader.py --config uploader-config.yaml --sqlite /path/to/another/sensor.db --once
 ```
 This command uses the settings from `uploader-config.yaml` but overrides the SQLite path and ensures the script runs only one cycle.
 
@@ -227,8 +228,13 @@ This command uses the settings from `uploader-config.yaml` but overrides the SQL
 
 ## Build the Uploader Container
 
+The `build.sh` script (now in the project root) simplifies building the Docker image. It determines the image tag based on Git context or uses the content of the `latest-tag` file.
 ```bash
-docker build -t uploader-image:latest uploader
+./build.sh
+```
+Alternatively, you can build manually using `docker build`:
+```bash
+docker build -t uploader-image:latest .
 ```
 
 ---
@@ -258,7 +264,7 @@ The uploader script includes a `--run-query` CLI flag that allows you to directl
 To get general information about your Databricks table and database, use `"INFO"` as the query string:
 
 ```bash
-python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "INFO"
+python sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "INFO"
 ```
 
 This will display:
@@ -272,7 +278,7 @@ You can execute SQL queries directly against your Databricks table. Ensure your 
 
 Example:
 ```bash
-python uploader/sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM your_database.your_table LIMIT 10"
+python sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM your_database.your_table LIMIT 10"
 ```
 This will display the first 10 rows of `your_database.your_table`.
 
