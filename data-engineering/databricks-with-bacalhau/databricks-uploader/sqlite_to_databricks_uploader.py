@@ -7,7 +7,6 @@
 #     "pyyaml>=6.0",
 #     "databricks-sql-connector>=2.0.0"
 # ]
-# ///
 """
 Continuously export new sensor log entries from a SQLite database and append them to a Databricks table.
 Parameters and paths are read from a YAML config file, with optional environment variable overrides.
@@ -221,6 +220,11 @@ def main():
                 server_hostname=databricks_host,
                 http_path=databricks_http_path,
                 access_token=databricks_token,
+                # Increase timeout to 1 hour for large operations
+                # Default is 900 seconds (15 minutes) which can be too short for large datasets
+                _retry_timeout_seconds=3600,
+                # Also increase the socket timeout
+                _socket_timeout_seconds=1800,
             )
             cursor_db_query = conn_db_query.cursor()
             logging.info(
@@ -411,7 +415,7 @@ def main():
             sql = f"SELECT * FROM {sqlite_table_name} WHERE {timestamp_field} > ? ORDER BY {timestamp_field}"
             conn_sqlite_data = sqlite3.connect(str(sqlite_path))
             df = pd.read_sql_query(sql, conn_sqlite_data, params=[last_ts.isoformat()])
-            conn.close()
+            conn_sqlite_data.close()
             if df.empty:
                 logging.info("No new records since %s", last_ts)
             else:
@@ -561,6 +565,11 @@ def main():
                             server_hostname=databricks_host,
                             http_path=databricks_http_path,
                             access_token=databricks_token,
+                            # Increase timeout to 1 hour for large operations
+                            # Default is 900 seconds (15 minutes) which can be too short for large datasets
+                            _retry_timeout_seconds=3600,
+                            # Also increase the socket timeout
+                            _socket_timeout_seconds=1800,
                         )
                         cursor_db = conn_db.cursor()
                         logging.info(

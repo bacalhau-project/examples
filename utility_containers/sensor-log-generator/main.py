@@ -23,7 +23,6 @@ import random
 import string
 import sys
 import threading
-import time
 from typing import Any, Callable, Dict, Optional, Union
 
 import yaml
@@ -111,8 +110,9 @@ class AppConfig(BaseModel):
     # If 'valid_configurations' is a legitimate field, add it here.
     # For now, assuming it's not, Pydantic will error if it's present.
 
-    class Config:
-        extra = "forbid"  # Forbid any extra fields not defined in the model
+    model_config = {
+        "extra": "forbid"
+    }  # Forbid any extra fields not defined in the model
 
 
 # Pydantic Model for Identity (node_identity.json)
@@ -126,8 +126,7 @@ class IdentityData(BaseModel):
     model: Optional[str] = None
     firmware_version: Optional[str] = None
 
-    class Config:
-        extra = "forbid"  # Forbid any extra fields
+    model_config = {"extra": "forbid"}  # Forbid any extra fields
 
 
 def load_config(config_path: str) -> Dict:

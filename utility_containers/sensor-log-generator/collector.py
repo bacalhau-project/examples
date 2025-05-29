@@ -20,9 +20,11 @@ def setup_logging():
 
 def collect_from_database(db_path, central_url, batch_size=100):
     """Collect data from a single database and send to central server."""
+    conn = None  # Initialize conn to None
     try:
         # Connect to database
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=WAL;")
         conn.row_factory = sqlite3.Row  # Return rows as dictionaries
         cursor = conn.cursor()
 
