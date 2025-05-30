@@ -20,9 +20,16 @@ This container/project was born out of a need to create realistic, high-quality 
 
 ### Run with Docker (recommended):
 ```bash
-# Pull and run the latest version
+# Using docker compose (recommended)
+docker compose up
+
+# Or run directly with docker
 docker run -v ./logs:/var/log/app -v ./config:/app/config \
-  docker.io/bacalhauproject/access-log-generator:latest
+  -e LOG_GENERATOR_CONFIG_PATH=/app/config/docker-config.yaml \
+  ghcr.io/bacalhau-project/access-log-generator:latest
+
+# Run in detached mode
+docker compose up -d
 ```
 
 ### Run directly with Python (3.12+):
