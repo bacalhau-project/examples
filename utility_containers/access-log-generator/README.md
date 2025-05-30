@@ -27,12 +27,20 @@ docker run -v ./logs:/var/log/app -v ./config:/app/config \
 
 ### Run directly with Python (3.12+):
 ```bash
-# This script uses inline dependencies via uv
-./access-log-generator.py log_generator_config.yaml
+# Use the default config (writes to ./logs directory)
+./access-log-generator.py config/config.yaml
 
-# Or with explicit Python
-python access-log-generator.py log_generator_config.yaml
+# Or run without specifying config (uses default path)
+./access-log-generator.py
+
+# Or use the sample config with extended options
+python access-log-generator.py config/sample_config.yaml
 ```
+
+### Available Config Files:
+- `config/config.yaml` - Default config for local development (writes to ./logs)
+- `config/docker-config.yaml` - Config for Docker containers (writes to /var/log/app)
+- `config/sample_config.yaml` - Example with extended options and documentation
 
 ### Build the container:
 ```bash
@@ -113,7 +121,7 @@ traffic_patterns:
 The generator creates three types of logs:
 
 ### 1. Access Log (`access.log`)
-NCNA Combined Log Format compatible with Apache/Nginx:
+NCSA Combined Log Format compatible with Apache/Nginx:
 ```
 192.168.1.100 - john_doe [10/Oct/2024:13:55:36 +0000] "GET /products/laptop HTTP/1.1" 200 5432 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 ```

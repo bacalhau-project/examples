@@ -619,7 +619,8 @@ class AccessLogGenerator:
         """Create a single log entry in NCSA Common Log Format"""
         # Ensure timezone is present by using UTC if needed
         now = datetime.now(pytz.UTC)
-        timestamp = now.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        # NCSA format: [dd/MMM/yyyy:HH:mm:ss ±HHMM]
+        timestamp = now.strftime("%d/%b/%Y:%H:%M:%S %z")
         size = random.randint(100, 5000)
 
         if path == "/search" and "?" not in path:

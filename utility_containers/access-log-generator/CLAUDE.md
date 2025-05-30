@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Running the Generator
 ```bash
-# Run with default config
-./access-log-generator.py log_generator_config.yaml
+# Run with default config (config/config.yaml)
+./access-log-generator.py
 
-# Run with custom config
-python access-log-generator.py config/sample_config.yaml
+# Run with explicit config
+python access-log-generator.py config/config.yaml
 
 # Run with Docker
 docker run -v ./logs:/var/log/app -v ./config:/app/config \
