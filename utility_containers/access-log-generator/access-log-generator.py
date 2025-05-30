@@ -1385,18 +1385,30 @@ def main():
     # Combine pre-log messages with those from load_config
     all_initial_messages = pre_log_messages + messages_from_load_config
 
-    # Override log directory if specified -- this must happen *after* load_config has populated config['output']
+    # Determine the log directory override
+    log_dir_override_value = None
+    override_source = None
+
     if args.log_dir_override:
-        # This message will be logged after logger setup
+        log_dir_override_value = args.log_dir_override
+        override_source = "command-line argument"
+    else:
+        env_log_dir_override = os.environ.get("LOG_DIR_OVERRIDE")
+        if env_log_dir_override:
+            log_dir_override_value = env_log_dir_override
+            override_source = "environment variable LOG_DIR_OVERRIDE"
+
+    # Override log directory if specified by CLI or environment variable
+    if log_dir_override_value:
         log_override_message = (
             "info",
-            f"Overriding log directory with: {args.log_dir_override}",
+            f"Overriding log directory with: {log_dir_override_value} (from {override_source})",
         )
         all_initial_messages.append(log_override_message)
         # Ensure 'output' key exists, though load_config should have created it or errored.
         if "output" not in config:
             config["output"] = {}
-        config["output"]["directory"] = args.log_dir_override
+        config["output"]["directory"] = log_dir_override_value
 
     # Initialize logging with possibly overridden directory and rotation settings
     loggers = setup_logging(Path(config["output"]["directory"]), config)
