@@ -1,3 +1,5 @@
 **/*.log
 **/*.gz
 config/config.yaml
+# SpecStory explanation file
+.specstory/.what-is-this.md

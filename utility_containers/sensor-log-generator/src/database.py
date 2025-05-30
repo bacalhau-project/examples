@@ -11,6 +11,38 @@ from functools import wraps
 from typing import Any, Dict, Generator, List, Optional
 
 import psutil
+from pydantic import BaseModel, Field
+
+
+# Define a Pydantic model for the sensor reading schema
+class SensorReadingSchema(BaseModel):
+    timestamp: str  # ISO 8601 format
+    sensor_id: str
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    pressure: Optional[float] = None
+    vibration: Optional[float] = None
+    voltage: Optional[float] = None
+    status_code: Optional[int] = None
+    anomaly_flag: Optional[bool] = False
+    anomaly_type: Optional[str] = None
+    firmware_version: Optional[str] = None
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    original_timezone: Optional[str] = (
+        None  # UTC offset string like "+00:00" or "-04:00"
+    )
+    synced: Optional[bool] = False
+
+    # Example for future: Add custom validation if needed
+    # @validator('temperature')
+    # def temperature_must_be_realistic(cls, v):
+    #     if v is not None and (v < -100 or v > 200): # Example range
+    #         raise ValueError('temperature must be realistic')
+    #     return v
 
 
 def retry_on_error(max_retries=3, retry_delay=1.0):
@@ -301,40 +333,85 @@ class SensorDatabase:
             self._log_database_debug_info()
 
     def _init_db(self):
-        """Initialize the database schema."""
+        """Initialize the database schema based on SensorReadingSchema."""
         try:
             with self.conn_manager.get_cursor() as cursor:
-                # Create sensor_readings table
-                cursor.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS sensor_readings (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        timestamp TEXT NOT NULL,
-                        sensor_id TEXT NOT NULL,
-                        temperature REAL,
-                        humidity REAL,
-                        pressure REAL,
-                        vibration REAL,
-                        voltage REAL,
-                        status_code INTEGER,
-                        anomaly_flag INTEGER,
-                        anomaly_type TEXT,
-                        firmware_version TEXT,
-                        model TEXT,
-                        manufacturer TEXT,
-                        location TEXT,
-                        latitude REAL,
-                        longitude REAL,
-                        original_timezone TEXT,
-                        synced INTEGER DEFAULT 0
+                # Dynamically create the table based on the Pydantic model
+                # Base columns
+                columns = ["id INTEGER PRIMARY KEY AUTOINCREMENT"]
+                # Map Pydantic types to SQLite types
+                type_mapping = {
+                    "str": "TEXT",
+                    "float": "REAL",
+                    "int": "INTEGER",
+                    "bool": "INTEGER",  # SQLite uses 0 and 1 for booleans
+                    # datetime is stored as TEXT (ISO format)
+                }
+
+                for field_name, field in SensorReadingSchema.model_fields.items():
+                    # Determine the Python type annotation
+                    python_type = None
+                    if hasattr(field.annotation, "__args__"):  # Handles Optional[type]
+                        # Get the first type argument from Optional[type]
+                        # Filter out NoneType for Optional fields
+                        field_types = [
+                            arg
+                            for arg in field.annotation.__args__
+                            if arg is not type(None)
+                        ]
+                        if field_types:
+                            python_type = field_types[0]
+                    else:
+                        python_type = field.annotation
+
+                    sqlite_type = "TEXT"  # Default to TEXT if type is complex or not directly mappable
+                    if python_type is str:
+                        sqlite_type = type_mapping["str"]
+                    elif python_type is float:
+                        sqlite_type = type_mapping["float"]
+                    elif python_type is int:
+                        sqlite_type = type_mapping["int"]
+                    elif python_type is bool:
+                        sqlite_type = type_mapping["bool"]
+                    # Add other type mappings as needed, e.g. datetime.datetime -> TEXT
+
+                    # Handle NOT NULL for non-optional fields by checking if None is a valid type
+                    is_optional = (
+                        type(None) in getattr(field.annotation, "__args__", [])
+                        or field.default is not None
+                        or field.default_factory is not None
                     )
-                    """
+
+                    # 'timestamp' and 'sensor_id' are critical, ensure they are NOT NULL
+                    # All other fields from SensorReadingSchema are made optional at Pydantic level,
+                    # so they will be nullable in DB unless explicitly made required here.
+                    # For now, Pydantic model's optionality will translate to nullable columns.
+                    # We will rely on Pydantic for 'timestamp' and 'sensor_id' presence before this stage.
+                    # However, the original schema had them as NOT NULL, so let's keep that for the table.
+                    if field_name in ["timestamp", "sensor_id"]:
+                        columns.append(f"{field_name} {sqlite_type} NOT NULL")
+                    else:
+                        columns.append(f"{field_name} {sqlite_type}")
+
+                create_table_sql = (
+                    f"CREATE TABLE IF NOT EXISTS sensor_readings ({', '.join(columns)})"
                 )
+                if self.debug_mode:
+                    self.logger.debug(
+                        f"Executing SQL for table creation: {create_table_sql}"
+                    )
+                cursor.execute(create_table_sql)
 
                 # Create only essential indexes
-                cursor.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
-                )
+                # Check if 'timestamp' field exists in the model before creating index
+                if "timestamp" in SensorReadingSchema.model_fields:
+                    cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
+                    )
+                else:
+                    self.logger.warning(
+                        "Field 'timestamp' not found in SensorReadingSchema, skipping index creation."
+                    )
 
                 if self.debug_mode:
                     # Log the pragma settings
@@ -358,92 +435,64 @@ class SensorDatabase:
 
     def store_reading(
         self,
-        timestamp: float,
-        sensor_id: str,
-        temperature: float,
-        humidity: float,
-        pressure: float,
-        vibration: float,
-        voltage: float,
-        status_code: int,
-        anomaly_flag: bool,
-        anomaly_type: Optional[str],
-        firmware_version: str,
-        model: str,
-        manufacturer: str,
-        location: str,
-        latitude: float,
-        longitude: float,
-        timezone_str: str,  # This is now an offset string like "+00:00" or "-04:00"
+        reading_data: SensorReadingSchema,  # Accept Pydantic model instance
     ):
-        """Store a sensor reading in the database.
+        """Store a sensor reading in the database after Pydantic validation.
 
         Args:
-            timestamp: Time of the reading (Unix timestamp, assumed to be UTC)
-            sensor_id: ID of the sensor
-            temperature: Temperature reading
-            humidity: Humidity reading
-            pressure: Pressure reading
-            vibration: Vibration reading
-            voltage: Voltage reading
-            status_code: Status code
-            anomaly_flag: Whether this reading is an anomaly
-            anomaly_type: Type of anomaly if any
-            firmware_version: Firmware version of the sensor
-            model: Model of the sensor
-            manufacturer: Manufacturer of the sensor
-            location: Location of the sensor in format "City (lat, lon)"
-            latitude: Latitude of the sensor
-            longitude: Longitude of the sensor
-            timezone_str: UTC offset string (e.g., '+00:00', '-04:00') for the original reading time.
+            reading_data: An instance of SensorReadingSchema containing the reading.
         """
         if self.debug_mode:
-            self.logger.debug(f"Storing reading for sensor {sensor_id}")
+            self.logger.debug(
+                f"Attempting to store reading for sensor {reading_data.sensor_id}"
+            )
             self.logger.debug(f"Thread ID: {threading.get_ident()}")
             self.logger.debug(f"Process ID: {os.getpid()}")
 
         try:
-            # Convert Unix timestamp to a UTC-aware datetime object
-            # Then format as ISO 8601 string with milliseconds and timezone info
-            utc_datetime = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-            iso_timestamp = utc_datetime.isoformat(timespec="milliseconds")
+            # Pydantic model validation has already occurred by the time this method is called
+            # with a SensorReadingSchema instance.
+
+            # Convert model to a dictionary suitable for database insertion
+            # We need to ensure all fields defined in the schema are present for the SQL query,
+            # using their default values from the Pydantic model if not explicitly set.
+            data_for_db = reading_data.model_dump(
+                exclude_none=False
+            )  # include None for fields not set
+
+            # Ensure boolean values are converted to integers for SQLite
+            if "anomaly_flag" in data_for_db and isinstance(
+                data_for_db["anomaly_flag"], bool
+            ):
+                data_for_db["anomaly_flag"] = int(data_for_db["anomaly_flag"])
+            if "synced" in data_for_db and isinstance(data_for_db["synced"], bool):
+                data_for_db["synced"] = int(data_for_db["synced"])
+
+            # Dynamically generate column names and placeholders
+            # The order of fields from model_fields is preserved in model_dump in Python 3.7+
+            columns = list(SensorReadingSchema.model_fields.keys())
+            placeholders = ", ".join(["?"] * len(columns))
+            column_names = ", ".join(columns)
+
+            query = f"""
+                INSERT INTO sensor_readings ({column_names})
+                VALUES ({placeholders})
+            """
+
+            # Get values in the correct order
+            params = tuple(data_for_db[col] for col in columns)
 
             if self.debug_mode:
                 self.logger.debug("Storing reading through connection manager")
-
-            query = """
-                INSERT INTO sensor_readings (
-                    timestamp, sensor_id, temperature, humidity, pressure, vibration, voltage,
-                    status_code, anomaly_flag, anomaly_type, firmware_version,
-                    model, manufacturer, location, latitude, longitude, original_timezone, synced
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-
-            params = (
-                iso_timestamp,
-                sensor_id,
-                temperature,
-                humidity,
-                pressure,
-                vibration,
-                voltage,
-                status_code,
-                int(anomaly_flag),
-                anomaly_type,
-                firmware_version,
-                model,
-                manufacturer,
-                location,
-                latitude,
-                longitude,
-                timezone_str,  # Store the original timezone string
-                0,  # synced = False
-            )
+                self.logger.debug(f"Query: {query}")
+                self.logger.debug(f"Params: {params}")
 
             self.conn_manager.execute_write(query, params)
 
             if self.debug_mode:
-                self.logger.debug(f"Successfully stored reading for sensor {sensor_id}")
+                self.logger.debug(
+                    f"Successfully stored reading for sensor {reading_data.sensor_id}"
+                )
 
         except sqlite3.OperationalError as e:
             error_msg = str(e)

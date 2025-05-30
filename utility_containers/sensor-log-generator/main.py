@@ -15,6 +15,7 @@
 # ]
 # ///
 
+import argparse
 import json
 import logging
 import math
@@ -29,6 +30,7 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError
 
 from src.config import ConfigManager
+from src.database import SensorReadingSchema
 from src.location import LocationGenerator
 from src.simulator import SensorSimulator
 
@@ -545,23 +547,61 @@ def file_watcher_thread(
 
 
 def main():
-    """Main entry point for the sensor simulator."""
-    # If the --exit flag is provided, exit after the simulator is run
-    # This is a simple check, consider proper argparse for CLI flags
-    if "--exit" in sys.argv:
-        # Logging isn't set up yet here.
-        print("Received --exit flag. Exiting script early.")
+    """Main function to run the sensor simulator."""
+
+    # Argument parsing
+    parser = argparse.ArgumentParser(description="Sensor Log Generator")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config/config.yaml",
+        help="Path to the configuration file (default: config/config.yaml)",
+    )
+    parser.add_argument(
+        "--identity",
+        type=str,
+        default="config/identity.json",
+        help="Path to the identity file (default: config/identity.json)",
+    )
+    parser.add_argument(
+        "--output-schema",
+        action="store_true",
+        help="Output the database schema as JSON and exit.",
+    )
+
+    args = parser.parse_args()
+
+    if args.output_schema:
+        # Generate schema from Pydantic model
+        schema_dict = SensorReadingSchema.model_json_schema()
+        schema_json = json.dumps(schema_dict, indent=2)
+        print(schema_json)
         sys.exit(0)
 
-    config_file_path = os.environ.get("CONFIG_FILE")
-    identity_file_path = os.environ.get("IDENTITY_FILE")
+    # Determine configuration file paths, prioritizing environment variables
+    config_file_path = os.environ.get("CONFIG_FILE") or args.config
+    identity_file_path = os.environ.get("IDENTITY_FILE") or args.identity
+
+    # Set up basic logging first (before config is fully loaded)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
     if not config_file_path:
-        print("Error: CONFIG_FILE environment variable is not set", file=sys.stderr)
+        # This condition might be less likely to be hit if args.config has a default
+        print(
+            "Error: Configuration file path is not set via --config or CONFIG_FILE env var.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if not identity_file_path:
-        print("Error: IDENTITY_FILE environment variable is not set", file=sys.stderr)
+        # This condition might be less likely to be hit if args.identity has a default
+        print(
+            "Error: Identity file path is not set via --identity or IDENTITY_FILE env var.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if not os.path.isfile(config_file_path):

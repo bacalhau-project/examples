@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Principle of Minimal Change
+
+When implementing features or fixing bugs, ensure that modifications are as small and targeted as possible. Avoid unnecessary refactoring or scope creep beyond the requested change. Each edit should be justifiable and directly contribute to the task at hand.

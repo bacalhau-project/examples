@@ -9,10 +9,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import numpy as np
 import psutil
+from pydantic import ValidationError
 
 from .anomaly import AnomalyGenerator
 from .config import ConfigManager
-from .database import SensorDatabase
+from .database import SensorDatabase, SensorReadingSchema
 from .enums import FirmwareVersion, Manufacturer, Model
 from .monitor import MonitoringServer
 
@@ -441,36 +442,59 @@ class SensorSimulator:
             anomaly_flag = reading.get("anomaly_flag", False)
             anomaly_type = reading.get("anomaly_type", None)
 
-            # Add status code for anomalies
-            if anomaly_flag:
-                reading["status_code"] = 1  # 1 = anomaly
-
             # Get the current timestamp and the IANA timezone from the simulator's identity
-            current_timestamp = time.time()
-            # iana_timezone_name = self.timezone # This is from self.identity.get("timezone") # No longer directly used for db storage
+            current_timestamp_unix = time.time()
+            # Convert Unix timestamp to ISO 8601 format for Pydantic model
+            iso_timestamp = datetime.fromtimestamp(
+                current_timestamp_unix, tz=timezone.utc
+            ).isoformat(timespec="milliseconds")
 
-            # Store in database with sensor identity fields and timezone
-            self.database.store_reading(
-                timestamp=current_timestamp,
-                sensor_id=reading["sensor_id"],
-                temperature=reading["temperature"],
-                humidity=reading.get("humidity"),
-                pressure=reading.get("pressure"),
-                vibration=reading["vibration"],
-                voltage=reading["voltage"],
-                status_code=reading["status_code"],
-                anomaly_flag=anomaly_flag,
-                anomaly_type=anomaly_type,
-                firmware_version=self.identity.get("firmware_version"),
-                model=self.identity.get("model"),
-                manufacturer=self.identity.get("manufacturer"),
-                location=self.city_name,  # Pass city name
-                latitude=self.latitude,
-                longitude=self.longitude,  # Now consistently from self.longitude
-                timezone_str=self.timezone_offset_str,  # Pass the stored offset string
-            )
+            # Prepare data for Pydantic model
+            reading_data_for_schema = {
+                "timestamp": iso_timestamp,
+                "sensor_id": reading["sensor_id"],
+                "temperature": reading.get("temperature"),
+                "humidity": reading.get("humidity"),
+                "pressure": reading.get("pressure"),
+                "vibration": reading.get("vibration"),
+                "voltage": reading.get("voltage"),
+                "status_code": reading.get("status_code", 0 if not anomaly_flag else 1),
+                "anomaly_flag": anomaly_flag,
+                "anomaly_type": anomaly_type,
+                "firmware_version": self.identity.get("firmware_version"),
+                "model": self.identity.get("model"),
+                "manufacturer": self.identity.get("manufacturer"),
+                "location": self.city_name,  # Pass city name
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+                "original_timezone": self.timezone_offset_str,  # Pass the stored offset string
+                "synced": False,  # Default value for new readings
+            }
+
+            # Create and validate the reading with Pydantic model
+            try:
+                sensor_reading_instance = SensorReadingSchema(**reading_data_for_schema)
+            except ValidationError as ve:
+                logger.error(
+                    f"Pydantic validation error while processing reading: {ve}"
+                )
+                # Optionally, handle this error more gracefully, e.g., by storing
+                # the raw data in a separate "error" table or logging more details.
+                self.error_count += 1
+                self.consecutive_errors += 1
+                # Check for max consecutive errors even for validation failures
+                if self.consecutive_errors >= self.max_consecutive_errors:
+                    logger.critical(
+                        f"Too many consecutive Pydantic validation errors ({self.consecutive_errors}). Stopping simulator."
+                    )
+                    return False  # Stop the simulator
+                return False  # Indicate failure for this reading
+
+            # Store in database using the Pydantic model instance
+            self.database.store_reading(sensor_reading_instance)
+
             logger.debug(
-                f"Storing reading with timezone_offset_str: '{self.timezone_offset_str}'"
+                f"Storing reading with timezone_offset_str: '{self.timezone_offset_str}' via Pydantic model"
             )
 
             self.readings_count += 1

@@ -40,10 +40,6 @@ def parse_args():
     p.add_argument("--sqlite", help="Path to SQLite DB")
     # --storage-uri removed
     p.add_argument("--state-dir", help="Directory for last-upload state file")
-    p.add_argument(
-        "--interval", type=int, help="Seconds between cycles (ignored with --once)"
-    )
-    p.add_argument("--once", action="store_true", help="Upload once and exit (no loop)")
     p.add_argument("--table", help="Override SQLite table name")
     p.add_argument("--timestamp-col", help="Override timestamp column")
     # New arguments for data processing
@@ -93,6 +89,25 @@ def parse_args():
         default=None,
         help="Run a query against the target Databricks table and exit. "  # Updated help
         "Use 'INFO' for table details or a SQL-like 'SELECT * ... [LIMIT N]' query.",
+    )
+    p.add_argument(
+        "--interval",
+        type=int,
+        default=30,
+        help="Seconds between data check cycles (ignored with --once, default: 30)",
+    )
+    p.add_argument("--once", action="store_true", help="Upload once and exit (no loop)")
+    p.add_argument(
+        "--sqlite-batch-size",
+        type=int,
+        default=1000,
+        help="Number of records to fetch from SQLite per batch (default: 1000)",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Override sqlite_batch_size for testing (default: 0, no override)",
     )
     return p.parse_args()
 
@@ -312,11 +327,9 @@ def main():
         args.state_dir or os.getenv("STATE_DIR") or cfg.get("state_dir", "/state")
     )
     interval = int(
-        (
-            args.interval
-            if args.interval is not None
-            else os.getenv("UPLOAD_INTERVAL") or cfg.get("interval", 300)
-        )
+        args.interval  # argparse now handles default
+        or os.getenv("UPLOAD_INTERVAL")
+        or cfg.get("interval", 30)  # Default 30 from config if not from CLI/ENV
     )
     once = args.once
     # sqlite_table_name refers to the source table in SQLite
@@ -325,6 +338,11 @@ def main():
     )  # Renamed for clarity
     timestamp_col = (
         args.timestamp_col or os.getenv("TIMESTAMP_COL") or cfg.get("timestamp_col")
+    )
+    sqlite_batch_size = int(
+        args.sqlite_batch_size
+        or os.getenv("SQLITE_BATCH_SIZE")
+        or cfg.get("sqlite_batch_size", 1000)  # Default 1000
     )
 
     # Validate required parameters for normal mode
@@ -410,243 +428,381 @@ def main():
     )
     base_name = sqlite_path.stem  # Remains useful for context
     while True:
+        processed_data_in_outer_cycle = False  # Flag to track if any data was processed in the current full check cycle
         try:
-            # Read new data since last timestamp using introspected schema
-            sql = f"SELECT * FROM {sqlite_table_name} WHERE {timestamp_field} > ? ORDER BY {timestamp_field}"
-            conn_sqlite_data = sqlite3.connect(str(sqlite_path))
-            df = pd.read_sql_query(sql, conn_sqlite_data, params=[last_ts.isoformat()])
-            conn_sqlite_data.close()
-            if df.empty:
-                logging.info("No new records since %s", last_ts)
-            else:
-                # Data processing steps
-
-                # Sanitize config loading
-                enable_sanitize = args.enable_sanitize or os.getenv(
-                    "ENABLE_SANITIZE", cfg.get("enable_sanitize", False)
+            # Calculate total records in source to help diagnose issues
+            conn_count = sqlite3.connect(f"file:{str(sqlite_path)}?mode=ro", uri=True)
+            try:
+                cursor_count = conn_count.cursor()
+                cursor_count.execute(f"SELECT COUNT(*) FROM {sqlite_table_name}")
+                total_count = cursor_count.fetchone()[0]
+                cursor_count.execute(
+                    f"SELECT COUNT(*) FROM {sqlite_table_name} WHERE {timestamp_field} > ?",
+                    [last_ts.timestamp()],
                 )
-                sanitize_config_source_value = (
-                    args.sanitize_config
-                )  # CLI has priority (always string)
+                new_count = cursor_count.fetchone()[0]
+                logging.info(
+                    f"Total records in source: {total_count}, new records since {last_ts}: {new_count}"
+                )
+            except Exception as e_count:
+                logging.warning(f"Error counting records: {e_count}")
+            finally:
+                conn_count.close()
+
+            while True:  # Inner loop for batch processing
+                # Read new data since last timestamp using introspected schema
+                # Use sqlite_batch_size for the LIMIT clause, unless args.limit is set for testing
+                current_limit = sqlite_batch_size
                 if (
-                    sanitize_config_source_value == "{}"
-                ):  # Default from argparse might be "{}", check env if so
-                    sanitize_config_source_value = os.getenv(
-                        "SANITIZE_CONFIG"
-                    ) or cfg.get("sanitize_config")
-                else:  # CLI value was something other than default "{}"
-                    pass  # Keep CLI value
-
-                if sanitize_config_source_value is None:  # Not in CLI or ENV, try YAML
-                    sanitize_config_source_value = cfg.get("sanitize_config")
-
-                sanitize_config_dict = {}  # Default
-                if isinstance(sanitize_config_source_value, (dict, list)):
-                    sanitize_config_dict = sanitize_config_source_value
-                    logging.info("Loaded sanitize_config directly as structured YAML.")
-                elif (
-                    isinstance(sanitize_config_source_value, str)
-                    and sanitize_config_source_value.strip()
-                ):
-                    try:
-                        sanitize_config_dict = json.loads(sanitize_config_source_value)
-                        logging.info(
-                            "Loaded sanitize_config by parsing string (JSON expected)."
-                        )
-                    except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse sanitize_config string '{sanitize_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif sanitize_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for sanitize_config: {type(sanitize_config_source_value)}. Using default {{}}."
+                    args.limit and args.limit > 0
+                ):  # If --limit is provided for testing, it overrides sqlite_batch_size for this query
+                    current_limit = args.limit
+                    logging.info(
+                        f"Using --limit {args.limit} for current SQLite query instead of sqlite_batch_size {sqlite_batch_size}"
                     )
-                else:  # None
-                    logging.info("sanitize_config not provided. Using default {{}}.")
 
-                if enable_sanitize:
-                    logging.info("Sanitizing data...")
-                    df = sanitize_data(df, sanitize_config_dict)
-
-                # Filter config loading
-                enable_filter = args.enable_filter or os.getenv(
-                    "ENABLE_FILTER", cfg.get("enable_filter", False)
-                )
-                filter_config_source_value = args.filter_config  # CLI
-                if filter_config_source_value == "{}":  # Default from argparse
-                    filter_config_source_value = os.getenv("FILTER_CONFIG") or cfg.get(
-                        "filter_config"
-                    )
-                else:  # CLI value was not default
-                    pass
-
-                if filter_config_source_value is None:  # Not in CLI or ENV
-                    filter_config_source_value = cfg.get("filter_config")
-
-                filter_config_dict = {}  # Default
-                if isinstance(filter_config_source_value, (dict, list)):
-                    filter_config_dict = filter_config_source_value
-                    logging.info("Loaded filter_config directly as structured YAML.")
-                elif (
-                    isinstance(filter_config_source_value, str)
-                    and filter_config_source_value.strip()
-                ):
+                sql = f"SELECT * FROM {sqlite_table_name} WHERE {timestamp_field} > ? ORDER BY {timestamp_field} LIMIT {current_limit}"
+                db_uri_data = f"file:{str(sqlite_path)}?mode=ro"
+                logging.info(f"Attempting to read SQLite DB: {sqlite_path.resolve()}")
+                logging.info(f"Query: {sql}")
+                logging.info(f"Timestamp param (epoch float): {last_ts.timestamp()}")
+                conn_sqlite_data = None  # Initialize outside the loop for finally block
+                df = (
+                    pd.DataFrame()
+                )  # Initialize df for the case of read failure after retries
+                max_retries = 3
+                retry_delay_seconds = 5
+                read_successful = False
+                for attempt in range(max_retries):
                     try:
-                        filter_config_dict = json.loads(filter_config_source_value)
-                        logging.info(
-                            "Loaded filter_config by parsing string (JSON expected)."
-                        )
-                    except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse filter_config string '{filter_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif filter_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for filter_config: {type(filter_config_source_value)}. Using default {{}}."
-                    )
-                else:  # None
-                    logging.info("filter_config not provided. Using default {{}}.")
-
-                if enable_filter:
-                    logging.info("Filtering data...")
-                    df = filter_data(df, filter_config_dict)
-
-                # Aggregate config loading
-                enable_aggregate = args.enable_aggregate or os.getenv(
-                    "ENABLE_AGGREGATE", cfg.get("enable_aggregate", False)
-                )
-                aggregate_config_source_value = args.aggregate_config  # CLI
-                if aggregate_config_source_value == "{}":  # Default from argparse
-                    aggregate_config_source_value = os.getenv(
-                        "AGGREGATE_CONFIG"
-                    ) or cfg.get("aggregate_config")
-                else:  # CLI value was not default
-                    pass
-
-                if aggregate_config_source_value is None:  # Not in CLI or ENV
-                    aggregate_config_source_value = cfg.get("aggregate_config")
-
-                aggregate_config_dict = {}  # Default
-                if isinstance(aggregate_config_source_value, (dict, list)):
-                    aggregate_config_dict = aggregate_config_source_value
-                    logging.info("Loaded aggregate_config directly as structured YAML.")
-                elif (
-                    isinstance(aggregate_config_source_value, str)
-                    and aggregate_config_source_value.strip()
-                ):
-                    try:
-                        aggregate_config_dict = json.loads(
-                            aggregate_config_source_value
-                        )
-                        logging.info(
-                            "Loaded aggregate_config by parsing string (JSON expected)."
-                        )
-                    except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse aggregate_config string '{aggregate_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif aggregate_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for aggregate_config: {type(aggregate_config_source_value)}. Using default {{}}."
-                    )
-                else:  # None
-                    logging.info("aggregate_config not provided. Using default {{}}.")
-
-                if enable_aggregate:
-                    logging.info("Aggregating data...")
-                    df = aggregate_data(df, aggregate_config_dict)
-
-                upload_successful = False
-                if not df.empty:
-                    conn_db = None
-                    cursor_db = None
-                    try:
-                        conn_db = databricks.sql.connect(
-                            server_hostname=databricks_host,
-                            http_path=databricks_http_path,
-                            access_token=databricks_token,
-                            # Increase timeout to 1 hour for large operations
-                            # Default is 900 seconds (15 minutes) which can be too short for large datasets
-                            _retry_timeout_seconds=3600,
-                            # Also increase the socket timeout
-                            _socket_timeout_seconds=1800,
-                        )
-                        cursor_db = conn_db.cursor()
-                        logging.info(
-                            f"Successfully connected to Databricks: {databricks_host}"
-                        )
-
-                        # Set current database
-                        cursor_db.execute(
-                            f"USE {ParamEscaper.escape_path(databricks_database)}"
-                        )
-                        logging.info(f"Using database: {databricks_database}")
-
-                        # Prepare for batch insert
-                        table_name_qualified = f"{ParamEscaper.escape_path(databricks_database)}.{ParamEscaper.escape_path(databricks_table)}"
-
-                        columns = [
-                            ParamEscaper.escape_identifier(col) for col in df.columns
-                        ]
-                        placeholders = ", ".join(["%s"] * len(columns))
-                        insert_sql_template = f"INSERT INTO {table_name_qualified} ({', '.join(columns)}) VALUES ({placeholders})"
-
-                        data_to_insert = [
-                            tuple(row) for row in df.to_numpy()
-                        ]  # Convert DataFrame rows to tuples
-
-                        batch_size = 500  # Configurable or fixed batch size
-                        num_batches = (
-                            len(data_to_insert) + batch_size - 1
-                        ) // batch_size
-
-                        logging.info(
-                            f"Preparing to insert {len(data_to_insert)} records in {num_batches} batches of size {batch_size} into {table_name_qualified}..."
-                        )
-
-                        for i in range(num_batches):
-                            batch_data = data_to_insert[
-                                i * batch_size : (i + 1) * batch_size
-                            ]
-                            cursor_db.executemany(insert_sql_template, batch_data)
-                            logging.info(
-                                f"Inserted batch {i + 1}/{num_batches} ({len(batch_data)} records)."
+                        conn_sqlite_data = sqlite3.connect(db_uri_data, uri=True)
+                        try:
+                            conn_sqlite_data.execute("PRAGMA journal_mode=WAL;")
+                            logging.debug(
+                                f"SQLite read attempt {attempt + 1}: Set PRAGMA journal_mode=WAL."
+                            )
+                            mode_cursor = conn_sqlite_data.cursor()
+                            mode_cursor.execute("PRAGMA journal_mode;")
+                            current_mode = mode_cursor.fetchone()
+                            if current_mode:
+                                logging.debug(
+                                    f"SQLite read attempt {attempt + 1}: journal_mode is now {current_mode[0]}.)"
+                                )
+                            mode_cursor.close()
+                            conn_sqlite_data.execute("PRAGMA busy_timeout = 5000;")
+                            logging.debug(
+                                f"SQLite read attempt {attempt + 1}: Set PRAGMA busy_timeout=5000."
+                            )
+                        except sqlite3.Error as e_pragma:
+                            logging.warning(
+                                f"SQLite read attempt {attempt + 1}: Failed to set PRAGMAs: {e_pragma}"
                             )
 
-                        # conn_db.commit() # Databricks SQL Connector typically autocommits DML like INSERT
-                        logging.info(
-                            f"Successfully inserted {len(data_to_insert)} new records into Databricks table {table_name_qualified}"
+                        df = pd.read_sql_query(
+                            sql, conn_sqlite_data, params=[last_ts.timestamp()]
                         )
-                        upload_successful = True
-
-                    except Exception as e:
-                        logging.error(
-                            f"Error during Databricks upload: {e}", exc_info=True
+                        read_successful = True
+                        break  # Exit loop if successful
+                    except sqlite3.DatabaseError as e_sqlite:
+                        logging.warning(
+                            f"SQLite read attempt {attempt + 1}/{max_retries} failed: {e_sqlite}"
                         )
-                        upload_successful = False  # Ensure it's false on error
-
+                        if attempt + 1 < max_retries:
+                            logging.info(
+                                f"Retrying in {retry_delay_seconds} seconds..."
+                            )
+                            time.sleep(retry_delay_seconds)
+                        else:
+                            logging.error(
+                                f"Failed to read SQLite database after {max_retries} attempts."
+                            )
+                            # Not raising here to allow the outer loop to retry after interval if applicable
                     finally:
-                        if cursor_db:
-                            cursor_db.close()
-                        if conn_db:
-                            conn_db.close()
-                        logging.info("Databricks connection closed.")
-                else:
-                    logging.info("No new records to upload to Databricks.")
-                    upload_successful = True  # No data to upload, so treat as success for timestamp update
-
-                # Update state timestamp only if upload was successful or no data needed uploading
-                if upload_successful:
-                    last_ts = (
-                        df[timestamp_field].max() if not df.empty else last_ts
-                    )  # Keep old last_ts if df is empty
-                    with open(state_file, "w") as f:
-                        json.dump({"last_upload": last_ts.isoformat()}, f)
-                    logging.info(f"State timestamp updated to: {last_ts.isoformat()}")
-                else:
-                    logging.warning(
-                        "Upload to Databricks failed or was incomplete. State timestamp will not be updated."
+                        if conn_sqlite_data:
+                            conn_sqlite_data.close()
+                            conn_sqlite_data = None  # Ensure it's reset for next retry or if error occurs
+                if not read_successful:
+                    # If all retries failed, break the inner loop, the outer loop will retry after interval
+                    logging.error(
+                        "All SQLite read attempts failed for the current batch. Will retry entire cycle after interval."
                     )
+                    break  # Break inner loop
+                if df.empty:
+                    logging.info("No new records since %s", last_ts)
+                    break  # Break from inner batch-processing loop if no new records
+                else:
+                    processed_data_in_outer_cycle = (
+                        True  # Mark that data was processed in this cycle
+                    )
+                    # NEW: Add more detailed logging about the data we've retrieved
+                    logging.info(f"Retrieved {len(df)} records from SQLite.")
+
+                    # Data processing steps
+
+                    # Sanitize config loading
+                    enable_sanitize = args.enable_sanitize or os.getenv(
+                        "ENABLE_SANITIZE", cfg.get("enable_sanitize", False)
+                    )
+                    sanitize_config_source_value = (
+                        args.sanitize_config
+                    )  # CLI has priority (always string)
+                    if (
+                        sanitize_config_source_value == "{}"
+                    ):  # Default from argparse might be "{}", check env if so
+                        sanitize_config_source_value = os.getenv(
+                            "SANITIZE_CONFIG"
+                        ) or cfg.get("sanitize_config")
+                    else:  # CLI value was something other than default "{}"
+                        pass  # Keep CLI value
+
+                    if (
+                        sanitize_config_source_value is None
+                    ):  # Not in CLI or ENV, try YAML
+                        sanitize_config_source_value = cfg.get("sanitize_config")
+
+                    sanitize_config_dict = {}  # Default
+                    if isinstance(sanitize_config_source_value, (dict, list)):
+                        sanitize_config_dict = sanitize_config_source_value
+                        logging.info(
+                            "Loaded sanitize_config directly as structured YAML."
+                        )
+                    elif (
+                        isinstance(sanitize_config_source_value, str)
+                        and sanitize_config_source_value.strip()
+                    ):
+                        try:
+                            sanitize_config_dict = json.loads(
+                                sanitize_config_source_value
+                            )
+                            logging.info(
+                                "Loaded sanitize_config by parsing string (JSON expected)."
+                            )
+                        except json.JSONDecodeError as e:
+                            logging.warning(
+                                f"Failed to parse sanitize_config string '{sanitize_config_source_value}' as JSON: {e}. Using default {{}}."
+                            )
+                    elif sanitize_config_source_value is not None:
+                        logging.warning(
+                            f"Unexpected type for sanitize_config: {type(sanitize_config_source_value)}. Using default {{}}."
+                        )
+                    else:  # None
+                        logging.info(
+                            "sanitize_config not provided. Using default {{}}."
+                        )
+
+                    if enable_sanitize:
+                        logging.info("Sanitizing data...")
+                        df = sanitize_data(df, sanitize_config_dict)
+
+                    # Filter config loading
+                    enable_filter = args.enable_filter or os.getenv(
+                        "ENABLE_FILTER", cfg.get("enable_filter", False)
+                    )
+                    filter_config_source_value = args.filter_config  # CLI
+                    if filter_config_source_value == "{}":  # Default from argparse
+                        filter_config_source_value = os.getenv(
+                            "FILTER_CONFIG"
+                        ) or cfg.get("filter_config")
+                    else:  # CLI value was not default
+                        pass
+
+                    if filter_config_source_value is None:  # Not in CLI or ENV
+                        filter_config_source_value = cfg.get("filter_config")
+
+                    filter_config_dict = {}  # Default
+                    if isinstance(filter_config_source_value, (dict, list)):
+                        filter_config_dict = filter_config_source_value
+                        logging.info(
+                            "Loaded filter_config directly as structured YAML."
+                        )
+                    elif (
+                        isinstance(filter_config_source_value, str)
+                        and filter_config_source_value.strip()
+                    ):
+                        try:
+                            filter_config_dict = json.loads(filter_config_source_value)
+                            logging.info(
+                                "Loaded filter_config by parsing string (JSON expected)."
+                            )
+                        except json.JSONDecodeError as e:
+                            logging.warning(
+                                f"Failed to parse filter_config string '{filter_config_source_value}' as JSON: {e}. Using default {{}}."
+                            )
+                    elif filter_config_source_value is not None:
+                        logging.warning(
+                            f"Unexpected type for filter_config: {type(filter_config_source_value)}. Using default {{}}."
+                        )
+                    else:  # None
+                        logging.info("filter_config not provided. Using default {{}}.")
+
+                    if enable_filter:
+                        logging.info("Filtering data...")
+                        df = filter_data(df, filter_config_dict)
+
+                    # Aggregate config loading
+                    enable_aggregate = args.enable_aggregate or os.getenv(
+                        "ENABLE_AGGREGATE", cfg.get("enable_aggregate", False)
+                    )
+                    aggregate_config_source_value = args.aggregate_config  # CLI
+                    if aggregate_config_source_value == "{}":  # Default from argparse
+                        aggregate_config_source_value = os.getenv(
+                            "AGGREGATE_CONFIG"
+                        ) or cfg.get("aggregate_config")
+                    else:  # CLI value was not default
+                        pass
+
+                    if aggregate_config_source_value is None:  # Not in CLI or ENV
+                        aggregate_config_source_value = cfg.get("aggregate_config")
+
+                    aggregate_config_dict = {}  # Default
+                    if isinstance(aggregate_config_source_value, (dict, list)):
+                        aggregate_config_dict = aggregate_config_source_value
+                        logging.info(
+                            "Loaded aggregate_config directly as structured YAML."
+                        )
+                    elif (
+                        isinstance(aggregate_config_source_value, str)
+                        and aggregate_config_source_value.strip()
+                    ):
+                        try:
+                            aggregate_config_dict = json.loads(
+                                aggregate_config_source_value
+                            )
+                            logging.info(
+                                "Loaded aggregate_config by parsing string (JSON expected)."
+                            )
+                        except json.JSONDecodeError as e:
+                            logging.warning(
+                                f"Failed to parse aggregate_config string '{aggregate_config_source_value}' as JSON: {e}. Using default {{}}."
+                            )
+                    elif aggregate_config_source_value is not None:
+                        logging.warning(
+                            f"Unexpected type for aggregate_config: {type(aggregate_config_source_value)}. Using default {{}}."
+                        )
+                    else:  # None
+                        logging.info(
+                            "aggregate_config not provided. Using default {{}}."
+                        )
+
+                    if enable_aggregate:
+                        logging.info("Aggregating data...")
+                        df = aggregate_data(df, aggregate_config_dict)
+
+                    upload_successful = False
+                    if not df.empty:
+                        conn_db = None
+                        cursor_db = None
+                        try:
+                            conn_db = databricks.sql.connect(
+                                server_hostname=databricks_host,
+                                http_path=databricks_http_path,
+                                access_token=databricks_token,
+                                # Increase timeout to 1 hour for large operations
+                                # Default is 900 seconds (15 minutes) which can be too short for large datasets
+                                _retry_timeout_seconds=3600,
+                                # Also increase the socket timeout
+                                _socket_timeout_seconds=1800,
+                            )
+                            cursor_db = conn_db.cursor()
+                            logging.info(
+                                f"Successfully connected to Databricks: {databricks_host}"
+                            )
+
+                            # Set current database
+                            cursor_db.execute(
+                                f"USE {ParamEscaper.escape_path(databricks_database)}"
+                            )
+                            logging.info(f"Using database: {databricks_database}")
+
+                            # Prepare for batch insert
+                            table_name_qualified = f"{ParamEscaper.escape_path(databricks_database)}.{ParamEscaper.escape_path(databricks_table)}"
+
+                            columns = [
+                                ParamEscaper.escape_identifier(col)
+                                for col in df.columns
+                            ]
+                            placeholders = ", ".join(["%s"] * len(columns))
+                            insert_sql_template = f"INSERT INTO {table_name_qualified} ({', '.join(columns)}) VALUES ({placeholders})"
+
+                            data_to_insert = [
+                                tuple(row) for row in df.to_numpy()
+                            ]  # Convert DataFrame rows to tuples
+
+                            batch_size = (
+                                sqlite_batch_size  # Use the configured batch size
+                            )
+                            num_batches = (
+                                len(data_to_insert) + batch_size - 1
+                            ) // batch_size
+
+                            logging.info(
+                                f"Preparing to insert {len(data_to_insert)} records in {num_batches} batches of size {batch_size} into {table_name_qualified}..."
+                            )
+
+                            for i in range(num_batches):
+                                batch_data = data_to_insert[
+                                    i * batch_size : (i + 1) * batch_size
+                                ]
+                                cursor_db.executemany(insert_sql_template, batch_data)
+                                logging.info(
+                                    f"Inserted batch {i + 1}/{num_batches} ({len(batch_data)} records)."
+                                )
+
+                            # conn_db.commit() # Databricks SQL Connector typically autocommits DML like INSERT
+                            logging.info(
+                                f"Successfully inserted {len(data_to_insert)} new records into Databricks table {table_name_qualified}"
+                            )
+                            upload_successful = True
+
+                        except Exception as e:
+                            logging.error(
+                                f"Error during Databricks upload: {e}", exc_info=True
+                            )
+                            upload_successful = False  # Ensure it's false on error
+
+                        finally:
+                            if cursor_db:
+                                cursor_db.close()
+                            if conn_db:
+                                conn_db.close()
+                            logging.info("Databricks connection closed.")
+                    else:
+                        logging.info("No new records to upload to Databricks.")
+                        upload_successful = True  # No data to upload, so treat as success for timestamp update
+
+                    # Update state timestamp only if upload was successful or no data needed uploading
+                    if upload_successful:
+                        last_ts = (
+                            df[timestamp_field].max() if not df.empty else last_ts
+                        )  # Keep old last_ts if df is empty
+                        with open(state_file, "w") as f:
+                            json.dump({"last_upload": last_ts.isoformat()}, f)
+                        logging.info(
+                            f"State timestamp updated to: {last_ts.isoformat()}"
+                        )
+                    else:
+                        logging.warning(
+                            "Upload to Databricks failed or was incomplete. State timestamp will not be updated."
+                        )
+
+                    # NEW: Check if this was the last batch
+                    if len(df) < sqlite_batch_size:
+                        logging.info(
+                            f"Processed batch of {len(df)} records, which is less than sqlite_batch_size ({sqlite_batch_size}). Assuming this is the last batch for now."
+                        )
+                        break  # Break from inner batch-processing loop
+                    else:
+                        logging.info(
+                            f"Processed batch of {len(df)} records. Will check for more data immediately."
+                        )
+                        # Continue inner loop to fetch next batch
+
+                    # If --limit was used for testing, break inner loop after one batch
+                    if args.limit and args.limit > 0:
+                        logging.info(
+                            f"--limit ({args.limit}) was used, processed one batch. Stopping further batch processing for this cycle."
+                        )
+                        break  # Break from inner batch-processing loop
 
         except KeyboardInterrupt:
             logging.info("Interrupted by user, exiting.")
@@ -654,8 +810,16 @@ def main():
         except Exception as e:
             logging.error("Error in upload cycle: %s", e, exc_info=True)
         if once:
+            logging.info("Upload complete (--once specified). Exiting.")
             break
-        time.sleep(interval)
+        if not processed_data_in_outer_cycle:
+            logging.info(
+                f"No new data found in the last cycle. Sleeping for {interval} seconds."
+            )
+            time.sleep(interval)
+        else:
+            logging.info("New data was processed. Checking for more data immediately.")
+            # No sleep, loop immediately
 
 
 if __name__ == "__main__":
