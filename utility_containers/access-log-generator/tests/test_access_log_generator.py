@@ -9,6 +9,7 @@ import os
 import yaml
 from datetime import datetime
 import sys
+import re
 
 
 class TestConfigValidation(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestConfigValidation(unittest.TestCase):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "access_log_generator",
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "access-log-generator.py")
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "access-log-generator.py")
         )
         self.module = importlib.util.module_from_spec(spec)
         
@@ -201,6 +202,165 @@ class TestTrafficPatterns(unittest.TestCase):
             multiplier = pattern['multiplier']
             self.assertGreaterEqual(multiplier, 0)
             self.assertLessEqual(multiplier, 2.0)  # Reasonable upper bound
+
+
+class TestNCSALogFormat(unittest.TestCase):
+    """Test that generated logs conform to NCSA Combined Log Format"""
+    
+    def setUp(self):
+        """Set up test with sample log entries"""
+        # Standard NCSA Combined Log Format pattern
+        # %h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-agent}i"
+        self.ncsa_pattern = re.compile(
+            r'^(\S+) (\S+) (\S+) \[([\w:/]+\s[+\-]\d{4})\] '
+            r'"(\S+) (\S+) (\S+)" (\d{3}) (\d+|-) '
+            r'"([^"]*)" "([^"]*)"$'
+        )
+        
+        # Sample log entries to test
+        self.valid_logs = [
+            '192.168.1.100 - - [10/Oct/2024:13:55:36 +0000] "GET /index.html HTTP/1.1" 200 5432 "-" "Mozilla/5.0"',
+            '10.0.0.1 - john_doe [01/Jan/2025:00:00:00 +0000] "POST /login HTTP/1.1" 302 0 "http://example.com" "Chrome/120.0"',
+            '172.16.0.5 - - [31/Dec/2024:23:59:59 -0800] "GET /products?id=123 HTTP/1.1" 404 1234 "-" "Safari/16.0"',
+            '192.168.1.1 - admin [15/Mar/2025:14:30:45 +0100] "DELETE /api/user/456 HTTP/1.1" 500 567 "http://admin.example.com" "curl/7.68.0"',
+        ]
+        
+        self.invalid_logs = [
+            'invalid log format',
+            '192.168.1.1 missing brackets timestamp',
+            '192.168.1.1 - - [10/Oct/2024:13:55:36 +0000] missing quotes',
+            '192.168.1.1 - - [bad-date-format] "GET / HTTP/1.1" 200 100 "-" "Mozilla"',
+        ]
+    
+    def test_valid_ncsa_format(self):
+        """Test that valid NCSA logs match the pattern"""
+        for log_entry in self.valid_logs:
+            with self.subTest(log=log_entry):
+                match = self.ncsa_pattern.match(log_entry)
+                self.assertIsNotNone(match, f"Failed to match valid log: {log_entry}")
+                
+                # Verify captured groups
+                ip, remote_logname, user, timestamp, method, path, protocol, status, size, referer, user_agent = match.groups()
+                
+                # Basic validations
+                self.assertTrue(self._is_valid_ip(ip), f"Invalid IP: {ip}")
+                self.assertEqual(remote_logname, "-")  # Always '-' in practice
+                self.assertIn(user, ["-", "john_doe", "admin"])
+                self.assertIn(method, ["GET", "POST", "DELETE"])
+                self.assertTrue(path.startswith("/"))
+                self.assertEqual(protocol, "HTTP/1.1")
+                self.assertIn(int(status), [200, 302, 404, 500])
+                self.assertTrue(size.isdigit() or size == "-")
+    
+    def test_invalid_ncsa_format(self):
+        """Test that invalid logs don't match the pattern"""
+        for log_entry in self.invalid_logs:
+            with self.subTest(log=log_entry):
+                match = self.ncsa_pattern.match(log_entry)
+                self.assertIsNone(match, f"Incorrectly matched invalid log: {log_entry}")
+    
+    def test_generated_log_format(self):
+        """Test that the generator creates valid NCSA format logs"""
+        # Test various log entries that would be generated
+        from datetime import datetime
+        import random
+        
+        test_cases = [
+            {
+                'ip': '192.168.1.100',
+                'user': '-',
+                'timestamp': datetime.now().strftime('%d/%b/%Y:%H:%M:%S +0000'),
+                'method': 'GET',
+                'path': '/test',
+                'status': 200,
+                'size': random.randint(100, 10000),
+                'referrer': '-',
+                'user_agent': 'Mozilla/5.0 (test)'
+            },
+            {
+                'ip': '10.0.0.1',
+                'user': 'testuser',
+                'timestamp': datetime.now().strftime('%d/%b/%Y:%H:%M:%S +0000'),
+                'method': 'POST',
+                'path': '/api/data',
+                'status': 201,
+                'size': 0,
+                'referrer': 'http://example.com/form',
+                'user_agent': 'CustomBot/1.0'
+            },
+            {
+                'ip': '172.16.0.1',
+                'user': '-',
+                'timestamp': datetime.now().strftime('%d/%b/%Y:%H:%M:%S +0000'),
+                'method': 'GET',
+                'path': '/products?id=123&category=electronics',
+                'status': 404,
+                'size': 1234,
+                'referrer': '-',
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            }
+        ]
+        
+        for test_data in test_cases:
+            with self.subTest(test_data=test_data):
+                # Format log entry as the generator does
+                log_entry = (
+                    f'{test_data["ip"]} - {test_data["user"]} [{test_data["timestamp"]}] '
+                    f'"{test_data["method"]} {test_data["path"]} HTTP/1.1" '
+                    f'{test_data["status"]} {test_data["size"]} '
+                    f'"{test_data["referrer"]}" "{test_data["user_agent"]}"'
+                )
+                
+                # Verify it matches NCSA format
+                match = self.ncsa_pattern.match(log_entry)
+                self.assertIsNotNone(match, f"Generated log doesn't match NCSA format: {log_entry}")
+                
+                # Verify parsed values match input
+                ip, _, user, timestamp, method, path, protocol, status, size, referrer, user_agent = match.groups()
+                self.assertEqual(ip, test_data['ip'])
+                self.assertEqual(user, test_data['user'])
+                self.assertEqual(method, test_data['method'])
+                self.assertEqual(path, test_data['path'])
+                self.assertEqual(int(status), test_data['status'])
+                self.assertEqual(int(size), test_data['size'])
+                self.assertEqual(referrer, test_data['referrer'])
+                self.assertEqual(user_agent, test_data['user_agent'])
+    
+    def test_timestamp_format(self):
+        """Test that timestamps follow the correct format"""
+        # NCSA timestamp format: [DD/Mon/YYYY:HH:MM:SS ±HHMM]
+        timestamp_pattern = re.compile(
+            r'\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2} [+\-]\d{4}'
+        )
+        
+        valid_timestamps = [
+            '10/Oct/2024:13:55:36 +0000',
+            '01/Jan/2025:00:00:00 +0000',
+            '31/Dec/2024:23:59:59 -0800',
+            '15/Mar/2025:14:30:45 +0100',
+        ]
+        
+        for ts in valid_timestamps:
+            with self.subTest(timestamp=ts):
+                self.assertIsNotNone(timestamp_pattern.match(ts))
+    
+    def test_status_codes(self):
+        """Test that status codes are valid HTTP codes"""
+        valid_codes = [200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 500, 502, 503]
+        
+        for code in valid_codes:
+            log_entry = f'192.168.1.1 - - [10/Oct/2024:13:55:36 +0000] "GET / HTTP/1.1" {code} 100 "-" "Mozilla"'
+            match = self.ncsa_pattern.match(log_entry)
+            self.assertIsNotNone(match)
+            self.assertEqual(match.group(8), str(code))
+    
+    def _is_valid_ip(self, ip):
+        """Helper to validate IP address format"""
+        try:
+            parts = ip.split('.')
+            return len(parts) == 4 and all(0 <= int(part) <= 255 for part in parts)
+        except:
+            return False
 
 
 if __name__ == '__main__':

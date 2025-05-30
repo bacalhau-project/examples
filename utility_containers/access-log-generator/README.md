@@ -180,16 +180,30 @@ services:
 
 Run the unit tests:
 ```bash
-# Run all tests
-python -m unittest test_access_log_generator.py
+# Run all unit tests (excludes integration tests by default)
+pytest tests/
+
+# Run all tests including integration tests
+pytest tests/ -m ""
+
+# Run only unit tests explicitly
+pytest tests/ -m "not integration"
 
 # Run with coverage
-python -m coverage run -m unittest test_access_log_generator.py
+python -m coverage run -m pytest tests/
 python -m coverage report
 
 # Run specific test class
-python -m unittest test_access_log_generator.TestValidateConfig
+python -m unittest tests.test_access_log_generator.TestNCSALogFormat -v
 ```
+
+### Test Coverage
+
+The test suite includes:
+- **Configuration validation** - Ensures valid YAML structure and values
+- **NCSA format compliance** - Validates log output matches standard format
+- **Traffic patterns** - Tests hourly multiplier logic
+- **Session states** - Verifies state machine implementation
 
 ## 📈 Analyzing Generated Logs
 

@@ -20,13 +20,16 @@ docker run -v ./logs:/var/log/app -v ./config:/app/config \
 ### Testing
 ```bash
 # Run all unit tests
-python -m unittest test_access_log_generator.py -v
+python -m unittest discover tests/ -v
+
+# Run with pytest
+pytest tests/ -v
 
 # Run specific test class
-python -m unittest test_access_log_generator.TestConfigValidation -v
+python -m unittest tests.test_access_log_generator.TestNCSALogFormat -v
 
 # Run with coverage
-python -m coverage run -m unittest test_access_log_generator.py
+python -m coverage run -m pytest tests/
 python -m coverage report
 ```
 
