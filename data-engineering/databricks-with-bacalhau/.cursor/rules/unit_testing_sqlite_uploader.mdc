@@ -1,0 +1,65 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Unit Testing Guide for sqlite_to_databricks_uploader.py
+
+This guide outlines how to create simple unit tests for the [databricks-uploader/sqlite_to_databricks_uploader.py](mdc:databricks-uploader/sqlite_to_databricks_uploader.py) script. The goal is basic functional verification, not exhaustive testing or complex mocking.
+
+## General Approach
+
+1.  Use the standard Python `unittest` module.
+2.  Create a new test file, e.g., `databricks-uploader/test_uploader.py`.
+3.  Focus on testing pure functions or functions with easily verifiable inputs and outputs.
+4.  Avoid mocking database connections (SQLite, Databricks) or file system operations if it becomes complex. If a function is heavily reliant on I/O, consider testing its helper components or skipping it for these basic tests.
+
+## Functions to Test & Example Cases
+
+Here are some functions from `sqlite_to_databricks_uploader.py` that are good candidates for simple unit tests:
+
+### 1. `quote_databricks_identifier(name: str) -> str`
+
+*   **Purpose**: Tests if identifiers are correctly quoted with backticks and if internal backticks are escaped.
+*   **Test Cases**:
+    *   Input: `"my_table"` -> Expected Output: `"`my_table`"`
+    *   Input: `"table_with_`_backtick"` -> Expected Output: `"`table_with_``_backtick`"`
+    *   Input: `123` (as non-string) -> Expected Output: `"`123`"` (ensure it handles and logs conversion)
+
+### 2. `get_qualified_table_name(db_name_for_use_stmt: str, table_name_from_config: str) -> str`
+
+*   **Purpose**: Tests the construction of fully qualified table names.
+*   **Test Cases**:
+    *   `db_name_for_use_stmt="mydb"`, `table_name_from_config="mytable"` -> Expected: `"`mydb`"."`mytable`"`
+    *   `db_name_for_use_stmt="mydb"`, `table_name_from_config="myschema.mytable"` -> Expected: `"`myschema`"."`mytable`"` (and check for potential warning log if `myschema` != `mydb`)
+    *   `db_name_for_use_stmt=""`, `table_name_from_config="mytable"` -> Expect `ValueError` as per function logic.
+    *   `db_name_for_use_stmt="mydb"`, `table_name_from_config="my_schema.my_table"` -> Expected: `"`my_schema`"."`my_table`"`
+
+### 3. `parse_args()`
+
+*   **Purpose**: Tests if command-line arguments are parsed correctly and defaults are applied.
+*   **Test Method**:
+    *   Import the `parse_args` function.
+    *   Call `parse_args()` with a list of strings representing command-line arguments (e.g., `parse_args(['--sqlite', 'test.db', '--interval', '60'])`).
+    *   Assert that the attributes of the returned `Namespace` object have the expected values.
+*   **Test Cases**:
+    *   Test with a minimal set of arguments.
+    *   Test overriding default values (e.g., `--interval`, `--sqlite-batch-size`).
+    *   Test boolean flags (e.g., `--once`, `--verbose`).
+    *   Test that default values are present when arguments are not supplied (e.g., `interval` should default to 30, `sqlite_batch_size` to 1000).
+
+### 4. Placeholder Data Processing Functions
+    *   `sanitize_data(df: pd.DataFrame, config: dict) -> pd.DataFrame`
+    *   `filter_data(df: pd.DataFrame, config: dict) -> pd.DataFrame`
+    *   `aggregate_data(df: pd.DataFrame, config: dict) -> pd.DataFrame`
+*   **Purpose**: Since these are placeholders, tests should just verify they return the input DataFrame.
+*   **Test Method**: Create a sample Pandas DataFrame, pass it to these functions, and assert that the returned DataFrame is the same as the input (or an identical copy).
+
+## What to Avoid (for these basic tests)
+
+*   Testing the `main()` function directly due to its complexity and heavy I/O.
+*   Testing functions that heavily rely on external services or file system state unless very simple to set up (e.g., `read_data` or the main loop's SQLite/Databricks interaction parts).
+*   Complex mocking of `sqlite3`, `databricks.sql`, `databricks.sdk`, or `yaml` modules.
+
+The tests should be straightforward and confirm that the core logic of these utility and argument parsing functions behaves as expected under simple conditions.
+When writing the tests, import the necessary functions directly from `databricks-uploader.sqlite_to_databricks_uploader`.

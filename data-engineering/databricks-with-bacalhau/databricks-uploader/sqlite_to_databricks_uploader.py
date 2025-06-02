@@ -54,22 +54,24 @@ def parse_args():
     p.add_argument("--once", action="store_true", help="Upload once and exit (no loop)")
     p.add_argument("--table", help="Override SQLite table name")
     p.add_argument("--timestamp-col", help="Override timestamp column")
-    # New arguments for data processing
+    # Updated argument for processing mode
     p.add_argument(
-        "--enable-sanitize", action="store_true", help="Enable data sanitization"
+        "--processing-mode",
+        choices=["raw", "schematized", "sanitized", "aggregated", "emergency"],
+        default="schematized",
+        help="Processing mode for data upload",
     )
+    # Processing configurations
     p.add_argument(
-        "--sanitize-config", default="{}", help="JSON config string for sanitization"
-    )
-    p.add_argument("--enable-filter", action="store_true", help="Enable data filtering")
-    p.add_argument(
-        "--filter-config", default="{}", help="JSON config string for filtering"
-    )
-    p.add_argument(
-        "--enable-aggregate", action="store_true", help="Enable data aggregation"
+        "--gps-fuzzing-config", default="{}", help="JSON config string for GPS fuzzing"
     )
     p.add_argument(
         "--aggregate-config", default="{}", help="JSON config string for aggregation"
+    )
+    p.add_argument(
+        "--emergency-config",
+        default="{}",
+        help="JSON config string for emergency filtering",
     )
 
     # Databricks connection parameters
@@ -105,26 +107,135 @@ def parse_args():
     return p.parse_args()
 
 
-# Placeholder processing functions
+# Updated processing functions to match new architecture
+def process_raw_data(df: pd.DataFrame, timestamp_field: str = None) -> pd.DataFrame:
+    """Convert DataFrame to raw format (timestamp, reading_string)."""
+    logging.info("Converting to raw format")
+    # Combine all columns into a single reading_string
+    raw_df = pd.DataFrame()
+
+    # Use provided timestamp field or try to detect it
+    if timestamp_field and timestamp_field in df.columns:
+        raw_df["timestamp"] = pd.to_datetime(df[timestamp_field])
+    else:
+        # Try to find a timestamp column
+        timestamp_cols = df.select_dtypes(include=["datetime64"]).columns
+        if len(timestamp_cols) > 0:
+            raw_df["timestamp"] = df[timestamp_cols[0]]
+        else:
+            # Look for columns with 'timestamp' or 'date' in the name
+            for col in df.columns:
+                if "timestamp" in col.lower() or "date" in col.lower():
+                    raw_df["timestamp"] = pd.to_datetime(df[col])
+                    break
+            else:
+                # Use the first column as fallback
+                raw_df["timestamp"] = pd.to_datetime(df[df.columns[0]])
+
+    raw_df["reading_string"] = df.apply(
+        lambda row: json.dumps(row.to_dict(), default=str), axis=1
+    )
+    return raw_df
+
+
+def schematize_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Pass through data as-is for schematized table (already structured)."""
+    logging.info("Using schematized format (structured data)")
+    # Rename 'id' column to 'reading_id' if exists
+    if "id" in df.columns:
+        df = df.rename(columns={"id": "reading_id"})
+    return df
+
+
 def sanitize_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
-    """Sanitizes the input DataFrame."""
+    """Sanitizes the input DataFrame, particularly fuzzing GPS coordinates."""
     logging.info("Sanitizing data with config: %s", config)
-    # Placeholder: actual sanitization logic will be added here
+    df = df.copy()
+
+    # Fuzzy GPS coordinates if configured
+    decimal_places = config.get("decimal_places", 2)
+    if "latitude" in df.columns and "longitude" in df.columns:
+        df["latitude"] = df["latitude"].round(decimal_places)
+        df["longitude"] = df["longitude"].round(decimal_places)
+        logging.info(f"Fuzzed GPS coordinates to {decimal_places} decimal places")
+
+    # Rename 'id' column if exists
+    if "id" in df.columns:
+        df = df.rename(columns={"id": "reading_id"})
+
     return df
 
 
-def filter_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
-    """Filters the input DataFrame."""
-    logging.info("Filtering data with config: %s", config)
-    # Placeholder: actual filtering logic will be added here
-    return df
+def filter_emergency_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """Filters for emergency/anomaly data only."""
+    logging.info("Filtering for emergency data with config: %s", config)
+    anomaly_column = config.get("anomaly_column", "anomaly_flag")
+    anomaly_value = config.get("anomaly_value", 1)
+
+    if anomaly_column in df.columns:
+        emergency_df = df[df[anomaly_column] == anomaly_value].copy()
+        logging.info(
+            f"Filtered {len(emergency_df)} emergency records from {len(df)} total"
+        )
+
+        # Rename 'id' column if exists
+        if "id" in emergency_df.columns:
+            emergency_df = emergency_df.rename(columns={"id": "reading_id"})
+
+        return emergency_df
+    else:
+        logging.warning(f"Anomaly column '{anomaly_column}' not found in data")
+        return pd.DataFrame()  # Return empty DataFrame if column not found
 
 
 def aggregate_data(df: pd.DataFrame, config: dict) -> pd.DataFrame:
-    """Aggregates the input DataFrame."""
+    """Aggregates the input DataFrame with time windows."""
     logging.info("Aggregating data with config: %s", config)
-    # Placeholder: actual aggregation logic will be added here
-    return df
+
+    window_minutes = config.get("window_minutes", 60)
+    group_by = config.get("group_by", ["sensor_id", "location"])
+
+    # Ensure timestamp column exists and is datetime
+    timestamp_col = (
+        df.select_dtypes(include=["datetime64"]).columns[0]
+        if len(df.select_dtypes(include=["datetime64"]).columns) > 0
+        else "timestamp"
+    )
+    df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+
+    # Create time windows
+    df["start_window"] = df[timestamp_col].dt.floor(f"{window_minutes}min")
+    df["end_window"] = df["start_window"] + pd.Timedelta(minutes=window_minutes)
+
+    # Identify numeric columns for aggregation
+    numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+    # Exclude non-aggregatable columns
+    exclude_cols = [
+        "id",
+        "reading_id",
+        "status_code",
+        "anomaly_flag",
+        "synced",
+    ] + group_by
+    numeric_cols = [col for col in numeric_cols if col not in exclude_cols]
+
+    # Build aggregation dictionary
+    agg_dict = {}
+    for col in numeric_cols:
+        agg_dict[f"{col}_min"] = (col, "min")
+        agg_dict[f"{col}_max"] = (col, "max")
+        agg_dict[f"{col}_avg"] = (col, "mean")
+
+    agg_dict["reading_count"] = (timestamp_col, "count")
+
+    # Group and aggregate
+    groupby_cols = ["start_window", "end_window"] + [
+        col for col in group_by if col in df.columns
+    ]
+    aggregated = df.groupby(groupby_cols).agg(**agg_dict).reset_index()
+
+    logging.info(f"Aggregated {len(df)} records into {len(aggregated)} time windows")
+    return aggregated
 
 
 def read_data(sqlite_path, query, table_name):
@@ -265,18 +376,28 @@ def main():
                 )
                 print_query_results(cursor_db_query)
 
-                qualified_table_name = f"{quote_databricks_identifier(databricks_database)}.{quote_databricks_identifier(databricks_table)}"
-                print(f"\n--- Description for Table '{qualified_table_name}' ---")
-                cursor_db_query.execute(
-                    f"DESCRIBE TABLE EXTENDED {qualified_table_name}"
-                )
-                print_query_results(cursor_db_query)
+                # Show info for all scenario tables with new naming convention
+                table_suffixes = [
+                    "0_raw",
+                    "1_schematized",
+                    "2_sanitized",
+                    "3_aggregated",
+                    "4_emergency",
+                ]
+                for suffix in table_suffixes:
+                    full_table_name = f"{databricks_table}_{suffix}"
+                    qualified_table_name = f"{quote_databricks_identifier(databricks_database)}.{quote_databricks_identifier(full_table_name)}"
 
-                print(f"\n--- Row Count for Table '{qualified_table_name}' ---")
-                cursor_db_query.execute(
-                    f"SELECT COUNT(*) AS row_count FROM {qualified_table_name}"
-                )
-                print_query_results(cursor_db_query)
+                    try:
+                        print(f"\n--- Table Info: '{qualified_table_name}' ---")
+                        cursor_db_query.execute(
+                            f"SELECT COUNT(*) AS row_count FROM {qualified_table_name}"
+                        )
+                        print_query_results(cursor_db_query)
+                    except Exception as e:
+                        print(
+                            f"Table '{qualified_table_name}' does not exist or is not accessible: {e}"
+                        )
 
             else:  # General SQL query
                 logging.info(f"Executing user-provided query: {args.run_query}")
@@ -424,143 +545,87 @@ def main():
             else:
                 # Data processing steps
 
-                # Sanitize config loading
-                enable_sanitize = args.enable_sanitize or os.getenv(
-                    "ENABLE_SANITIZE", cfg.get("enable_sanitize", False)
+                # Get processing mode
+                processing_mode = (
+                    args.processing_mode
+                    or os.getenv("PROCESSING_MODE")
+                    or cfg.get("processing_mode", "schematized")
                 )
-                sanitize_config_source_value = (
-                    args.sanitize_config
-                )  # CLI has priority (always string)
-                if (
-                    sanitize_config_source_value == "{}"
-                ):  # Default from argparse might be "{}", check env if so
-                    sanitize_config_source_value = os.getenv(
-                        "SANITIZE_CONFIG"
-                    ) or cfg.get("sanitize_config")
-                else:  # CLI value was something other than default "{}"
-                    pass  # Keep CLI value
 
-                if sanitize_config_source_value is None:  # Not in CLI or ENV, try YAML
-                    sanitize_config_source_value = cfg.get("sanitize_config")
+                # Load configuration for specific processing modes
+                gps_fuzzing_config_str = args.gps_fuzzing_config
+                if gps_fuzzing_config_str == "{}":
+                    gps_fuzzing_config_str = os.getenv("GPS_FUZZING_CONFIG") or cfg.get(
+                        "gps_fuzzing"
+                    )
 
-                sanitize_config_dict = {}  # Default
-                if isinstance(sanitize_config_source_value, (dict, list)):
-                    sanitize_config_dict = sanitize_config_source_value
-                    logging.info("Loaded sanitize_config directly as structured YAML.")
+                gps_fuzzing_config = {}
+                if isinstance(gps_fuzzing_config_str, dict):
+                    gps_fuzzing_config = gps_fuzzing_config_str
                 elif (
-                    isinstance(sanitize_config_source_value, str)
-                    and sanitize_config_source_value.strip()
+                    isinstance(gps_fuzzing_config_str, str)
+                    and gps_fuzzing_config_str.strip()
                 ):
                     try:
-                        sanitize_config_dict = json.loads(sanitize_config_source_value)
-                        logging.info(
-                            "Loaded sanitize_config by parsing string (JSON expected)."
-                        )
+                        gps_fuzzing_config = json.loads(gps_fuzzing_config_str)
                     except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse sanitize_config string '{sanitize_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif sanitize_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for sanitize_config: {type(sanitize_config_source_value)}. Using default {{}}."
+                        logging.warning(f"Failed to parse gps_fuzzing_config: {e}")
+
+                emergency_config_str = args.emergency_config
+                if emergency_config_str == "{}":
+                    emergency_config_str = os.getenv("EMERGENCY_CONFIG") or cfg.get(
+                        "emergency_config"
                     )
-                else:  # None
-                    logging.info("sanitize_config not provided. Using default {{}}.")
 
-                if enable_sanitize:
-                    logging.info("Sanitizing data...")
-                    df = sanitize_data(df, sanitize_config_dict)
-
-                # Filter config loading
-                enable_filter = args.enable_filter or os.getenv(
-                    "ENABLE_FILTER", cfg.get("enable_filter", False)
-                )
-                filter_config_source_value = args.filter_config  # CLI
-                if filter_config_source_value == "{}":  # Default from argparse
-                    filter_config_source_value = os.getenv("FILTER_CONFIG") or cfg.get(
-                        "filter_config"
-                    )
-                else:  # CLI value was not default
-                    pass
-
-                if filter_config_source_value is None:  # Not in CLI or ENV
-                    filter_config_source_value = cfg.get("filter_config")
-
-                filter_config_dict = {}  # Default
-                if isinstance(filter_config_source_value, (dict, list)):
-                    filter_config_dict = filter_config_source_value
-                    logging.info("Loaded filter_config directly as structured YAML.")
+                emergency_config = {}
+                if isinstance(emergency_config_str, dict):
+                    emergency_config = emergency_config_str
                 elif (
-                    isinstance(filter_config_source_value, str)
-                    and filter_config_source_value.strip()
+                    isinstance(emergency_config_str, str)
+                    and emergency_config_str.strip()
                 ):
                     try:
-                        filter_config_dict = json.loads(filter_config_source_value)
-                        logging.info(
-                            "Loaded filter_config by parsing string (JSON expected)."
-                        )
+                        emergency_config = json.loads(emergency_config_str)
                     except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse filter_config string '{filter_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif filter_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for filter_config: {type(filter_config_source_value)}. Using default {{}}."
+                        logging.warning(f"Failed to parse emergency_config: {e}")
+
+                aggregate_config_str = args.aggregate_config
+                if aggregate_config_str == "{}":
+                    aggregate_config_str = os.getenv("AGGREGATE_CONFIG") or cfg.get(
+                        "aggregate_config"
                     )
-                else:  # None
-                    logging.info("filter_config not provided. Using default {{}}.")
 
-                if enable_filter:
-                    logging.info("Filtering data...")
-                    df = filter_data(df, filter_config_dict)
-
-                # Aggregate config loading
-                enable_aggregate = args.enable_aggregate or os.getenv(
-                    "ENABLE_AGGREGATE", cfg.get("enable_aggregate", False)
-                )
-                aggregate_config_source_value = args.aggregate_config  # CLI
-                if aggregate_config_source_value == "{}":  # Default from argparse
-                    aggregate_config_source_value = os.getenv(
-                        "AGGREGATE_CONFIG"
-                    ) or cfg.get("aggregate_config")
-                else:  # CLI value was not default
-                    pass
-
-                if aggregate_config_source_value is None:  # Not in CLI or ENV
-                    aggregate_config_source_value = cfg.get("aggregate_config")
-
-                aggregate_config_dict = {}  # Default
-                if isinstance(aggregate_config_source_value, (dict, list)):
-                    aggregate_config_dict = aggregate_config_source_value
-                    logging.info("Loaded aggregate_config directly as structured YAML.")
+                aggregate_config = {}
+                if isinstance(aggregate_config_str, dict):
+                    aggregate_config = aggregate_config_str
                 elif (
-                    isinstance(aggregate_config_source_value, str)
-                    and aggregate_config_source_value.strip()
+                    isinstance(aggregate_config_str, str)
+                    and aggregate_config_str.strip()
                 ):
                     try:
-                        aggregate_config_dict = json.loads(
-                            aggregate_config_source_value
-                        )
-                        logging.info(
-                            "Loaded aggregate_config by parsing string (JSON expected)."
-                        )
+                        aggregate_config = json.loads(aggregate_config_str)
                     except json.JSONDecodeError as e:
-                        logging.warning(
-                            f"Failed to parse aggregate_config string '{aggregate_config_source_value}' as JSON: {e}. Using default {{}}."
-                        )
-                elif aggregate_config_source_value is not None:
-                    logging.warning(
-                        f"Unexpected type for aggregate_config: {type(aggregate_config_source_value)}. Using default {{}}."
-                    )
-                else:  # None
-                    logging.info("aggregate_config not provided. Using default {{}}.")
+                        logging.warning(f"Failed to parse aggregate_config: {e}")
 
-                if enable_aggregate:
-                    logging.info("Aggregating data...")
-                    df = aggregate_data(df, aggregate_config_dict)
+                # Process data based on mode
+                processed_df = df.copy()
+
+                if processing_mode == "raw":
+                    processed_df = process_raw_data(df, timestamp_field)
+                elif processing_mode == "schematized":
+                    processed_df = schematize_data(df)
+                elif processing_mode == "sanitized":
+                    processed_df = sanitize_data(df, gps_fuzzing_config)
+                elif processing_mode == "aggregated":
+                    processed_df = aggregate_data(df, aggregate_config)
+                elif processing_mode == "emergency":
+                    processed_df = filter_emergency_data(df, emergency_config)
+                else:
+                    logging.error(f"Unknown processing mode: {processing_mode}")
+                    continue
 
                 upload_successful = False
-                if not df.empty:
+                if not processed_df.empty:
                     conn_db = None
                     cursor_db = None
                     try:
@@ -580,17 +645,46 @@ def main():
                         )
                         logging.info(f"Using database: {databricks_database}")
 
-                        # Prepare for batch insert
-                        table_name_qualified = f"{quote_databricks_identifier(databricks_database)}.{quote_databricks_identifier(databricks_table)}"
+                        # Determine target table based on processing mode
+                        table_suffix_map = {
+                            "raw": "0_raw",
+                            "schematized": "1_schematized",
+                            "sanitized": "2_sanitized",
+                            "aggregated": "3_aggregated",
+                            "emergency": "4_emergency",
+                        }
+
+                        table_suffix = table_suffix_map.get(processing_mode)
+                        if not table_suffix:
+                            logging.error(
+                                f"No table mapping for processing mode: {processing_mode}"
+                            )
+                            continue
+
+                        # Construct the full table name with new naming convention
+                        final_table_name = f"{databricks_table}_{table_suffix}"
+                        table_name_qualified = f"{quote_databricks_identifier(databricks_database)}.{quote_databricks_identifier(final_table_name)}"
+
+                        logging.info(
+                            f"Routing data to table: {table_name_qualified} (processing mode: {processing_mode})"
+                        )
+
+                        # Add databricks-specific columns for all modes
+                        processed_df["databricks_inserted_at"] = pd.Timestamp.now()
+
+                        # Note: The 'id' column is not added here as it's defined in the schema
+                        # without GENERATED ALWAYS AS IDENTITY, so Databricks won't auto-generate it.
+                        # The uploader will need to handle ID generation if required.
 
                         columns = [
-                            quote_databricks_identifier(col) for col in df.columns
+                            quote_databricks_identifier(col)
+                            for col in processed_df.columns
                         ]
-                        placeholders = ", ".join(["%s"] * len(columns))
+                        placeholders = ", ".join(["?"] * len(columns))
                         insert_sql_template = f"INSERT INTO {table_name_qualified} ({', '.join(columns)}) VALUES ({placeholders})"
 
                         data_to_insert = [
-                            tuple(row) for row in df.to_numpy()
+                            tuple(row) for row in processed_df.to_numpy()
                         ]  # Convert DataFrame rows to tuples
 
                         batch_size = 500  # Configurable or fixed batch size

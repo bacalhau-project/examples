@@ -1,74 +1,143 @@
 <!-- markdownlint-disable MD041 MD013 MD024 -->
 # Bacalhau to Databricks Lakehouse Pipeline
 
-This repository implements a continuous data pipeline that:
+This repository implements a continuous data pipeline that extracts data from local SQLite databases and uploads it directly to Databricks tables. It's designed for edge computing scenarios or integration with Bacalhau compute nodes.
 
-1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes).
-2. Incrementally extracts new records using a Python uploader.
-3. Performs optional local data processing (sanitization, filtering, aggregation).
-4. Appends these records directly to a table within a Databricks workspace using the Databricks SQL Connector.
-5. Enables scalable data analysis and processing on the Databricks Lakehouse Platform.
+## Overview
 
-Key components:
+The pipeline:
+1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes)
+2. Incrementally extracts new records using a Python uploader
+3. Performs optional local data processing (sanitization, filtering, aggregation)
+4. Routes data to different Databricks tables based on processing scenario
+5. Enables scalable data analysis and processing on the Databricks Lakehouse Platform
 
-- **Python Uploader**: A script (`sqlite_to_databricks_uploader.py`) designed to be run with `uv run`. It:
-  - Connects directly to a Databricks SQL warehouse or All-Purpose Cluster.
-  - Can automatically detect the source SQLite table and its timestamp column via schema introspection.
-  - Tracks the last-upload timestamp using a state file to ensure incremental processing.
-  - Can perform optional local data processing (sanitization, filtering, aggregation) before upload.
-  - Inserts new rows into a specified Databricks table using the `databricks-sql-connector` Python library.
-- **Local Data Processing**: The uploader includes placeholder functions for common data processing tasks:
-    - `sanitize_data`: For cleaning or transforming data.
-    - `filter_data`: For selecting specific rows based on criteria.
-    - `aggregate_data`: For performing aggregations (e.g., sum, average) over data.
-    These functions can be enabled and configured via YAML, environment variables, or CLI arguments. Currently, they are placeholders and would need to be extended with specific logic for actual data manipulation.
-- **Containerization**: A `Dockerfile` (now in the project root) providing a multi-stage build that:
+## Key Features
 
-  - Caches Python dependencies efficiently in a builder stage.
-  - Produces a minimal runtime image for the uploader.
-
-- **Configuration**: `uploader-config.yaml.example` demonstrates how to configure SQLite database paths, Databricks connection parameters (host, HTTP path, token, database, table), state directory, upload interval, and local processing steps.
-- **Launcher Script**: An example `start-uploader.sh` shows how to run the uploader container, typically mounting the configuration file and necessary data volumes.
-- **Databricks Integration**: The uploader directly interacts with Databricks. SQL snippets for managing tables can be run in Databricks notebooks or SQL Editor.
-
-For the original (now outdated) architecture involving Delta Lake as an intermediate step, please refer to [REARCHITECTURE.md](REARCHITECTURE.md). This document has not been updated to reflect the direct Databricks upload architecture.
-
----
+- **Direct Databricks Upload**: Connects directly to Databricks SQL warehouses or clusters without intermediate storage
+- **Incremental Processing**: Tracks last uploaded timestamp to process only new records
+- **Auto-Detection**: Automatically detects SQLite tables and timestamp columns when not specified
+- **Scenario-Based Routing**: Routes data to different tables based on processing type:
+  - Raw data → `raw_*` tables
+  - Filtered data → `filtered_*` tables  
+  - Sanitized/secure data → `secure_*` tables
+  - Aggregated data → `aggregated_*` tables
+- **Local Data Processing**: Supports optional data sanitization, filtering, and aggregation before upload
+- **Flexible Configuration**: Configure via YAML, environment variables, or command-line arguments
+- **Query Mode**: Built-in debugging capability to query and inspect Databricks tables
+- **Multi-Architecture Support**: Docker images support both AMD64 and ARM64 architectures
 
 ## Prerequisites
 
 - Docker Engine (19.03+)
-- (Optional) Python 3.11 and the `uv` CLI for local testing
-- A Databricks workspace with a SQL warehouse or All-Purpose Cluster.
-- A target database and table within Databricks.
-- Databricks Personal Access Token (PAT) for authentication.
+- Python 3.11 with `uv` CLI (for local development)
+- Databricks workspace with:
+  - SQL warehouse or All-Purpose Cluster
+  - Target database and tables configured for each scenario
+  - Personal Access Token (PAT) for authentication
 
 ## Directory Layout
 
 ```text
 ./
-├── sqlite_to_databricks_uploader.py # UV-run script for incremental export
-├── Dockerfile                 # Multi-stage UV-based image for the uploader
-├── build.sh                   # Script to build the uploader Docker image
-├── latest-tag                 # File containing the latest Docker image tag
-├── uploader-config.yaml.example   # Example configuration
-├── start-uploader.sh              # Shell wrapper to launch uploader container
-├── REARCHITECTURE.md               # Re-architecture roadmap and checklist
-├── docs/                          # Guides (e.g., Databricks connectivity)
-├── .env                           # Environment variables
-└── README.md                      # This file
+├── databricks-uploader/
+│   ├── sqlite_to_databricks_uploader.py  # UV-run script for incremental export
+│   ├── Dockerfile                         # Multi-stage UV-based image
+│   ├── build.sh                          # Build script for Docker image
+│   ├── databricks-uploader-config.yaml.example  # Example configuration
+│   ├── simple_test.py                    # Testing utilities
+│   └── README.md                         # Detailed uploader documentation
+├── demo-network/                         # Demo Bacalhau network setup
+├── docs/                                 # Additional guides
+├── start-databricks-uploader.sh          # Launcher script
+├── REARCHITECTURE.md                     # Architecture notes (outdated)
+└── README.md                             # This file
+```
+
+## Quick Start
+
+### 1. Configuration
+
+Copy the example configuration file:
+
+```bash
+cp databricks-uploader/databricks-uploader-config.yaml.example databricks-uploader-config.yaml
+```
+
+Edit the configuration with your specific settings:
+
+```yaml
+# SQLite Source
+sqlite: "/path/to/sensor_data.db"
+sqlite_table_name: "sensor_logs"  # Optional - auto-detected if not specified
+timestamp_col: "timestamp"        # Optional - auto-detected if not specified
+
+# Databricks Target - Table will be determined by processing scenario
+databricks_host: "your-workspace.cloud.databricks.com"
+databricks_http_path: "/sql/1.0/warehouses/your_warehouse_id"
+databricks_token: "dapi..."  # Better to use DATABRICKS_TOKEN env var
+databricks_database: "your_database"
+databricks_table: "sensor_readings"  # Base name - will be prefixed based on scenario
+
+# Processing Configuration (determines table routing)
+enable_sanitize: false
+enable_filter: false
+enable_aggregate: false
+
+# Operational Settings
+state_dir: "./state"
+interval: 300  # seconds between upload cycles
+```
+
+### 2. Build the Docker Image
+
+```bash
+cd databricks-uploader
+./build.sh
+```
+
+### 3. Run the Uploader
+
+For local testing:
+
+```bash
+# Run directly with uv
+cd databricks-uploader
+uv run -s sqlite_to_databricks_uploader.py --config ../databricks-uploader-config.yaml
+```
+
+For production deployment:
+
+```bash
+# Run as Docker container
+./start-databricks-uploader.sh databricks-uploader-config.yaml
 ```
 
 ## Configuration
 
-The uploader script offers a flexible configuration system, allowing parameters to be set via a YAML file, environment variables, or command-line arguments. Understanding the precedence and options is key to tailoring the script to your needs.
+The uploader uses a flexible configuration system with multiple options for setting parameters.
 
-**Order of Precedence:**
+### Table Routing Based on Processing Scenario
 
-1.  **Command-Line Arguments**: Highest precedence. Values provided on the command line (e.g., `--sqlite /path/to/db`) override all other settings.
-2.  **Environment Variables**: Values set in the environment (e.g., `export DATABRICKS_TOKEN="..."` or via a `.env` file) override settings in the YAML file.
-3.  **YAML Configuration File**: Settings defined in the `uploader-config.yaml` file (or a custom file specified with `--config`) are used if not overridden by environment variables or CLI arguments.
-4.  **Default Values**: Some parameters have built-in default values in the script if not specified by any other method (e.g., `UPLOAD_INTERVAL` defaults to 300 seconds).
+The uploader automatically routes data to different tables based on which processing options are enabled:
+
+- **Raw Data** (no processing enabled): Data goes to `raw_<table_name>`
+- **Filtered Data** (`enable_filter: true`): Data goes to `filtered_<table_name>`
+- **Sanitized/Secure Data** (`enable_sanitize: true`): Data goes to `secure_<table_name>`
+- **Aggregated Data** (`enable_aggregate: true`): Data goes to `aggregated_<table_name>`
+
+For example, if your base table name is `sensor_readings`:
+- Raw data → `raw_sensor_readings`
+- Filtered data → `filtered_sensor_readings`
+- Sanitized data → `secure_sensor_readings`
+- Aggregated data → `aggregated_sensor_readings`
+
+### Configuration Precedence
+
+1. **Command-line arguments** (highest priority)
+2. **Environment variables**
+3. **YAML configuration file**
+4. **Default values** (lowest priority)
 
 ### Environment Variables
 
@@ -159,6 +228,8 @@ These variables enable and configure optional data processing steps (sanitizatio
 
 ### Example `.env` File
 
+Create a `.env` file for managing environment variables:
+
 You can create a `.env` file in the project's root directory to manage your environment variables for local development. Remember to add `.env` to your `.gitignore` file to prevent committing sensitive information.
 
 ```env
@@ -169,23 +240,22 @@ DATABRICKS_TOKEN="dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Store securely!
 DATABRICKS_DATABASE="sensor_data" # Or "your_catalog.sensor_data"
 DATABRICKS_TABLE="raw_readings"
 
-# --- SQLite Source Configuration (Required if not using YAML/CLI) ---
+# --- SQLite Source Configuration ---
 SQLITE_PATH="data/local_sensor_data.db"
 # SQLITE_TABLE_NAME="my_sensor_table" # Optional: auto-detected if single table exists
 # TIMESTAMP_COL="event_timestamp"     # Optional: auto-detected if common names exist
 
 # --- Script Behavior ---
-# STATE_DIR="."                       # Optional: Directory for state file (defaults to /state or current)
-# UPLOAD_INTERVAL=600                 # Optional: Upload interval in seconds (default 300)
+# STATE_DIR="./state"                 # Optional: Directory for state file
+# UPLOAD_INTERVAL=300                 # Optional: Upload interval in seconds
 # ONCE=true                           # Optional: Run once and exit
 
-# --- Local Data Processing (Optional) ---
-# ENABLE_SANITIZE=true
-# SANITIZE_CONFIG='{"rules": [{"type": "remove_nulls", "columns": ["temperature"]}]}'
-# ENABLE_FILTER=false
-# FILTER_CONFIG='{}'
-# ENABLE_AGGREGATE=false
-# AGGREGATE_CONFIG='{}'
+# --- Data Processing (determines target table) ---
+# Only enable ONE processing type at a time:
+# ENABLE_SANITIZE=true     # Routes to secure_* tables
+# ENABLE_FILTER=true       # Routes to filtered_* tables  
+# ENABLE_AGGREGATE=true    # Routes to aggregated_* tables
+# (If none enabled, routes to raw_* tables)
 ```
 
 ### YAML Configuration File
@@ -226,38 +296,84 @@ This command uses the settings from `uploader-config.yaml` but overrides the SQL
 
 ---
 
-## Build the Uploader Container
+## Data Processing Features
 
-The `build.sh` script (now in the project root) simplifies building the Docker image. It determines the image tag based on Git context or uses the content of the `latest-tag` file.
-```bash
-./build.sh
+The uploader includes optional data processing capabilities that determine which table receives the data:
+
+### Sanitization (Routes to `secure_*` tables)
+Clean or transform data before upload:
+```yaml
+enable_sanitize: true
+sanitize_config:
+  remove_nulls: ["temperature", "humidity"]
+  replace_values:
+    status: {"error": "unknown", "": "unknown"}
 ```
-Alternatively, you can build manually using `docker build`:
-```bash
-docker build -t uploader-image:latest .
+
+### Filtering (Routes to `filtered_*` tables)
+Select specific rows based on criteria:
+```yaml
+enable_filter: true
+filter_config:
+  temperature:
+    ">": -50
+    "<": 150
+  device_status: "active"
 ```
 
----
+### Aggregation (Routes to `aggregated_*` tables)
+Perform aggregations before upload:
+```yaml
+enable_aggregate: true
+aggregate_config:
+  group_by: ["device_id", "hour"]
+  aggregations:
+    temperature: "avg"
+    humidity: "max"
+    readings: "count"
+```
 
-## Running the Uploader
+## Databricks Table Setup
 
-1. Make the launcher script executable:
+Before running the uploader, ensure your target tables exist in Databricks for each scenario:
 
-   ```bash
-   chmod +x start-uploader.sh
-   ```
+```sql
+-- Create database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS sensor_data;
 
-2. Run with your config file:
+-- Create raw data table
+CREATE TABLE IF NOT EXISTS sensor_data.raw_sensor_readings (
+    id BIGINT,
+    device_id STRING,
+    timestamp TIMESTAMP,
+    temperature DOUBLE,
+    humidity DOUBLE,
+    status STRING
+);
 
-   ```bash
-   ./start-uploader.sh uploader-config.yaml
-   ```
+-- Create filtered data table (same schema)
+CREATE TABLE IF NOT EXISTS sensor_data.filtered_sensor_readings 
+AS SELECT * FROM sensor_data.raw_sensor_readings WHERE 1=0;
 
-The uploader will run continuously, appending new records each cycle.
+-- Create secure/sanitized data table
+CREATE TABLE IF NOT EXISTS sensor_data.secure_sensor_readings 
+AS SELECT * FROM sensor_data.raw_sensor_readings WHERE 1=0;
 
-## Debugging with Query Mode
+-- Create aggregated data table (different schema)
+CREATE TABLE IF NOT EXISTS sensor_data.aggregated_sensor_readings (
+    device_id STRING,
+    hour TIMESTAMP,
+    avg_temperature DOUBLE,
+    max_humidity DOUBLE,
+    reading_count BIGINT
+);
+```
 
-The uploader script includes a `--run-query` CLI flag that allows you to directly query your target Databricks table for debugging or inspection. This mode requires Databricks connection parameters to be configured (e.g., via `uploader-config.yaml` or environment variables). It will execute the query and then exit, without starting the continuous upload process.
+## Debugging and Monitoring
+
+### Query Mode
+
+The uploader includes a `--run-query` CLI flag for debugging and inspection:
 
 **1. Get Table Information:**
 
@@ -397,8 +513,102 @@ Replace `<CATALOG_NAME>` with the actual catalog you are using. This script demo
 
 ---
 
+## Integration with Bacalhau
+
+This uploader is designed to work seamlessly with Bacalhau compute jobs. Example Bacalhau job specification:
+
+```yaml
+name: databricks-upload-job
+type: batch
+compute:
+  image: ghcr.io/your-org/databricks-uploader:latest
+inputs:
+  - source:
+      type: localDirectory
+      path: /data/sqlite
+    target: /data
+  - source:
+      type: localFile
+      path: ./config.yaml
+    target: /config.yaml
+env:
+  DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
+command:
+  - "--config"
+  - "/config.yaml"
+  - "--once"
+```
+
+## Docker Deployment
+
+### Building the Image
+
+The included `build.sh` script supports multi-architecture builds:
+
+```bash
+# Build for multiple platforms
+cd databricks-uploader
+export PLATFORMS="linux/amd64,linux/arm64"
+./build.sh --tag v1.0.0 --push
+
+# Build for local testing only
+./build.sh --tag dev --registry local
+```
+
+### Running in Production
+
+Example docker-compose.yml:
+
+```yaml
+version: '3.8'
+services:
+  databricks-uploader:
+    image: ghcr.io/your-org/databricks-uploader:latest
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /data/sqlite:/data:ro
+      - ./state:/state
+    environment:
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+    command: ["--config", "/config.yaml"]
+    restart: unless-stopped
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Errors**
+   - Verify your Databricks PAT is valid
+   - Ensure the token has necessary permissions for all target tables
+
+2. **Table Not Found**
+   - Verify all scenario tables exist (raw_*, filtered_*, secure_*, aggregated_*)
+   - Check database and table names are correct
+
+3. **No New Records**
+   - Check the state file to see the last uploaded timestamp
+   - Verify your SQLite data has records newer than this timestamp
+
+4. **Wrong Table Used**
+   - Ensure only one processing option is enabled at a time
+   - Check logs to confirm which table prefix is being used
+
+## Security Considerations
+
+- **Never commit tokens**: Always use environment variables for sensitive credentials
+- **Use read-only mounts**: Mount SQLite databases as read-only in containers
+- **Rotate tokens regularly**: Update Databricks PATs periodically
+- **Limit token scope**: Use tokens with minimal required permissions
+- **Separate tables by sensitivity**: Use the secure_* tables for sanitized sensitive data
+
+## License
+
+This project is part of the Bacalhau examples repository. See the main repository for license information.
+
 ## Further Reading
 
-- [REARCHITECTURE.md](REARCHITECTURE.md): Original (now outdated) re-architecture plan.
-- `uploader-config.yaml.example`: Example config template for the uploader.
-- `docs/databricks-s3-connect.md`: (May be less relevant now) Guide for configuring Databricks S3 connectivity, primarily for external tables.
+- [databricks-uploader/README.md](databricks-uploader/README.md): Detailed uploader documentation
+- [REARCHITECTURE.md](REARCHITECTURE.md): Original architecture notes (outdated)
+- `databricks-uploader/databricks-uploader-config.yaml.example`: Full configuration example
+- `docs/`: Additional guides and documentation
