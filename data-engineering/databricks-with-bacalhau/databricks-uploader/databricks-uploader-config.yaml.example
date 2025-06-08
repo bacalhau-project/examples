@@ -50,7 +50,7 @@ state_dir: "./state"
 # Time in seconds between consecutive upload cycles. REQUIRED.
 # This determines how frequently the script checks for new data.
 # Example: 60 (for 1 minute), 300 (for 5 minutes), 3600 (for 1 hour)
-interval: 300
+interval: 30
 
 # Maximum number of records to upload in a single batch. REQUIRED.
 # Larger batches are more efficient but use more memory.
