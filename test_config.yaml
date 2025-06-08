@@ -1,0 +1,7 @@
+databricks_host: "dummy-host.databricks.com"
+databricks_http_path: "/sql/1.0/warehouses/dummy"
+databricks_token: "dummy-token"
+databricks_database: "sensor_data"
+databricks_table: "readings" # This is the crucial part
+sqlite: "../../../dummy_sensor_data.db" # Adjusted path
+sqlite_table_name: "sensor_readings"

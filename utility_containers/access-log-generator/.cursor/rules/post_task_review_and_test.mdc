@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Post-Task Review and Testing Protocol
+
+After completing the primary requested tasks, please adhere to the following steps:
+
+1.  **Review for Compactness and Maintainability**:
+    *   Re-evaluate the generated code, explanations, or any other output.
+    *   Ensure that the solution is concise and easy to understand.
+    *   Refactor or simplify where possible without sacrificing clarity or correctness.
+    *   Check for adherence to best practices and project-specific conventions if known.
+
+2.  **Suggest Running Unit Tests**:
+    *   If unit tests are present in the project (e.g., in a `tests` directory or as identified in previous interactions like [tests/test_config_validation.py](mdc:tests/test_config_validation.py)), explicitly suggest to the user that they should run these tests to verify the changes.
+    *   If relevant, provide the command to run the tests (e.g., `pytest`).
