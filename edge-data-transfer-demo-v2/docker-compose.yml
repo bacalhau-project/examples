@@ -1,7 +1,0 @@
-services:
-  backend:
-    build:
-      context: ./edge-data-spots
-      dockerfile: Dockerfile
-    env_file:
-      - .env
