@@ -1,0 +1,14 @@
+services:
+  # ✂ existing services …
+
+  delta-lake:
+    image: deltaio/delta-docker:${DELTA_DOCKER_TAG:-latest}   # arm64 users may override with *_arm64
+    container_name: delta-lake
+    entrypoint: ["/startup.sh"]   # supplied by the image
+    volumes:
+      - ./data/delta:/tmp                   # host path where tables will live
+    ports:
+      - "8888:8888"     # JupyterLab
+      - "4040:4040"     # Spark UI (first app)
+    networks:
+      - bacalhau        # reuse the same network as the rest of the demo stack
