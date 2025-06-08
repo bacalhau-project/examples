@@ -313,6 +313,18 @@ def load_config(
     messages_to_log.append(
         (
             "info",
+            f"  No Error Log: {config['output'].get('no_error_log', False)}",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
+            f"  No System Log: {config['output'].get('no_system_log', False)}",
+        )
+    )
+    messages_to_log.append(
+        (
+            "info",
             "\n  State Transitions:",
         )
     )
@@ -385,9 +397,26 @@ def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Lo
         # Convert max_size_mb to bytes
         max_bytes = max_size_mb * 1024 * 1024 if max_size_mb > 0 else 0
 
+        # Check for disabled loggers
+        output_config = config.get("output", {}) if config else {}
+        no_error_log = output_config.get("no_error_log", False) or os.environ.get(
+            "NO_ERROR_LOG", ""
+        ).lower() in ("true", "1", "yes", "on")
+        no_system_log = output_config.get("no_system_log", False) or os.environ.get(
+            "NO_SYSTEM_LOG", ""
+        ).lower() in ("true", "1", "yes", "on")
+
+        # Determine which log files to create
+        log_files_to_create = []
+        if not no_error_log:
+            log_files_to_create.append("error.log")
+        if not no_system_log:
+            log_files_to_create.append("system.log")
+        # Always create access.log
+        log_files_to_create.append("access.log")
+
         # Truncate log files on startup
-        log_files = ["access.log", "error.log", "system.log"]
-        for log_file in log_files:
+        for log_file in log_files_to_create:
             file_path = output_dir / log_file
             # Truncate the file by opening it in write mode
             if file_path.exists():
@@ -405,72 +434,84 @@ def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Lo
             logger.setLevel(logging.INFO if logger_name != "error" else logging.WARNING)
             logger.propagate = False
 
-            # Choose handler based on rotation settings
-            if rotation_enabled:
-                if max_bytes > 0:
-                    # Use size-based rotation
-                    handler = logging.handlers.RotatingFileHandler(
-                        filename=output_dir / file_name,
-                        maxBytes=max_bytes,
-                        backupCount=backup_count,
-                        encoding="utf-8",
-                    )
-                elif when:
-                    # Use time-based rotation
-                    handler = logging.handlers.TimedRotatingFileHandler(
-                        filename=output_dir / file_name,
-                        when=when,
-                        interval=interval,
-                        backupCount=backup_count,
-                        encoding="utf-8",
-                    )
+            # Skip creating file handler if logger is disabled
+            should_create_handler = True
+            if logger_name == "error" and no_error_log:
+                should_create_handler = False
+            elif logger_name == "system" and no_system_log:
+                should_create_handler = False
+
+            if should_create_handler:
+                # Choose handler based on rotation settings
+                if rotation_enabled:
+                    if max_bytes > 0:
+                        # Use size-based rotation
+                        handler = logging.handlers.RotatingFileHandler(
+                            filename=output_dir / file_name,
+                            maxBytes=max_bytes,
+                            backupCount=backup_count,
+                            encoding="utf-8",
+                        )
+                    elif when:
+                        # Use time-based rotation
+                        handler = logging.handlers.TimedRotatingFileHandler(
+                            filename=output_dir / file_name,
+                            when=when,
+                            interval=interval,
+                            backupCount=backup_count,
+                            encoding="utf-8",
+                        )
+                    else:
+                        # Fallback to no rotation
+                        handler = logging.FileHandler(
+                            filename=output_dir / file_name,
+                            encoding="utf-8",
+                        )
                 else:
-                    # Fallback to no rotation
+                    # No rotation
                     handler = logging.FileHandler(
                         filename=output_dir / file_name,
                         encoding="utf-8",
                     )
+
+                logger.addHandler(handler)
+
+                # Set formatter
+                formatter = logging.Formatter(
+                    "%(message)s"
+                    if logger_name == "access"
+                    else "%(asctime)s - %(levelname)s - %(message)s"
+                )
+                handler.setFormatter(formatter)
+
+                # Add compression if enabled
+                if (
+                    compress
+                    and rotation_enabled
+                    and isinstance(
+                        handler,
+                        (
+                            logging.handlers.RotatingFileHandler,
+                            logging.handlers.TimedRotatingFileHandler,
+                        ),
+                    )
+                ):
+                    # Add compression to rotated logs
+                    def namer(name):
+                        return name + ".gz"
+
+                    def rotator(source, dest):
+                        with open(source, "rb") as f_in:
+                            with gzip.open(dest + ".gz", "wb") as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        os.remove(source)
+
+                    handler.namer = namer
+                    handler.rotator = rotator
             else:
-                # No rotation
-                handler = logging.FileHandler(
-                    filename=output_dir / file_name,
-                    encoding="utf-8",
-                )
-
-            logger.addHandler(handler)
-
-            # Set formatter
-            formatter = logging.Formatter(
-                "%(message)s"
-                if logger_name == "access"
-                else "%(asctime)s - %(levelname)s - %(message)s"
-            )
-            handler.setFormatter(formatter)
-
-            # Add compression if enabled
-            if (
-                compress
-                and rotation_enabled
-                and isinstance(
-                    handler,
-                    (
-                        logging.handlers.RotatingFileHandler,
-                        logging.handlers.TimedRotatingFileHandler,
-                    ),
-                )
-            ):
-                # Add compression to rotated logs
-                def namer(name):
-                    return name + ".gz"
-
-                def rotator(source, dest):
-                    with open(source, "rb") as f_in:
-                        with gzip.open(dest + ".gz", "wb") as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                    os.remove(source)
-
-                handler.namer = namer
-                handler.rotator = rotator
+                # Create a null handler if logger is disabled
+                handler = logging.NullHandler()
+                logger.addHandler(handler)
 
             loggers[logger_name] = logger
 
@@ -480,7 +521,7 @@ def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Lo
         # Remove any existing handlers
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
-        # Add system logger handlers to root logger
+        # Add system logger handlers to root logger (even if it's a NullHandler)
         for handler in loggers["system"].handlers:
             root_logger.addHandler(handler)
 
@@ -493,6 +534,18 @@ def setup_logging(output_dir: Path, config: Dict = None) -> Dict[str, logging.Lo
 
         # Log initial message to system log
         loggers["system"].info("Logging initialized - all output directed to log files")
+
+        # Log information about disabled loggers
+        disabled_loggers = []
+        if no_error_log:
+            disabled_loggers.append("error.log")
+        if no_system_log:
+            disabled_loggers.append("system.log")
+
+        if disabled_loggers:
+            loggers["system"].info(f"Disabled log files: {', '.join(disabled_loggers)}")
+
+        loggers["system"].info(f"Active log files: {', '.join(log_files_to_create)}")
 
         return loggers
 
@@ -1409,6 +1462,73 @@ def main():
         if "output" not in config:
             config["output"] = {}
         config["output"]["directory"] = log_dir_override_value
+
+    # Check for environment variable overrides
+    env_overrides = []
+
+    # Override rate if RATE_PER_SECOND is set
+    rate_override = os.environ.get("RATE_PER_SECOND")
+    if rate_override:
+        try:
+            rate_value = float(rate_override)
+            if rate_value <= 0:
+                all_initial_messages.append(
+                    ("error", f"RATE_PER_SECOND must be positive, got: {rate_value}")
+                )
+                print(
+                    f"❌ RATE_PER_SECOND must be positive, got: {rate_value}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            config["output"]["rate"] = rate_value
+            env_overrides.append(f"rate={rate_value}")
+        except ValueError:
+            all_initial_messages.append(
+                ("error", f"Invalid RATE_PER_SECOND value: {rate_override}")
+            )
+            print(f"❌ Invalid RATE_PER_SECOND value: {rate_override}", file=sys.stderr)
+            sys.exit(1)
+
+    # Override pre_warm if PRE_WARM is set
+    pre_warm_override = os.environ.get("PRE_WARM")
+    if pre_warm_override:
+        pre_warm_value = pre_warm_override.lower() in ("true", "1", "yes", "on")
+        config["output"]["pre_warm"] = pre_warm_value
+        env_overrides.append(f"pre_warm={pre_warm_value}")
+
+    # Override debug if DEBUG is set
+    debug_override = os.environ.get("DEBUG")
+    if debug_override:
+        debug_value = debug_override.lower() in ("true", "1", "yes", "on")
+        config["output"]["debug"] = debug_value
+        env_overrides.append(f"debug={debug_value}")
+
+    # Override no_error_log if NO_ERROR_LOG is set
+    no_error_log_override = os.environ.get("NO_ERROR_LOG")
+    if no_error_log_override:
+        no_error_log_value = no_error_log_override.lower() in ("true", "1", "yes", "on")
+        config["output"]["no_error_log"] = no_error_log_value
+        env_overrides.append(f"no_error_log={no_error_log_value}")
+
+    # Override no_system_log if NO_SYSTEM_LOG is set
+    no_system_log_override = os.environ.get("NO_SYSTEM_LOG")
+    if no_system_log_override:
+        no_system_log_value = no_system_log_override.lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
+        )
+        config["output"]["no_system_log"] = no_system_log_value
+        env_overrides.append(f"no_system_log={no_system_log_value}")
+
+    if env_overrides:
+        all_initial_messages.append(
+            (
+                "info",
+                f"Environment variable overrides applied: {', '.join(env_overrides)}",
+            )
+        )
 
     # Initialize logging with possibly overridden directory and rotation settings
     loggers = setup_logging(Path(config["output"]["directory"]), config)

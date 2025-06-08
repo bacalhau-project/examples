@@ -1,11 +1,12 @@
 #!/usr/bin/env uv run -s
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.12"
 # dependencies = [
-#     "pandas>=2.0.0",
-#     "pyarrow>=12.0.0",
-#     "pyyaml>=6.0",
-#     "databricks-sql-connector>=2.0.0"
+#     "pandas>=2.2.3",
+#     "pyarrow>=17.0.0",
+#     "pyyaml>=6.0.2",
+#     "numpy>=2.0.0",
+#     "databricks-sql-connector>=3.0.0"
 # ]
 # ///
 """
@@ -19,10 +20,14 @@ import io
 import json
 import logging
 import os
+import random
 import re
 import sqlite3
 import sys
+import tempfile
+import threading
 import time
+import uuid
 from pathlib import Path
 
 import databricks.sql
@@ -31,6 +36,12 @@ import yaml
 
 # deltalake imports removed
 
+# Suppress verbose HTTP logging from Databricks connector
+logging.getLogger("databricks").setLevel(logging.WARNING)
+logging.getLogger("databricks.sql").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 # New helper function for quoting Databricks SQL identifiers
 def quote_databricks_identifier(name: str) -> str:
@@ -38,6 +49,136 @@ def quote_databricks_identifier(name: str) -> str:
     Escapes existing backticks within the name.
     """
     return f"`{name.replace('`', '``')}`"
+
+
+def convert_timestamps_to_strings(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert all timestamp columns in DataFrame to ISO format strings.
+
+    This is necessary because Databricks SQL connector cannot handle pandas Timestamp objects.
+    """
+    df_copy = df.copy()
+    for col in df_copy.columns:
+        # Check if column is datetime type
+        if pd.api.types.is_datetime64_any_dtype(df_copy[col]):
+            # Convert to ISO format string
+            df_copy[col] = df_copy[col].dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+        else:
+            # Check if column contains timestamp objects (e.g., when a single Timestamp is assigned)
+            try:
+                # Check if the first non-null value is a Timestamp
+                first_val = (
+                    df_copy[col].dropna().iloc[0]
+                    if not df_copy[col].dropna().empty
+                    else None
+                )
+                if first_val is not None and isinstance(first_val, pd.Timestamp):
+                    # Convert all values in the column
+                    df_copy[col] = df_copy[col].apply(
+                        lambda x: x.strftime("%Y-%m-%d %H:%M:%S.%f")
+                        if pd.notna(x)
+                        else None
+                    )
+            except (IndexError, AttributeError):
+                # Column doesn't contain timestamps, skip
+                pass
+    return df_copy
+
+
+class ConfigWatcher:
+    """Watches a configuration file for changes and updates settings dynamically."""
+    
+    def __init__(self, config_path: str, check_interval: float = 2.0):
+        """
+        Initialize the config watcher.
+        
+        Args:
+            config_path: Path to the configuration file
+            check_interval: How often to check for changes (in seconds)
+        """
+        self.config_path = Path(config_path) if config_path else None
+        self.check_interval = check_interval
+        self.last_mtime = None
+        self.current_config = {}
+        self.lock = threading.Lock()
+        self.running = False
+        self.thread = None
+        
+        # Load initial config if path exists
+        if self.config_path and self.config_path.exists():
+            self._load_config()
+            self.last_mtime = self.config_path.stat().st_mtime
+    
+    def _load_config(self):
+        """Load the configuration file."""
+        try:
+            with open(self.config_path, 'r') as f:
+                new_config = yaml.safe_load(f)
+            
+            # Validate processing mode if present
+            if 'processing_mode' in new_config:
+                valid_modes = ['RAW', 'SCHEMATIZED', 'SANITIZED', 'AGGREGATED', 'EMERGENCY']
+                mode_upper = new_config['processing_mode'].upper()
+                if mode_upper not in valid_modes:
+                    logging.error(f"Invalid processing_mode in config update: '{new_config['processing_mode']}'")
+                    logging.error(f"Must be one of: {', '.join(valid_modes)}")
+                    logging.error("Keeping current configuration")
+                    return
+                # Normalize to lowercase for internal use
+                new_config['processing_mode'] = mode_upper.lower()
+            
+            with self.lock:
+                old_processing_mode = self.current_config.get('processing_mode')
+                new_processing_mode = new_config.get('processing_mode')
+                
+                if old_processing_mode != new_processing_mode and old_processing_mode is not None:
+                    logging.info(f"Processing mode changed from '{old_processing_mode}' to '{new_processing_mode}'")
+                
+                self.current_config = new_config
+                
+        except Exception as e:
+            logging.error(f"Error loading config file: {e}")
+    
+    def _watch_loop(self):
+        """Main loop that checks for config file changes."""
+        while self.running:
+            try:
+                if self.config_path and self.config_path.exists():
+                    current_mtime = self.config_path.stat().st_mtime
+                    if current_mtime != self.last_mtime:
+                        logging.info(f"Config file changed, reloading...")
+                        self._load_config()
+                        self.last_mtime = current_mtime
+            except Exception as e:
+                logging.error(f"Error checking config file: {e}")
+            
+            time.sleep(self.check_interval)
+    
+    def start(self):
+        """Start watching the config file."""
+        if not self.config_path:
+            return
+            
+        self.running = True
+        self.thread = threading.Thread(target=self._watch_loop, daemon=True)
+        self.thread.start()
+        logging.info(f"Started watching config file: {self.config_path}")
+    
+    def stop(self):
+        """Stop watching the config file."""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        logging.info("Stopped watching config file")
+    
+    def get(self, key: str, default=None):
+        """Get a configuration value with thread safety."""
+        with self.lock:
+            return self.current_config.get(key, default)
+    
+    def get_all(self):
+        """Get all configuration values with thread safety."""
+        with self.lock:
+            return self.current_config.copy()
 
 
 def parse_args():
@@ -54,12 +195,21 @@ def parse_args():
     p.add_argument("--once", action="store_true", help="Upload once and exit (no loop)")
     p.add_argument("--table", help="Override SQLite table name")
     p.add_argument("--timestamp-col", help="Override timestamp column")
+    p.add_argument(
+        "--max-batch-size",
+        type=int,
+        help="Maximum number of records to upload per batch cycle (default: 500)",
+    )
+    p.add_argument(
+        "--fuzz-factor",
+        type=float,
+        help="Fuzz factor for sleep interval as a percentage (0-1, default: 0.1 = 10%%)",
+    )
     # Updated argument for processing mode
     p.add_argument(
         "--processing-mode",
-        choices=["raw", "schematized", "sanitized", "aggregated", "emergency"],
-        default="schematized",
-        help="Processing mode for data upload",
+        choices=["RAW", "SCHEMATIZED", "SANITIZED", "AGGREGATED", "EMERGENCY"],
+        help="Processing mode for data upload (required in config)",
     )
     # Processing configurations
     p.add_argument(
@@ -252,7 +402,77 @@ def read_data(sqlite_path, query, table_name):
         conn.close()
 
 
-## removed S3 upload in favor of direct Delta Lake write
+def upload_batch_via_file(
+    df: pd.DataFrame, table_name_qualified: str, cursor_db, processing_mode: str
+) -> bool:
+    """Upload DataFrame to Databricks table using direct INSERT statements.
+
+    Uses multi-row INSERT VALUES syntax for efficient bulk loading without
+    requiring temporary tables.
+
+    Args:
+        df: DataFrame to upload
+        table_name_qualified: Fully qualified table name (database.table)
+        cursor_db: Databricks SQL cursor
+        processing_mode: Processing mode for logging
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Insert data directly into target table in batches
+        # Using VALUES clause for better performance than individual inserts
+        batch_size = 500  # Databricks can handle larger batches
+        total_records = len(df)
+
+        # Build column list
+        columns = [quote_databricks_identifier(col) for col in df.columns]
+        column_list = ", ".join(columns)
+
+        logging.info(
+            f"Uploading {total_records} records to {table_name_qualified} in batches of {batch_size}..."
+        )
+
+        for start_idx in range(0, total_records, batch_size):
+            end_idx = min(start_idx + batch_size, total_records)
+            batch_df = df.iloc[start_idx:end_idx]
+
+            # Build VALUES clause
+            values_rows = []
+            for _, row in batch_df.iterrows():
+                values = []
+                for val in row:
+                    if pd.isna(val):
+                        values.append("NULL")
+                    elif isinstance(val, str):
+                        # Escape single quotes in strings
+                        escaped_val = val.replace("'", "''")
+                        values.append(f"'{escaped_val}'")
+                    elif isinstance(val, (pd.Timestamp, pd.DatetimeTZDtype)):
+                        values.append(f"'{val}'")
+                    else:
+                        values.append(str(val))
+                values_rows.append(f"({', '.join(values)})")
+
+            # Direct INSERT with VALUES clause
+            insert_sql = f"""
+            INSERT INTO {table_name_qualified} ({column_list})
+            VALUES {", ".join(values_rows)}
+            """
+
+            cursor_db.execute(insert_sql)
+            logging.info(
+                f"Inserted batch {start_idx // batch_size + 1}/{(total_records + batch_size - 1) // batch_size} ({len(batch_df)} records)"
+            )
+
+        logging.info(
+            f"Successfully uploaded {total_records} records to {table_name_qualified}"
+        )
+        return True
+
+    except Exception as e:
+        logging.error(f"Error during batch upload: {e}", exc_info=True)
+        return False
 
 
 def main():
@@ -260,10 +480,52 @@ def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    # 1) load YAML if supplied
-    cfg = {}
-    if args.config:
-        cfg = yaml.safe_load(Path(args.config).read_text())
+    
+    # Initialize config watcher
+    config_watcher = ConfigWatcher(args.config, check_interval=2.0)
+    
+    # Get initial config - ConfigWatcher handles the file loading
+    cfg = config_watcher.get_all()
+    
+    # Validate required configuration fields
+    required_config_fields = {
+        'processing_mode': 'Processing mode (RAW, SCHEMATIZED, SANITIZED, AGGREGATED, EMERGENCY)',
+        'sqlite': 'SQLite database path',
+        'databricks_host': 'Databricks host',
+        'databricks_http_path': 'Databricks HTTP path',
+        'databricks_database': 'Databricks database name',
+        'databricks_table': 'Databricks table base name',
+        'state_dir': 'State directory path',
+        'interval': 'Upload interval in seconds',
+        'max_batch_size': 'Maximum batch size for uploads'
+    }
+    
+    # Check for missing required fields
+    missing_fields = []
+    for field, description in required_config_fields.items():
+        if field not in cfg or cfg[field] is None:
+            missing_fields.append(f"{field} ({description})")
+    
+    if missing_fields:
+        logging.error("Missing required configuration fields:")
+        for field in missing_fields:
+            logging.error(f"  - {field}")
+        logging.error("\nPlease ensure all required fields are present in your configuration file.")
+        sys.exit(1)
+    
+    # Validate processing mode
+    valid_processing_modes = ['RAW', 'SCHEMATIZED', 'SANITIZED', 'AGGREGATED', 'EMERGENCY']
+    initial_processing_mode = cfg.get('processing_mode', '').upper()
+    if initial_processing_mode not in valid_processing_modes:
+        logging.error(f"Invalid processing_mode: '{cfg.get('processing_mode')}'")
+        logging.error(f"Must be one of: {', '.join(valid_processing_modes)}")
+        sys.exit(1)
+    
+    # Normalize processing mode to lowercase for internal use
+    cfg['processing_mode'] = initial_processing_mode.lower()
+    
+    # Start watching for config changes
+    config_watcher.start()
 
     # 2) assemble Databricks connection params (CLI > ENV > YAML)
     databricks_host = (
@@ -443,6 +705,16 @@ def main():
         )
     )
     once = args.once
+    max_batch_size = int(
+        args.max_batch_size
+        if args.max_batch_size is not None
+        else os.getenv("MAX_BATCH_SIZE") or cfg.get("max_batch_size", 500)
+    )
+    fuzz_factor = float(
+        args.fuzz_factor
+        if args.fuzz_factor is not None
+        else os.getenv("FUZZ_FACTOR") or cfg.get("fuzz_factor", 0.1)
+    )
     # sqlite_table_name refers to the source table in SQLite
     sqlite_table_name = (
         args.table or os.getenv("SQLITE_TABLE_NAME") or cfg.get("sqlite_table_name")
@@ -528,34 +800,85 @@ def main():
         )
 
     logging.info(
-        "Starting continuous upload every %d seconds, initial timestamp=%s",
+        "Starting continuous upload every %d seconds (with %.0f%% fuzz), max batch size=%d, initial timestamp=%s",
         interval,
+        fuzz_factor * 100,
+        max_batch_size,
         last_ts,
     )
     base_name = sqlite_path.stem  # Remains useful for context
     while True:
         try:
-            # Read new data since last timestamp using introspected schema
-            sql = f"SELECT * FROM {sqlite_table_name} WHERE {timestamp_field} > ? ORDER BY {timestamp_field}"
+            # First, count total available records
+            conn_sqlite_count = sqlite3.connect(str(sqlite_path))
+            cursor_count = conn_sqlite_count.cursor()
+
+            # Count total records available for upload
+            count_sql = f"SELECT COUNT(*) as count, MIN(id) as min_id, MAX(id) as max_id FROM {sqlite_table_name} WHERE {timestamp_field} > ?"
+            cursor_count.execute(count_sql, [last_ts.isoformat()])
+            count_result = cursor_count.fetchone()
+            available_count = count_result[0] if count_result else 0
+            min_id = (
+                count_result[1]
+                if count_result and count_result[1] is not None
+                else "N/A"
+            )
+            max_id = (
+                count_result[2]
+                if count_result and count_result[2] is not None
+                else "N/A"
+            )
+            conn_sqlite_count.close()
+
+            if available_count > 0:
+                logging.info(f"\n{'=' * 60}")
+                logging.info(f"PRE-UPLOAD STATUS:")
+                logging.info(f"  Available records in SQLite: {available_count}")
+                logging.info(f"  ID range: {min_id} to {max_id}")
+                logging.info(f"  Will fetch up to {max_batch_size} records")
+                logging.info(f"{'=' * 60}")
+
+            # Read new data since last timestamp using introspected schema, limited by batch size
+            sql = f"SELECT * FROM {sqlite_table_name} WHERE {timestamp_field} > ? ORDER BY {timestamp_field} LIMIT ?"
             conn_sqlite_data = sqlite3.connect(str(sqlite_path))
-            df = pd.read_sql_query(sql, conn_sqlite_data, params=[last_ts.isoformat()])
+            df = pd.read_sql_query(
+                sql, conn_sqlite_data, params=[last_ts.isoformat(), max_batch_size]
+            )
             conn_sqlite_data.close()
+
             if df.empty:
                 logging.info("No new records since %s", last_ts)
             else:
+                # Get ID range of fetched records
+                if "id" in df.columns:
+                    batch_min_id = df["id"].min()
+                    batch_max_id = df["id"].max()
+                    logging.info(
+                        f"\nFetched batch: {len(df)} records (IDs: {batch_min_id} to {batch_max_id})"
+                    )
+                else:
+                    logging.info(f"\nFetched batch: {len(df)} records")
+
                 # Data processing steps
 
-                # Get processing mode
-                processing_mode = (
-                    args.processing_mode
-                    or os.getenv("PROCESSING_MODE")
-                    or cfg.get("processing_mode", "schematized")
-                )
+                # Get processing mode - dynamically from config watcher
+                # Note: config watcher already normalizes to lowercase
+                processing_mode = None
+                if args.processing_mode:
+                    processing_mode = args.processing_mode.lower()
+                elif os.getenv("PROCESSING_MODE"):
+                    processing_mode = os.getenv("PROCESSING_MODE").lower()
+                else:
+                    processing_mode = config_watcher.get("processing_mode")
+                
+                if not processing_mode:
+                    logging.error("Processing mode not found - this should not happen")
+                    sys.exit(1)
 
                 # Load configuration for specific processing modes
                 gps_fuzzing_config_str = args.gps_fuzzing_config
                 if gps_fuzzing_config_str == "{}":
-                    gps_fuzzing_config_str = os.getenv("GPS_FUZZING_CONFIG") or cfg.get(
+                    gps_fuzzing_config_str = os.getenv("GPS_FUZZING_CONFIG") or config_watcher.get(
                         "gps_fuzzing"
                     )
 
@@ -573,7 +896,7 @@ def main():
 
                 emergency_config_str = args.emergency_config
                 if emergency_config_str == "{}":
-                    emergency_config_str = os.getenv("EMERGENCY_CONFIG") or cfg.get(
+                    emergency_config_str = os.getenv("EMERGENCY_CONFIG") or config_watcher.get(
                         "emergency_config"
                     )
 
@@ -591,7 +914,7 @@ def main():
 
                 aggregate_config_str = args.aggregate_config
                 if aggregate_config_str == "{}":
-                    aggregate_config_str = os.getenv("AGGREGATE_CONFIG") or cfg.get(
+                    aggregate_config_str = os.getenv("AGGREGATE_CONFIG") or config_watcher.get(
                         "aggregate_config"
                     )
 
@@ -670,46 +993,33 @@ def main():
                         )
 
                         # Add databricks-specific columns for all modes
-                        processed_df["databricks_inserted_at"] = pd.Timestamp.now()
+                        # Create as a proper datetime series to ensure correct type detection
+                        current_timestamp = pd.Timestamp.now()
+                        processed_df["databricks_inserted_at"] = pd.Series(
+                            [current_timestamp] * len(processed_df),
+                            index=processed_df.index,
+                        )
 
                         # Note: The 'id' column is not added here as it's defined in the schema
                         # without GENERATED ALWAYS AS IDENTITY, so Databricks won't auto-generate it.
                         # The uploader will need to handle ID generation if required.
 
-                        columns = [
-                            quote_databricks_identifier(col)
-                            for col in processed_df.columns
-                        ]
-                        placeholders = ", ".join(["?"] * len(columns))
-                        insert_sql_template = f"INSERT INTO {table_name_qualified} ({', '.join(columns)}) VALUES ({placeholders})"
-
-                        data_to_insert = [
-                            tuple(row) for row in processed_df.to_numpy()
-                        ]  # Convert DataFrame rows to tuples
-
-                        batch_size = 500  # Configurable or fixed batch size
-                        num_batches = (
-                            len(data_to_insert) + batch_size - 1
-                        ) // batch_size
-
-                        logging.info(
-                            f"Preparing to insert {len(data_to_insert)} records in {num_batches} batches of size {batch_size} into {table_name_qualified}..."
+                        # Store the max timestamp before converting to strings
+                        # We need this as a pandas Timestamp for state file updates
+                        max_timestamp_before_conversion = pd.to_datetime(
+                            processed_df[timestamp_field].max()
                         )
 
-                        for i in range(num_batches):
-                            batch_data = data_to_insert[
-                                i * batch_size : (i + 1) * batch_size
-                            ]
-                            cursor_db.executemany(insert_sql_template, batch_data)
-                            logging.info(
-                                f"Inserted batch {i + 1}/{num_batches} ({len(batch_data)} records)."
-                            )
+                        # Convert timestamps to strings before insertion
+                        processed_df = convert_timestamps_to_strings(processed_df)
 
-                        # conn_db.commit() # Databricks SQL Connector typically autocommits DML like INSERT
-                        logging.info(
-                            f"Successfully inserted {len(data_to_insert)} new records into Databricks table {table_name_qualified}"
+                        # Use file-based upload instead of direct SQL insert
+                        upload_successful = upload_batch_via_file(
+                            processed_df,
+                            table_name_qualified,
+                            cursor_db,
+                            processing_mode,
                         )
-                        upload_successful = True
 
                     except Exception as e:
                         logging.error(
@@ -724,17 +1034,56 @@ def main():
                             conn_db.close()
                         logging.info("Databricks connection closed.")
                 else:
-                    logging.info("No new records to upload to Databricks.")
+                    logging.info(
+                        "No new records to upload to Databricks after processing."
+                    )
                     upload_successful = True  # No data to upload, so treat as success for timestamp update
 
                 # Update state timestamp only if upload was successful or no data needed uploading
                 if upload_successful:
-                    last_ts = (
-                        df[timestamp_field].max() if not df.empty else last_ts
-                    )  # Keep old last_ts if df is empty
+                    if not df.empty and "max_timestamp_before_conversion" in locals():
+                        # Use the timestamp we stored before conversion
+                        last_ts = max_timestamp_before_conversion
+                    elif not df.empty:
+                        # Fallback: parse the timestamp from the original dataframe
+                        last_ts = pd.to_datetime(df[timestamp_field].max())
+                    # else keep the existing last_ts
+
                     with open(state_file, "w") as f:
                         json.dump({"last_upload": last_ts.isoformat()}, f)
                     logging.info(f"State timestamp updated to: {last_ts.isoformat()}")
+
+                    # Post-upload status check
+                    conn_sqlite_post = sqlite3.connect(str(sqlite_path))
+                    cursor_post = conn_sqlite_post.cursor()
+                    cursor_post.execute(count_sql, [last_ts.isoformat()])
+                    post_result = cursor_post.fetchone()
+                    remaining_count = post_result[0] if post_result else 0
+                    remaining_min_id = (
+                        post_result[1]
+                        if post_result and post_result[1] is not None
+                        else "N/A"
+                    )
+                    remaining_max_id = (
+                        post_result[2]
+                        if post_result and post_result[2] is not None
+                        else "N/A"
+                    )
+                    conn_sqlite_post.close()
+
+                    logging.info(f"\n{'=' * 60}")
+                    logging.info(f"POST-UPLOAD STATUS:")
+                    logging.info(f"  Records uploaded: {len(df)}")
+                    if "id" in df.columns:
+                        logging.info(
+                            f"  Uploaded ID range: {df['id'].min()} to {df['id'].max()}"
+                        )
+                    logging.info(f"  Remaining records in SQLite: {remaining_count}")
+                    if remaining_count > 0:
+                        logging.info(
+                            f"  Remaining ID range: {remaining_min_id} to {remaining_max_id}"
+                        )
+                    logging.info(f"{'=' * 60}\n")
                 else:
                     logging.warning(
                         "Upload to Databricks failed or was incomplete. State timestamp will not be updated."
@@ -747,7 +1096,15 @@ def main():
             logging.error("Error in upload cycle: %s", e, exc_info=True)
         if once:
             break
-        time.sleep(interval)
+        # Apply fuzz factor to sleep interval
+        fuzzed_interval = interval * (1 + random.uniform(-fuzz_factor, fuzz_factor))
+        logging.info(
+            f"Sleeping for {fuzzed_interval:.1f} seconds (base interval: {interval}s, fuzz: ±{fuzz_factor * 100:.0f}%)"
+        )
+        time.sleep(fuzzed_interval)
+    
+    # Clean shutdown
+    config_watcher.stop()
 
 
 if __name__ == "__main__":
