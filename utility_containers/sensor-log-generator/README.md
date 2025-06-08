@@ -62,7 +62,7 @@ services:
       - ./logs:/var/log/app
 ```
 
-2. Run with Docker Compose:
+1. Run with Docker Compose:
 
 ```bash
 docker-compose up -d
@@ -77,25 +77,26 @@ git clone https://github.com/bacalhau-project/bacalhau-examples.git
 cd bacalhau-examples/utility_containers/sensor-log-generator
 ```
 
-2. Build the Docker image:
+1. Build the Docker image:
 
 ```bash
 docker build -t sensor-simulator .
 ```
 
-3. Run the container:
+1. Run the container:
 
 ```bash
 docker run -v $(pwd)/data:/app/data sensor-simulator
 ```
 
-4. Test the container with the provided script:
+1. Test the container with the provided script:
 
 ```bash
 ./test_container.sh
 ```
 
 This script:
+
 - Builds the Docker container
 - Clears and recreates the data directory
 - Runs the container for 30 seconds
@@ -110,7 +111,7 @@ This script:
 pip install requests numpy pyyaml psutil
 ```
 
-2. Run the simulator:
+1. Run the simulator:
 
 ```bash
 python main.py --config config.yaml --identity node_identity.json
@@ -412,3 +413,158 @@ The simulator is built with a modular architecture:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Troubleshooting
+
+### SQLite Disk I/O Errors in Containers
+
+If you encounter "disk I/O error" when running in containers with multiple processes accessing the same SQLite database, follow these steps:
+
+#### 1. Enable Debug Logging
+
+Set the logging level to DEBUG in your `config.yaml`:
+
+```yaml
+logging:
+  level: DEBUG
+  file: sensor_simulator.log
+  console_output: true
+```
+
+This will provide detailed information about:
+
+- Container environment detection
+- SQLite connection settings and pragmas
+- File permissions and disk space
+- WAL (Write-Ahead Logging) mode status
+- Process and thread IDs
+- File locking information
+
+#### 2. Set SQLite Temporary Directory
+
+In container environments, the default `/tmp` directory might have issues. Set a custom temporary directory:
+
+```bash
+# Docker run example
+docker run -v $(pwd)/data:/app/data \
+  -e SQLITE_TMPDIR=/app/data/tmp \
+  -e CONFIG_FILE=/app/config.yaml \
+  -e IDENTITY_FILE=/app/identity.json \
+  sensor-simulator
+
+# Docker Compose example
+environment:
+  - SQLITE_TMPDIR=/app/data/tmp
+  - CONFIG_FILE=/app/config.yaml
+  - IDENTITY_FILE=/app/identity.json
+```
+
+Make sure the temporary directory exists and is writable:
+
+```bash
+mkdir -p data/tmp
+chmod 777 data/tmp
+```
+
+#### 3. Volume Mount Considerations
+
+When using Docker volumes, ensure:
+
+1. **Proper permissions**: The container user must have read/write access
+
+   ```bash
+   # Set permissions on the host
+   chmod -R 777 data/
+   ```
+
+2. **Avoid network filesystems**: SQLite doesn't work well with NFS or similar network filesystems
+
+3. **Use named volumes for better performance**:
+
+   ```yaml
+   volumes:
+     sensor_data:
+   
+   services:
+     sensor:
+       volumes:
+         - sensor_data:/app/data
+   ```
+
+#### 4. Container Resource Limits
+
+Ensure your container has sufficient resources:
+
+```yaml
+# Docker Compose example
+services:
+  sensor:
+    mem_limit: 512m
+    cpus: '1.0'
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+```
+
+#### 5. SQLite Configuration
+
+The database module automatically sets these SQLite pragmas for better container compatibility:
+
+- `journal_mode=WAL` - Write-Ahead Logging for better concurrency
+- `busy_timeout=30000` - 30-second timeout for locked database
+- `synchronous=NORMAL` - Balance between safety and performance
+- `temp_store=MEMORY` - Use memory for temporary tables
+- `mmap_size=268435456` - 256MB memory-mapped I/O
+- `cache_size=-64000` - 64MB cache size
+
+#### 6. Debug Output Analysis
+
+When debug mode is enabled, look for these key indicators:
+
+```text
+=== Database Debug Information ===
+Running in container: True
+SQLITE_TMPDIR: /app/data/tmp
+Database absolute path: /app/data/sensor_data.db
+Directory writable: True
+Disk free: 45.23 GB
+WAL file exists, size: 32768 bytes
+```
+
+Common issues to look for:
+
+- "Directory writable: False" - Permission issues
+- "Disk free: 0.00 GB" - No disk space
+- "WAL file exists" with large size - May need WAL checkpoint
+- Multiple "File locks" entries - Concurrent access issues
+
+#### 7. Multi-Process Access
+
+If multiple processes need to access the same database:
+
+1. **Use a single writer process**: Have one process write and others read
+2. **Implement proper retry logic**: The module includes automatic retries
+3. **Consider using a client-server database** like PostgreSQL for heavy concurrent access
+
+#### 8. Recovery from Corruption
+
+If the database becomes corrupted:
+
+```bash
+# Backup the corrupted database
+cp data/sensor_data.db data/sensor_data.db.backup
+
+# Try to recover using SQLite
+sqlite3 data/sensor_data.db ".recover" | sqlite3 data/sensor_data_recovered.db
+
+# Or start fresh
+rm data/sensor_data.db*
+```
+
+### Common Error Messages
+
+- **"disk I/O error"**: Usually permissions, disk space, or container filesystem issues
+- **"database is locked"**: Too many concurrent writers, increase busy_timeout
+- **"no such table"**: Database initialization failed, check permissions
+- **"out of memory"**: Reduce cache_size or batch_size settings

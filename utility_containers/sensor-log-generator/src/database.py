@@ -1,13 +1,48 @@
 import logging
 import os
+import platform
 import sqlite3
+import subprocess
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
-import requests
+import psutil
+from pydantic import BaseModel, Field
+
+
+# Define a Pydantic model for the sensor reading schema
+class SensorReadingSchema(BaseModel):
+    timestamp: str  # ISO 8601 format
+    sensor_id: str
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    pressure: Optional[float] = None
+    vibration: Optional[float] = None
+    voltage: Optional[float] = None
+    status_code: Optional[int] = None
+    anomaly_flag: Optional[bool] = False
+    anomaly_type: Optional[str] = None
+    firmware_version: Optional[str] = None
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    original_timezone: Optional[str] = (
+        None  # UTC offset string like "+00:00" or "-04:00"
+    )
+    synced: Optional[bool] = False
+
+    # Example for future: Add custom validation if needed
+    # @validator('temperature')
+    # def temperature_must_be_realistic(cls, v):
+    #     if v is not None and (v < -100 or v > 200): # Example range
+    #         raise ValueError('temperature must be realistic')
+    #     return v
 
 
 def retry_on_error(max_retries=3, retry_delay=1.0):
@@ -24,9 +59,16 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # Check if we're in debug mode
+            debug_mode = logging.getLogger("SensorDatabase").isEnabledFor(logging.DEBUG)
+
             last_exception = None
             for attempt in range(max_retries + 1):
                 try:
+                    if debug_mode and attempt > 0:
+                        logging.getLogger("SensorDatabase").debug(
+                            f"Retry attempt {attempt + 1}/{max_retries + 1} for {func.__name__}"
+                        )
                     return func(*args, **kwargs)
                 except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
                     last_exception = e
@@ -36,6 +78,10 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
                             f"Database operation failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
                             f"Retrying in {retry_delay} seconds..."
                         )
+                        if debug_mode:
+                            logging.getLogger("SensorDatabase").debug(
+                                f"Error type: {type(e).__name__}, Error details: {str(e)}"
+                            )
                         time.sleep(retry_delay)
                     else:
                         # Log the final failure
@@ -54,18 +100,207 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
     return decorator
 
 
+class DatabaseConnectionManager:
+    """Centralized database connection manager for thread-safe operations."""
+
+    def __init__(self, db_path: str, debug_mode: bool = False):
+        """Initialize the connection manager.
+
+        Args:
+            db_path: Path to the SQLite database file
+            debug_mode: Whether to enable debug logging
+        """
+        self.db_path = db_path
+        self.debug_mode = debug_mode
+        self.logger = logging.getLogger("DatabaseConnectionManager")
+        self._local = threading.local()
+
+        # Standard SQLite pragmas for container environments
+        self.pragmas = [
+            "PRAGMA journal_mode=WAL;",
+            "PRAGMA busy_timeout=30000;",
+            "PRAGMA synchronous=NORMAL;",
+            "PRAGMA temp_store=MEMORY;",
+            "PRAGMA mmap_size=268435456;",
+            "PRAGMA cache_size=-64000;",
+        ]
+
+    def _get_thread_connection(self) -> sqlite3.Connection:
+        """Get or create a thread-local database connection.
+
+        Returns:
+            SQLite connection for the current thread
+        """
+        if not hasattr(self._local, "conn") or self._local.conn is None:
+            if self.debug_mode:
+                self.logger.debug(
+                    f"Creating new connection for thread {threading.get_ident()}"
+                )
+
+            try:
+                self._local.conn = sqlite3.connect(self.db_path, timeout=30.0)
+
+                # Apply all pragmas
+                for pragma in self.pragmas:
+                    self._local.conn.execute(pragma)
+
+                if self.debug_mode:
+                    cursor = self._local.conn.cursor()
+                    cursor.execute("PRAGMA journal_mode;")
+                    mode = cursor.fetchone()[0]
+                    self.logger.debug(f"Connection journal mode set to: {mode}")
+                    cursor.close()
+
+            except Exception as e:
+                if self.debug_mode:
+                    self.logger.debug(f"Error creating connection: {e}")
+                    self.logger.debug(f"Database path: {self.db_path}")
+                    self.logger.debug(f"Thread ID: {threading.get_ident()}")
+                raise
+
+        return self._local.conn
+
+    @contextmanager
+    def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """Context manager for database connections.
+
+        Yields:
+            SQLite connection object
+
+        Note:
+            This uses thread-local connections that persist across calls
+            within the same thread for better performance.
+        """
+        conn = self._get_thread_connection()
+        try:
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
+
+    @contextmanager
+    def get_cursor(self) -> Generator[sqlite3.Cursor, None, None]:
+        """Context manager for database cursors with automatic commit.
+
+        Yields:
+            SQLite cursor object
+
+        Note:
+            Automatically commits the transaction if no exception occurs.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                yield cursor
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                cursor.close()
+
+    def execute_query(self, query: str, params: tuple = ()) -> List[Any]:
+        """Execute a SELECT query and return results.
+
+        Args:
+            query: SQL query to execute
+            params: Query parameters
+
+        Returns:
+            List of query results
+        """
+        with self.get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.fetchall()
+
+    def execute_write(self, query: str, params: tuple = ()) -> int:
+        """Execute an INSERT/UPDATE/DELETE query.
+
+        Args:
+            query: SQL query to execute
+            params: Query parameters
+
+        Returns:
+            Number of affected rows
+        """
+        with self.get_cursor() as cursor:
+            cursor.execute(query, params)
+            return cursor.rowcount
+
+    def execute_many(self, query: str, params_list: List[tuple]) -> int:
+        """Execute a query multiple times with different parameters.
+
+        Args:
+            query: SQL query to execute
+            params_list: List of parameter tuples
+
+        Returns:
+            Total number of affected rows
+        """
+        with self.get_cursor() as cursor:
+            cursor.executemany(query, params_list)
+            return cursor.rowcount
+
+    def close_thread_connection(self):
+        """Close the connection for the current thread."""
+        if hasattr(self._local, "conn") and self._local.conn:
+            try:
+                if self.debug_mode:
+                    self.logger.debug(
+                        f"Closing connection for thread {threading.get_ident()}"
+                    )
+
+                self._local.conn.close()
+                self._local.conn = None
+            except Exception as e:
+                self.logger.error(f"Error closing connection: {e}")
+
+
 class SensorDatabase:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, preserve_existing_db: bool = False):
         """Initialize the sensor database.
 
         Args:
             db_path: Path to the SQLite database file
+            preserve_existing_db: If True, an existing database file will not be deleted.
+                                  If False (default), an existing database file will be
+                                  deleted and recreated.
         """
         self.db_path = db_path
+        self.logger = logging.getLogger(
+            "SensorDatabase"
+        )  # Get logger early for potential deletion message
 
-        abs_path = os.path.abspath(self.db_path)
-        logging.info(f"Database path: {abs_path}")
-        self.logger = logging.getLogger("SensorDatabase")
+        # Enable debug mode detection
+        self.debug_mode = self.logger.isEnabledFor(logging.DEBUG)
+
+        if self.debug_mode:
+            self._log_debug_environment_info()
+
+        # Handle deletion of existing database if not preserving
+        if self.db_path != ":memory:" and os.path.exists(self.db_path):
+            if not preserve_existing_db:
+                self.logger.info(
+                    f"Existing database found at '{self.db_path}' and "
+                    f"'preserve_existing_db' is False. Deleting old database file."
+                )
+                try:
+                    os.remove(self.db_path)
+                except OSError as e:
+                    self.logger.error(
+                        f"Failed to delete existing database '{self.db_path}': {e}"
+                    )
+                    raise  # Re-raise the error as this is critical
+            else:
+                self.logger.info(
+                    f"Existing database found at '{self.db_path}' and "
+                    f"'preserve_existing_db' is True. Preserving."
+                )
+
+        abs_db_path = os.path.abspath(
+            self.db_path
+        )  # Use a consistent variable for absolute path
+        logging.info(f"Database path: {abs_db_path}")
         self.batch_buffer = []
         self.batch_size = 100
         self.batch_timeout = 5.0  # seconds
@@ -75,159 +310,207 @@ class SensorDatabase:
         self.total_insert_time = 0.0
         self.total_batch_time = 0.0
 
-        # Thread-local storage for database connections
-        self._local = threading.local()
-
         # Create database directory if it doesn't exist
         if self.db_path != ":memory:":
-            abs_path = os.path.abspath(self.db_path)
-            logging.info(f"Database path doesn't exist, creating: {abs_path}")
-            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            db_dir = os.path.dirname(abs_db_path)
+            if (
+                not os.path.exists(db_dir) and db_dir
+            ):  # Ensure db_dir is not empty string
+                self.logger.info(f"Creating database directory: {db_dir}")
+                os.makedirs(db_dir, exist_ok=True)
+            elif not db_dir:
+                self.logger.debug(
+                    f"Database path '{self.db_path}' is in the current directory. No directory creation needed beyond what OS provides."
+                )
+
+        # Initialize the centralized connection manager
+        self.conn_manager = DatabaseConnectionManager(self.db_path, self.debug_mode)
 
         # Initialize database schema
         self._init_db()
 
-    @property
-    def conn(self):
-        """Get thread-local database connection."""
-        if not hasattr(self._local, "conn"):
-            self._local.conn = sqlite3.connect(self.db_path)
-            self._local.cursor = self._local.conn.cursor()
-        return self._local.conn
-
-    @property
-    def cursor(self):
-        """Get thread-local database cursor."""
-        if not hasattr(self._local, "cursor"):
-            self._local.conn = sqlite3.connect(self.db_path)
-            self._local.cursor = self._local.conn.cursor()
-        return self._local.cursor
+        if self.debug_mode:
+            self._log_database_debug_info()
 
     def _init_db(self):
-        """Initialize the database schema."""
+        """Initialize the database schema based on SensorReadingSchema."""
         try:
-            # Create sensor_readings table
-            self.cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS sensor_readings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    sensor_id TEXT NOT NULL,
-                    temperature REAL,
-                    humidity REAL,
-                    pressure REAL,
-                    vibration REAL,
-                    voltage REAL,
-                    status_code INTEGER,
-                    anomaly_flag INTEGER,
-                    anomaly_type TEXT,
-                    firmware_version TEXT,
-                    model TEXT,
-                    manufacturer TEXT,
-                    location TEXT,
-                    latitude REAL,
-                    longitude REAL,
-                    synced INTEGER DEFAULT 0
+            with self.conn_manager.get_cursor() as cursor:
+                # Dynamically create the table based on the Pydantic model
+                # Base columns
+                columns = ["id INTEGER PRIMARY KEY AUTOINCREMENT"]
+                # Map Pydantic types to SQLite types
+                type_mapping = {
+                    "str": "TEXT",
+                    "float": "REAL",
+                    "int": "INTEGER",
+                    "bool": "INTEGER",  # SQLite uses 0 and 1 for booleans
+                    # datetime is stored as TEXT (ISO format)
+                }
+
+                for field_name, field in SensorReadingSchema.model_fields.items():
+                    # Determine the Python type annotation
+                    python_type = None
+                    if hasattr(field.annotation, "__args__"):  # Handles Optional[type]
+                        # Get the first type argument from Optional[type]
+                        # Filter out NoneType for Optional fields
+                        field_types = [
+                            arg
+                            for arg in field.annotation.__args__
+                            if arg is not type(None)
+                        ]
+                        if field_types:
+                            python_type = field_types[0]
+                    else:
+                        python_type = field.annotation
+
+                    sqlite_type = "TEXT"  # Default to TEXT if type is complex or not directly mappable
+                    if python_type is str:
+                        sqlite_type = type_mapping["str"]
+                    elif python_type is float:
+                        sqlite_type = type_mapping["float"]
+                    elif python_type is int:
+                        sqlite_type = type_mapping["int"]
+                    elif python_type is bool:
+                        sqlite_type = type_mapping["bool"]
+                    # Add other type mappings as needed, e.g. datetime.datetime -> TEXT
+
+                    # Handle NOT NULL for non-optional fields by checking if None is a valid type
+                    is_optional = (
+                        type(None) in getattr(field.annotation, "__args__", [])
+                        or field.default is not None
+                        or field.default_factory is not None
+                    )
+
+                    # 'timestamp' and 'sensor_id' are critical, ensure they are NOT NULL
+                    # All other fields from SensorReadingSchema are made optional at Pydantic level,
+                    # so they will be nullable in DB unless explicitly made required here.
+                    # For now, Pydantic model's optionality will translate to nullable columns.
+                    # We will rely on Pydantic for 'timestamp' and 'sensor_id' presence before this stage.
+                    # However, the original schema had them as NOT NULL, so let's keep that for the table.
+                    if field_name in ["timestamp", "sensor_id"]:
+                        columns.append(f"{field_name} {sqlite_type} NOT NULL")
+                    else:
+                        columns.append(f"{field_name} {sqlite_type}")
+
+                create_table_sql = (
+                    f"CREATE TABLE IF NOT EXISTS sensor_readings ({', '.join(columns)})"
                 )
-                """
-            )
+                if self.debug_mode:
+                    self.logger.debug(
+                        f"Executing SQL for table creation: {create_table_sql}"
+                    )
+                cursor.execute(create_table_sql)
 
-            # Create only essential indexes
-            self.cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
-            )
+                # Create only essential indexes
+                # Check if 'timestamp' field exists in the model before creating index
+                if "timestamp" in SensorReadingSchema.model_fields:
+                    cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_timestamp ON sensor_readings(timestamp)"
+                    )
+                else:
+                    self.logger.warning(
+                        "Field 'timestamp' not found in SensorReadingSchema, skipping index creation."
+                    )
 
-            self.conn.commit()
+                if self.debug_mode:
+                    # Log the pragma settings
+                    pragmas = [
+                        "journal_mode",
+                        "busy_timeout",
+                        "synchronous",
+                        "temp_store",
+                        "mmap_size",
+                        "cache_size",
+                    ]
+                    for pragma in pragmas:
+                        cursor.execute(f"PRAGMA {pragma};")
+                        value = cursor.fetchone()[0]
+                        self.logger.debug(f"PRAGMA {pragma} = {value}")
+
             self.logger.info("Database initialized successfully")
         except Exception as e:
             self.logger.error(f"Error initializing database: {e}")
-            if hasattr(self._local, "conn"):
-                self._local.conn.close()
             raise
 
     def store_reading(
         self,
-        timestamp: float,
-        sensor_id: str,
-        temperature: float,
-        humidity: float,
-        pressure: float,
-        vibration: float,
-        voltage: float,
-        status_code: int,
-        anomaly_flag: bool,
-        anomaly_type: Optional[str],
-        firmware_version: str,
-        model: str,
-        manufacturer: str,
-        location: str,
-        latitude: float,
-        longitude: float,
-        timezone_str: str,
+        reading_data: SensorReadingSchema,  # Accept Pydantic model instance
     ):
-        """Store a sensor reading in the database.
+        """Store a sensor reading in the database after Pydantic validation.
 
         Args:
-            timestamp: Time of the reading (Unix timestamp)
-            sensor_id: ID of the sensor
-            temperature: Temperature reading
-            humidity: Humidity reading
-            pressure: Pressure reading
-            vibration: Vibration reading
-            voltage: Voltage reading
-            status_code: Status code
-            anomaly_flag: Whether this reading is an anomaly
-            anomaly_type: Type of anomaly if any
-            firmware_version: Firmware version of the sensor
-            model: Model of the sensor
-            manufacturer: Manufacturer of the sensor
-            location: Location of the sensor in format "City (lat, lon)"
-            latitude: Latitude of the sensor
-            longitude: Longitude of the sensor
-            timezone_str: Timezone string (e.g., 'UTC', 'America/New_York')
+            reading_data: An instance of SensorReadingSchema containing the reading.
         """
+        if self.debug_mode:
+            self.logger.debug(
+                f"Attempting to store reading for sensor {reading_data.sensor_id}"
+            )
+            self.logger.debug(f"Thread ID: {threading.get_ident()}")
+            self.logger.debug(f"Process ID: {os.getpid()}")
+
         try:
-            # Convert timestamp to ISO 8601 string with milliseconds
-            iso_timestamp = datetime.fromtimestamp(timestamp).isoformat(
-                timespec="milliseconds"
-            )
+            # Pydantic model validation has already occurred by the time this method is called
+            # with a SensorReadingSchema instance.
 
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            # Convert model to a dictionary suitable for database insertion
+            # We need to ensure all fields defined in the schema are present for the SQL query,
+            # using their default values from the Pydantic model if not explicitly set.
+            data_for_db = reading_data.model_dump(
+                exclude_none=False
+            )  # include None for fields not set
 
-            cursor.execute(
-                """
-                INSERT INTO sensor_readings (
-                    timestamp, sensor_id, temperature, humidity, pressure, vibration, voltage,
-                    status_code, anomaly_flag, anomaly_type, firmware_version,
-                    model, manufacturer, location, latitude, longitude, synced
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    iso_timestamp,
-                    sensor_id,
-                    temperature,
-                    humidity,
-                    pressure,
-                    vibration,
-                    voltage,
-                    status_code,
-                    int(anomaly_flag),
-                    anomaly_type,
-                    firmware_version,
-                    model,
-                    manufacturer,
-                    location,
-                    latitude,
-                    longitude,
-                    0,  # synced = False
-                ),
-            )
+            # Ensure boolean values are converted to integers for SQLite
+            if "anomaly_flag" in data_for_db and isinstance(
+                data_for_db["anomaly_flag"], bool
+            ):
+                data_for_db["anomaly_flag"] = int(data_for_db["anomaly_flag"])
+            if "synced" in data_for_db and isinstance(data_for_db["synced"], bool):
+                data_for_db["synced"] = int(data_for_db["synced"])
 
-            conn.commit()
-            conn.close()
+            # Dynamically generate column names and placeholders
+            # The order of fields from model_fields is preserved in model_dump in Python 3.7+
+            columns = list(SensorReadingSchema.model_fields.keys())
+            placeholders = ", ".join(["?"] * len(columns))
+            column_names = ", ".join(columns)
+
+            query = f"""
+                INSERT INTO sensor_readings ({column_names})
+                VALUES ({placeholders})
+            """
+
+            # Get values in the correct order
+            params = tuple(data_for_db[col] for col in columns)
+
+            if self.debug_mode:
+                self.logger.debug("Storing reading through connection manager")
+                self.logger.debug(f"Query: {query}")
+                self.logger.debug(f"Params: {params}")
+
+            self.conn_manager.execute_write(query, params)
+
+            if self.debug_mode:
+                self.logger.debug(
+                    f"Successfully stored reading for sensor {reading_data.sensor_id}"
+                )
+
+        except sqlite3.OperationalError as e:
+            error_msg = str(e)
+            self.logger.error(f"SQLite Operational Error storing reading: {error_msg}")
+
+            if self.debug_mode:
+                # Enhanced error diagnostics
+                self.logger.debug("=== SQLite Error Diagnostics ===")
+                self._log_error_diagnostics(error_msg)
+
+            raise
         except Exception as e:
             self.logger.error(f"Error storing reading: {e}")
+
+            if self.debug_mode:
+                self.logger.debug(f"Exception type: {type(e).__name__}")
+                self.logger.debug(f"Exception details: {str(e)}")
+
             raise
 
     def get_unsynced_readings(self, limit: int = 1000) -> List[Dict]:
@@ -240,27 +523,26 @@ class SensorDatabase:
             List of dictionaries containing the readings
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
+            query = """
                 SELECT * FROM sensor_readings
                 WHERE synced = 0
                 ORDER BY timestamp ASC
                 LIMIT ?
-                """,
-                (limit,),
-            )
+            """
 
-            columns = [description[0] for description in cursor.description]
+            rows = self.conn_manager.execute_query(query, (limit,))
+
+            # Get column names
+            with self.conn_manager.get_cursor() as cursor:
+                cursor.execute("SELECT * FROM sensor_readings LIMIT 0")
+                columns = [description[0] for description in cursor.description]
+
             readings = []
-            for row in cursor.fetchall():
+            for row in rows:
                 reading = dict(zip(columns, row))
                 reading["anomaly_flag"] = bool(reading["anomaly_flag"])
                 readings.append(reading)
 
-            conn.close()
             return readings
         except Exception as e:
             self.logger.error(f"Error getting unsynced readings: {e}")
@@ -276,21 +558,15 @@ class SensorDatabase:
             return
 
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-
             placeholders = ",".join("?" * len(reading_ids))
-            cursor.execute(
-                f"""
+            query = f"""
                 UPDATE sensor_readings
                 SET synced = 1
                 WHERE id IN ({placeholders})
-                """,
-                reading_ids,
-            )
+            """
 
-            conn.commit()
-            conn.close()
+            self.conn_manager.execute_write(query, reading_ids)
+
         except Exception as e:
             self.logger.error(f"Error marking readings as synced: {e}")
             raise
@@ -302,19 +578,18 @@ class SensorDatabase:
             Dictionary containing statistics
         """
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-
             # Get total readings
-            cursor.execute("SELECT COUNT(*) FROM sensor_readings")
-            total_readings = cursor.fetchone()[0]
+            total_readings = self.conn_manager.execute_query(
+                "SELECT COUNT(*) FROM sensor_readings"
+            )[0][0]
 
             # Get unsynced readings
-            cursor.execute("SELECT COUNT(*) FROM sensor_readings WHERE synced = 0")
-            unsynced_readings = cursor.fetchone()[0]
+            unsynced_readings = self.conn_manager.execute_query(
+                "SELECT COUNT(*) FROM sensor_readings WHERE synced = 0"
+            )[0][0]
 
             # Get anomaly statistics
-            cursor.execute(
+            anomaly_rows = self.conn_manager.execute_query(
                 """
                 SELECT anomaly_type, COUNT(*)
                 FROM sensor_readings
@@ -322,19 +597,17 @@ class SensorDatabase:
                 GROUP BY anomaly_type
                 """
             )
-            anomaly_stats = dict(cursor.fetchall())
+            anomaly_stats = dict(anomaly_rows)
 
             # Get sensor statistics
-            cursor.execute(
+            sensor_rows = self.conn_manager.execute_query(
                 """
                 SELECT sensor_id, COUNT(*)
                 FROM sensor_readings
                 GROUP BY sensor_id
                 """
             )
-            sensor_stats = dict(cursor.fetchall())
-
-            conn.close()
+            sensor_stats = dict(sensor_rows)
 
             return {
                 "total_readings": total_readings,
@@ -351,71 +624,6 @@ class SensorDatabase:
                 "sensor_stats": {},
             }
 
-    def connect(self):
-        """Reconnect to the database if needed."""
-        if not self.conn:
-            try:
-                self.conn = sqlite3.connect(self.db_path)
-                self.cursor = self.conn.cursor()
-                self.logger.info(f"Reconnected to database: {self.db_path}")
-            except sqlite3.Error as e:
-                self.logger.error(f"Database connection error: {e}")
-                raise
-
-    @retry_on_error()
-    def create_tables(self):
-        """Create the necessary tables if they don't exist."""
-        try:
-            self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sensor_readings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                sensor_id TEXT NOT NULL,
-                temperature REAL,
-                vibration REAL,
-                voltage REAL,
-                status_code INTEGER,
-                anomaly_flag BOOLEAN,
-                anomaly_type TEXT,
-                firmware_version TEXT,
-                model TEXT,
-                manufacturer TEXT,
-                location TEXT,
-                synced BOOLEAN DEFAULT 0
-            )
-            """)
-
-            # Create index on timestamp for faster queries
-            self.cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_timestamp 
-            ON sensor_readings (timestamp)
-            """)
-
-            # Create index on sensor_id for faster queries
-            self.cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_sensor_id 
-            ON sensor_readings (sensor_id)
-            """)
-
-            # Create index on firmware_version for faster queries
-            self.cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_firmware 
-            ON sensor_readings (firmware_version)
-            """)
-
-            # Create index on synced column for faster sync queries
-            self.cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_synced 
-            ON sensor_readings (synced)
-            """)
-
-            self.conn.commit()
-            logging.info("Database tables created successfully")
-        except sqlite3.Error as e:
-            logging.error(f"Error creating tables: {e}")
-            self.conn.rollback()
-            raise
-
     @retry_on_error()
     def insert_reading(
         self,
@@ -430,8 +638,9 @@ class SensorDatabase:
         model=None,
         manufacturer=None,
         location=None,
+        timezone_str="+00:00",  # Default to UTC offset string
     ):
-        """Insert a new sensor reading into the database.
+        """Insert a new sensor reading into the database (batch mode).
 
         Args:
             sensor_id: Identifier for the sensor
@@ -445,6 +654,7 @@ class SensorDatabase:
             model: Sensor model
             manufacturer: Sensor manufacturer
             location: Sensor location
+            timezone_str: UTC offset string (e.g., '+00:00', '-04:00') for the original reading time. Defaults to "+00:00".
 
         Returns:
             ID of the inserted row or None if using batch mode
@@ -475,6 +685,7 @@ class SensorDatabase:
                 model,
                 manufacturer,
                 location,
+                timezone_str,  # Add original timezone
                 0,  # Not synced by default
             )
         )
@@ -503,19 +714,16 @@ class SensorDatabase:
 
         start_time = time.time()
         try:
-            # Use executemany for better performance with batches
-            self.cursor.executemany(
-                """
+            query = """
                 INSERT INTO sensor_readings 
                 (timestamp, sensor_id, temperature, vibration, voltage, 
                 status_code, anomaly_flag, anomaly_type, firmware_version,
-                model, manufacturer, location, synced)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                self.batch_buffer,
-            )
+                model, manufacturer, location, original_timezone, synced)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
 
-            self.conn.commit()
+            self.conn_manager.execute_many(query, self.batch_buffer)
+
             batch_size = len(self.batch_buffer)
             self.batch_insert_count += 1
             self.insert_count += batch_size
@@ -543,7 +751,6 @@ class SensorDatabase:
             return batch_size
         except sqlite3.Error as e:
             logging.error(f"Error committing batch: {e}")
-            self.conn.rollback()
             raise
 
     @retry_on_error()
@@ -575,223 +782,22 @@ class SensorDatabase:
             query += " ORDER BY timestamp DESC LIMIT ?"
             params.append(limit)
 
-            self.cursor.execute(query, params)
-            return self.cursor.fetchall()
+            return self.conn_manager.execute_query(query, tuple(params))
         except sqlite3.Error as e:
             logging.error(f"Error retrieving readings: {e}")
             raise
 
     def close(self):
         """Close the database connection for the current thread."""
-        if hasattr(self._local, "conn"):
-            try:
-                self._local.conn.close()
-                del self._local.conn
-                del self._local.cursor
-            except Exception as e:
-                self.logger.error(f"Error closing database connection: {e}")
-
-    @retry_on_error()
-    def sync_to_central_db(self, central_db_url, batch_size=100):
-        """Sync recent readings to a central database.
-
-        Args:
-            central_db_url: URL of the central database API
-            batch_size: Number of readings to sync in each batch
-
-        Returns:
-            Number of readings synced
-
-        Raises:
-            sqlite3.Error: If the database operation fails after retries
-            requests.RequestException: If the HTTP request fails
-        """
         try:
-            # Commit any pending batch before syncing
+            # Commit any pending batch
             if self.batch_buffer:
                 self.commit_batch()
 
-            # Get recent unsynced readings
-            self.cursor.execute(
-                """
-            SELECT * FROM sensor_readings 
-            WHERE synced = 0
-            ORDER BY timestamp ASC
-            LIMIT ?
-            """,
-                (batch_size,),
-            )
-
-            readings = self.cursor.fetchall()
-
-            if not readings:
-                logging.info("No new readings to sync")
-                return 0
-
-            # Push to central database
-            try:
-                response = requests.post(
-                    f"{central_db_url}/api/readings/batch",
-                    json={"readings": readings},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30,  # Add timeout to prevent hanging
-                )
-
-                if response.status_code == 200:
-                    # Mark as synced
-                    reading_ids = [
-                        r[0] for r in readings
-                    ]  # Assuming id is first column
-                    placeholders = ",".join(["?"] * len(reading_ids))
-
-                    self.cursor.execute(
-                        f"""
-                    UPDATE sensor_readings
-                    SET synced = 1
-                    WHERE id IN ({placeholders})
-                    """,
-                        reading_ids,
-                    )
-
-                    self.conn.commit()
-                    logging.info(f"Synced {len(readings)} readings to central database")
-                    return len(readings)
-                else:
-                    logging.error(
-                        f"Failed to sync readings: {response.status_code} - {response.text}"
-                    )
-                    return 0
-            except requests.RequestException as e:
-                logging.error(f"HTTP request failed during sync: {e}")
-                return 0
-
-        except sqlite3.Error as e:
-            logging.error(f"Database error during sync: {e}")
-            self.conn.rollback()
-            raise
+            # Close the connection manager's thread connection
+            self.conn_manager.close_thread_connection()
         except Exception as e:
-            logging.error(f"Error syncing to central database: {e}")
-            return 0
-
-    @retry_on_error()
-    def get_sync_stats(self):
-        """Get statistics about synced and unsynced readings.
-
-        Returns:
-            Dictionary with sync statistics
-
-        Raises:
-            sqlite3.Error: If the database operation fails after retries
-        """
-        try:
-            # Commit any pending batch before querying
-            if self.batch_buffer:
-                self.commit_batch()
-
-            self.cursor.execute(
-                """
-            SELECT 
-                COUNT(*) as total_readings,
-                SUM(CASE WHEN synced = 1 THEN 1 ELSE 0 END) as synced_readings,
-                SUM(CASE WHEN synced = 0 THEN 1 ELSE 0 END) as unsynced_readings
-            FROM sensor_readings
-            """
-            )
-
-            result = self.cursor.fetchone()
-            if result:
-                total, synced, unsynced = result
-                return {
-                    "total_readings": total,
-                    "synced_readings": synced or 0,  # Handle NULL values
-                    "unsynced_readings": unsynced or 0,  # Handle NULL values
-                    "sync_percentage": (synced / total * 100) if total > 0 else 0,
-                }
-            return {
-                "total_readings": 0,
-                "synced_readings": 0,
-                "unsynced_readings": 0,
-                "sync_percentage": 0,
-            }
-
-        except sqlite3.Error as e:
-            logging.error(f"Error getting sync stats: {e}")
-            raise
-        except Exception as e:
-            logging.error(f"Unexpected error getting sync stats: {e}")
-            return {"error": str(e)}
-
-    @retry_on_error()
-    def get_performance_stats(self):
-        """Get database performance statistics.
-
-        Returns:
-            Dictionary with performance statistics
-        """
-        try:
-            avg_time_per_reading = (
-                (self.total_insert_time / self.insert_count) * 1000
-                if self.insert_count > 0
-                else 0
-            )
-            avg_batch_size = (
-                self.insert_count / self.batch_insert_count
-                if self.batch_insert_count > 0
-                else 0
-            )
-
-            # Get database size
-            db_size = 0
-            if self.db_path != ":memory:":
-                try:
-                    db_size = os.path.getsize(self.db_path)
-                except OSError:
-                    pass
-
-            return {
-                "total_readings": self.insert_count,
-                "total_batches": self.batch_insert_count,
-                "avg_batch_size": avg_batch_size,
-                "avg_insert_time_ms": avg_time_per_reading,
-                "total_insert_time_s": self.total_insert_time,
-                "database_size_bytes": db_size,
-                "database_size_mb": db_size / (1024 * 1024) if db_size > 0 else 0,
-                "pending_batch_size": len(self.batch_buffer),
-            }
-        except Exception as e:
-            logging.error(f"Error getting performance stats: {e}")
-            return {"error": str(e)}
-
-    def is_healthy(self):
-        """Check if the database connection is healthy.
-
-        Returns:
-            Boolean indicating if the database is healthy
-        """
-        try:
-            # Simple query to check if database is responsive
-            self.cursor.execute("SELECT 1")
-            result = self.cursor.fetchone()
-            return result is not None and result[0] == 1
-        except Exception as e:
-            logging.error(f"Database health check failed: {e}")
-            return False
-
-    @retry_on_error()
-    def get_last_ten_entries(self):
-        """Get the last ten entries from the database.
-
-        Returns:
-            List of the last ten entries
-        """
-        try:
-            self.cursor.execute(
-                "SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 10"
-            )
-            return self.cursor.fetchall()
-        except sqlite3.Error as e:
-            logging.error(f"Error getting last ten entries: {e}")
-            return []
+            self.logger.error(f"Error closing database connection: {e}")
 
     @retry_on_error()
     def get_database_stats(self) -> Dict:
@@ -853,60 +859,27 @@ class SensorDatabase:
                     self.logger.error(f"Error getting file sizes: {e}")
 
             # Get total readings count
-            self.cursor.execute("SELECT COUNT(*) FROM sensor_readings")
-            stats["total_readings"] = self.cursor.fetchone()[0]
+            stats["total_readings"] = self.conn_manager.execute_query(
+                "SELECT COUNT(*) FROM sensor_readings"
+            )[0][0]
 
             # Get last write timestamp
-            self.cursor.execute(
-                """
-                SELECT MAX(timestamp)
-                FROM sensor_readings
-                """
+            last_write_result = self.conn_manager.execute_query(
+                "SELECT MAX(timestamp) FROM sensor_readings"
             )
-            last_write = self.cursor.fetchone()[0]
-            if last_write:
-                # Assume timestamp is stored as Unix epoch (REAL) or ISO string (TEXT)
+            if last_write_result and last_write_result[0][0]:
+                last_write = last_write_result[0][0]
+                # Assume timestamp is stored as ISO string
                 try:
-                    # Try parsing as float (Unix timestamp)
-                    ts_float = float(last_write)
-                    stats["last_write_timestamp"] = datetime.fromtimestamp(
-                        ts_float, tz=timezone.utc
-                    ).isoformat()
-                except ValueError:
-                    # Try parsing as ISO string (if stored as TEXT)
-                    try:
-                        stats["last_write_timestamp"] = (
-                            datetime.fromisoformat(
-                                last_write.replace(
-                                    "Z", "+00:00"
-                                )  # Ensure timezone awareness
-                            )
-                            .astimezone(timezone.utc)
-                            .isoformat()
-                        )
-                    except ValueError:
-                        logging.warning(
-                            f"Could not parse last_write timestamp: {last_write}"
-                        )
-                        stats["last_write_timestamp"] = str(last_write)  # Fallback
-            else:
-                stats["last_write_timestamp"] = None
-
-            # Get index sizes
-            try:
-                self.cursor.execute("""
-                    SELECT name, SUM(pgsize)
-                    FROM sqlite_master
-                    WHERE type='index'
-                    GROUP BY name
-                """)
-                stats["index_sizes"] = dict(self.cursor.fetchall())
-            except sqlite3.Error as e:
-                self.logger.warning(f"Could not get index sizes: {e}")
-                stats["index_sizes"] = {}
+                    stats["last_write_timestamp"] = last_write
+                except Exception:
+                    logging.warning(
+                        f"Could not parse last_write timestamp: {last_write}"
+                    )
+                    stats["last_write_timestamp"] = str(last_write)
 
             # Get table statistics
-            self.cursor.execute("""
+            table_stats_result = self.conn_manager.execute_query("""
                 SELECT 
                     COUNT(*) as total_rows,
                     COUNT(DISTINCT sensor_id) as unique_sensors,
@@ -915,8 +888,9 @@ class SensorDatabase:
                     COUNT(DISTINCT model) as unique_models
                 FROM sensor_readings
             """)
-            row = self.cursor.fetchone()
-            if row:
+
+            if table_stats_result:
+                row = table_stats_result[0]
                 stats["table_stats"] = {
                     "total_rows": row[0],
                     "unique_sensors": row[1],
@@ -942,15 +916,16 @@ class SensorDatabase:
             }
 
             # Get sync statistics
-            self.cursor.execute("""
+            sync_stats_result = self.conn_manager.execute_query("""
                 SELECT 
                     COUNT(*) as total,
                     SUM(CASE WHEN synced = 1 THEN 1 ELSE 0 END) as synced,
                     SUM(CASE WHEN synced = 0 THEN 1 ELSE 0 END) as unsynced
                 FROM sensor_readings
             """)
-            row = self.cursor.fetchone()
-            if row:
+
+            if sync_stats_result:
+                row = sync_stats_result[0]
                 stats["sync_stats"] = {
                     "total": row[0],
                     "synced": row[1] or 0,
@@ -959,22 +934,21 @@ class SensorDatabase:
                 }
 
             # Get anomaly statistics
-            self.cursor.execute("""
+            anomaly_stats_result = self.conn_manager.execute_query("""
                 SELECT 
-                    COUNT(*) as total_anomalies,
-                    COUNT(DISTINCT anomaly_type) as unique_anomaly_types,
                     anomaly_type,
                     COUNT(*) as count
                 FROM sensor_readings
                 WHERE anomaly_flag = 1
                 GROUP BY anomaly_type
             """)
-            anomalies = self.cursor.fetchall()
-            if anomalies:
+
+            if anomaly_stats_result:
+                total_anomalies = sum(row[1] for row in anomaly_stats_result)
                 stats["anomaly_stats"] = {
-                    "total_anomalies": anomalies[0][0],
-                    "unique_anomaly_types": anomalies[0][1],
-                    "anomaly_types": {row[2]: row[3] for row in anomalies},
+                    "total_anomalies": total_anomalies,
+                    "unique_anomaly_types": len(anomaly_stats_result),
+                    "anomaly_types": {row[0]: row[1] for row in anomaly_stats_result},
                 }
 
             return stats
@@ -1005,6 +979,236 @@ class SensorDatabase:
                 },
             }
 
+    def is_healthy(self):
+        """Check if the database connection is healthy.
+
+        Returns:
+            Boolean indicating if the database is healthy
+        """
+        try:
+            # Simple query to check if database is responsive
+            result = self.conn_manager.execute_query("SELECT 1")
+            return result is not None and result[0][0] == 1
+        except Exception as e:
+            logging.error(f"Database health check failed: {e}")
+            return False
+
+    # Keep existing utility methods unchanged
+    def _log_debug_environment_info(self):
+        """Log comprehensive environment information when in debug mode."""
+        self.logger.debug("=== Database Debug Information ===")
+
+        # System information
+        self.logger.debug(f"Platform: {platform.platform()}")
+        self.logger.debug(f"Python version: {platform.python_version()}")
+        self.logger.debug(f"SQLite version: {sqlite3.sqlite_version}")
+        self.logger.debug(f"SQLite library version: {sqlite3.sqlite_version}")
+
+        # Process information
+        self.logger.debug(f"Process ID: {os.getpid()}")
+        self.logger.debug(f"Thread ID: {threading.get_ident()}")
+
+        # Container detection
+        is_container = self._detect_container_environment()
+        self.logger.debug(f"Running in container: {is_container}")
+
+        # SQLite temp directory
+        sqlite_tmpdir = os.environ.get(
+            "SQLITE_TMPDIR", "Not set (using system default)"
+        )
+        self.logger.debug(f"SQLITE_TMPDIR: {sqlite_tmpdir}")
+
+        # If in container, suggest setting SQLITE_TMPDIR if not set
+        if is_container and not os.environ.get("SQLITE_TMPDIR"):
+            self.logger.debug(
+                "WARNING: Running in container without SQLITE_TMPDIR set. "
+                "Consider setting SQLITE_TMPDIR to a writable directory."
+            )
+
+        # Database path information
+        abs_db_path = os.path.abspath(self.db_path)
+        self.logger.debug(f"Database absolute path: {abs_db_path}")
+
+        # Directory information
+        db_dir = os.path.dirname(abs_db_path) or "."
+        if os.path.exists(db_dir):
+            self.logger.debug(f"Database directory: {db_dir}")
+
+            # Check directory permissions
+            try:
+                dir_stat = os.stat(db_dir)
+                dir_perms = oct(dir_stat.st_mode)[-3:]
+                self.logger.debug(f"Directory permissions: {dir_perms}")
+                self.logger.debug(f"Directory owner UID: {dir_stat.st_uid}")
+                self.logger.debug(f"Directory owner GID: {dir_stat.st_gid}")
+            except Exception as e:
+                self.logger.debug(f"Error getting directory stats: {e}")
+
+            # Check if directory is writable
+            is_writable = os.access(db_dir, os.W_OK)
+            self.logger.debug(f"Directory writable: {is_writable}")
+
+            # Disk space information
+            try:
+                disk_usage = psutil.disk_usage(db_dir)
+                self.logger.debug(f"Disk total: {disk_usage.total / (1024**3):.2f} GB")
+                self.logger.debug(f"Disk used: {disk_usage.used / (1024**3):.2f} GB")
+                self.logger.debug(f"Disk free: {disk_usage.free / (1024**3):.2f} GB")
+                self.logger.debug(f"Disk percent used: {disk_usage.percent}%")
+            except Exception as e:
+                self.logger.debug(f"Error getting disk usage: {e}")
+
+            # Inode information (Linux/Unix only)
+            if platform.system() in ["Linux", "Darwin"]:
+                try:
+                    result = subprocess.run(
+                        ["df", "-i", db_dir], capture_output=True, text=True, timeout=5
+                    )
+                    if result.returncode == 0:
+                        self.logger.debug(f"Inode info:\n{result.stdout}")
+                except Exception as e:
+                    self.logger.debug(f"Error getting inode info: {e}")
+
+    def _detect_container_environment(self) -> bool:
+        """Detect if running in a container environment."""
+        # Check for Docker
+        if os.path.exists("/.dockerenv"):
+            self.logger.debug("Detected Docker environment (/.dockerenv exists)")
+            return True
+
+        # Check cgroup for docker/kubernetes
+        try:
+            with open("/proc/self/cgroup", "r") as f:
+                cgroup_content = f.read()
+                if "docker" in cgroup_content or "kubepods" in cgroup_content:
+                    self.logger.debug("Detected container via /proc/self/cgroup")
+                    return True
+        except Exception as e:
+            self.logger.debug(f"Error detecting container environment: {e}")
+            pass
+
+        # Check for common container environment variables
+        container_vars = ["KUBERNETES_SERVICE_HOST", "DOCKER_CONTAINER", "container"]
+        for var in container_vars:
+            if os.environ.get(var):
+                self.logger.debug(f"Detected container via environment variable: {var}")
+                return True
+
+        return False
+
+    def _log_database_debug_info(self):
+        """Log database-specific debug information."""
+        if not self.debug_mode:
+            return
+
+        try:
+            # Check if database file exists
+            if os.path.exists(self.db_path):
+                file_stat = os.stat(self.db_path)
+                self.logger.debug(f"Database file size: {file_stat.st_size} bytes")
+                file_perms = oct(file_stat.st_mode)[-3:]
+                self.logger.debug(f"Database file permissions: {file_perms}")
+
+                # Check for WAL files
+                wal_path = f"{self.db_path}-wal"
+                shm_path = f"{self.db_path}-shm"
+
+                if os.path.exists(wal_path):
+                    wal_size = os.path.getsize(wal_path)
+                    self.logger.debug(f"WAL file exists, size: {wal_size} bytes")
+                else:
+                    self.logger.debug("WAL file does not exist")
+
+                if os.path.exists(shm_path):
+                    shm_size = os.path.getsize(shm_path)
+                    self.logger.debug(f"SHM file exists, size: {shm_size} bytes")
+                else:
+                    self.logger.debug("SHM file does not exist")
+
+        except Exception as e:
+            self.logger.debug(f"Error logging database debug info: {e}")
+
+    def _log_error_diagnostics(self, error_msg: str):
+        """Log detailed error diagnostics."""
+        if "disk I/O error" in error_msg:
+            self.logger.debug("Disk I/O error detected - running diagnostics")
+
+            # Re-check disk space
+            try:
+                db_dir = os.path.dirname(self.db_path) or "."
+                disk_usage = psutil.disk_usage(db_dir)
+                self.logger.debug(
+                    f"Current disk free: {disk_usage.free / (1024**3):.2f} GB ({100 - disk_usage.percent:.1f}%)"
+                )
+
+                # Check if we can write a test file
+                test_file = os.path.join(db_dir, f".test_write_{os.getpid()}")
+                try:
+                    with open(test_file, "w") as f:
+                        f.write("test")
+                    os.remove(test_file)
+                    self.logger.debug("Test file write successful")
+                except Exception as e:
+                    self.logger.debug(f"Test file write failed: {e}")
+
+            except Exception as e:
+                self.logger.debug(f"Error in disk diagnostics: {e}")
+
+            # Check SQLite temporary directory
+            try:
+                temp_dir = os.environ.get("SQLITE_TMPDIR", "/tmp")
+                self.logger.debug(f"SQLite temp directory: {temp_dir}")
+                if os.path.exists(temp_dir):
+                    temp_usage = psutil.disk_usage(temp_dir)
+                    self.logger.debug(
+                        f"Temp dir ({temp_dir}) free: {temp_usage.free / (1024**3):.2f} GB"
+                    )
+
+                    # Check if temp dir is writable
+                    temp_writable = os.access(temp_dir, os.W_OK)
+                    self.logger.debug(f"Temp dir writable: {temp_writable}")
+
+                    # Try to create a test file in temp dir
+                    if temp_writable:
+                        test_temp_file = os.path.join(
+                            temp_dir, f".sqlite_test_{os.getpid()}"
+                        )
+                        try:
+                            with open(test_temp_file, "w") as f:
+                                f.write("test")
+                            os.remove(test_temp_file)
+                            self.logger.debug("SQLite temp dir write test successful")
+                        except Exception as e:
+                            self.logger.debug(f"SQLite temp dir write test failed: {e}")
+                else:
+                    self.logger.debug(f"Temp dir {temp_dir} does not exist")
+            except Exception as e:
+                self.logger.debug(f"Error checking temp dir: {e}")
+
+            # Check for file system errors
+            if platform.system() == "Linux":
+                try:
+                    # Check dmesg for recent I/O errors
+                    result = subprocess.run(
+                        ["dmesg", "-T", "--level=err,warn", "-t"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split("\n")[-10:]  # Last 10 lines
+                        if lines and lines[0]:
+                            self.logger.debug("Recent kernel messages:")
+                            for line in lines:
+                                if "I/O" in line or "error" in line.lower():
+                                    self.logger.debug(f"  {line}")
+                except Exception as e:
+                    self.logger.debug(f"Could not check dmesg: {e}")
+
     def __del__(self):
         """Clean up database connections when the object is destroyed."""
-        self.close()
+        try:
+            self.close()
+        except Exception:
+            # Suppress exceptions in destructor
+            pass

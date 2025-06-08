@@ -1,14 +1,11 @@
-version: "3.8"
-
 services:
   access-log-generator:
-    image: docker.io/bacalhauproject/access-log-generator:latest
+    image: ghcr.io/bacalhau-project/access-log-generator:latest
     pull_policy: always
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: access-log-generator
     restart: unless-stopped
     volumes:
       - ./logs:/var/log/app
       - ./config:/app/config
+    environment:
+      - LOG_GENERATOR_CONFIG_PATH=/app/config/docker-config.yaml
