@@ -117,6 +117,7 @@ class TestSensorSimulator(unittest.TestCase):
 
         # Check database for entries
         conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA journal_mode=WAL;")
         cursor = conn.cursor()
         cursor.execute(
             "SELECT sensor_id, location, latitude, longitude, temperature FROM sensor_readings"
@@ -166,6 +167,133 @@ class TestSensorSimulator(unittest.TestCase):
                     or "location is required" in str(context.exception).lower(),
                     f"Unexpected ValueError message: {str(context.exception)}",
                 )
+
+
+    def test_simulator_with_anomalies_enabled(self):
+        """Test simulator with anomalies enabled."""
+        config = get_minimal_config(self.db_path)
+        config["anomaly_settings"]["enabled"] = True
+        config["anomaly_settings"]["frequency_seconds"] = 1
+        config["anomaly_settings"]["types"] = {
+            "spike": {"enabled": True, "probability": 1.0, "duration_seconds": 1}
+        }
+        identity = get_minimal_identity()
+
+        config_manager = ConfigManager(config=config, identity=identity)
+        simulator = SensorSimulator(config_manager=config_manager)
+        simulator.run()
+
+        # Check that some readings were generated
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM sensor_readings")
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        self.assertGreater(count, 0, "No readings generated with anomalies enabled")
+
+    def test_simulator_with_different_firmware_versions(self):
+        """Test simulator with different firmware versions."""
+        config = get_minimal_config(self.db_path)
+        
+        for firmware_version in [FirmwareVersion.V1_4, FirmwareVersion.V1_5, FirmwareVersion.V2_0]:
+            with self.subTest(firmware_version=firmware_version):
+                identity = get_minimal_identity()
+                identity["firmware_version"] = firmware_version.value
+                
+                config_manager = ConfigManager(config=config, identity=identity)
+                simulator = SensorSimulator(config_manager=config_manager)
+                
+                # Should initialize without error
+                self.assertEqual(simulator.firmware_version, firmware_version)
+
+    def test_simulator_with_different_manufacturers(self):
+        """Test simulator with different manufacturers."""
+        config = get_minimal_config(self.db_path)
+        
+        for manufacturer in [Manufacturer.SENSORTECH, Manufacturer.ENVMONITORS, Manufacturer.IOTPRO]:
+            with self.subTest(manufacturer=manufacturer):
+                identity = get_minimal_identity()
+                identity["manufacturer"] = manufacturer.value
+                
+                config_manager = ConfigManager(config=config, identity=identity)
+                simulator = SensorSimulator(config_manager=config_manager)
+                
+                # Should initialize without error
+                self.assertEqual(simulator.manufacturer, manufacturer)
+
+    def test_simulator_with_different_models(self):
+        """Test simulator with different models."""
+        config = get_minimal_config(self.db_path)
+        
+        for model in [Model.ENVMONITOR_3000, Model.ENVMONITOR_4000, Model.ENVMONITOR_5000]:
+            with self.subTest(model=model):
+                identity = get_minimal_identity()
+                identity["model"] = model.value
+                
+                config_manager = ConfigManager(config=config, identity=identity)
+                simulator = SensorSimulator(config_manager=config_manager)
+                
+                # Should initialize without error
+                self.assertEqual(simulator.model, model)
+
+    def test_simulator_with_monitoring_enabled(self):
+        """Test simulator with monitoring enabled."""
+        config = get_minimal_config(self.db_path)
+        config["monitoring"]["enabled"] = True
+        config["monitoring"]["port"] = 0  # Use any available port
+        identity = get_minimal_identity()
+
+        config_manager = ConfigManager(config=config, identity=identity)
+        simulator = SensorSimulator(config_manager=config_manager)
+        
+        # Should initialize without error even with monitoring
+        self.assertIsNotNone(simulator)
+
+    def test_simulator_get_status(self):
+        """Test that simulator can provide status information."""
+        config = get_minimal_config(self.db_path)
+        identity = get_minimal_identity()
+
+        config_manager = ConfigManager(config=config, identity=identity)
+        simulator = SensorSimulator(config_manager=config_manager)
+        
+        status = simulator.get_status()
+        
+        # Status should be a dictionary with expected keys
+        self.assertIsInstance(status, dict)
+        self.assertIn("sensor_id", status)
+        self.assertIn("location", status)
+        self.assertIn("running", status)
+
+    def test_simulator_with_extreme_readings_per_second(self):
+        """Test simulator with extreme readings per second values."""
+        config = get_minimal_config(self.db_path)
+        identity = get_minimal_identity()
+        
+        # Test very high readings per second
+        config["simulation"]["readings_per_second"] = 1000
+        config["simulation"]["run_time_seconds"] = 0.01  # Very short duration
+        
+        config_manager = ConfigManager(config=config, identity=identity)
+        simulator = SensorSimulator(config_manager=config_manager)
+        
+        # Should handle high frequency without error
+        try:
+            simulator.run()
+        except Exception as e:
+            self.fail(f"Simulator failed with high readings_per_second: {e}")
+
+    def test_simulator_database_error_handling(self):
+        """Test simulator handles database errors gracefully."""
+        # Use an invalid database path to trigger errors
+        invalid_db_path = "/invalid/path/to/database.db"
+        config = get_minimal_config(invalid_db_path)
+        identity = get_minimal_identity()
+
+        with self.assertRaises(Exception):
+            config_manager = ConfigManager(config=config, identity=identity)
+            SensorSimulator(config_manager=config_manager)
 
 
 if __name__ == "__main__":

@@ -95,3 +95,6 @@ sample-sensor/*
 *cosmos-with-bacalhau
 
 .specstory/
+# SpecStory explanation file
+.specstory/.what-is-this.md
+*config.yaml
