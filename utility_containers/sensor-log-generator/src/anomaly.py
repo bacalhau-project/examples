@@ -75,9 +75,6 @@ class AnomalyGenerator:
         logger.info(f"  Firmware: {self.firmware_version.value}")
         logger.info(f"  Model: {self.model.value}")
         logger.info(f"  Manufacturer: {self.manufacturer.value}")
-        logger.info(f"  Location: {self.location}")
-        logger.info(f"  Latitude: {self.latitude}")
-        logger.info(f"  Longitude: {self.longitude}")
 
     def should_generate_anomaly(self):
         """Determine if an anomaly should be generated based on probability and firmware version."""

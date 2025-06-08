@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Default to Hardcoding
+
+Prefer hardcoding values, constants, and configurations directly in the code.
+Introduce flexibility or configurability (e.g., environment variables, configuration files, command-line arguments) only when there is an explicit and clear requirement for it.
+Clearly document the reason for any introduced flexibility. This helps prevent over-engineering and keeps the codebase simpler by default.
