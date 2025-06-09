@@ -14,16 +14,19 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Install packages in the virtual environment
 RUN uv pip install --upgrade pip
 
-COPY access-log-generator.py /tmp/access-log-generator.py
-COPY log_generator_config.yaml /tmp/default_config.yaml
+COPY access-log-generator.py /app/access-log-generator.py
+COPY config/docker-config.yaml /app/config/config.yaml
+
+# Set working directory
+WORKDIR /app
 
 # Set default configuration path
-ENV LOG_GENERATOR_CONFIG_PATH=/tmp/default_config.yaml
+ENV LOG_GENERATOR_CONFIG_PATH=/app/config/config.yaml
 
 # Create logs directory
 RUN mkdir -p /logs
 VOLUME /logs
 
-RUN uv run -s /tmp/access-log-generator.py --exit
+RUN uv run -s access-log-generator.py --exit
 
-CMD ["uv", "run", "-s", "/tmp/access-log-generator.py"]
+CMD ["uv", "run", "-s", "access-log-generator.py"]

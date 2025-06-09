@@ -9,9 +9,9 @@ DATA_DIR="$CONFIG_DIR/data"     # For persistent data (db, logs, backups, export
 # 1) Ensure host dirs exist and are owned by you
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$DATA_DIR"
 # Ensure the top-level config dir is owned by user if it didn't exist
-sudo chown "$(id -u):$(id -g)" "$CONFIG_DIR"
+chown "$(id -u):$(id -g)" "$CONFIG_DIR"
 # Cache and Data dirs owned by user
-sudo chown -R "$(id -u):$(id -g)" "$CACHE_DIR" "$DATA_DIR"
+chown -R "$(id -u):$(id -g)" "$CACHE_DIR" "$DATA_DIR"
 
 # 2) Run container as root, mounting:
 #    - sample-sensor → /app/config (read-only config)

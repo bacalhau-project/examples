@@ -11,4 +11,5 @@ dependencies = [
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
     "tenacity>=9.1.2",
+    "pydantic>=2.0.0",
 ]

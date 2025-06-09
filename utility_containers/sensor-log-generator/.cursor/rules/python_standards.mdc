@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Python Architecture and Frameworks
+
+Strive to follow standard Python project architecture (e.g., `src/` layout, `tests/` directory, `requirements.txt` or `pyproject.toml` for dependencies).
+Prefer well-established and maintained frameworks and libraries over custom solutions where appropriate to ensure broader compatibility and community support.

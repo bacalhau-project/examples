@@ -15,9 +15,7 @@ COPY src/ ./src/
 
 # Create a virtual environment and install dependencies
 # uv will download and install Python 3.12 to /root/.cache/uv/pythons if not available
-RUN /usr/local/bin/uv venv /.venv --python 3.12 \
-    && . /.venv/bin/activate \
-    && /usr/local/bin/uv run --python /.venv/bin/python main.py --exit
+RUN /usr/local/bin/uv venv /.venv --python 3.12
 
 # Activate the virtual environment and run the application
 ENTRYPOINT ["uv", "run", "main.py"]
