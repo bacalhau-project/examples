@@ -1,0 +1,28 @@
+processing_mode: "RAW"
+
+# SQLite source configuration
+sqlite: "../sample-sensor/data/sensor_data.db"
+sqlite_table_name: "sensor_readings" # Optional: Name of the table in SQLite to read from. If absent, script attempts to autodetect.
+timestamp_col: "timestamp" # Optional: Name of the timestamp column in your SQLite table for incremental reads. If absent, script attempts to autodetect.
+
+# Databricks target configuration
+# Full three-level name of the target Delta table in Databricks (e.g., hive_metastore.default.my_delta_table or my_catalog.my_schema.my_delta_table)
+table: "databricks_and_expanso.sensor_data.readings"
+
+# Databricks Connect parameters
+# These are required if running the script outside of a Databricks environment.
+# It's recommended to set DATABRICKS_HOST, DATABRICKS_TOKEN, and DATABRICKS_CLUSTER_ID as environment variables for security.
+databricks_host: "dbc-247f3341-e7b0.cloud.databricks.com" # Or set DATABRICKS_HOST env var
+databricks_token: "dapi8e6a6e2ac14d97bb08c86fce4e2023d1" # Or set DATABRICKS_TOKEN env var
+databricks_http_path: "/sql/1.0/warehouses/73f68e666f32e0b0" # Or set DATABRICKS_HTTP_PATH env var
+databricks_catalog: "databricks_and_expanso" # Or set DATABRICKS_CATALOG env var
+databricks_schema: "sensor_data" # Or set DATABRICKS_SCHEMA env var
+databricks_database: "sensor_data" # Or set DATABRICKS_DATABASE env var
+databricks_table: "readings" # Or set DATABRICKS_TABLE env var
+databricks_volume: "databricks_and_expanso.sensor_data.temporary_upload_volume" # Or set DATABRICKS_VOLUME env var
+
+# Uploader operational parameters
+state_dir: "/tmp/sqlite_to_databricks_state" # Directory to store the last upload timestamp
+interval: 10 # Time in seconds between upload cycles. Ignored if --once is used.
+max_batch_size: 1000 # Maximum number of rows to upload in a single batch.
+# once: false # To run once and exit, use the --once command-line flag.
