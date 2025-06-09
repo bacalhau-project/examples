@@ -13,43 +13,58 @@ export interface BacalhauStackProps extends cdk.StackProps {
     readonly bacalhauVersion: string; // Bacalhau version
     readonly targetPlatform: string; // Bacalhau target platform
     readonly orchestratorInstanceType: string; // EC2 instance type for the orchestrator
-    readonly webServerInstanceType: string; // EC2 instance type for compute nodes
-    readonly webServerInstanceCount: number; // Number of compute nodes
+    readonly webServiceInstanceType: string; // EC2 instance type for web service nodes
+    readonly webServiceInstanceCount: number; // Number of web service nodes
+    readonly computeServiceInstanceType: string; // EC2 instance type for compute nodes
+    readonly computeServiceInstanceCount: number; // Number of compute nodes
     readonly openSearchInstanceType: string; // OpenSearch instance type
     readonly keyName: string; // SSH key pair name
 }
 
 export class BacalhauStack extends cdk.Stack {
     private readonly props: BacalhauStackProps
-    private vpc: ec2.Vpc;
-    private orchestratorInstance: ec2.Instance;
-    private computeRole: iam.Role;
-    private machineImage: ec2.LookupMachineImage;
+    private readonly vpc: ec2.Vpc;
+    private readonly orchestratorInstance: ec2.Instance;
+    private readonly orchestratorRole: iam.Role
+    private readonly computeRole: iam.Role;
+    private readonly computeSecurityGroup : ec2.SecurityGroup
+    private readonly baseInstallScript: string
+    private readonly machineImage: ec2.LookupMachineImage;
 
     constructor(app: cdk.App, id: string, props: BacalhauStackProps) {
         super(app, id, props);
 
         this.props = props;
-        this.createVPC();
-        this.setupMachineImage();
+        this.vpc = this.createVPC();
+        this.machineImage = this.createMachineImage();
 
         // load contents of script
-        const baseInstallScript = readFileSync('./init-scripts/install-node.sh', 'utf8');
-        this.createOrchestratorInstance(baseInstallScript)
+        this.baseInstallScript = readFileSync('./init-scripts/install-node.sh', 'utf8');
+        this.orchestratorRole = this.createEC2Role("OrchestratorRole")
+        this.orchestratorInstance = this.createOrchestratorInstance()
 
         this.computeRole = this.createEC2Role("ComputeRole")
-        this.createComputeInstances(baseInstallScript);
+        this.computeSecurityGroup = this.createSecurityGroup("ComputeSecurityGroup");
+        this.createComputeInstances('WebService', this.props.webServiceInstanceType, this.props.webServiceInstanceCount);
+        this.createComputeInstances('ComputeService', this.props.computeServiceInstanceType, this.props.computeServiceInstanceCount);
 
         this.createOpenSearchDomain();
-        this.createS3Bucket();
+        this.createAccessLogS3Bucket();
+        this.createResultsS3Bucket();
+
+        new cdk.CfnOutput(this, 'AWSRegion', {
+            value: this.region,
+            description: 'The AWS region of the stack.',
+        });
     }
 
 
-    private createVPC() {
+    private createVPC() : ec2.Vpc {
         // Create VPC
-        this.vpc = new ec2.Vpc(this, 'Vpc', {
+        return new ec2.Vpc(this, 'Vpc', {
             maxAzs: 3, // Max availability zones
             ipAddresses: ec2.IpAddresses.cidr('10.1.0.0/16'), // CIDR block
+            natGateways: 0, // Number of NAT gateways
             subnetConfiguration: [ // Subnet configuration
                 { cidrMask: 24, name: 'PublicSubnet', subnetType: ec2.SubnetType.PUBLIC },
                 { cidrMask: 24, name: 'PrivateSubnet', subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
@@ -58,8 +73,8 @@ export class BacalhauStack extends cdk.Stack {
     }
 
     // Machine Image for Orchestrator and Compute Nodes
-    private setupMachineImage() {
-        this.machineImage = new ec2.LookupMachineImage({
+    private createMachineImage() : ec2.LookupMachineImage  {
+        return new ec2.LookupMachineImage({
             name: 'ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*',
             owners: ['099720109477'], // Canonical's owner ID for public Ubuntu images
         })
@@ -81,7 +96,7 @@ export class BacalhauStack extends cdk.Stack {
     }
 
     // Creates an Orchestrator Node EC2 instance
-    private createOrchestratorInstance(baseInstallScript: string) {
+    private createOrchestratorInstance() : ec2.Instance {
         // Create Orchestrator Volume
         const orchestratorVolume = new ec2.Volume(this, 'OrchestratorVolume', {
             volumeName: 'OrchestratorVolume',
@@ -99,9 +114,9 @@ export class BacalhauStack extends cdk.Stack {
             instanceType: new ec2.InstanceType(this.props.orchestratorInstanceType),
             machineImage: this.machineImage,
             securityGroup: this.createSecurityGroup("OrchestratorSecurityGroup"),
-            role: this.createEC2Role("OrchestratorRole"),
+            role: this.orchestratorRole,
             keyName: this.props.keyName,
-            userData: this.generateOrchestratorUserData(baseInstallScript, orchestratorVolume.volumeId),
+            userData: this.generateOrchestratorUserData(orchestratorVolume.volumeId),
             userDataCausesReplacement: true,
         });
 
@@ -111,33 +126,34 @@ export class BacalhauStack extends cdk.Stack {
             allocationId: orchestratorElasticIP.attrAllocationId,
             instanceId: orchestratorInstance.instanceId
         });
-        this.orchestratorInstance = orchestratorInstance;
 
         // Output the public IP address of the EC2 instance
         new cdk.CfnOutput(this, 'OrchestratorPublicIp', {
             value: orchestratorInstance.instancePublicIp,
             description: 'The public IP address of the Orchestrator instance.',
         });
+
+        return orchestratorInstance;
     }
 
     // Creates 3 Compute Node EC2 instances
-    private createComputeInstances(baseInstallScript: string) {
-        const securityGroup = this.createSecurityGroup("ComputeSecurityGroup");
-
+    private createComputeInstances(service: string, instanceType: string, instanceCount: number) {
         // Create 3 Compute Nodes
-        for (let i = 1; i <= this.props.webServerInstanceCount; i++) {
+        for (let i = 1; i <= instanceCount; i++) {
             const availabilityZone = this.vpc.availabilityZones[i - 1]
 
             // Create Compute Volume
-            const computeVolume = new ec2.Volume(this, `WebServerNode${i}Volume`, {
-                volumeName: `WebServerNode${i}Volume`,
+            const computeVolume = new ec2.Volume(this, `${service}Node${i}Volume`, {
+                volumeName: `${service}Node${i}Volume`,
                 availabilityZone: availabilityZone,
                 size: cdk.Size.gibibytes(100),
                 removalPolicy: cdk.RemovalPolicy.DESTROY,
             });
 
+            const nodeLabels = `service=${service},name=${service}Node-${i}`
+
             // Create Compute Node
-            const computeNode = new ec2.Instance(this, `WebServerNode${i}`, {
+            const computeNode = new ec2.Instance(this, `${service}Node${i}`, {
                 vpc: this.vpc,
                 availabilityZone: availabilityZone,
                 vpcSubnets: {
@@ -149,18 +165,18 @@ export class BacalhauStack extends cdk.Stack {
                         volume: ec2.BlockDeviceVolume.ebs(20),  // root volume
                     },
                 ],
-                instanceType: new ec2.InstanceType(this.props.webServerInstanceType),
+                instanceType: new ec2.InstanceType(instanceType),
                 machineImage: this.machineImage,
-                securityGroup: securityGroup,
+                securityGroup: this.computeSecurityGroup,
                 role: this.computeRole,
                 keyName: this.props.keyName,
-                userData: this.generateComputeUserData(baseInstallScript, computeVolume.volumeId, this.orchestratorInstance.instancePrivateIp, i),
+                userData: this.generateComputeUserData(computeVolume.volumeId, this.orchestratorInstance.instancePrivateIp, nodeLabels),
                 userDataCausesReplacement: true,
             });
 
             // Create Elastic IP for Compute Node
-            new ec2.CfnEIPAssociation(this, `WebServerNode${i}IPAssociation`, {
-                allocationId: new ec2.CfnEIP(this, `WebServerNode${i}IP`).attrAllocationId,
+            new ec2.CfnEIPAssociation(this, `${service}Node${i}IPAssociation`, {
+                allocationId: new ec2.CfnEIP(this, `${service}Node${i}IP`).attrAllocationId,
                 instanceId: computeNode.instanceId
             });
         }
@@ -273,50 +289,90 @@ export class BacalhauStack extends cdk.Stack {
 
         // Output the OpenSearch master password
         new cdk.CfnOutput(this, 'OpenSearchPasswordRetriever', {
-            value: `aws secretsmanager get-secret-value --secret-id "${openSearchPassword.secretArn}" --query 'SecretString' --output text`,
+            value: `aws secretsmanager get-secret-value --secret-id ${openSearchPassword.secretArn} --query SecretString --output text`,
             description: 'Run this command to get the OpenSearch master password.',
         });
     }
 
 
     // Creates an S3 bucket for raw access logs
-    private createS3Bucket() {
+    private createAccessLogS3Bucket() {
         // Create S3 bucket
-        const bucket = new s3.Bucket(this, 'Bucket', {
+        const bucket = new s3.Bucket(this, 'AccessLogBucket', {
             removalPolicy: cdk.RemovalPolicy.DESTROY,  // For dev/test only
             autoDeleteObjects: true,
         });
 
         // Allow compute instances to access S3 bucket
         this.computeRole.addToPolicy(new iam.PolicyStatement({
-            actions: ['s3:PutObject'],
+            actions: [
+                's3:PutObject',         // to upload access logs
+                's3:GetObject',         // to access logs for batch jobs
+                's3:ListBucket',        // to support pattern matching for batch jobs
+            ],
             resources: [bucket.bucketArn, bucket.arnForObjects('*')],
         }))
 
         // Output the bucket name
-        new cdk.CfnOutput(this, 'BucketName', {
+        new cdk.CfnOutput(this, 'AccessLogBucketName', {
             value: bucket.bucketName,
-            description: 'The name of the S3 bucket.',
+            exportName: 'AccessLogBucket',
+            description: 'S3 bucket for storing access logs',
         });
     }
 
-    private generateOrchestratorUserData(baseScript: string, volumeId: string): ec2.UserData {
+    // Creates an S3 bucket for raw access logs
+    private createResultsS3Bucket() {
+        // Create S3 bucket
+        const bucket = new s3.Bucket(this, 'ResultsBucket', {
+            removalPolicy: cdk.RemovalPolicy.DESTROY,  // For dev/test only
+            autoDeleteObjects: true,
+        });
+
+        // Allow compute instances to access S3 bucket
+        this.computeRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                's3:PutObject',         // to publish batch job results
+                's3:GetObject',         // to access published results for additional compute, if needed
+                's3:ListBucket',        // to access patterns of published results for additional compute, if needed
+            ],
+            resources: [bucket.bucketArn, bucket.arnForObjects('*')],
+        }))
+
+        // Allow orchestrator to access s3 bucket to provide pre-signed URLs for batch job results
+        this.orchestratorRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                's3:GetObject',         // to access published results, and provide pre-signed URLs for `bacalhau get` command
+            ],
+            resources: [bucket.bucketArn, bucket.arnForObjects('*')],
+        }))
+
+        // Output the bucket name
+        new cdk.CfnOutput(this, 'ResultsBucketName', {
+            value: bucket.bucketName,
+            exportName: 'ResultsBucket',
+            description: 'S3 bucket for storing access logs',
+        });
+    }
+
+
+    private generateOrchestratorUserData(volumeId: string): ec2.UserData {
         return ec2.UserData.custom(`#!/bin/bash
 export BACALHAU_VERSION='${this.props.bacalhauVersion}'
 export TARGET_PLATFORM='${this.props.targetPlatform}'
 export VOLUME_ID='${volumeId}'
-${baseScript}
+${this.baseInstallScript}
 `);
     }
 
-    private generateComputeUserData(baseScript: string, volumeId: string, orchestratorIp: string, i: number): ec2.UserData {
+    private generateComputeUserData(volumeId: string, orchestratorIp: string, labels: string): ec2.UserData {
         return ec2.UserData.custom(`#!/bin/bash
 export BACALHAU_VERSION='${this.props.bacalhauVersion}'
 export TARGET_PLATFORM='${this.props.targetPlatform}'
 export VOLUME_ID='${volumeId}'
 export BACALHAU_ORCHESTRATOR_IP='${orchestratorIp}'
-export BACALHAU_LABELS='service=web-server,name=web-server-${i}'
-${baseScript}
+export BACALHAU_LABELS='${labels}'
+${this.baseInstallScript}
 `);
     }
 }

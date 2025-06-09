@@ -40,13 +40,23 @@ COPY --from=builder /app/default_config.yaml /app/default_config.yaml
 # Also set VIRTUAL_ENV which some tools might use
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-# Set the default configuration path for the application
-ENV LOG_GENERATOR_CONFIG_PATH="/app/default_config.yaml"
 
-# Set the entrypoint to run the Python script using uv.
-# Command-line arguments passed to 'docker run' will be appended to this entrypoint.
-# For example: docker run <image_name> --custom-arg value
-ENTRYPOINT ["/opt/venv/bin/python", "/app/access-log-generator.py"]
+# Install packages in the virtual environment
+RUN uv pip install --upgrade pip
 
-# Default command (can be overridden by arguments to 'docker run')
-CMD []
+COPY access-log-generator.py /app/access-log-generator.py
+COPY config/docker-config.yaml /app/config/config.yaml
+
+# Set working directory
+WORKDIR /app
+
+# Set default configuration path
+ENV LOG_GENERATOR_CONFIG_PATH=/app/config/config.yaml
+
+# Create logs directory
+RUN mkdir -p /logs
+VOLUME /logs
+
+RUN uv run -s access-log-generator.py --exit
+
+CMD ["uv", "run", "-s", "access-log-generator.py"]
