@@ -62,3 +62,9 @@ event-pusher/*.json
 *debug.log*
 *.db
 *.bundle
+
+*.specstory*
+*debug.log*
+*.db
+*.bundle
+.databrickscfg

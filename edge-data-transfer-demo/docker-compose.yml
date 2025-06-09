@@ -1,0 +1,86 @@
+name: edge-data-transfer
+
+x-common-env-variables: &common-env-variables
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  BACALHAU_DISABLEANALYTICS: true
+
+services:
+  orchestrator:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    container_name: orchestrator
+    command: serve -c /etc/bacalhau/config.yaml --name orchestrator
+    environment: *common-env-variables
+    ports:
+      - "8438:8438"
+      - "1234:1234"
+      - "4222:4222"
+    volumes:
+      - ./bacalhau-config/orchestrator.yaml:/etc/bacalhau/config.yaml
+    healthcheck:
+      test: ["CMD", "bacalhau", "agent", "alive"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  storage:
+    image: quay.io/minio/minio
+    container_name: storage
+    entrypoint: sh
+    command: -c 'mkdir -p /data/my-bucket && minio server /data --console-address ":9001"'
+    environment: *common-env-variables
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: ghcr.io/bacalhau-project/edge-data-node:202504071804
+    command: serve -c /etc/bacalhau/config.yaml
+    volumes:
+      - ./bacalhau-config/compute.yaml:/etc/bacalhau/config.yaml
+      - ./data:/mnt/data
+    environment: *common-env-variables
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    deploy:
+      replicas: 5
+    privileged: true
+    restart: on-failure
+
+  frontend:
+    image: ghcr.io/bacalhau-project/edge-data-dashboard:202504071534
+    container_name: frontend
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    ports:
+      - "3000:3000"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  client:
+    image: ghcr.io/bacalhau-project/bacalhau:v1.7.0
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+    stop_signal: SIGTERM
+    stop_grace_period: 3s
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: orchestrator
+    depends_on:
+      - orchestrator
