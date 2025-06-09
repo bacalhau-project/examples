@@ -1,0 +1,42 @@
+# Example configuration file demonstrating dynamic config updates
+# The uploader will poll this file every 2 seconds and update settings
+
+# Processing mode - can be changed while the uploader is running
+# Options: raw, schematized, sanitized, aggregated, emergency
+processing_mode: schematized
+
+# Database connection settings (these won't be dynamically updated for safety)
+databricks_host: dbc-example.cloud.databricks.com
+databricks_http_path: /sql/1.0/endpoints/abc123
+databricks_token: dapiXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+databricks_database: sensor_data
+databricks_table: readings
+
+# SQLite settings
+sqlite: /path/to/sensor_data.db
+sqlite_table_name: sensor_logs
+timestamp_col: timestamp
+
+# Upload settings
+interval: 300
+max_batch_size: 500
+fuzz_factor: 0.1
+state_dir: /state
+
+# Processing-specific configurations
+gps_fuzzing:
+  enabled: true
+  radius_meters: 100
+
+emergency_config:
+  trigger_keywords:
+    - "EMERGENCY"
+    - "ALERT"
+    - "CRITICAL"
+
+aggregate_config:
+  window_minutes: 5
+  aggregations:
+    - mean
+    - max
+    - min
