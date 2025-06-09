@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -138,7 +139,7 @@ func (mp *messageProcessor) add(msg Message) ([]Message, bool) {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Tick(POLL_INTERVAL, func(t time.Time) tea.Msg {
+	return tea.Tick(m.pollInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -340,8 +341,13 @@ func (m *model) startMessageWorker(workerID int) {
 				}
 			}
 
-			// Small sleep to prevent tight polling
-			time.Sleep(POLL_INTERVAL / 2)
+			// Small sleep to prevent tight polling, but make it adaptive
+			sleepTime := m.pollInterval / 2
+			if len(messages) == 0 {
+				// If no messages, back off slightly to reduce API calls
+				sleepTime = m.pollInterval
+			}
+			time.Sleep(sleepTime)
 		}
 	}
 }
@@ -458,6 +464,7 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string, m
 		return nil, nil
 	}
 
+	// Sort messages by sent timestamp
 	sort.Slice(result.Messages, func(i, j int) bool {
 		iTime, _ := strconv.ParseInt(*result.Messages[i].Attributes["SentTimestamp"], 10, 64)
 		jTime, _ := strconv.ParseInt(*result.Messages[j].Attributes["SentTimestamp"], 10, 64)
@@ -473,6 +480,10 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string, m
 			log.Printf("Error unmarshaling message: %v", err)
 			continue
 		}
+		// Set region from environment if not already set
+		if message.Region == "" {
+			message.Region = os.Getenv("AWS_REGION")
+		}
 		messages = append(messages, message)
 
 		entry := &sqs.DeleteMessageBatchRequestEntry{
@@ -482,6 +493,7 @@ func receiveMessages(ctx context.Context, sqsClient *sqs.SQS, queueURL string, m
 		deleteEntries = append(deleteEntries, entry)
 	}
 
+	// Delete messages with retry logic
 	if len(deleteEntries) > 0 {
 		deleteInput := &sqs.DeleteMessageBatchInput{
 			QueueUrl: aws.String(queueURL),
@@ -696,7 +708,7 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	}
 
 	columns := []table.Column{
-		{Title: "VM Name", Width: 15},
+		{Title: "Hostname", Width: 15},
 		{Title: "Container", Width: 12},
 		{Title: "Icon", Width: 8},
 		{Title: "Color", Width: 8},
@@ -780,7 +792,7 @@ func initialModel(ctx context.Context, queueURL string, sqsClient *sqs.SQS, hub 
 	}
 
 	// Start multiple polling workers
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		workerID := i
 		go m.startMessageWorker(workerID)
 	}
@@ -988,7 +1000,7 @@ func main() {
 		log.Println("Web interface is now available at http://localhost:8080")
 		log.Println("Press Ctrl+C to stop the application")
 		m.addLog("Running in headless mode - terminal UI disabled")
-		
+
 		// Create /app/healthy file to indicate service is running
 		healthFile := "/app/healthy"
 		if err := os.WriteFile(healthFile, []byte("ok"), 0644); err != nil {
@@ -996,10 +1008,10 @@ func main() {
 		} else {
 			log.Printf("Created health file at %s", healthFile)
 		}
-		
+
 		// In headless mode, just keep the program running
 		<-m.ctx.Done()
-		
+
 		// Remove health file on exit
 		if err := os.Remove(healthFile); err != nil && !os.IsNotExist(err) {
 			log.Printf("Warning: Could not remove health file at %s: %v", healthFile, err)
@@ -1101,13 +1113,13 @@ func loadEnvConfig() error {
 
 	// Log all configuration settings
 	log.Println("Configuration settings:")
-	
+
 	// Required settings
 	log.Printf("  SQS_QUEUE_URL = %s", os.Getenv("SQS_QUEUE_URL"))
 	log.Printf("  AWS_REGION = %s", os.Getenv("AWS_REGION"))
 	log.Printf("  AWS_ACCESS_KEY_ID = %s", os.Getenv("AWS_ACCESS_KEY_ID"))
 	log.Printf("  AWS_SECRET_ACCESS_KEY = %s", os.Getenv("AWS_SECRET_ACCESS_KEY"))
-	
+
 	// Optional queue settings with defaults
 	pollInterval := os.Getenv("POLL_INTERVAL")
 	if pollInterval == "" {
@@ -1116,7 +1128,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  POLL_INTERVAL = %s (user-defined)", pollInterval)
 	}
-	
+
 	maxMessages := os.Getenv("MAX_MESSAGES")
 	if maxMessages == "" {
 		maxMessages = fmt.Sprintf("%d", DEFAULT_MAX_MESSAGES)
@@ -1124,7 +1136,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  MAX_MESSAGES = %s (user-defined)", maxMessages)
 	}
-	
+
 	numWorkers := os.Getenv("NUM_WORKERS")
 	if numWorkers == "" {
 		numWorkers = fmt.Sprintf("%d", DEFAULT_NUM_WORKERS)
@@ -1132,7 +1144,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  NUM_WORKERS = %s (user-defined)", numWorkers)
 	}
-	
+
 	wsBatchSize := os.Getenv("WS_BATCH_SIZE")
 	if wsBatchSize == "" {
 		wsBatchSize = fmt.Sprintf("%d", DEFAULT_WS_BATCH_SIZE)
@@ -1140,7 +1152,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  WS_BATCH_SIZE = %s (user-defined)", wsBatchSize)
 	}
-	
+
 	bufferSize := os.Getenv("BUFFER_SIZE")
 	if bufferSize == "" {
 		bufferSize = fmt.Sprintf("%d", DEFAULT_BUFFER_SIZE)
@@ -1148,7 +1160,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  BUFFER_SIZE = %s (user-defined)", bufferSize)
 	}
-	
+
 	maxRetryAttempts := os.Getenv("MAX_RETRY_ATTEMPTS")
 	if maxRetryAttempts == "" {
 		maxRetryAttempts = fmt.Sprintf("%d", DEFAULT_MAX_RETRY_ATTEMPTS)
@@ -1156,7 +1168,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  MAX_RETRY_ATTEMPTS = %s (user-defined)", maxRetryAttempts)
 	}
-	
+
 	initialRetryDelay := os.Getenv("INITIAL_RETRY_DELAY")
 	if initialRetryDelay == "" {
 		initialRetryDelay = fmt.Sprintf("%v", DEFAULT_INITIAL_RETRY_DELAY)
@@ -1164,7 +1176,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  INITIAL_RETRY_DELAY = %s (user-defined)", initialRetryDelay)
 	}
-	
+
 	maxRetryDelay := os.Getenv("MAX_RETRY_DELAY")
 	if maxRetryDelay == "" {
 		maxRetryDelay = fmt.Sprintf("%v", DEFAULT_MAX_RETRY_DELAY)
@@ -1172,7 +1184,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  MAX_RETRY_DELAY = %s (user-defined)", maxRetryDelay)
 	}
-	
+
 	sqsVisibility := os.Getenv("SQS_VISIBILITY_TIMEOUT")
 	if sqsVisibility == "" {
 		sqsVisibility = fmt.Sprintf("%d", DEFAULT_SQS_VISIBILITY)
@@ -1180,7 +1192,7 @@ func loadEnvConfig() error {
 	} else {
 		log.Printf("  SQS_VISIBILITY_TIMEOUT = %s (user-defined)", sqsVisibility)
 	}
-	
+
 	sqsWaitTime := os.Getenv("SQS_WAIT_TIME")
 	if sqsWaitTime == "" {
 		sqsWaitTime = fmt.Sprintf("%d", DEFAULT_SQS_WAIT_TIME)
@@ -1197,7 +1209,7 @@ func loadEnvConfig() error {
 		log.Printf("  COSMOS_KEY = %s", os.Getenv("COSMOS_KEY"))
 		log.Printf("  COSMOS_DATABASE = %s", os.Getenv("COSMOS_DATABASE"))
 		log.Printf("  COSMOS_CONTAINER = %s", os.Getenv("COSMOS_CONTAINER"))
-		
+
 		cosmosBatchSize := os.Getenv("COSMOS_BATCH_SIZE")
 		if cosmosBatchSize == "" {
 			cosmosBatchSize = "100" // Default
@@ -1205,7 +1217,7 @@ func loadEnvConfig() error {
 		} else {
 			log.Printf("  COSMOS_BATCH_SIZE = %s (user-defined)", cosmosBatchSize)
 		}
-		
+
 		azureRegion := os.Getenv("AZURE_REGION")
 		if azureRegion == "" {
 			azureRegion = "unknown" // Default
@@ -1294,7 +1306,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -1308,7 +1320,7 @@ func clearQueue(ctx context.Context, m *model, sqsClient *sqs.SQS, queueURL stri
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(m.sqsVisibility),
 					})
@@ -1382,7 +1394,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 	var wg sync.WaitGroup
 	deletedCount := &sync.Map{}
 
-	for i := 0; i < NUM_WORKERS; i++ {
+	for i := 0; i < m.numWorkers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -1396,7 +1408,7 @@ func clearQueueBefore(ctx context.Context, m *model, sqsClient *sqs.SQS, queueUR
 				default:
 					result, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 						QueueUrl:            aws.String(queueURL),
-						MaxNumberOfMessages: aws.Int64(MAX_MESSAGES),
+						MaxNumberOfMessages: aws.Int64(m.maxMessages),
 						WaitTimeSeconds:     aws.Int64(0),
 						VisibilityTimeout:   aws.Int64(m.sqsVisibility),
 						AttributeNames: []*string{

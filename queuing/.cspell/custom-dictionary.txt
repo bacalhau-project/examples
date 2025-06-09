@@ -1,4 +1,6 @@
 addrs
+addstr
+arcname
 asyncssh
 azureuser
 bacalhau

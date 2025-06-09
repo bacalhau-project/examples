@@ -2,3 +2,4 @@ tf.plan
 tf.out
 *.log
 poetry.lock
+.log_env

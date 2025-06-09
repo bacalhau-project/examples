@@ -16,11 +16,17 @@ js-helloworld/outputs/*
 .idea/
 .env
 
-.vscode
+.venv
+temp
+job_id.txt
+docs.bacalhau.org/
 
 ansible.cfg
 *.pem
 .env.json
+
+**/MACHINES.json
+
 
 .terraform/
 terraform.tfstate.d/
@@ -34,8 +40,6 @@ tf.out
 
 job-[0-9a-z]*
 !job-one-zone.yaml
-!case-studies/**/Dockerfile
-!model-inference/**/Dockerfile
 todo/eurec4a/how_to_eurec4a
 .aider*
 
@@ -60,5 +64,26 @@ event-pusher/*.json
 
 *.specstory*
 *debug.log*
-*.db
-*.bundle
+.minio*
+
+# local lakehouse volumes
+tools/local-lakehouse/spark-delta-jars/
+tools/local-lakehouse/minio-data/
+
+**__pycache__**
+
+data-engineering/**/jars/*.jar
+**/logs/access.log
+**/videos/*.mp4
+**/bin/event-puller
+**/bin/*.dll
+*.tar.gz
+*.zip
+*.bz2
+.databrickscfg
+__pycache__/
+*.py[cod]
+*$py.class
+
+.claude/
+

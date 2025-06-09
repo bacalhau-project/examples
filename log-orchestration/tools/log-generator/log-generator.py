@@ -1,5 +1,6 @@
+import json
+import re
 from datetime import datetime, timezone
-import time
 import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -8,12 +9,27 @@ import asyncio
 
 """
 Script to simulate log generation. It reads logs from hourly-separated
-log files and produces logs at a user-defined rate. The datetime in the logs
+log files and produces logs in JSON format at a user-defined rate. The datetime in the logs
 is replaced with the current datetime in UTC.
 
 Usage:
     python log_generator.py --rate=2 --input-log-directory="./logs" --output-log-file="./output/generated_logs.log"
 """
+
+# Regular expression to parse the Nginx log line
+log_pattern = re.compile(
+    r'(?P<remote_addr>\S+) '  # Remote address
+    r'\S+ '  # Ignoring ident
+    r'(?P<remote_user>\S+) '  # Remote user
+    r'\[(?P<time_local>.*?)\] '  # Local time
+    r'"(?P<http_method>\S+) '  # HTTP method
+    r'(?P<request>[^\s"]+) '  # Request path
+    r'(?P<http_version>HTTP/\S+)" '  # HTTP version
+    r'(?P<status>\d{3}) '  # Status
+    r'(?P<body_bytes_sent>\S+) '  # Body bytes sent
+    r'"(?P<http_referer>.*?)" '  # HTTP referer
+    r'"(?P<http_user_agent>.*?)"'  # User agent
+)
 
 
 async def main(args):
@@ -22,8 +38,8 @@ async def main(args):
     output_file_path = args.output_log_file
     await generate_logs(rate, source_directory, output_file_path)
 
-async def generate_logs(rate, source_directory, output_file_path):
 
+async def generate_logs(rate, source_directory, output_file_path):
     # Initialize logging with TimedRotatingFileHandler to handle file rotation
     logger = logging.getLogger("LogGenerator")
     logger.setLevel(logging.INFO)
@@ -41,9 +57,25 @@ async def generate_logs(rate, source_directory, output_file_path):
             # Read and publish each line from the current log file
             for line in f:
                 await asyncio.sleep(1 / rate)
-                current_time = datetime.now(timezone.utc).strftime("%d/%b/%Y:%H:%M:%S %z")
-                updated_line = line.replace(line.split('[')[1].split(']')[0], current_time)
-                logger.info(updated_line.strip())
+                json_log = log_to_json(line)
+                logger.info(json_log)
+
+
+def log_to_json(log_line):
+    match = log_pattern.match(log_line)
+    if not match:
+        print(f"Log line does not match pattern: {log_line}")
+        return None
+    log_data = match.groupdict()
+    # Replace time_local with current time in UTC
+    log_data["time_local"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+    # Convert status and body_bytes_sent to integers
+    log_data['status'] = int(log_data['status'])
+    if log_data['body_bytes_sent'].isdigit():
+        log_data['body_bytes_sent'] = int(log_data['body_bytes_sent'])
+    else:
+        log_data['body_bytes_sent'] = 0  # Handle non-numeric values like '-'
+    return json.dumps(log_data)
 
 
 if __name__ == "__main__":

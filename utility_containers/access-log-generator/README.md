@@ -19,22 +19,48 @@ This container/project was born out of a need to create realistic, high-quality 
 
 ## 🚀 Quick Start
 
-1. Run with Docker (recommended):
-
+### Run with Docker (recommended):
 ```bash
 # Using docker compose (recommended)
 docker compose up
 
 # Or run directly with docker
 docker run -v ./logs:/var/log/app -v ./config:/app/config \
+  -e LOG_GENERATOR_CONFIG_PATH=/app/config/docker-config.yaml \
+  ghcr.io/bacalhau-project/access-log-generator:latest
+
+# Run in detached mode
+docker compose up -d
+
+# Run with environment variable overrides
+docker run -v ./logs:/var/log/app \
+  -e RATE_PER_SECOND=0.5 \
+  -e PRE_WARM=false \
+  -e DEBUG=true \
   ghcr.io/bacalhau-project/access-log-generator:latest
 ```
 
-1. Or run directly with Python (3.11+):
-
+### Run directly with Python (3.12+):
 ```bash
-# Run the generator
-uv run access-log-generator.py
+# Use the default config (writes to ./logs directory)
+./access-log-generator.py config/config.yaml
+
+# Or run without specifying config (uses default path)
+./access-log-generator.py
+
+# With environment variable overrides
+RATE_PER_SECOND=0.1 PRE_WARM=false ./access-log-generator.py
+```
+
+### Available Config Files:
+- `config/config.yaml` - Default config for local development (writes to ./logs)
+- `config/docker-config.yaml` - Config for Docker containers (writes to /var/log/app)
+- `config/sample_config.yaml` - Example with extended options and documentation
+
+### Build the container:
+```bash
+# Multi-platform build (AMD64 and ARM64)
+./build.sh
 ```
 
 ## 📝 Configuration
@@ -47,20 +73,32 @@ The generator uses a comprehensive YAML configuration. Configuration can be prov
 4. Command-line argument
 5. Default: `config/config.yaml`
 
+### Environment Variable Overrides
+
+These environment variables override values in the configuration file:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `RATE_PER_SECOND` | Override the session generation rate | `0.5` (decimal allowed) |
+| `PRE_WARM` | Enable/disable pre-warming | `true`, `false`, `1`, `0` |
+| `DEBUG` | Enable/disable debug output | `true`, `false`, `1`, `0` |
+| `LOG_DIR_OVERRIDE` | Override the log output directory | `/tmp/logs` |
+
 ### Key Configuration Sections:
 
 ```yaml
 output:
   directory: "/var/log/app"  # Where to write logs
-  rate: 10                   # Base logs per second
-  debug: false              # Show debug output
-  pre_warm: true           # Generate 24h of historical data
+  rate: 2                    # Sessions per second (NOT logs per second!)
+  debug: false               # Show debug output
+  pre_warm: false            # Generate 24h of historical data
   log_rotation:
     enabled: true
-    when: "midnight"       # or "H" for hourly
+    max_size_mb: 100         # Rotate when file reaches this size
+    when: "h"                # or "midnight" for daily
     interval: 1
-    backup_count: 7
-    compress: true        # gzip old logs
+    backup_count: 5
+    compress: true           # gzip old logs
 
 # User behavior state machine
 state_transitions:
@@ -78,53 +116,120 @@ state_transitions:
 
 # Page navigation patterns
 navigation:
-  index:
+  home:
+    "/": 0.2
     "/about": 0.3
-    "/products": 0.5
-    "/search": 0.2
-  products:
-    "/product/{id}": 0.6
-    "/cart": 0.3
+    "/products": 0.4
     "/search": 0.1
 
 # Error simulation
 error_rates:
-  global_500_rate: 0.001   # 0.1% server errors
-  product_404_rate: 0.05   # 5% product not found
-  cart_abandonment_rate: 0.3
+  global_500_rate: 0.02    # 2% server errors
+  product_404_rate: 0.1    # 10% product not found
+  cart_abandonment_rate: 0.5
   high_error_pages:
-    "/api/flaky": 0.2     # 20% error rate
+    - path: "/api/flaky"
+      error_rate: 0.3      # 30% error rate
+
+# Session parameters
+session:
+  min_browsing_duration: 10   # Minimum session duration in seconds
+  max_browsing_duration: 300  # Maximum session duration in seconds
+  page_view_interval: 5       # Average time between page views
 
 # Traffic patterns (hourly multipliers)
 traffic_patterns:
-  hourly:
-    "0-6": 0.1             # Night: 10% traffic
-    "6-9": 0.8             # Morning: 80% traffic  
-    "9-17": 1.0            # Work day: 100% traffic
-    "17-22": 0.6           # Evening: 60% traffic
-    "22-24": 0.3           # Late night: 30% traffic
+  - time: "0-6"
+    multiplier: 0.1        # Night: 10% of base rate
+  - time: "6-9"
+    multiplier: 0.3        # Morning: 30% of base rate
+  - time: "9-12"
+    multiplier: 0.7        # Late morning: 70% of base rate
+  - time: "12-15"
+    multiplier: 1.0        # Afternoon: 100% of base rate
+  - time: "15-18"
+    multiplier: 0.8        # Early evening: 80% of base rate
+  - time: "18-21"
+    multiplier: 0.5        # Evening: 50% of base rate
+  - time: "21-24"
+    multiplier: 0.2        # Late night: 20% of base rate
 ```
+
+## 🔍 Understanding the Rate Parameter
+
+**IMPORTANT**: The `rate` parameter controls **sessions per second**, not logs per second!
+
+- `rate: 2` means 2 new user sessions start per second
+- Each session generates multiple log entries over its lifetime
+- A session can last 10-300 seconds (configurable)
+- Each session generates a log entry every 2-10 seconds during browsing
+
+**Example calculation with default settings:**
+- Rate: 2 sessions/second
+- Average session duration: ~155 seconds
+- Page views per session: ~25 (one every ~6 seconds)
+- Steady-state concurrent sessions: ~310
+- **Actual log output: ~50-100 logs/second**
+
+To reduce log volume:
+- Lower the `rate` (e.g., `0.1` for minimal traffic)
+- Reduce `max_browsing_duration`
+- Increase `page_view_interval`
 
 ## 📊 Generated Logs
 
 The generator creates three types of logs:
 
-- `access.log` - Main NCSA-format access logs
-- `error.log` - Error entries (4xx, 5xx status codes)
-- `system.log` - Generator status messages
+### 1. Access Log (`access.log`)
+NCSA Combined Log Format compatible with Apache/Nginx:
+```
+192.168.1.100 - john_doe [10/Oct/2024:13:55:36 +0000] "GET /products/laptop HTTP/1.1" 200 5432 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+```
 
-Example access log entry:
+### 2. Error Log (`error.log`)
+Apache-style error format for 4xx/5xx responses:
+```
+[Thu Oct 10 13:55:36.123456 2024] [error] [client 192.168.1.100] File does not exist: /var/www/html/favicon.ico
+```
 
-```text
-180.24.130.185 - - [20/Jan/2025:10:55:04] "GET /products HTTP/1.1" 200 352 "/search" "Mozilla/5.0"
+### 3. System Log (`system.log`)  
+Internal generator status and session tracking:
+```
+2024-10-10T13:55:36.123456Z INFO session_manager New session started: session_id=abc123
+```
+
+### Log Schema Documentation
+
+Generate detailed schema documentation:
+```bash
+# JSON format
+python log_schema_outputter.py --format json
+
+# Markdown format
+python log_schema_outputter.py --format markdown --output schemas.md
+
+# YAML format
+python log_schema_outputter.py --format yaml
 ```
 
 ## 🔧 Advanced Usage
 
-Override the log directory:
-
+### Environment Variables
 ```bash
-uv run access-log-generator.py config.yaml --log-dir-override ./logs
+# Provide config as base64-encoded YAML
+export LOG_GENERATOR_CONFIG_YAML_B64=$(base64 < my-config.yaml)
+
+# Or provide config directly
+export LOG_GENERATOR_CONFIG_YAML="output:\n  rate: 100\n  directory: /logs"
+
+# Or specify config file path
+export LOG_GENERATOR_CONFIG_PATH=/path/to/config.yaml
+
+# Override specific settings
+export RATE_PER_SECOND=0.5
+export PRE_WARM=false
+export DEBUG=true
+export LOG_DIR_OVERRIDE=/custom/log/path
 ```
 
 ### Docker Compose
@@ -132,18 +237,22 @@ uv run access-log-generator.py config.yaml --log-dir-override ./logs
 version: '3.8'
 services:
   log-generator:
-    image: docker.io/bacalhauproject/access-log-generator:latest
+    image: ghcr.io/bacalhau-project/access-log-generator:latest
     volumes:
       - ./logs:/var/log/app
       - ./config:/app/config
     environment:
       - LOG_GENERATOR_CONFIG_PATH=/app/config/custom-config.yaml
+      - RATE_PER_SECOND=0.1
+      - PRE_WARM=false
 ```
 
 ### Performance Tuning
-- **High Volume**: Increase `rate` and use pre-warming for bulk generation
+- **High Volume**: Increase `rate` for more concurrent sessions
+- **Low Volume**: Use decimal rates like `0.1` for minimal traffic
 - **Disk Space**: Built-in monitoring cleans old logs when space is low
 - **Memory**: Batch writes during pre-warm minimize memory usage
+- **Pre-warming**: Generates 24 hours of historical data at maximum speed
 
 ## 🧪 Testing
 
@@ -179,8 +288,18 @@ The test suite includes:
 The NCSA format works with standard tools:
 
 ```bash
-# Quick stats with DuckDB
-uv run test_duckdb_queries.py
+# Apache/Nginx log analyzers
+goaccess access.log
+
+# AWStats
+awstats.pl -config=mysite -LogFile=access.log
+
+# Simple grep analysis
+grep ' 404 ' access.log | wc -l  # Count 404s
+grep ' 500 ' access.log | wc -l  # Count 500s
+
+# GoAccess real-time analyzer
+tail -f access.log | goaccess -
 ```
 
 ## 🏗️ Architecture
@@ -193,18 +312,27 @@ The generator uses a sophisticated state machine to simulate realistic user beha
 - **ERROR/ABANDON/LOGOUT** → END
 
 ### Rate Control
-Token bucket algorithm ensures precise log generation rates with configurable traffic patterns.
+Token bucket algorithm ensures precise session generation rates with configurable traffic patterns. The actual log output rate depends on:
+- Number of concurrent sessions
+- Session duration
+- Page view frequency
+- Traffic pattern multipliers
 
 ### Session Management
 - Unique session IDs track user journeys
-- Realistic session durations (30s - 5min default)
-- Page view intervals (2-10s default)
+- Realistic session durations (configurable)
+- Page view intervals (configurable)
+- Concurrent session processing
+
+### Disk Space Management
+- Automatic monitoring of available disk space
+- Deletes oldest log files when space falls below 1GB
+- Configurable check intervals (default: 5 minutes)
 
 ## 🤝 Contributing
 
 Contributions welcome! Feel free to:
-
-- Open issues for bugs or suggestions
+- Open issues for bugs or feature requests
 - Submit pull requests
 - Share your use cases
 - Add new traffic patterns or behaviors
