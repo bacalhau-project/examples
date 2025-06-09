@@ -1,0 +1,1450 @@
+2025-04-18 02:52:46,389 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:52:46,391 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:52:46,392 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:52:46,392 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:52:46,406 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:52:46,406 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:52:46,406 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:52:46,407 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:52:46,408 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:52:46,409 - root - INFO - Initializing anomaly generator for sensor: NEWY_XLTRJ5
+2025-04-18 02:52:46,409 - root - INFO -   Firmware: 1.4
+2025-04-18 02:52:46,409 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:52:46,409 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:52:46,409 - root - INFO -   Location: New York City
+2025-04-18 02:52:46,410 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:52:46,411 - root - INFO - Starting sensor simulator
+2025-04-18 02:52:46,412 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:52:46,413 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:52:46,416 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:52:54,484 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:52:54,485 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:52:54,485 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:52:54,934 - root - INFO - Monitoring server stopped
+2025-04-18 02:52:54,936 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:52:54,937 - src.simulator - INFO - Simulation ended. Generated 8 readings with 1 errors (87.50% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.54 MB)
+2025-04-18 02:52:55,528 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:52:55,538 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:52:55,538 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:52:55,539 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:52:55,539 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:52:55,541 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:52:55,542 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:52:55,542 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:52:55,542 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:52:55,542 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:52:55,542 - root - INFO - Initializing anomaly generator for sensor: NEWY_MR2QVP
+2025-04-18 02:52:55,542 - root - INFO -   Firmware: 1.4
+2025-04-18 02:52:55,542 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:52:55,543 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:52:55,543 - root - INFO -   Location: New York City
+2025-04-18 02:52:55,543 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:52:55,543 - root - INFO - Starting sensor simulator
+2025-04-18 02:52:55,543 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:52:55,543 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:52:55,544 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:53:29,961 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:53:29,961 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:53:29,962 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:53:30,236 - root - INFO - Monitoring server stopped
+2025-04-18 02:53:30,237 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:53:30,237 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.66 MB)
+2025-04-18 02:53:30,841 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:53:30,881 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:53:30,881 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:53:30,881 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:53:30,882 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:53:30,891 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:53:30,892 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:53:30,892 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:53:30,892 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:53:30,892 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:53:30,893 - root - INFO - Initializing anomaly generator for sensor: NEWY_46S6YW
+2025-04-18 02:53:30,893 - root - INFO -   Firmware: 1.4
+2025-04-18 02:53:30,893 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:53:30,893 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:53:30,893 - root - INFO -   Location: New York City
+2025-04-18 02:53:30,894 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:53:30,894 - root - INFO - Starting sensor simulator
+2025-04-18 02:53:30,894 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:53:30,894 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:53:30,895 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:54:05,385 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:54:05,386 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:54:05,386 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:54:05,578 - root - INFO - Monitoring server stopped
+2025-04-18 02:54:05,579 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:54:05,579 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:54:06,303 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:54:06,310 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:54:06,310 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:54:06,310 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:54:06,310 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:54:06,314 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:54:06,314 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:54:06,314 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:54:06,314 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:54:06,315 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:54:06,315 - root - INFO - Initializing anomaly generator for sensor: NEWY_LMOJN8
+2025-04-18 02:54:06,315 - root - INFO -   Firmware: 1.4
+2025-04-18 02:54:06,315 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:54:06,316 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:54:06,316 - root - INFO -   Location: New York City
+2025-04-18 02:54:06,316 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:54:06,316 - root - INFO - Starting sensor simulator
+2025-04-18 02:54:06,316 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:54:06,316 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:54:06,317 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:54:40,678 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:54:40,678 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:54:40,679 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:54:41,035 - root - INFO - Monitoring server stopped
+2025-04-18 02:54:41,036 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:54:41,036 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 02:54:41,505 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:54:41,523 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:54:41,523 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:54:41,523 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:54:41,523 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:54:41,526 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:54:41,526 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:54:41,527 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:54:41,527 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:54:41,527 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:54:41,527 - root - INFO - Initializing anomaly generator for sensor: NEWY_T0N5JT
+2025-04-18 02:54:41,528 - root - INFO -   Firmware: 1.4
+2025-04-18 02:54:41,528 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:54:41,528 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:54:41,528 - root - INFO -   Location: New York City
+2025-04-18 02:54:41,531 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:54:41,531 - root - INFO - Starting sensor simulator
+2025-04-18 02:54:41,531 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:54:41,531 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:54:41,532 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:55:15,954 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:55:15,954 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:55:15,954 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:55:16,269 - root - INFO - Monitoring server stopped
+2025-04-18 02:55:16,269 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:55:16,269 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:55:16,765 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:55:16,773 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:55:16,774 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:55:16,774 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:55:16,774 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:55:16,776 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:55:16,776 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:55:16,777 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:55:16,777 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:55:16,777 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:55:16,777 - root - INFO - Initializing anomaly generator for sensor: NEWY_F7J1FQ
+2025-04-18 02:55:16,777 - root - INFO -   Firmware: 1.4
+2025-04-18 02:55:16,777 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:55:16,778 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:55:16,778 - root - INFO -   Location: New York City
+2025-04-18 02:55:16,778 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:55:16,778 - root - INFO - Starting sensor simulator
+2025-04-18 02:55:16,778 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:55:16,778 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:55:16,779 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:55:51,100 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:55:51,102 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:55:51,102 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:55:51,510 - root - INFO - Monitoring server stopped
+2025-04-18 02:55:51,514 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:55:51,514 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.62 MB)
+2025-04-18 02:55:52,007 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:55:52,017 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:55:52,017 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:55:52,018 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:55:52,018 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:55:52,024 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:55:52,024 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:55:52,024 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:55:52,024 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:55:52,025 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:55:52,025 - root - INFO - Initializing anomaly generator for sensor: NEWY_VQZRTH
+2025-04-18 02:55:52,025 - root - INFO -   Firmware: 1.4
+2025-04-18 02:55:52,025 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:55:52,025 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:55:52,025 - root - INFO -   Location: New York City
+2025-04-18 02:55:52,026 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:55:52,026 - root - INFO - Starting sensor simulator
+2025-04-18 02:55:52,026 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:55:52,026 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:55:52,027 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:56:26,461 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:56:26,462 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:56:26,463 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:56:26,751 - root - INFO - Monitoring server stopped
+2025-04-18 02:56:26,752 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:56:26,752 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.55 MB)
+2025-04-18 02:56:27,379 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:56:27,412 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:56:27,412 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:56:27,412 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:56:27,412 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:56:27,418 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:56:27,418 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:56:27,418 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:56:27,418 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:56:27,419 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:56:27,419 - root - INFO - Initializing anomaly generator for sensor: NEWY_QYNYKW
+2025-04-18 02:56:27,419 - root - INFO -   Firmware: 1.4
+2025-04-18 02:56:27,419 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:56:27,420 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:56:27,420 - root - INFO -   Location: New York City
+2025-04-18 02:56:27,420 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:56:27,420 - root - INFO - Starting sensor simulator
+2025-04-18 02:56:27,420 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:56:27,420 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:56:27,421 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:57:01,803 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:57:01,808 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:57:01,808 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:57:02,179 - root - INFO - Monitoring server stopped
+2025-04-18 02:57:02,180 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:57:02,180 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:57:02,741 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:57:02,782 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:57:02,783 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:57:02,783 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:57:02,784 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:57:02,788 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:57:02,791 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:57:02,791 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:57:02,791 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:57:02,791 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:57:02,792 - root - INFO - Initializing anomaly generator for sensor: NEWY_FCCHY9
+2025-04-18 02:57:02,792 - root - INFO -   Firmware: 1.4
+2025-04-18 02:57:02,792 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:57:02,792 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:57:02,792 - root - INFO -   Location: New York City
+2025-04-18 02:57:02,792 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:57:02,792 - root - INFO - Starting sensor simulator
+2025-04-18 02:57:02,792 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:57:02,792 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:57:02,792 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:57:37,238 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:57:37,238 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:57:37,238 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:57:37,566 - root - INFO - Monitoring server stopped
+2025-04-18 02:57:37,566 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:57:37,566 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 02:57:38,044 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:57:38,049 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:57:38,050 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:57:38,050 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:57:38,050 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:57:38,052 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:57:38,052 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:57:38,053 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:57:38,053 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:57:38,053 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:57:38,053 - root - INFO - Initializing anomaly generator for sensor: NEWY_MWDCVP
+2025-04-18 02:57:38,053 - root - INFO -   Firmware: 1.4
+2025-04-18 02:57:38,053 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:57:38,053 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:57:38,053 - root - INFO -   Location: New York City
+2025-04-18 02:57:38,053 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:57:38,054 - root - INFO - Starting sensor simulator
+2025-04-18 02:57:38,054 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:57:38,054 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:57:38,054 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:58:15,548 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:58:15,548 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:58:15,548 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:58:15,981 - root - INFO - Monitoring server stopped
+2025-04-18 02:58:15,981 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:58:15,981 - src.simulator - INFO - Simulation ended. Generated 37 readings with 1 errors (97.30% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.75 MB)
+2025-04-18 02:58:16,436 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:58:16,443 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:58:16,444 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:58:16,444 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:58:16,444 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:58:16,446 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:58:16,446 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:58:16,446 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:58:16,447 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:58:16,447 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:58:16,447 - root - INFO - Initializing anomaly generator for sensor: NEWY_YLGOGD
+2025-04-18 02:58:16,447 - root - INFO -   Firmware: 1.4
+2025-04-18 02:58:16,447 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:58:16,447 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:58:16,448 - root - INFO -   Location: New York City
+2025-04-18 02:58:16,448 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:58:16,448 - root - INFO - Starting sensor simulator
+2025-04-18 02:58:16,448 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:58:16,448 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:58:16,449 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:58:59,806 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:58:59,806 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:58:59,807 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:58:59,852 - root - INFO - Monitoring server stopped
+2025-04-18 02:58:59,853 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:58:59,853 - src.simulator - INFO - Simulation ended. Generated 40 readings with 1 errors (97.50% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:59:00,285 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:59:00,292 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:59:00,292 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:59:00,292 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:59:00,292 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:59:00,294 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:59:00,295 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:59:00,295 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:59:00,295 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:59:00,295 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:59:00,295 - root - INFO - Initializing anomaly generator for sensor: NEWY_YDDYWZ
+2025-04-18 02:59:00,295 - root - INFO -   Firmware: 1.4
+2025-04-18 02:59:00,296 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:59:00,296 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:59:00,296 - root - INFO -   Location: New York City
+2025-04-18 02:59:00,296 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:59:00,296 - root - INFO - Starting sensor simulator
+2025-04-18 02:59:00,296 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:59:00,296 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:59:00,297 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:59:40,308 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:59:40,308 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:59:40,308 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:59:40,642 - root - INFO - Monitoring server stopped
+2025-04-18 02:59:40,642 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:59:40,642 - src.simulator - INFO - Simulation ended. Generated 37 readings with 1 errors (97.30% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.47 MB)
+2025-04-18 02:59:41,053 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:59:41,060 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:59:41,060 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:59:41,060 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:59:41,060 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:59:41,063 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:59:41,063 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:59:41,063 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:59:41,063 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 02:59:41,063 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:59:41,063 - root - INFO - Initializing anomaly generator for sensor: NEWY_MKGAOS
+2025-04-18 02:59:41,063 - root - INFO -   Firmware: 1.4
+2025-04-18 02:59:41,064 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:59:41,064 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:59:41,064 - root - INFO -   Location: New York City
+2025-04-18 02:59:41,064 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:59:41,064 - root - INFO - Starting sensor simulator
+2025-04-18 02:59:41,064 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:59:41,064 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:59:41,064 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 03:00:23,274 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 03:00:23,275 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 03:00:23,276 - src.simulator - ERROR - Failed to process reading
+2025-04-18 03:00:23,454 - root - INFO - Monitoring server stopped
+2025-04-18 03:00:23,455 - root - INFO - Stopped configuration file watcher
+2025-04-18 03:00:23,455 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.76 MB)
+2025-04-18 03:00:23,928 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 03:00:23,934 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 03:00:23,934 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 03:00:23,935 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 03:00:23,935 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 03:00:23,937 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 03:00:23,937 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 03:00:23,937 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 03:00:23,937 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 03:00:23,938 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 03:00:23,938 - root - INFO - Initializing anomaly generator for sensor: NEWY_BKQ2R6
+2025-04-18 03:00:23,938 - root - INFO -   Firmware: 1.4
+2025-04-18 03:00:23,938 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 03:00:23,938 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 03:00:23,938 - root - INFO -   Location: New York City
+2025-04-18 03:00:23,938 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 03:00:23,939 - root - INFO - Starting sensor simulator
+2025-04-18 03:00:23,939 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 03:00:23,939 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 03:00:23,939 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 03:01:08,099 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 03:01:08,099 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 03:01:08,100 - src.simulator - ERROR - Failed to process reading
+2025-04-18 03:01:08,579 - root - INFO - Monitoring server stopped
+2025-04-18 03:01:08,580 - root - INFO - Stopped configuration file watcher
+2025-04-18 03:01:08,580 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 03:01:09,161 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 03:01:09,171 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 03:01:09,171 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 03:01:09,171 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 03:01:09,171 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 03:01:09,175 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 03:01:09,176 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 03:01:09,176 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 03:01:09,176 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 03:01:09,177 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 03:01:09,177 - root - INFO - Initializing anomaly generator for sensor: NEWY_FD69RC
+2025-04-18 03:01:09,177 - root - INFO -   Firmware: 1.4
+2025-04-18 03:01:09,177 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 03:01:09,177 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 03:01:09,178 - root - INFO -   Location: New York City
+2025-04-18 03:01:09,178 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 03:01:09,178 - root - INFO - Starting sensor simulator
+2025-04-18 03:01:09,178 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 03:01:09,178 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 03:01:09,179 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 03:32:52,093 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 03:32:52,093 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 03:32:52,093 - src.simulator - ERROR - Failed to process reading
+2025-04-18 03:32:52,221 - root - INFO - Monitoring server stopped
+2025-04-18 03:32:52,229 - root - INFO - Stopped configuration file watcher
+2025-04-18 03:32:52,235 - src.simulator - INFO - Simulation ended. Generated 29 readings with 1 errors (96.55% success rate). Memory usage: 41.52 MB (peak: 41.52 MB, initial: 41.52 MB)
+2025-04-18 03:32:52,696 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 03:32:52,705 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 03:32:52,705 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 03:32:52,705 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 03:32:52,706 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 03:32:52,708 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 03:32:52,708 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 03:32:52,709 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 03:32:52,709 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 03:32:52,709 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 03:32:52,709 - root - INFO - Initializing anomaly generator for sensor: NEWY_YVUUGP
+2025-04-18 03:32:52,709 - root - INFO -   Firmware: 1.4
+2025-04-18 03:32:52,709 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 03:32:52,709 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 03:32:52,709 - root - INFO -   Location: New York City
+2025-04-18 03:32:52,710 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 03:32:52,710 - root - INFO - Starting sensor simulator
+2025-04-18 03:32:52,710 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 03:32:52,710 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 03:32:52,710 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 04:48:54,502 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 04:48:54,503 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 04:48:54,504 - src.simulator - ERROR - Failed to process reading
+2025-04-18 04:48:54,874 - root - INFO - Monitoring server stopped
+2025-04-18 04:48:54,875 - root - INFO - Stopped configuration file watcher
+2025-04-18 04:48:54,876 - src.simulator - INFO - Simulation ended. Generated 60 readings with 1 errors (98.33% success rate). Memory usage: 41.79 MB (peak: 41.79 MB, initial: 41.79 MB)
+2025-04-18 04:48:55,548 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 04:48:55,585 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 04:48:55,585 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 04:48:55,586 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 04:48:55,586 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 04:48:55,588 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 04:48:55,589 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 04:48:55,589 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 04:48:55,589 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 04:48:55,592 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 04:48:55,592 - root - INFO - Initializing anomaly generator for sensor: NEWY_FPOZJ9
+2025-04-18 04:48:55,592 - root - INFO -   Firmware: 1.4
+2025-04-18 04:48:55,593 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 04:48:55,594 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 04:48:55,594 - root - INFO -   Location: New York City
+2025-04-18 04:48:55,596 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 04:48:55,597 - root - INFO - Starting sensor simulator
+2025-04-18 04:48:55,597 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 04:48:55,597 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 04:48:55,599 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 05:11:06,949 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 05:11:06,950 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 05:11:06,950 - src.simulator - ERROR - Failed to process reading
+2025-04-18 05:11:07,267 - root - INFO - Monitoring server stopped
+2025-04-18 05:11:07,267 - root - INFO - Stopped configuration file watcher
+2025-04-18 05:11:07,268 - src.simulator - INFO - Simulation ended. Generated 32 readings with 1 errors (96.88% success rate). Memory usage: 41.52 MB (peak: 41.52 MB, initial: 41.52 MB)
+2025-04-18 05:11:07,701 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 05:11:07,758 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 05:11:07,759 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 05:11:07,759 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 05:11:07,759 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 05:11:07,767 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 05:11:07,769 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 05:11:07,770 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 05:11:07,771 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 05:11:07,771 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 05:11:07,772 - root - INFO - Initializing anomaly generator for sensor: NEWY_JD7QKY
+2025-04-18 05:11:07,773 - root - INFO -   Firmware: 1.4
+2025-04-18 05:11:07,773 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 05:11:07,774 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 05:11:07,774 - root - INFO -   Location: New York City
+2025-04-18 05:11:07,774 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 05:11:07,775 - root - INFO - Starting sensor simulator
+2025-04-18 05:11:07,775 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 05:11:07,776 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 05:11:07,778 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 05:44:39,703 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 05:44:39,703 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 05:44:39,703 - src.simulator - ERROR - Failed to process reading
+2025-04-18 05:44:40,089 - root - INFO - Monitoring server stopped
+2025-04-18 05:44:40,090 - root - INFO - Stopped configuration file watcher
+2025-04-18 05:44:40,090 - src.simulator - INFO - Simulation ended. Generated 44 readings with 1 errors (97.73% success rate). Memory usage: 41.76 MB (peak: 41.76 MB, initial: 41.76 MB)
+2025-04-18 05:44:40,689 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 05:44:40,696 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 05:44:40,696 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 05:44:40,696 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 05:44:40,697 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 05:44:40,699 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 05:44:40,700 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 05:44:40,700 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 05:44:40,700 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 05:44:40,700 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 05:44:40,700 - root - INFO - Initializing anomaly generator for sensor: NEWY_NRIOFJ
+2025-04-18 05:44:40,700 - root - INFO -   Firmware: 1.4
+2025-04-18 05:44:40,701 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 05:44:40,701 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 05:44:40,701 - root - INFO -   Location: New York City
+2025-04-18 05:44:40,701 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 05:44:40,701 - root - INFO - Starting sensor simulator
+2025-04-18 05:44:40,701 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 05:44:40,701 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 05:44:40,702 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:00:27,993 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:00:27,993 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:00:27,993 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:00:28,361 - root - INFO - Monitoring server stopped
+2025-04-18 06:00:28,361 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:00:28,361 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 41.64 MB (peak: 41.64 MB, initial: 41.64 MB)
+2025-04-18 06:00:28,775 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:00:28,789 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:00:28,789 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:00:28,790 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:00:28,790 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:00:28,793 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:00:28,793 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:00:28,793 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:00:28,793 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:00:28,794 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:00:28,794 - root - INFO - Initializing anomaly generator for sensor: NEWY_MN1EMX
+2025-04-18 06:00:28,794 - root - INFO -   Firmware: 1.4
+2025-04-18 06:00:28,794 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:00:28,794 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:00:28,794 - root - INFO -   Location: New York City
+2025-04-18 06:00:28,794 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:00:28,794 - root - INFO - Starting sensor simulator
+2025-04-18 06:00:28,794 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:00:28,795 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:00:28,795 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:01:02,260 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:01:02,260 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:01:02,260 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:01:02,261 - root - INFO - Monitoring server stopped
+2025-04-18 06:01:02,261 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:01:02,262 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 06:01:02,786 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:01:02,795 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:01:02,795 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:01:02,796 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:01:02,796 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:01:02,799 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:01:02,800 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:01:02,800 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:01:02,800 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:01:02,800 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:01:02,801 - root - INFO - Initializing anomaly generator for sensor: NEWY_CTYTFD
+2025-04-18 06:01:02,801 - root - INFO -   Firmware: 1.4
+2025-04-18 06:01:02,801 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:01:02,801 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:01:02,801 - root - INFO -   Location: New York City
+2025-04-18 06:01:02,802 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:01:02,802 - root - INFO - Starting sensor simulator
+2025-04-18 06:01:02,802 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:01:02,802 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:01:02,803 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:01:38,244 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:01:38,245 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:01:38,245 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:01:38,607 - root - INFO - Monitoring server stopped
+2025-04-18 06:01:38,607 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:01:38,607 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 06:01:39,068 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:01:39,077 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:01:39,077 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:01:39,077 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:01:39,077 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:01:39,080 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:01:39,080 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:01:39,080 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:01:39,080 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:01:39,080 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:01:39,080 - root - INFO - Initializing anomaly generator for sensor: NEWY_GSPQXF
+2025-04-18 06:01:39,081 - root - INFO -   Firmware: 1.4
+2025-04-18 06:01:39,081 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:01:39,081 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:01:39,081 - root - INFO -   Location: New York City
+2025-04-18 06:01:39,081 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:01:39,081 - root - INFO - Starting sensor simulator
+2025-04-18 06:01:39,081 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:01:39,081 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:01:39,082 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:02:12,430 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:02:12,431 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:02:12,431 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:02:12,927 - root - INFO - Monitoring server stopped
+2025-04-18 06:02:12,928 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:02:12,928 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.76 MB)
+2025-04-18 06:02:13,436 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:02:13,451 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:02:13,453 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:02:13,453 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:02:13,453 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:02:13,455 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:02:13,455 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:02:13,455 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:02:13,456 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:02:13,456 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:02:13,456 - root - INFO - Initializing anomaly generator for sensor: NEWY_WD91LY
+2025-04-18 06:02:13,456 - root - INFO -   Firmware: 1.4
+2025-04-18 06:02:13,456 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:02:13,457 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:02:13,457 - root - INFO -   Location: New York City
+2025-04-18 06:02:13,457 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:02:13,457 - root - INFO - Starting sensor simulator
+2025-04-18 06:02:13,457 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:02:13,458 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:02:13,458 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:02:47,917 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:02:47,917 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:02:47,917 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:02:48,299 - root - INFO - Monitoring server stopped
+2025-04-18 06:02:48,300 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:02:48,300 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.57 MB)
+2025-04-18 06:02:48,810 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:02:48,835 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:02:48,835 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:02:48,835 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:02:48,836 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:02:48,838 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:02:48,839 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:02:48,839 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:02:48,839 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:02:48,839 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:02:48,839 - root - INFO - Initializing anomaly generator for sensor: NEWY_ARDNB5
+2025-04-18 06:02:48,839 - root - INFO -   Firmware: 1.4
+2025-04-18 06:02:48,839 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:02:48,839 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:02:48,840 - root - INFO -   Location: New York City
+2025-04-18 06:02:48,840 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:02:48,840 - root - INFO - Starting sensor simulator
+2025-04-18 06:02:48,840 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:02:48,840 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:02:48,841 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:03:23,175 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:03:23,175 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:03:23,176 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:03:23,597 - root - INFO - Monitoring server stopped
+2025-04-18 06:03:23,598 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:03:23,598 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.63 MB)
+2025-04-18 06:03:24,123 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:03:24,132 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:03:24,132 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:03:24,133 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:03:24,133 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:03:24,135 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:03:24,135 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:03:24,136 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:03:24,136 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:03:24,136 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:03:24,137 - root - INFO - Initializing anomaly generator for sensor: NEWY_QPHNVY
+2025-04-18 06:03:24,137 - root - INFO -   Firmware: 1.4
+2025-04-18 06:03:24,137 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:03:24,137 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:03:24,137 - root - INFO -   Location: New York City
+2025-04-18 06:03:24,138 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:03:24,138 - root - INFO - Starting sensor simulator
+2025-04-18 06:03:24,138 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:03:24,138 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:03:24,138 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:03:57,589 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:03:57,589 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:03:57,590 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:03:57,948 - root - INFO - Monitoring server stopped
+2025-04-18 06:03:57,948 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:03:57,949 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 06:03:58,452 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:03:58,457 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:03:58,457 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:03:58,457 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:03:58,457 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:03:58,460 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:03:58,460 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:03:58,460 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:03:58,460 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:03:58,460 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:03:58,460 - root - INFO - Initializing anomaly generator for sensor: NEWY_YMRRY8
+2025-04-18 06:03:58,460 - root - INFO -   Firmware: 1.4
+2025-04-18 06:03:58,461 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:03:58,461 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:03:58,461 - root - INFO -   Location: New York City
+2025-04-18 06:03:58,461 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:03:58,461 - root - INFO - Starting sensor simulator
+2025-04-18 06:03:58,461 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:03:58,461 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:03:58,462 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:04:32,773 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:04:32,773 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:04:32,773 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:04:33,274 - root - INFO - Monitoring server stopped
+2025-04-18 06:04:33,275 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:04:33,275 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.66 MB)
+2025-04-18 06:04:33,690 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:04:33,696 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:04:33,696 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:04:33,696 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:04:33,696 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:04:33,699 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:04:33,699 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:04:33,699 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:04:33,699 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:04:33,699 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:04:33,699 - root - INFO - Initializing anomaly generator for sensor: NEWY_JPT4JB
+2025-04-18 06:04:33,700 - root - INFO -   Firmware: 1.4
+2025-04-18 06:04:33,700 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:04:33,700 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:04:33,700 - root - INFO -   Location: New York City
+2025-04-18 06:04:33,700 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:04:33,700 - root - INFO - Starting sensor simulator
+2025-04-18 06:04:33,700 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:04:33,700 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:04:33,700 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:05:07,005 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:05:07,006 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:05:07,006 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:05:07,481 - root - INFO - Monitoring server stopped
+2025-04-18 06:05:07,481 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:05:07,483 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.61 MB)
+2025-04-18 06:05:08,089 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:05:08,105 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:05:08,105 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:05:08,106 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:05:08,106 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:05:08,111 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:05:08,113 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:05:08,113 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:05:08,114 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:05:08,115 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:05:08,115 - root - INFO - Initializing anomaly generator for sensor: NEWY_VDHVQI
+2025-04-18 06:05:08,117 - root - INFO -   Firmware: 1.4
+2025-04-18 06:05:08,118 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:05:08,118 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:05:08,119 - root - INFO -   Location: New York City
+2025-04-18 06:05:08,121 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:05:08,121 - root - INFO - Starting sensor simulator
+2025-04-18 06:05:08,122 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:05:08,122 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:05:08,125 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:05:42,524 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:05:42,524 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:05:42,524 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:05:42,956 - root - INFO - Monitoring server stopped
+2025-04-18 06:05:42,956 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:05:42,956 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 06:05:43,338 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:05:43,344 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:05:43,344 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:05:43,344 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:05:43,344 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:05:43,347 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:05:43,347 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:05:43,347 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:05:43,347 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:05:43,348 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:05:43,348 - root - INFO - Initializing anomaly generator for sensor: NEWY_13KQNC
+2025-04-18 06:05:43,348 - root - INFO -   Firmware: 1.4
+2025-04-18 06:05:43,348 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:05:43,348 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:05:43,348 - root - INFO -   Location: New York City
+2025-04-18 06:05:43,348 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:05:43,348 - root - INFO - Starting sensor simulator
+2025-04-18 06:05:43,349 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:05:43,349 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:05:43,349 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:06:17,674 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:06:17,674 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:06:17,675 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:06:18,155 - root - INFO - Monitoring server stopped
+2025-04-18 06:06:18,156 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:06:18,156 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.56 MB)
+2025-04-18 06:06:18,578 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:06:18,585 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:06:18,586 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:06:18,586 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:06:18,586 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:06:18,588 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:06:18,588 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:06:18,588 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:06:18,588 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:06:18,589 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:06:18,589 - root - INFO - Initializing anomaly generator for sensor: NEWY_JJGMJS
+2025-04-18 06:06:18,589 - root - INFO -   Firmware: 1.4
+2025-04-18 06:06:18,589 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:06:18,589 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:06:18,589 - root - INFO -   Location: New York City
+2025-04-18 06:06:18,589 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:06:18,589 - root - INFO - Starting sensor simulator
+2025-04-18 06:06:18,589 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:06:18,590 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:06:18,590 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:06:51,967 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:06:51,968 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:06:51,968 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:06:52,320 - root - INFO - Monitoring server stopped
+2025-04-18 06:06:52,320 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:06:52,320 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.53 MB)
+2025-04-18 06:06:52,737 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:06:52,744 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:06:52,744 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:06:52,744 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:06:52,744 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:06:52,746 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:06:52,746 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:06:52,746 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:06:52,747 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:06:52,747 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:06:52,747 - root - INFO - Initializing anomaly generator for sensor: NEWY_G04QTY
+2025-04-18 06:06:52,747 - root - INFO -   Firmware: 1.4
+2025-04-18 06:06:52,747 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:06:52,747 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:06:52,747 - root - INFO -   Location: New York City
+2025-04-18 06:06:52,748 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:06:52,748 - root - INFO - Starting sensor simulator
+2025-04-18 06:06:52,748 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:06:52,748 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:06:52,748 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:07:27,092 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:07:27,092 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:07:27,093 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:07:27,585 - root - INFO - Monitoring server stopped
+2025-04-18 06:07:27,585 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:07:27,586 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.78 MB)
+2025-04-18 06:07:28,009 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:07:28,016 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:07:28,016 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:07:28,016 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:07:28,016 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:07:28,019 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:07:28,021 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:07:28,022 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:07:28,022 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:07:28,022 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:07:28,022 - root - INFO - Initializing anomaly generator for sensor: NEWY_TZIX0K
+2025-04-18 06:07:28,022 - root - INFO -   Firmware: 1.4
+2025-04-18 06:07:28,023 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:07:28,023 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:07:28,023 - root - INFO -   Location: New York City
+2025-04-18 06:07:28,023 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:07:28,023 - root - INFO - Starting sensor simulator
+2025-04-18 06:07:28,023 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:07:28,023 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:07:28,024 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:08:02,347 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:08:02,348 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:08:02,348 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:08:02,758 - root - INFO - Monitoring server stopped
+2025-04-18 06:08:02,758 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:08:02,758 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.61 MB)
+2025-04-18 06:08:03,181 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:08:03,187 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:08:03,187 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:08:03,187 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:08:03,187 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:08:03,190 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:08:03,190 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:08:03,190 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:08:03,190 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:08:03,191 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:08:03,191 - root - INFO - Initializing anomaly generator for sensor: NEWY_LK0LPW
+2025-04-18 06:08:03,191 - root - INFO -   Firmware: 1.4
+2025-04-18 06:08:03,191 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:08:03,191 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:08:03,191 - root - INFO -   Location: New York City
+2025-04-18 06:08:03,191 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:08:03,191 - root - INFO - Starting sensor simulator
+2025-04-18 06:08:03,191 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:08:03,191 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:08:03,192 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:09:11,816 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:09:11,816 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:09:11,817 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:09:12,236 - root - INFO - Monitoring server stopped
+2025-04-18 06:09:12,237 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:09:12,237 - src.simulator - INFO - Simulation ended. Generated 68 readings with 1 errors (98.53% success rate). Memory usage: 41.61 MB (peak: 41.61 MB, initial: 41.61 MB)
+2025-04-18 06:09:12,629 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:09:12,636 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:09:12,636 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:09:12,636 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:09:12,636 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:09:12,639 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:09:12,639 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:09:12,639 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:09:12,639 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:09:12,639 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:09:12,640 - root - INFO - Initializing anomaly generator for sensor: NEWY_PJH2CN
+2025-04-18 06:09:12,640 - root - INFO -   Firmware: 1.4
+2025-04-18 06:09:12,640 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:09:12,640 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:09:12,640 - root - INFO -   Location: New York City
+2025-04-18 06:09:12,640 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:09:12,640 - root - INFO - Starting sensor simulator
+2025-04-18 06:09:12,640 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:09:12,641 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:09:12,641 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:09:47,979 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:09:47,981 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:09:47,981 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:09:48,389 - root - INFO - Monitoring server stopped
+2025-04-18 06:09:48,390 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:09:48,390 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.67 MB)
+2025-04-18 06:09:48,825 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:09:48,831 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:09:48,831 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:09:48,831 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:09:48,831 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:09:48,834 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:09:48,834 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:09:48,834 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:09:48,834 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:09:48,834 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:09:48,834 - root - INFO - Initializing anomaly generator for sensor: NEWY_MNVWGC
+2025-04-18 06:09:48,834 - root - INFO -   Firmware: 1.4
+2025-04-18 06:09:48,835 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:09:48,835 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:09:48,835 - root - INFO -   Location: New York City
+2025-04-18 06:09:48,835 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:09:48,835 - root - INFO - Starting sensor simulator
+2025-04-18 06:09:48,835 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:09:48,835 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:09:48,835 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:10:23,147 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:10:23,147 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:10:23,148 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:10:23,627 - root - INFO - Monitoring server stopped
+2025-04-18 06:10:23,627 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:10:23,628 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 06:10:24,044 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:10:24,050 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:10:24,051 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:10:24,051 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:10:24,051 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:10:24,053 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:10:24,053 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:10:24,053 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:10:24,054 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:10:24,054 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:10:24,054 - root - INFO - Initializing anomaly generator for sensor: NEWY_BDQLCP
+2025-04-18 06:10:24,054 - root - INFO -   Firmware: 1.4
+2025-04-18 06:10:24,054 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:10:24,054 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:10:24,054 - root - INFO -   Location: New York City
+2025-04-18 06:10:24,054 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:10:24,055 - root - INFO - Starting sensor simulator
+2025-04-18 06:10:24,055 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:10:24,055 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:10:24,055 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:10:59,337 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:10:59,338 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:10:59,338 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:10:59,824 - root - INFO - Monitoring server stopped
+2025-04-18 06:10:59,825 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:10:59,825 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 06:11:00,230 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:11:00,237 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:11:00,238 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:11:00,238 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:11:00,238 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:11:00,241 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:11:00,241 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:11:00,241 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:11:00,241 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:11:00,241 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:11:00,242 - root - INFO - Initializing anomaly generator for sensor: NEWY_PNTMWZ
+2025-04-18 06:11:00,242 - root - INFO -   Firmware: 1.4
+2025-04-18 06:11:00,242 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:11:00,242 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:11:00,242 - root - INFO -   Location: New York City
+2025-04-18 06:11:00,243 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:11:00,243 - root - INFO - Starting sensor simulator
+2025-04-18 06:11:00,243 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:11:00,243 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:11:00,244 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:11:35,591 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:11:35,592 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:11:35,592 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:11:36,008 - root - INFO - Monitoring server stopped
+2025-04-18 06:11:36,009 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:11:36,009 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.76 MB)
+2025-04-18 06:11:36,412 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:11:36,418 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:11:36,418 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:11:36,418 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:11:36,419 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:11:36,422 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:11:36,422 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:11:36,423 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:11:36,423 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:11:36,423 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:11:36,424 - root - INFO - Initializing anomaly generator for sensor: NEWY_IDDV96
+2025-04-18 06:11:36,424 - root - INFO -   Firmware: 1.4
+2025-04-18 06:11:36,424 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:11:36,424 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:11:36,425 - root - INFO -   Location: New York City
+2025-04-18 06:11:36,426 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:11:36,426 - root - INFO - Starting sensor simulator
+2025-04-18 06:11:36,426 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:11:36,426 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:11:36,427 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:12:10,778 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:12:10,779 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:12:10,779 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:12:11,151 - root - INFO - Monitoring server stopped
+2025-04-18 06:12:11,151 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:12:11,151 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 06:12:11,598 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:12:11,604 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:12:11,604 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:12:11,604 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:12:11,605 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:12:11,607 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:12:11,607 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:12:11,607 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:12:11,607 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:12:11,608 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:12:11,608 - root - INFO - Initializing anomaly generator for sensor: NEWY_4U6XZ4
+2025-04-18 06:12:11,608 - root - INFO -   Firmware: 1.4
+2025-04-18 06:12:11,608 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:12:11,608 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:12:11,608 - root - INFO -   Location: New York City
+2025-04-18 06:12:11,608 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:12:11,608 - root - INFO - Starting sensor simulator
+2025-04-18 06:12:11,608 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:12:11,608 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:12:11,609 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:12:46,883 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:12:46,883 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:12:46,884 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:12:47,377 - root - INFO - Monitoring server stopped
+2025-04-18 06:12:47,377 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:12:47,378 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.79 MB)
+2025-04-18 06:12:47,799 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:12:47,808 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:12:47,808 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:12:47,808 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:12:47,808 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:12:47,811 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:12:47,811 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:12:47,811 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:12:47,811 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:12:47,812 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:12:47,812 - root - INFO - Initializing anomaly generator for sensor: NEWY_STYEBF
+2025-04-18 06:12:47,812 - root - INFO -   Firmware: 1.4
+2025-04-18 06:12:47,812 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:12:47,812 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:12:47,812 - root - INFO -   Location: New York City
+2025-04-18 06:12:47,813 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:12:47,813 - root - INFO - Starting sensor simulator
+2025-04-18 06:12:47,813 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:12:47,813 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:12:47,814 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:13:22,138 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:13:22,139 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:13:22,139 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:13:22,570 - root - INFO - Monitoring server stopped
+2025-04-18 06:13:22,571 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:13:22,571 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 06:13:22,982 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:13:22,989 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:13:22,990 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:13:22,990 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:13:22,990 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:13:22,993 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:13:22,993 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:13:22,993 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:13:22,993 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:13:22,994 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:13:22,994 - root - INFO - Initializing anomaly generator for sensor: NEWY_LGNBFM
+2025-04-18 06:13:22,994 - root - INFO -   Firmware: 1.4
+2025-04-18 06:13:22,994 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:13:22,994 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:13:22,994 - root - INFO -   Location: New York City
+2025-04-18 06:13:22,994 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:13:22,994 - root - INFO - Starting sensor simulator
+2025-04-18 06:13:22,994 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:13:22,995 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:13:22,995 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:13:57,364 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 06:13:57,365 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 06:13:57,365 - src.simulator - ERROR - Failed to process reading
+2025-04-18 06:13:57,802 - root - INFO - Monitoring server stopped
+2025-04-18 06:13:57,803 - root - INFO - Stopped configuration file watcher
+2025-04-18 06:13:57,803 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.77 MB)
+2025-04-18 06:13:58,265 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 06:13:58,278 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 06:13:58,278 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 06:13:58,278 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 06:13:58,278 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 06:13:58,281 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 06:13:58,281 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 06:13:58,281 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 06:13:58,281 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 06:13:58,282 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 06:13:58,282 - root - INFO - Initializing anomaly generator for sensor: NEWY_QYKWLZ
+2025-04-18 06:13:58,282 - root - INFO -   Firmware: 1.4
+2025-04-18 06:13:58,282 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 06:13:58,282 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 06:13:58,282 - root - INFO -   Location: New York City
+2025-04-18 06:13:58,282 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 06:13:58,282 - root - INFO - Starting sensor simulator
+2025-04-18 06:13:58,283 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 06:13:58,283 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 06:13:58,283 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 06:15:38,397 - src.simulator - INFO - Generated 100 readings
+2025-04-18 06:17:19,874 - src.simulator - INFO - Generated 200 readings
+2025-04-18 06:19:01,394 - src.simulator - INFO - Generated 300 readings
+2025-04-18 06:20:42,615 - src.simulator - INFO - Generated 400 readings
+2025-04-18 06:22:23,844 - src.simulator - INFO - Generated 500 readings
+2025-04-18 06:24:05,665 - src.simulator - INFO - Generated 600 readings
+2025-04-18 06:25:47,175 - src.simulator - INFO - Generated 700 readings
+2025-04-18 06:27:28,517 - src.simulator - INFO - Generated 800 readings
+2025-04-18 06:29:10,122 - src.simulator - INFO - Generated 900 readings
+2025-04-18 06:30:51,785 - src.simulator - INFO - Generated 1000 readings
+2025-04-18 06:32:33,061 - src.simulator - INFO - Generated 1100 readings
+2025-04-18 06:34:14,526 - src.simulator - INFO - Generated 1200 readings
+2025-04-18 06:35:56,028 - src.simulator - INFO - Generated 1300 readings
+2025-04-18 06:37:37,381 - src.simulator - INFO - Generated 1400 readings
+2025-04-18 06:39:18,865 - src.simulator - INFO - Generated 1500 readings
+2025-04-18 06:41:00,543 - src.simulator - INFO - Generated 1600 readings
+2025-04-18 06:42:42,184 - src.simulator - INFO - Generated 1700 readings
+2025-04-18 06:44:23,680 - src.simulator - INFO - Generated 1800 readings
+2025-04-18 06:46:05,081 - src.simulator - INFO - Generated 1900 readings
+2025-04-18 06:47:46,695 - src.simulator - INFO - Generated 2000 readings
+2025-04-18 06:49:28,126 - src.simulator - INFO - Generated 2100 readings
+2025-04-18 06:51:09,796 - src.simulator - INFO - Generated 2200 readings
+2025-04-18 06:52:51,466 - src.simulator - INFO - Generated 2300 readings
+2025-04-18 06:54:33,192 - src.simulator - INFO - Generated 2400 readings
+2025-04-18 06:56:14,756 - src.simulator - INFO - Generated 2500 readings
+2025-04-18 06:57:56,261 - src.simulator - INFO - Generated 2600 readings
+2025-04-18 06:59:37,909 - src.simulator - INFO - Generated 2700 readings
+2025-04-18 07:01:19,308 - src.simulator - INFO - Generated 2800 readings
+2025-04-18 07:03:01,254 - src.simulator - INFO - Generated 2900 readings
+2025-04-18 07:04:43,028 - src.simulator - INFO - Generated 3000 readings
+2025-04-18 07:06:24,811 - src.simulator - INFO - Generated 3100 readings
+2025-04-18 07:08:06,389 - src.simulator - INFO - Generated 3200 readings
+2025-04-18 07:09:48,153 - src.simulator - INFO - Generated 3300 readings
+2025-04-18 07:11:29,893 - src.simulator - INFO - Generated 3400 readings
+2025-04-18 07:13:11,455 - src.simulator - INFO - Generated 3500 readings
+2025-04-18 07:14:53,140 - src.simulator - INFO - Generated 3600 readings
+2025-04-18 07:16:34,946 - src.simulator - INFO - Generated 3700 readings
+2025-04-18 07:18:16,588 - src.simulator - INFO - Generated 3800 readings
+2025-04-18 07:19:58,197 - src.simulator - INFO - Generated 3900 readings
+2025-04-18 07:21:39,968 - src.simulator - INFO - Generated 4000 readings
+2025-04-18 07:23:21,713 - src.simulator - INFO - Generated 4100 readings
+2025-04-18 07:25:03,642 - src.simulator - INFO - Generated 4200 readings
+2025-04-18 07:26:45,562 - src.simulator - INFO - Generated 4300 readings
+2025-04-18 07:28:27,128 - src.simulator - INFO - Generated 4400 readings
+2025-04-18 07:30:08,627 - src.simulator - INFO - Generated 4500 readings
+2025-04-18 07:31:50,032 - src.simulator - INFO - Generated 4600 readings
+2025-04-18 07:33:31,458 - src.simulator - INFO - Generated 4700 readings
+2025-04-18 07:35:13,175 - src.simulator - INFO - Generated 4800 readings
+2025-04-18 07:36:54,944 - src.simulator - INFO - Generated 4900 readings
+2025-04-18 07:38:36,718 - src.simulator - INFO - Generated 5000 readings
+2025-04-18 07:40:18,562 - src.simulator - INFO - Generated 5100 readings
+2025-04-18 07:42:00,132 - src.simulator - INFO - Generated 5200 readings
+2025-04-18 07:42:18,499 - SensorDatabase - ERROR - Error storing reading: disk I/O error
+2025-04-18 07:42:18,500 - src.simulator - ERROR - Error processing reading: disk I/O error
+2025-04-18 07:42:18,500 - src.simulator - ERROR - Failed to process reading
+2025-04-18 07:42:18,724 - root - INFO - Monitoring server stopped
+2025-04-18 07:42:18,724 - root - INFO - Stopped configuration file watcher
+2025-04-18 07:42:18,724 - src.simulator - INFO - Simulation ended. Generated 5217 readings with 1 errors (99.98% success rate). Memory usage: 41.62 MB (peak: 41.62 MB, initial: 41.62 MB)
+2025-04-18 07:42:19,176 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 07:42:19,177 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 07:42:19,177 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 07:42:19,177 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 07:42:19,180 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 07:42:19,180 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 07:42:19,180 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 07:42:19,180 - root - INFO - Overriding sensor ID from environment variable: Amsterdamd7cr
+2025-04-18 07:42:19,180 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 07:42:19,181 - root - INFO - Initializing anomaly generator for sensor: NEWY_1BPFTJ
+2025-04-18 07:42:19,181 - root - INFO -   Firmware: 1.4
+2025-04-18 07:42:19,181 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 07:42:19,181 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 07:42:19,181 - root - INFO -   Location: New York City
+2025-04-18 07:42:19,181 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 07:42:19,181 - root - INFO - Starting sensor simulator
+2025-04-18 07:42:19,181 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 07:42:19,181 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 07:42:19,182 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 07:43:59,403 - src.simulator - INFO - Generated 100 readings
+2025-04-18 07:45:40,790 - src.simulator - INFO - Generated 200 readings
+2025-04-18 07:47:22,403 - src.simulator - INFO - Generated 300 readings
+2025-04-18 07:49:04,198 - src.simulator - INFO - Generated 400 readings
+2025-04-18 07:50:45,943 - src.simulator - INFO - Generated 500 readings
+2025-04-18 07:52:27,601 - src.simulator - INFO - Generated 600 readings
+2025-04-18 07:54:09,104 - src.simulator - INFO - Generated 700 readings
+2025-04-18 07:55:50,665 - src.simulator - INFO - Generated 800 readings
+2025-04-18 07:57:32,192 - src.simulator - INFO - Generated 900 readings
+2025-04-18 07:59:13,830 - src.simulator - INFO - Generated 1000 readings
+2025-04-18 08:00:55,854 - src.simulator - INFO - Generated 1100 readings
+2025-04-18 08:02:37,902 - src.simulator - INFO - Generated 1200 readings
+2025-04-18 08:04:19,857 - src.simulator - INFO - Generated 1300 readings
+2025-04-18 08:06:01,773 - src.simulator - INFO - Generated 1400 readings
+2025-04-18 08:07:43,686 - src.simulator - INFO - Generated 1500 readings
+2025-04-18 08:09:25,675 - src.simulator - INFO - Generated 1600 readings
+2025-04-18 08:11:07,826 - src.simulator - INFO - Generated 1700 readings
+2025-04-18 08:12:49,753 - src.simulator - INFO - Generated 1800 readings
+2025-04-18 08:14:31,611 - src.simulator - INFO - Generated 1900 readings
+2025-04-18 08:16:13,149 - src.simulator - INFO - Generated 2000 readings
+2025-04-18 08:17:55,175 - src.simulator - INFO - Generated 2100 readings
+2025-04-18 08:19:36,915 - src.simulator - INFO - Generated 2200 readings
+2025-04-18 08:21:18,691 - src.simulator - INFO - Generated 2300 readings
+2025-04-18 08:23:00,711 - src.simulator - INFO - Generated 2400 readings
+2025-04-18 08:24:42,489 - src.simulator - INFO - Generated 2500 readings
+2025-04-18 08:26:24,283 - src.simulator - INFO - Generated 2600 readings
+2025-04-18 08:28:05,605 - src.simulator - INFO - Generated 2700 readings
+2025-04-18 08:29:46,758 - src.simulator - INFO - Generated 2800 readings
+2025-04-18 08:31:28,347 - src.simulator - INFO - Generated 2900 readings
+2025-04-18 08:33:10,042 - src.simulator - INFO - Generated 3000 readings
+2025-04-18 08:34:51,470 - src.simulator - INFO - Generated 3100 readings
+2025-04-18 08:36:32,908 - src.simulator - INFO - Generated 3200 readings
+2025-04-18 08:38:14,425 - src.simulator - INFO - Generated 3300 readings
+2025-04-18 08:39:56,040 - src.simulator - INFO - Generated 3400 readings
+2025-04-18 08:41:37,820 - src.simulator - INFO - Generated 3500 readings
+2025-04-18 08:43:19,679 - src.simulator - INFO - Generated 3600 readings
+2025-04-18 08:45:01,581 - src.simulator - INFO - Generated 3700 readings
+2025-04-18 08:46:43,346 - src.simulator - INFO - Generated 3800 readings
+2025-04-18 08:48:25,093 - src.simulator - INFO - Generated 3900 readings
+2025-04-18 08:50:07,050 - src.simulator - INFO - Generated 4000 readings
+2025-04-18 08:51:49,170 - src.simulator - INFO - Generated 4100 readings
+2025-04-18 08:53:31,083 - src.simulator - INFO - Generated 4200 readings
+2025-04-18 08:55:12,535 - src.simulator - INFO - Generated 4300 readings
+2025-04-18 08:56:53,831 - src.simulator - INFO - Generated 4400 readings
+2025-04-18 08:58:35,014 - src.simulator - INFO - Generated 4500 readings
+2025-04-18 09:00:16,974 - src.simulator - INFO - Generated 4600 readings
+2025-04-18 09:01:59,275 - src.simulator - INFO - Generated 4700 readings
+2025-04-18 09:03:41,276 - src.simulator - INFO - Generated 4800 readings
+2025-04-18 09:05:23,358 - src.simulator - INFO - Generated 4900 readings
+2025-04-18 09:07:05,289 - src.simulator - INFO - Generated 5000 readings
+2025-04-18 09:08:46,955 - src.simulator - INFO - Generated 5100 readings
+2025-04-18 09:10:27,970 - src.simulator - INFO - Generated 5200 readings
+2025-04-18 09:12:09,814 - src.simulator - INFO - Generated 5300 readings
+2025-04-18 09:13:51,663 - src.simulator - INFO - Generated 5400 readings
+2025-04-18 09:15:33,486 - src.simulator - INFO - Generated 5500 readings
+2025-04-18 09:17:15,426 - src.simulator - INFO - Generated 5600 readings
+2025-04-18 09:18:57,221 - src.simulator - INFO - Generated 5700 readings
+2025-04-18 09:20:39,041 - src.simulator - INFO - Generated 5800 readings
+2025-04-18 09:22:20,782 - src.simulator - INFO - Generated 5900 readings
+2025-04-18 09:24:02,701 - src.simulator - INFO - Generated 6000 readings
+2025-04-18 09:25:44,415 - src.simulator - INFO - Generated 6100 readings
+2025-04-18 09:27:26,206 - src.simulator - INFO - Generated 6200 readings
+2025-04-18 09:29:07,898 - src.simulator - INFO - Generated 6300 readings
+2025-04-18 09:30:49,596 - src.simulator - INFO - Generated 6400 readings
+2025-04-18 09:32:31,553 - src.simulator - INFO - Generated 6500 readings
+2025-04-18 09:34:13,476 - src.simulator - INFO - Generated 6600 readings
+2025-04-18 09:35:55,224 - src.simulator - INFO - Generated 6700 readings
+2025-04-18 09:37:37,085 - src.simulator - INFO - Generated 6800 readings
+2025-04-18 09:39:18,977 - src.simulator - INFO - Generated 6900 readings
+2025-04-18 09:41:00,810 - src.simulator - INFO - Generated 7000 readings
+2025-04-18 09:42:42,596 - src.simulator - INFO - Generated 7100 readings
+2025-04-18 09:44:24,198 - src.simulator - INFO - Generated 7200 readings
+2025-04-18 09:46:06,567 - src.simulator - INFO - Generated 7300 readings
+2025-04-18 09:47:48,260 - src.simulator - INFO - Generated 7400 readings
+2025-04-18 09:49:29,981 - src.simulator - INFO - Generated 7500 readings
+2025-04-18 09:51:11,951 - src.simulator - INFO - Generated 7600 readings
+2025-04-18 09:52:53,499 - src.simulator - INFO - Generated 7700 readings
+2025-04-18 09:54:35,136 - src.simulator - INFO - Generated 7800 readings
+2025-04-18 09:56:16,875 - src.simulator - INFO - Generated 7900 readings
+2025-04-18 09:57:58,747 - src.simulator - INFO - Generated 8000 readings
+2025-04-18 09:59:40,501 - src.simulator - INFO - Generated 8100 readings
+2025-04-18 10:01:22,537 - src.simulator - INFO - Generated 8200 readings
+2025-04-18 10:03:04,636 - src.simulator - INFO - Generated 8300 readings
+2025-04-18 10:04:46,187 - src.simulator - INFO - Generated 8400 readings
+2025-04-18 10:06:28,166 - src.simulator - INFO - Generated 8500 readings
+2025-04-18 10:08:10,007 - src.simulator - INFO - Generated 8600 readings
+2025-04-18 10:09:51,893 - src.simulator - INFO - Generated 8700 readings
+2025-04-18 10:11:33,844 - src.simulator - INFO - Generated 8800 readings
+2025-04-18 10:13:15,742 - src.simulator - INFO - Generated 8900 readings
+2025-04-18 10:14:57,830 - src.simulator - INFO - Generated 9000 readings
+2025-04-18 10:16:39,656 - src.simulator - INFO - Generated 9100 readings
+2025-04-18 10:18:21,369 - src.simulator - INFO - Generated 9200 readings
+2025-04-18 10:20:03,046 - src.simulator - INFO - Generated 9300 readings
+2025-04-18 10:21:45,198 - src.simulator - INFO - Generated 9400 readings
+2025-04-18 10:23:26,706 - src.simulator - INFO - Generated 9500 readings
+2025-04-18 10:25:08,403 - src.simulator - INFO - Generated 9600 readings
+2025-04-18 10:26:50,410 - src.simulator - INFO - Generated 9700 readings
+2025-04-18 10:28:32,386 - src.simulator - INFO - Generated 9800 readings
+2025-04-18 10:30:14,289 - src.simulator - INFO - Generated 9900 readings
+2025-04-18 10:31:55,952 - src.simulator - INFO - Generated 10000 readings
+2025-04-18 10:33:37,139 - src.simulator - INFO - Generated 10100 readings
+2025-04-18 10:35:18,138 - src.simulator - INFO - Generated 10200 readings
+2025-04-18 10:36:59,995 - src.simulator - INFO - Generated 10300 readings
+2025-04-18 10:38:41,918 - src.simulator - INFO - Generated 10400 readings
+2025-04-18 10:40:24,026 - src.simulator - INFO - Generated 10500 readings
+2025-04-18 10:42:05,801 - src.simulator - INFO - Generated 10600 readings
+2025-04-18 10:43:47,591 - src.simulator - INFO - Generated 10700 readings
+2025-04-18 10:45:29,487 - src.simulator - INFO - Generated 10800 readings
+2025-04-18 10:47:11,238 - src.simulator - INFO - Generated 10900 readings
+2025-04-18 10:48:53,048 - src.simulator - INFO - Generated 11000 readings
+2025-04-18 10:50:34,744 - src.simulator - INFO - Generated 11100 readings
+2025-04-18 10:52:16,601 - src.simulator - INFO - Generated 11200 readings
+2025-04-18 10:53:58,393 - src.simulator - INFO - Generated 11300 readings
+2025-04-18 10:55:40,076 - src.simulator - INFO - Generated 11400 readings
+2025-04-18 10:57:21,866 - src.simulator - INFO - Generated 11500 readings
+2025-04-18 10:59:03,617 - src.simulator - INFO - Generated 11600 readings
+2025-04-18 11:00:45,751 - src.simulator - INFO - Generated 11700 readings
+2025-04-18 11:02:27,674 - src.simulator - INFO - Generated 11800 readings
+2025-04-18 11:04:09,624 - src.simulator - INFO - Generated 11900 readings
+2025-04-18 11:05:51,475 - src.simulator - INFO - Generated 12000 readings
+2025-04-18 11:07:33,322 - src.simulator - INFO - Generated 12100 readings
+2025-04-18 11:09:15,258 - src.simulator - INFO - Generated 12200 readings
+2025-04-18 11:10:56,815 - src.simulator - INFO - Generated 12300 readings
+2025-04-18 11:12:38,449 - src.simulator - INFO - Generated 12400 readings
+2025-04-18 11:14:20,194 - src.simulator - INFO - Generated 12500 readings
+2025-04-18 11:16:02,181 - src.simulator - INFO - Generated 12600 readings
+2025-04-18 11:17:44,176 - src.simulator - INFO - Generated 12700 readings
+2025-04-18 11:19:25,926 - src.simulator - INFO - Generated 12800 readings
+2025-04-18 11:21:07,562 - src.simulator - INFO - Generated 12900 readings
+2025-04-18 11:22:49,360 - src.simulator - INFO - Generated 13000 readings
+2025-04-18 11:24:31,325 - src.simulator - INFO - Generated 13100 readings
+2025-04-18 11:26:13,136 - src.simulator - INFO - Generated 13200 readings
+2025-04-18 11:27:55,043 - src.simulator - INFO - Generated 13300 readings
+2025-04-18 11:29:36,708 - src.simulator - INFO - Generated 13400 readings
+2025-04-18 11:31:18,546 - src.simulator - INFO - Generated 13500 readings
+2025-04-18 11:33:00,454 - src.simulator - INFO - Generated 13600 readings
+2025-04-18 11:34:42,016 - src.simulator - INFO - Generated 13700 readings
+2025-04-18 11:36:23,249 - src.simulator - INFO - Generated 13800 readings
+2025-04-18 11:38:04,545 - src.simulator - INFO - Generated 13900 readings
+2025-04-18 11:39:46,563 - src.simulator - INFO - Generated 14000 readings
+2025-04-18 11:41:28,384 - src.simulator - INFO - Generated 14100 readings
+2025-04-18 11:43:10,078 - src.simulator - INFO - Generated 14200 readings
+2025-04-18 11:44:51,716 - src.simulator - INFO - Generated 14300 readings
+2025-04-18 11:46:33,607 - src.simulator - INFO - Generated 14400 readings
+2025-04-18 11:48:15,243 - src.simulator - INFO - Generated 14500 readings
+2025-04-18 11:49:56,887 - src.simulator - INFO - Generated 14600 readings
+2025-04-18 11:51:38,671 - src.simulator - INFO - Generated 14700 readings
+2025-04-18 11:53:20,522 - src.simulator - INFO - Generated 14800 readings
+2025-04-18 11:55:02,207 - src.simulator - INFO - Generated 14900 readings
+2025-04-18 11:56:44,002 - src.simulator - INFO - Generated 15000 readings
+2025-04-18 11:58:25,658 - src.simulator - INFO - Generated 15100 readings
+2025-04-18 12:00:07,423 - src.simulator - INFO - Generated 15200 readings
+2025-04-18 12:01:49,121 - src.simulator - INFO - Generated 15300 readings
+2025-04-18 12:03:31,067 - src.simulator - INFO - Generated 15400 readings
+2025-04-18 12:05:12,777 - src.simulator - INFO - Generated 15500 readings
+2025-04-18 12:06:54,653 - src.simulator - INFO - Generated 15600 readings
+2025-04-18 12:08:36,765 - src.simulator - INFO - Generated 15700 readings
+2025-04-18 12:10:18,541 - src.simulator - INFO - Generated 15800 readings
+2025-04-18 12:12:00,136 - src.simulator - INFO - Generated 15900 readings
+2025-04-18 12:13:41,573 - src.simulator - INFO - Generated 16000 readings
+2025-04-18 12:15:23,159 - src.simulator - INFO - Generated 16100 readings
+2025-04-18 12:17:04,678 - src.simulator - INFO - Generated 16200 readings
+2025-04-18 12:18:45,842 - src.simulator - INFO - Generated 16300 readings
+2025-04-18 12:20:27,349 - src.simulator - INFO - Generated 16400 readings
+2025-04-18 12:22:08,754 - src.simulator - INFO - Generated 16500 readings
+2025-04-18 12:23:49,990 - src.simulator - INFO - Generated 16600 readings
+2025-04-18 12:25:31,553 - src.simulator - INFO - Generated 16700 readings
+2025-04-18 12:27:12,774 - src.simulator - INFO - Generated 16800 readings
+2025-04-18 12:28:54,603 - src.simulator - INFO - Generated 16900 readings
+2025-04-18 12:30:36,569 - src.simulator - INFO - Generated 17000 readings
+2025-04-18 12:32:18,439 - src.simulator - INFO - Generated 17100 readings
+2025-04-18 12:34:00,240 - src.simulator - INFO - Generated 17200 readings
+2025-04-18 12:35:41,952 - src.simulator - INFO - Generated 17300 readings
+2025-04-18 12:37:23,909 - src.simulator - INFO - Generated 17400 readings
+2025-04-18 12:39:05,654 - src.simulator - INFO - Generated 17500 readings
+2025-04-18 12:40:47,678 - src.simulator - INFO - Generated 17600 readings
+2025-04-18 12:42:29,226 - src.simulator - INFO - Generated 17700 readings
+2025-04-18 12:44:10,570 - src.simulator - INFO - Generated 17800 readings
+2025-04-18 12:45:51,875 - src.simulator - INFO - Generated 17900 readings
+2025-04-18 12:47:33,207 - src.simulator - INFO - Generated 18000 readings
+2025-04-18 12:49:14,824 - src.simulator - INFO - Generated 18100 readings
+2025-04-18 12:50:56,633 - src.simulator - INFO - Generated 18200 readings
+2025-04-18 12:52:38,758 - src.simulator - INFO - Generated 18300 readings
+2025-04-18 12:54:20,589 - src.simulator - INFO - Generated 18400 readings
+2025-04-18 12:56:02,340 - src.simulator - INFO - Generated 18500 readings
+2025-04-18 12:57:44,009 - src.simulator - INFO - Generated 18600 readings
+2025-04-18 12:59:25,634 - src.simulator - INFO - Generated 18700 readings
+2025-04-18 13:01:07,360 - src.simulator - INFO - Generated 18800 readings
+2025-04-18 13:02:49,418 - src.simulator - INFO - Generated 18900 readings
+2025-04-18 13:04:31,431 - src.simulator - INFO - Generated 19000 readings
+2025-04-18 13:06:13,113 - src.simulator - INFO - Generated 19100 readings
+2025-04-18 13:07:54,784 - src.simulator - INFO - Generated 19200 readings
+2025-04-18 13:09:36,478 - src.simulator - INFO - Generated 19300 readings
+2025-04-18 13:11:18,158 - src.simulator - INFO - Generated 19400 readings
+2025-04-18 13:13:00,186 - src.simulator - INFO - Generated 19500 readings
+2025-04-18 13:14:41,989 - src.simulator - INFO - Generated 19600 readings
+2025-04-18 13:16:23,538 - src.simulator - INFO - Generated 19700 readings
+2025-04-18 13:18:05,324 - src.simulator - INFO - Generated 19800 readings
+2025-04-18 13:19:46,697 - src.simulator - INFO - Generated 19900 readings
+2025-04-18 13:21:28,326 - src.simulator - INFO - Generated 20000 readings
+2025-04-18 13:23:10,413 - src.simulator - INFO - Generated 20100 readings
+2025-04-18 13:24:51,435 - src.simulator - INFO - Generated 20200 readings
+2025-04-18 13:26:32,661 - src.simulator - INFO - Generated 20300 readings
+2025-04-18 13:28:14,280 - src.simulator - INFO - Generated 20400 readings
+2025-04-18 13:29:56,109 - src.simulator - INFO - Generated 20500 readings
+2025-04-18 13:31:38,127 - src.simulator - INFO - Generated 20600 readings
+2025-04-18 13:33:19,846 - src.simulator - INFO - Generated 20700 readings
+2025-04-18 13:35:01,764 - src.simulator - INFO - Generated 20800 readings
+2025-04-18 13:36:43,678 - src.simulator - INFO - Generated 20900 readings
+2025-04-18 13:38:25,256 - src.simulator - INFO - Generated 21000 readings
+2025-04-18 13:40:07,177 - src.simulator - INFO - Generated 21100 readings
+2025-04-18 13:41:49,250 - src.simulator - INFO - Generated 21200 readings
+2025-04-18 13:43:30,971 - src.simulator - INFO - Generated 21300 readings
+2025-04-18 13:45:12,833 - src.simulator - INFO - Generated 21400 readings
+2025-04-18 13:46:54,733 - src.simulator - INFO - Generated 21500 readings
+2025-04-18 13:48:35,787 - src.simulator - INFO - Generated 21600 readings
+2025-04-18 13:50:17,368 - src.simulator - INFO - Generated 21700 readings
+2025-04-18 13:51:59,357 - src.simulator - INFO - Generated 21800 readings
+2025-04-18 13:53:41,064 - src.simulator - INFO - Generated 21900 readings
+2025-04-18 13:55:22,520 - src.simulator - INFO - Generated 22000 readings
+2025-04-18 13:57:04,193 - src.simulator - INFO - Generated 22100 readings
+2025-04-18 13:58:45,846 - src.simulator - INFO - Generated 22200 readings
+2025-04-18 14:00:27,398 - src.simulator - INFO - Generated 22300 readings
+2025-04-18 14:02:09,157 - src.simulator - INFO - Generated 22400 readings
+2025-04-18 14:03:50,657 - src.simulator - INFO - Generated 22500 readings
+2025-04-18 14:05:32,092 - src.simulator - INFO - Generated 22600 readings
+2025-04-18 14:07:13,715 - src.simulator - INFO - Generated 22700 readings
+2025-04-18 14:08:55,219 - src.simulator - INFO - Generated 22800 readings
+2025-04-18 14:10:37,002 - src.simulator - INFO - Generated 22900 readings
+2025-04-18 14:12:18,734 - src.simulator - INFO - Generated 23000 readings
+2025-04-18 14:14:00,384 - src.simulator - INFO - Generated 23100 readings
+2025-04-18 14:15:41,947 - src.simulator - INFO - Generated 23200 readings
+2025-04-18 14:17:23,799 - src.simulator - INFO - Generated 23300 readings
+2025-04-18 14:19:05,884 - src.simulator - INFO - Generated 23400 readings
+2025-04-18 14:20:47,623 - src.simulator - INFO - Generated 23500 readings
+2025-04-18 14:22:29,366 - src.simulator - INFO - Generated 23600 readings
+2025-04-18 14:24:11,165 - src.simulator - INFO - Generated 23700 readings
+2025-04-18 14:25:52,943 - src.simulator - INFO - Generated 23800 readings
+2025-04-18 14:27:34,579 - src.simulator - INFO - Generated 23900 readings
+2025-04-18 14:29:16,403 - src.simulator - INFO - Generated 24000 readings
+2025-04-18 14:30:58,387 - src.simulator - INFO - Generated 24100 readings
+2025-04-18 14:32:40,228 - src.simulator - INFO - Generated 24200 readings
+2025-04-18 14:34:21,899 - src.simulator - INFO - Generated 24300 readings
+2025-04-18 14:36:03,833 - src.simulator - INFO - Generated 24400 readings
+2025-04-18 14:37:45,480 - src.simulator - INFO - Generated 24500 readings
+2025-04-18 14:39:27,129 - src.simulator - INFO - Generated 24600 readings
+2025-04-18 14:41:09,166 - src.simulator - INFO - Generated 24700 readings
+2025-04-18 14:42:51,045 - src.simulator - INFO - Generated 24800 readings
+2025-04-18 14:44:32,826 - src.simulator - INFO - Generated 24900 readings
+2025-04-18 14:46:14,651 - src.simulator - INFO - Generated 25000 readings
+2025-04-18 14:47:56,520 - src.simulator - INFO - Generated 25100 readings
+2025-04-18 14:49:38,559 - src.simulator - INFO - Generated 25200 readings
+2025-04-18 14:51:20,212 - src.simulator - INFO - Generated 25300 readings
+2025-04-18 14:53:02,145 - src.simulator - INFO - Generated 25400 readings
+2025-04-18 14:54:43,887 - src.simulator - INFO - Generated 25500 readings
+2025-04-18 14:56:25,653 - src.simulator - INFO - Generated 25600 readings
+2025-04-18 14:58:07,036 - src.simulator - INFO - Generated 25700 readings
+2025-04-18 14:59:48,950 - src.simulator - INFO - Generated 25800 readings
+2025-04-18 15:01:30,721 - src.simulator - INFO - Generated 25900 readings
+2025-04-18 15:03:12,413 - src.simulator - INFO - Generated 26000 readings
+2025-04-18 15:04:54,078 - src.simulator - INFO - Generated 26100 readings
+2025-04-18 15:06:35,868 - src.simulator - INFO - Generated 26200 readings
+2025-04-18 15:08:17,635 - src.simulator - INFO - Generated 26300 readings
+2025-04-18 15:09:59,164 - src.simulator - INFO - Generated 26400 readings
+2025-04-18 15:11:40,934 - src.simulator - INFO - Generated 26500 readings
+2025-04-18 15:13:22,522 - src.simulator - INFO - Generated 26600 readings
+2025-04-18 15:15:04,169 - src.simulator - INFO - Generated 26700 readings
+2025-04-18 15:16:46,081 - src.simulator - INFO - Generated 26800 readings
+2025-04-18 15:18:27,842 - src.simulator - INFO - Generated 26900 readings
+2025-04-18 15:20:10,072 - src.simulator - INFO - Generated 27000 readings
+2025-04-18 15:21:51,811 - src.simulator - INFO - Generated 27100 readings
+2025-04-18 15:23:33,291 - src.simulator - INFO - Generated 27200 readings
+2025-04-18 15:25:15,023 - src.simulator - INFO - Generated 27300 readings
+2025-04-18 15:26:56,623 - src.simulator - INFO - Generated 27400 readings
+2025-04-18 15:28:38,224 - src.simulator - INFO - Generated 27500 readings
+2025-04-18 15:30:19,593 - src.simulator - INFO - Generated 27600 readings
+2025-04-18 15:32:01,635 - src.simulator - INFO - Generated 27700 readings
+2025-04-18 15:33:43,233 - src.simulator - INFO - Generated 27800 readings
+2025-04-18 15:35:24,868 - src.simulator - INFO - Generated 27900 readings
+2025-04-18 15:37:06,424 - src.simulator - INFO - Generated 28000 readings
+2025-04-18 15:38:48,419 - src.simulator - INFO - Generated 28100 readings
+2025-04-18 15:40:30,220 - src.simulator - INFO - Generated 28200 readings
+2025-04-18 15:42:12,130 - src.simulator - INFO - Generated 28300 readings
+2025-04-18 15:43:54,139 - src.simulator - INFO - Generated 28400 readings
+2025-04-18 15:45:36,366 - src.simulator - INFO - Generated 28500 readings
+2025-04-18 15:47:18,151 - src.simulator - INFO - Generated 28600 readings
+2025-04-18 15:48:59,716 - src.simulator - INFO - Generated 28700 readings
+2025-04-18 15:50:41,543 - src.simulator - INFO - Generated 28800 readings

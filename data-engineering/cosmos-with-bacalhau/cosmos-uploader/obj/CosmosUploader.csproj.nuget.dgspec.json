@@ -1,0 +1,118 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/daaronch/code/bacalhau-examples/data-engineering/cosmos-with-bacalhau/cosmos-uploader/CosmosUploader.csproj": {}
+  },
+  "projects": {
+    "/Users/daaronch/code/bacalhau-examples/data-engineering/cosmos-with-bacalhau/cosmos-uploader/CosmosUploader.csproj": {
+      "version": "1.1.0",
+      "restore": {
+        "projectUniqueName": "/Users/daaronch/code/bacalhau-examples/data-engineering/cosmos-with-bacalhau/cosmos-uploader/CosmosUploader.csproj",
+        "projectName": "CosmosUploader",
+        "projectPath": "/Users/daaronch/code/bacalhau-examples/data-engineering/cosmos-with-bacalhau/cosmos-uploader/CosmosUploader.csproj",
+        "packagesPath": "/Users/daaronch/.nuget/packages/",
+        "outputPath": "/Users/daaronch/code/bacalhau-examples/data-engineering/cosmos-with-bacalhau/cosmos-uploader/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/daaronch/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet/9.0.4/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Humanizer": {
+              "target": "Package",
+              "version": "[2.14.1, )"
+            },
+            "Microsoft.Azure.Cosmos": {
+              "target": "Package",
+              "version": "[3.49.0, )"
+            },
+            "Microsoft.Data.Sqlite": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "Microsoft.Extensions.Http": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "Microsoft.Extensions.Logging.Console": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "Parquet.Net": {
+              "target": "Package",
+              "version": "[5.1.1, )"
+            },
+            "Polly": {
+              "target": "Package",
+              "version": "[8.5.2, )"
+            },
+            "System.CommandLine": {
+              "target": "Package",
+              "version": "[2.0.0-beta4.22272.1, )"
+            },
+            "YamlDotNet": {
+              "target": "Package",
+              "version": "[16.3.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.4/libexec/sdk/9.0.105/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
