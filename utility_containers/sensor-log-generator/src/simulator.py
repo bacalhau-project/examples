@@ -1,17 +1,19 @@
 import logging
 import os
 import random
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Dict
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import numpy as np
 import psutil
-from psutil import Process
+from pydantic import ValidationError
 
 from .anomaly import AnomalyGenerator
 from .config import ConfigManager
-from .database import SensorDatabase
+from .database import SensorDatabase, SensorReadingSchema
 from .enums import FirmwareVersion, Manufacturer, Model
 from .monitor import MonitoringServer
 
@@ -30,9 +32,7 @@ class SensorSimulator:
         self.identity = self.config_manager.get_identity()  # Get initial identity
 
         self.sensor_id = self.identity.get("id")
-        self.manufacturer = self.identity.get("manufacturer")
-        self.model = self.identity.get("model")
-        self.firmware_version = self.identity.get("firmware_version")
+        # Manufacturer, model, and firmware_version will be set by _validate_sensor_config
         self.running = False
 
         # Initialize location properties including timezone
@@ -40,6 +40,17 @@ class SensorSimulator:
         self.latitude = self.identity.get("latitude")
         self.longitude = self.identity.get("longitude")
         self.timezone = self.identity.get("timezone", "UTC")
+        try:
+            # Validate IANA timezone and get offset string upon initialization
+            self.timezone_offset_str = self._get_offset_str(time.time(), self.timezone)
+            logger.info(
+                f"SensorSimulator initialized with IANA timezone: '{self.timezone}' (Offset: '{self.timezone_offset_str}')"
+            )
+        except ZoneInfoNotFoundError:  # Catch if IANA name is invalid
+            logger.error(
+                f"Invalid IANA timezone name provided in identity: '{self.timezone}'. Exiting."
+            )
+            sys.exit(1)
 
         # Get database path from config
         db_path = self.config_manager.get_database_config().get("path")
@@ -137,49 +148,48 @@ class SensorSimulator:
             raise
 
     def _validate_sensor_config(self):
-        """Validate the sensor configuration using self.identity."""
-        current_identity = (
-            self.identity
-        )  # Use the local copy, sourced from config_manager
+        """Validate the sensor configuration using self.identity and assign enum attributes."""
+        current_identity = self.identity
         location = current_identity.get("location")
         if not location:
             raise ValueError("Location is required in identity configuration")
 
+        # Manufacturer
+        manufacturer_val = current_identity.get("manufacturer")
+        if manufacturer_val is None:
+            raise ValueError("Manufacturer is required in identity configuration")
         try:
-            manufacturer_val = current_identity.get("manufacturer")
-            if manufacturer_val is None:  # Check for None before passing to Enum
-                raise ValueError("Manufacturer is required in identity configuration")
-            Manufacturer(manufacturer_val)
-        except ValueError:
+            self.manufacturer = Manufacturer(manufacturer_val)
+        except ValueError:  # Catches Enum's own ValueError for invalid string
             valid_manufacturers = [m.value for m in Manufacturer]
             raise ValueError(
-                f"Invalid or missing manufacturer: {current_identity.get('manufacturer')}. "
+                f"Invalid or missing manufacturer: {manufacturer_val}. "
                 f"Valid manufacturers are: {valid_manufacturers}"
             )
 
+        # Model
+        model_val = current_identity.get("model")
+        if model_val is None:
+            raise ValueError("Model is required in identity configuration")
         try:
-            model_val = current_identity.get("model")
-            if model_val is None:
-                raise ValueError("Model is required in identity configuration")
-            Model(model_val)
+            self.model = Model(model_val)
         except ValueError:
             valid_models = [m.value for m in Model]
             raise ValueError(
-                f"Invalid or missing model: {current_identity.get('model')}. "
+                f"Invalid or missing model: {model_val}. "
                 f"Valid models are: {valid_models}"
             )
 
+        # Firmware Version
+        firmware_val = current_identity.get("firmware_version")
+        if firmware_val is None:
+            raise ValueError("Firmware version is required in identity configuration")
         try:
-            firmware_val = current_identity.get("firmware_version")
-            if firmware_val is None:
-                raise ValueError(
-                    "Firmware version is required in identity configuration"
-                )
-            FirmwareVersion(firmware_val)
+            self.firmware_version = FirmwareVersion(firmware_val)
         except ValueError:
             valid_versions = [v.value for v in FirmwareVersion]
             raise ValueError(
-                f"Invalid or missing firmware version: {current_identity.get('firmware_version')}. "
+                f"Invalid or missing firmware version: {firmware_val}. "
                 f"Valid versions are: {valid_versions}"
             )
 
@@ -368,37 +378,51 @@ class SensorSimulator:
         logger.info("Configuration update processed.")
 
     def handle_identity_updated(self):
-        """Apply changes after the node identity (identity.json) has been updated."""
-        logger.info("Applying identity changes to simulator (triggered externally)")
-        self.identity = self.config_manager.get_identity()  # Update local copy
-
-        # Re-initialize attributes based on the new identity
-        self.sensor_id = self.identity.get("id")
-        self.manufacturer = self.identity.get("manufacturer")
-        self.model = self.identity.get("model")
-        self.firmware_version = self.identity.get("firmware_version")
-
-        self.city_name = self.identity.get("location")
-        self.latitude = self.identity.get("latitude")
-        self.longitude = self.identity.get("longitude")
-        self.timezone = self.identity.get("timezone", "UTC")
-
+        """Handle updates to the sensor's identity if configuration changes."""
         try:
-            self._validate_sensor_config()  # Uses the new self.identity
-        except ValueError as e:
-            logger.error(f"Error validating sensor config after identity update: {e}")
-            # Decide how to handle: stop simulator? For now, log and continue.
-            # External watcher should ideally ensure valid identity.
+            new_identity = self.config_manager.get_identity()
+            if new_identity != self.identity:
+                logger.info(
+                    f"Identity updated. Old: {self.identity}, New: {new_identity}"
+                )
+                old_iana_timezone = self.timezone
+                self.identity = new_identity
+                # Re-fetch identity-dependent attributes
+                self.sensor_id = self.identity.get("id")
+                # manufacturer, model, and firmware_version will be set by _validate_sensor_config
+                self.city_name = self.identity.get("location")
+                self.latitude = self.identity.get("latitude")
+                self.longitude = self.identity.get("longitude")
+                self.timezone = self.identity.get("timezone", "UTC")  # Update IANA name
 
-        # Re-initialize AnomalyGenerator as it depends on identity
-        anomaly_config = (
-            self.config_manager.get_anomaly_config()
-        )  # Get current anomaly config
-        self.anomaly_generator = AnomalyGenerator(anomaly_config or {}, self.identity)
+                try:
+                    # Update timezone_offset_str based on new IANA timezone
+                    self.timezone_offset_str = self._get_offset_str(
+                        time.time(), self.timezone
+                    )
+                    logger.info(
+                        f"IANA Timezone updated via handle_identity_updated to: '{self.timezone}' (New Offset: '{self.timezone_offset_str}')"
+                    )
+                except ZoneInfoNotFoundError:
+                    logger.error(
+                        f"Invalid IANA timezone name provided in updated identity: '{self.timezone}'. Using previous offset: '{self.timezone_offset_str}'."
+                    )
+                    # Optionally, revert self.timezone to old_iana_timezone or handle error more gracefully
+                    self.timezone = old_iana_timezone  # Revert to last valid IANA name
+                    # The self.timezone_offset_str will retain its old value in this error case if not re-assigned
 
-        logger.info(
-            f"Identity update processed. New Sensor ID: {self.sensor_id}, Location: {self.city_name}"
-        )
+                # Re-validate and update components that depend on identity
+                self._validate_sensor_config()
+                self._get_initial_location()  # May need to re-fetch/re-validate location dependent data
+                if self.anomaly_generator:
+                    self.anomaly_generator.update_identity(self.identity)
+                logger.info(
+                    "Sensor identity and dependent components updated successfully."
+                )
+            else:
+                logger.debug("Identity checked, no changes detected.")
+        except Exception as e:
+            logger.error(f"Error handling identity update: {e}")
 
     def process_reading(self, reading: Dict) -> bool:
         """Process a single reading.
@@ -418,29 +442,59 @@ class SensorSimulator:
             anomaly_flag = reading.get("anomaly_flag", False)
             anomaly_type = reading.get("anomaly_type", None)
 
-            # Add status code for anomalies
-            if anomaly_flag:
-                reading["status_code"] = 1  # 1 = anomaly
+            # Get the current timestamp and the IANA timezone from the simulator's identity
+            current_timestamp_unix = time.time()
+            # Convert Unix timestamp to ISO 8601 format for Pydantic model
+            iso_timestamp = datetime.fromtimestamp(
+                current_timestamp_unix, tz=timezone.utc
+            ).isoformat(timespec="milliseconds")
 
-            # Store in database with sensor identity fields and timezone
-            self.database.store_reading(
-                timestamp=reading["timestamp"],
-                sensor_id=reading["sensor_id"],
-                temperature=reading["temperature"],
-                humidity=reading.get("humidity"),
-                pressure=reading.get("pressure"),
-                vibration=reading["vibration"],
-                voltage=reading["voltage"],
-                status_code=reading["status_code"],
-                anomaly_flag=anomaly_flag,
-                anomaly_type=anomaly_type,
-                firmware_version=self.identity.get("firmware_version"),
-                model=self.identity.get("model"),
-                manufacturer=self.identity.get("manufacturer"),
-                location=self.city_name,  # Pass city name
-                latitude=self.latitude,
-                longitude=self.longitude,
-                timezone_str=self.timezone,  # Pass the stored timezone
+            # Prepare data for Pydantic model
+            reading_data_for_schema = {
+                "timestamp": iso_timestamp,
+                "sensor_id": reading["sensor_id"],
+                "temperature": reading.get("temperature"),
+                "humidity": reading.get("humidity"),
+                "pressure": reading.get("pressure"),
+                "vibration": reading.get("vibration"),
+                "voltage": reading.get("voltage"),
+                "status_code": reading.get("status_code", 0 if not anomaly_flag else 1),
+                "anomaly_flag": anomaly_flag,
+                "anomaly_type": anomaly_type,
+                "firmware_version": self.identity.get("firmware_version"),
+                "model": self.identity.get("model"),
+                "manufacturer": self.identity.get("manufacturer"),
+                "location": self.city_name,  # Pass city name
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+                "original_timezone": self.timezone_offset_str,  # Pass the stored offset string
+                "synced": False,  # Default value for new readings
+            }
+
+            # Create and validate the reading with Pydantic model
+            try:
+                sensor_reading_instance = SensorReadingSchema(**reading_data_for_schema)
+            except ValidationError as ve:
+                logger.error(
+                    f"Pydantic validation error while processing reading: {ve}"
+                )
+                # Optionally, handle this error more gracefully, e.g., by storing
+                # the raw data in a separate "error" table or logging more details.
+                self.error_count += 1
+                self.consecutive_errors += 1
+                # Check for max consecutive errors even for validation failures
+                if self.consecutive_errors >= self.max_consecutive_errors:
+                    logger.critical(
+                        f"Too many consecutive Pydantic validation errors ({self.consecutive_errors}). Stopping simulator."
+                    )
+                    return False  # Stop the simulator
+                return False  # Indicate failure for this reading
+
+            # Store in database using the Pydantic model instance
+            self.database.store_reading(sensor_reading_instance)
+
+            logger.debug(
+                f"Storing reading with timezone_offset_str: '{self.timezone_offset_str}' via Pydantic model"
             )
 
             self.readings_count += 1
@@ -556,9 +610,16 @@ class SensorSimulator:
             "remaining_seconds": remaining,
             "readings_per_second": self.readings_per_second,
             "sensor_id": self.sensor_id,
-            "firmware_version": self.identity.get("firmware_version"),
-            "model": self.identity.get("model"),
-            "manufacturer": self.identity.get("manufacturer"),
+            "location": {  # Added location dictionary
+                "city": self.city_name,
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+                "timezone": self.timezone,
+                "timezone_offset": self.timezone_offset_str,
+            },
+            "firmware_version": self.firmware_version,  # Return enum member
+            "model": self.model,  # Return enum member
+            "manufacturer": self.manufacturer,  # Return enum member
             "database_healthy": self.database.is_healthy()
             if hasattr(self, "database")
             else False,
@@ -698,3 +759,44 @@ class SensorSimulator:
             Location string (just the city name)
         """
         return self.city_name
+
+    def _get_offset_str(self, unix_timestamp: float, iana_timezone_name: str) -> str:
+        """
+        Calculates the UTC offset string (e.g., '-04:00') for a given Unix timestamp
+        and IANA timezone name.
+        """
+        if not iana_timezone_name:
+            logger.warning(
+                "No IANA timezone name provided to _get_offset_str, defaulting to UTC offset +00:00."
+            )
+            return "+00:00"
+
+        try:
+            # Create a datetime object from the Unix timestamp, making it timezone-aware (UTC)
+            # then convert to the target timezone to get the correct offset for that moment.
+            dt_utc = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
+            target_tz = ZoneInfo(iana_timezone_name)
+            dt_target = dt_utc.astimezone(target_tz)
+
+            offset = dt_target.utcoffset()
+            if offset is not None:
+                total_seconds = offset.total_seconds()
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
+                return f"{hours:+03d}:{minutes:02d}"  # Format: +HH:MM or -HH:MM
+            else:  # Should not happen if ZoneInfo object is valid
+                logger.warning(
+                    f"Could not determine offset for {iana_timezone_name} at {unix_timestamp}, using +00:00."
+                )
+                return "+00:00"
+
+        except ZoneInfoNotFoundError:
+            logger.warning(
+                f"Timezone '{iana_timezone_name}' not found using zoneinfo. Defaulting to UTC offset +00:00."
+            )
+            return "+00:00"
+        except Exception as e:
+            logger.error(
+                f"Error calculating offset for timezone '{iana_timezone_name}': {e}. Defaulting to +00:00."
+            )
+            return "+00:00"

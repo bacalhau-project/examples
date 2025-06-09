@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Testing Protocol
+
+After each code modification, ensure that unit tests are executed and all tests pass to verify the integrity and correctness of the changes.

@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Style: Maintainability and Conciseness
+
+Write code that is easily maintainable and understandable. Prioritize clarity and simplicity.
+Aim for conciseness by avoiding verbosity and boilerplate, but do not sacrifice readability or maintainability for extreme brevity. Code should be as short as effectively possible.
