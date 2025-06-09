@@ -5,7 +5,7 @@ Constraints:
   - Key: service
     Operator: ==
     Values:
-      - web-server
+      - WebService
 Tasks:
   - Name: main
     Engine:
@@ -13,14 +13,12 @@ Tasks:
       Params:
         Image: expanso/nginx-access-log-agent:1.0.0
         EnvironmentVariables:
-          - OPENSEARCH_ENDPOINT=<OpenSearchEndpoint>
-          - S3_BUCKET=<S3BucketName>
-          - AWS_REGION=<AWSRegion>
+          - OPENSEARCH_ENDPOINT={{.OpenSearchEndpoint}}
+          - S3_BUCKET={{.AccessLogBucket}}
+          - AWS_REGION={{.AWSRegion}}
           - AGGREGATE_DURATION=10
-    Resources:
-      CPU: 0.5
-      Memory: 1Gi
-    Network: 
+          - S3_TIME_FILE=60
+    Network:
       Type: Full
     InputSources:
       - Target: /app/logs

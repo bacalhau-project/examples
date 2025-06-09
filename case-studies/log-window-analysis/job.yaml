@@ -9,9 +9,8 @@ Job:
     EngineSpec:
       Params:
         EnvironmentVariables:
-          - INPUTFILE=/var/log/logs_to_process/aperitivo_logs.log.1
-          - QUERY=SELECT * FROM log_data WHERE message LIKE '%[SECURITY]%' ORDER BY '@timestamp'
-        Image: docker.io/bacalhauproject/motherduck-log-processor:1.1.6
+          - INPUTFILE=/var/log/www/aperitivo_access_logs.log
+        Image: docker.io/bacalhauproject/logwindowanalysis:v1.0
         WorkingDirectory: ""
       Type: docker
     Resources:
@@ -20,10 +19,10 @@ Job:
     Network:
       Type: Full
     Inputs:
-      - Name: file:///var/log/logs_to_process
-        SourcePath: /var/log/logs_to_process
+      - Name: file:///var/log/www
+        SourcePath: /var/log/www
         StorageSource: LocalDirectory
-        path: /var/log/logs_to_process
+        path: /var/log/www
       - Name: file:///db/
         SourcePath: /db
         StorageSource: LocalDirectory

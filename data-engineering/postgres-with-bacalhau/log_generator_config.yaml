@@ -7,13 +7,6 @@ output:
   debug: false # Enable debug output
   pre_warm: false # Simulate 24 hours of traffic before starting
   rate: 2 # Logs per second (base rate before traffic patterns)
-  log_rotation:
-    enabled: true # Enable log rotation
-    max_size_mb: 1000 # Maximum size in MB before rotation (1GB)
-    when: "h" # Time-based rotation: 'h' (hourly), 'midnight', 'd' (daily), 'w0-w6' (weekday, 0=Monday)
-    interval: 1 # How many of the 'when' units between rotations
-    backup_count: 5 # Number of backup files to keep
-    compress: true # Compress rotated logs
 
 # State transition probabilities
 state_transitions:

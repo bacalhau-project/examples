@@ -5,6 +5,10 @@ Bubbletea
 buildcache
 BUILDKIT
 buildx
+charmbracelet
+containerd
+creds
+datestamp
 dind
 DOCKERFILEDIR
 dockerfiles

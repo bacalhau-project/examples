@@ -11,8 +11,6 @@ cpus
 dapi
 databrickscfg
 databricksruntime
-dbfs
-dbsqlcli
 deltaio
 deltalake
 dind
@@ -47,7 +45,6 @@ referer
 specstory
 splittable
 Sproc
-TBLPROPERTIES
 ulimits
 UNLOGGED
 venv
