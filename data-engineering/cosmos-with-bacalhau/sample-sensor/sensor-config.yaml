@@ -1,0 +1,102 @@
+# Sensor Simulator Configuration
+# Valid configurations for validation
+valid_configurations:
+  manufacturers:
+    - "SensorTech"
+    - "EnvMonitors"
+    - "IoTPro"
+  models:
+    - "EnvMonitor-3000"
+    - "EnvMonitor-4000"
+    - "EnvMonitor-5000"
+  firmware_versions:
+    - "1.4"
+    - "1.5"
+    - "2.0"
+
+  sensor_id:
+    format: "^[A-Z]{3}_[0-9]{6}$" # Format: 3 uppercase letters, underscore, 6 digits
+    auto_generate: true # If true, will generate a new ID if not provided
+
+simulation:
+  readings_per_second: 10
+  run_time_seconds: 360000 # 100 hours
+
+normal_parameters:
+  temperature:
+    mean: 61.0 # Celsius
+    std_dev: 2.0
+    min: 50.0
+    max: 80.0
+  humidity:
+    mean: 3.0 # Percentage
+    std_dev: 0.5
+    min: 0.0
+    max: 100.0
+  pressure:
+    mean: 12.0 # Bar
+    std_dev: 0.5
+    min: 10.0
+    max: 15.0
+  voltage:
+    mean: 12.0 # Volts
+    std_dev: 0.1
+    min: 11.5
+    max: 12.5
+
+anomalies:
+  enabled: true
+  base_probability: 0.01
+  types:
+    spike:
+      weight: 0.3
+      duration_seconds: 60
+    trend:
+      weight: 0.2
+      duration_seconds: 300
+    pattern:
+      weight: 0.2
+      duration_seconds: 600
+    missing_data:
+      weight: 0.15
+      duration_seconds: 30
+    noise:
+      weight: 0.15
+      duration_seconds: 120
+
+database:
+  path: "/root/sensor_data.db"
+  backup_enabled: false
+  backup_interval_hours: 24
+  backup_path: "/root/" # Backups will go directly into /root
+  batch_size: 100 # Number of readings to insert in a single batch
+
+logging:
+  level: "INFO"
+  file: "/root/sensor_simulator.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console_output: true
+
+output:
+  csv_export_enabled: false
+  csv_export_path: "/root/" # Exports will go directly into /root
+  csv_export_interval_minutes: 60
+
+# Configuration for dynamic reloading
+dynamic_reloading:
+  enabled: true
+  check_interval_seconds: 5
+
+# Configuration for monitoring server
+monitoring:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  metrics_interval_seconds: 60
+
+# Configuration for location generation
+random_location:
+  enabled: true
+  number_of_cities: 10
+  gps_variation: 100 # meters
+  cities_file: "/app/config/cities.json" # Config file, should be in config volume

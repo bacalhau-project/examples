@@ -1,0 +1,26 @@
+# Cosmos DB Configuration
+cosmos:
+  endpoint: https://cosmos-account-aa3086c6.documents.azure.com:443/
+  key: "ipoOQGjYQsY93x9mOrJdiGKiUh21FER6yN10KAaBfpVC0vcViGTL3jD6uy4w7VI0iGY2KBBuqHOWACDbHUqt6w=="
+  database_name: "cosmos-db-nosql"
+  container_name: "sensor-data"
+  partition_key: "/city"
+
+performance:
+  throughput: 5000 # Provisioned throughput (RU/s) - optimized for high performance
+  batch_size: 1000 # Number of documents to upload in a single batch - maximum recommended
+  max_parallel_operations: 20 # Maximum number of parallel operations - increased for better throughput
+  autoscale: true # Enable autoscale for handling variable workloads
+  disable_indexing_during_bulk: true # Optimize bulk operations
+  sleep_interval: 10 # Interval in milliseconds between uploads
+
+# Logging Configuration
+logging:
+  level: "Information"
+  log_request_units: true
+  log_latency: true
+
+# Configuration File Watch Settings
+config_watch:
+  enabled: true
+  poll_interval_seconds: 5

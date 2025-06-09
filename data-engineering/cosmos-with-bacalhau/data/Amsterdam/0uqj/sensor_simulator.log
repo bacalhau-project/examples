@@ -1,0 +1,605 @@
+2025-04-18 02:52:45,595 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:52:45,596 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:52:45,596 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:52:45,596 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:52:45,601 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:52:45,601 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:52:45,602 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:52:45,602 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:52:45,607 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:52:45,609 - root - INFO - Initializing anomaly generator for sensor: NEWY_ICKTJQ
+2025-04-18 02:52:45,610 - root - INFO -   Firmware: 1.4
+2025-04-18 02:52:45,610 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:52:45,610 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:52:45,610 - root - INFO -   Location: New York City
+2025-04-18 02:52:45,611 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:52:45,611 - root - INFO - Starting sensor simulator
+2025-04-18 02:52:45,611 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:52:45,611 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:52:45,612 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:52:53,653 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:52:53,654 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:52:53,654 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:52:54,131 - root - INFO - Monitoring server stopped
+2025-04-18 02:52:54,132 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:52:54,132 - src.simulator - INFO - Simulation ended. Generated 8 readings with 1 errors (87.50% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.55 MB)
+2025-04-18 02:52:54,639 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:52:54,702 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:52:54,702 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:52:54,702 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:52:54,703 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:52:54,705 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:52:54,706 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:52:54,706 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:52:54,706 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:52:54,707 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:52:54,708 - root - INFO - Initializing anomaly generator for sensor: NEWY_WSAWKN
+2025-04-18 02:52:54,708 - root - INFO -   Firmware: 1.4
+2025-04-18 02:52:54,708 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:52:54,709 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:52:54,709 - root - INFO -   Location: New York City
+2025-04-18 02:52:54,710 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:52:54,710 - root - INFO - Starting sensor simulator
+2025-04-18 02:52:54,711 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:52:54,711 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:52:54,712 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:53:28,971 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:53:28,971 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:53:28,971 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:53:29,418 - root - INFO - Monitoring server stopped
+2025-04-18 02:53:29,418 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:53:29,418 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.38 MB)
+2025-04-18 02:53:29,942 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:53:29,949 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:53:29,949 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:53:29,949 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:53:29,949 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:53:29,952 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:53:29,952 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:53:29,952 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:53:29,952 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:53:29,952 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:53:29,953 - root - INFO - Initializing anomaly generator for sensor: NEWY_2QNN66
+2025-04-18 02:53:29,953 - root - INFO -   Firmware: 1.4
+2025-04-18 02:53:29,953 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:53:29,953 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:53:29,953 - root - INFO -   Location: New York City
+2025-04-18 02:53:29,953 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:53:29,953 - root - INFO - Starting sensor simulator
+2025-04-18 02:53:29,953 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:53:29,953 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:53:29,954 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:54:04,375 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:54:04,375 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:54:04,376 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:54:04,666 - root - INFO - Monitoring server stopped
+2025-04-18 02:54:04,667 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:54:04,667 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:54:05,186 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:54:05,194 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:54:05,194 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:54:05,194 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:54:05,194 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:54:05,197 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:54:05,197 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:54:05,197 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:54:05,197 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:54:05,198 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:54:05,198 - root - INFO - Initializing anomaly generator for sensor: NEWY_YD94RW
+2025-04-18 02:54:05,198 - root - INFO -   Firmware: 1.4
+2025-04-18 02:54:05,198 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:54:05,198 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:54:05,198 - root - INFO -   Location: New York City
+2025-04-18 02:54:05,199 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:54:05,199 - root - INFO - Starting sensor simulator
+2025-04-18 02:54:05,199 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:54:05,199 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:54:05,199 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:54:39,569 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:54:39,569 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:54:39,569 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:54:39,914 - root - INFO - Monitoring server stopped
+2025-04-18 02:54:39,915 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:54:39,915 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.79 MB)
+2025-04-18 02:54:40,392 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:54:40,399 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:54:40,399 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:54:40,399 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:54:40,399 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:54:40,402 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:54:40,402 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:54:40,403 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:54:40,403 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:54:40,403 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:54:40,404 - root - INFO - Initializing anomaly generator for sensor: NEWY_4MRILT
+2025-04-18 02:54:40,404 - root - INFO -   Firmware: 1.4
+2025-04-18 02:54:40,404 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:54:40,404 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:54:40,404 - root - INFO -   Location: New York City
+2025-04-18 02:54:40,404 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:54:40,404 - root - INFO - Starting sensor simulator
+2025-04-18 02:54:40,404 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:54:40,405 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:54:40,405 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:55:14,944 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:55:14,945 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:55:14,945 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:55:15,114 - root - INFO - Monitoring server stopped
+2025-04-18 02:55:15,120 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:55:15,120 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.62 MB)
+2025-04-18 02:55:15,590 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:55:15,600 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:55:15,601 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:55:15,601 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:55:15,601 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:55:15,603 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:55:15,604 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:55:15,604 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:55:15,604 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:55:15,605 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:55:15,605 - root - INFO - Initializing anomaly generator for sensor: NEWY_8PX2QX
+2025-04-18 02:55:15,605 - root - INFO -   Firmware: 1.4
+2025-04-18 02:55:15,606 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:55:15,606 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:55:15,606 - root - INFO -   Location: New York City
+2025-04-18 02:55:15,606 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:55:15,606 - root - INFO - Starting sensor simulator
+2025-04-18 02:55:15,606 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:55:15,607 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:55:15,607 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:55:50,994 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:55:50,995 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:55:50,996 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:55:51,338 - root - INFO - Monitoring server stopped
+2025-04-18 02:55:51,339 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:55:51,339 - src.simulator - INFO - Simulation ended. Generated 35 readings with 1 errors (97.14% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.64 MB)
+2025-04-18 02:55:51,833 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:55:51,843 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:55:51,843 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:55:51,843 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:55:51,843 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:55:51,851 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:55:51,855 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:55:51,862 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:55:51,895 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:55:51,898 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:55:51,904 - root - INFO - Initializing anomaly generator for sensor: NEWY_7KXPXD
+2025-04-18 02:55:51,913 - root - INFO -   Firmware: 1.4
+2025-04-18 02:55:51,914 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:55:51,921 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:55:51,930 - root - INFO -   Location: New York City
+2025-04-18 02:55:51,932 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:55:51,932 - root - INFO - Starting sensor simulator
+2025-04-18 02:55:51,933 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:55:51,933 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:55:51,935 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:56:26,246 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:56:26,246 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:56:26,246 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:56:26,642 - root - INFO - Monitoring server stopped
+2025-04-18 02:56:26,643 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:56:26,643 - src.simulator - INFO - Simulation ended. Generated 34 readings with 1 errors (97.06% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.63 MB)
+2025-04-18 02:56:27,171 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:56:27,184 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:56:27,184 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:56:27,184 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:56:27,185 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:56:27,192 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:56:27,194 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:56:27,194 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:56:27,195 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:56:27,195 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:56:27,196 - root - INFO - Initializing anomaly generator for sensor: NEWY_JMSFVS
+2025-04-18 02:56:27,197 - root - INFO -   Firmware: 1.4
+2025-04-18 02:56:27,197 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:56:27,198 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:56:27,199 - root - INFO -   Location: New York City
+2025-04-18 02:56:27,200 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:56:27,200 - root - INFO - Starting sensor simulator
+2025-04-18 02:56:27,200 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:56:27,201 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:56:27,203 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:57:00,553 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:57:00,554 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:57:00,554 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:57:00,888 - root - INFO - Monitoring server stopped
+2025-04-18 02:57:00,889 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:57:00,889 - src.simulator - INFO - Simulation ended. Generated 33 readings with 1 errors (96.97% success rate). Memory usage: 0.00 MB (peak: 0.00 MB, initial: 41.58 MB)
+2025-04-18 02:57:01,315 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:57:01,322 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:57:01,322 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:57:01,322 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:57:01,322 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:57:01,324 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:57:01,325 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:57:01,325 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:57:01,325 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:57:01,325 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:57:01,325 - root - INFO - Initializing anomaly generator for sensor: NEWY_2TAZI6
+2025-04-18 02:57:01,325 - root - INFO -   Firmware: 1.4
+2025-04-18 02:57:01,325 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:57:01,325 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:57:01,326 - root - INFO -   Location: New York City
+2025-04-18 02:57:01,326 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:57:01,326 - root - INFO - Starting sensor simulator
+2025-04-18 02:57:01,326 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:57:01,326 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:57:01,326 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 02:58:14,160 - SensorDatabase - ERROR - Error storing reading: no such table: sensor_readings
+2025-04-18 02:58:14,162 - src.simulator - ERROR - Error processing reading: no such table: sensor_readings
+2025-04-18 02:58:14,162 - src.simulator - ERROR - Failed to process reading
+2025-04-18 02:58:14,374 - root - INFO - Monitoring server stopped
+2025-04-18 02:58:14,375 - root - INFO - Stopped configuration file watcher
+2025-04-18 02:58:14,376 - src.simulator - INFO - Simulation ended. Generated 72 readings with 1 errors (98.61% success rate). Memory usage: 41.77 MB (peak: 41.77 MB, initial: 41.64 MB)
+2025-04-18 02:58:14,944 - SensorDatabase - WARNING - Old database schema detected. Removing old database file.
+2025-04-18 02:58:14,951 - SensorDatabase - INFO - Database initialized successfully
+2025-04-18 02:58:14,951 - src.location - INFO - Using configured location: NOT_PROVIDED at (NOT_PROVIDED, NOT_PROVIDED)
+2025-04-18 02:58:14,952 - src.simulator - INFO - Using configured location: New York City
+2025-04-18 02:58:14,952 - src.simulator - INFO - Sensor initialized with location: New York City
+2025-04-18 02:58:14,954 - root - INFO - Configuration loaded from /app/config.yaml
+2025-04-18 02:58:14,954 - root - INFO - Node identity loaded from node_identity.json
+2025-04-18 02:58:14,954 - root - INFO - Overriding sensor location from environment variable: Amsterdam
+2025-04-18 02:58:14,954 - root - INFO - Overriding sensor ID from environment variable: Amsterdam0uqj
+2025-04-18 02:58:14,955 - root - INFO - Started configuration file watcher (interval: 5s)
+2025-04-18 02:58:14,955 - root - INFO - Initializing anomaly generator for sensor: NEWY_XDSK2Y
+2025-04-18 02:58:14,955 - root - INFO -   Firmware: 1.4
+2025-04-18 02:58:14,955 - root - INFO -   Model: EnvMonitor-3000
+2025-04-18 02:58:14,955 - root - INFO -   Manufacturer: SensorTech
+2025-04-18 02:58:14,955 - root - INFO -   Location: New York City
+2025-04-18 02:58:14,955 - src.simulator - INFO - Sensor simulator initialized successfully
+2025-04-18 02:58:14,955 - root - INFO - Starting sensor simulator
+2025-04-18 02:58:14,955 - src.simulator - INFO - Starting sensor simulator for 360000 seconds
+2025-04-18 02:58:14,955 - src.simulator - INFO - Generating 1 readings per second
+2025-04-18 02:58:14,956 - root - INFO - Monitoring server started on http://0.0.0.0:8080
+2025-04-18 03:00:06,576 - src.simulator - INFO - Generated 100 readings
+2025-04-18 03:54:35,179 - src.simulator - INFO - Generated 200 readings
+2025-04-18 05:28:36,393 - src.simulator - INFO - Generated 300 readings
+2025-04-18 06:01:13,201 - src.simulator - INFO - Generated 400 readings
+2025-04-18 06:02:54,180 - src.simulator - INFO - Generated 500 readings
+2025-04-18 06:04:35,255 - src.simulator - INFO - Generated 600 readings
+2025-04-18 06:06:16,474 - src.simulator - INFO - Generated 700 readings
+2025-04-18 06:07:57,827 - src.simulator - INFO - Generated 800 readings
+2025-04-18 06:09:39,081 - src.simulator - INFO - Generated 900 readings
+2025-04-18 06:11:20,204 - src.simulator - INFO - Generated 1000 readings
+2025-04-18 06:13:01,461 - src.simulator - INFO - Generated 1100 readings
+2025-04-18 06:14:42,791 - src.simulator - INFO - Generated 1200 readings
+2025-04-18 06:16:24,084 - src.simulator - INFO - Generated 1300 readings
+2025-04-18 06:18:05,665 - src.simulator - INFO - Generated 1400 readings
+2025-04-18 06:19:46,975 - src.simulator - INFO - Generated 1500 readings
+2025-04-18 06:21:28,185 - src.simulator - INFO - Generated 1600 readings
+2025-04-18 06:23:09,678 - src.simulator - INFO - Generated 1700 readings
+2025-04-18 06:24:51,345 - src.simulator - INFO - Generated 1800 readings
+2025-04-18 06:26:32,746 - src.simulator - INFO - Generated 1900 readings
+2025-04-18 06:28:14,278 - src.simulator - INFO - Generated 2000 readings
+2025-04-18 06:29:55,791 - src.simulator - INFO - Generated 2100 readings
+2025-04-18 06:31:36,751 - src.simulator - INFO - Generated 2200 readings
+2025-04-18 06:33:17,946 - src.simulator - INFO - Generated 2300 readings
+2025-04-18 06:34:59,020 - src.simulator - INFO - Generated 2400 readings
+2025-04-18 06:36:40,756 - src.simulator - INFO - Generated 2500 readings
+2025-04-18 06:38:21,923 - src.simulator - INFO - Generated 2600 readings
+2025-04-18 06:40:03,399 - src.simulator - INFO - Generated 2700 readings
+2025-04-18 06:41:45,472 - src.simulator - INFO - Generated 2800 readings
+2025-04-18 06:43:26,699 - src.simulator - INFO - Generated 2900 readings
+2025-04-18 06:45:08,255 - src.simulator - INFO - Generated 3000 readings
+2025-04-18 06:46:49,915 - src.simulator - INFO - Generated 3100 readings
+2025-04-18 06:48:31,409 - src.simulator - INFO - Generated 3200 readings
+2025-04-18 06:50:12,939 - src.simulator - INFO - Generated 3300 readings
+2025-04-18 06:51:54,473 - src.simulator - INFO - Generated 3400 readings
+2025-04-18 06:53:36,127 - src.simulator - INFO - Generated 3500 readings
+2025-04-18 06:55:17,953 - src.simulator - INFO - Generated 3600 readings
+2025-04-18 06:56:59,383 - src.simulator - INFO - Generated 3700 readings
+2025-04-18 06:58:41,003 - src.simulator - INFO - Generated 3800 readings
+2025-04-18 07:00:22,568 - src.simulator - INFO - Generated 3900 readings
+2025-04-18 07:02:04,253 - src.simulator - INFO - Generated 4000 readings
+2025-04-18 07:03:46,096 - src.simulator - INFO - Generated 4100 readings
+2025-04-18 07:05:27,816 - src.simulator - INFO - Generated 4200 readings
+2025-04-18 07:07:09,506 - src.simulator - INFO - Generated 4300 readings
+2025-04-18 07:08:51,223 - src.simulator - INFO - Generated 4400 readings
+2025-04-18 07:10:32,857 - src.simulator - INFO - Generated 4500 readings
+2025-04-18 07:12:14,542 - src.simulator - INFO - Generated 4600 readings
+2025-04-18 07:13:56,057 - src.simulator - INFO - Generated 4700 readings
+2025-04-18 07:15:37,967 - src.simulator - INFO - Generated 4800 readings
+2025-04-18 07:17:19,607 - src.simulator - INFO - Generated 4900 readings
+2025-04-18 07:19:01,324 - src.simulator - INFO - Generated 5000 readings
+2025-04-18 07:20:43,009 - src.simulator - INFO - Generated 5100 readings
+2025-04-18 07:22:24,733 - src.simulator - INFO - Generated 5200 readings
+2025-04-18 07:24:06,639 - src.simulator - INFO - Generated 5300 readings
+2025-04-18 07:25:48,509 - src.simulator - INFO - Generated 5400 readings
+2025-04-18 07:27:30,128 - src.simulator - INFO - Generated 5500 readings
+2025-04-18 07:29:11,537 - src.simulator - INFO - Generated 5600 readings
+2025-04-18 07:30:52,765 - src.simulator - INFO - Generated 5700 readings
+2025-04-18 07:32:34,147 - src.simulator - INFO - Generated 5800 readings
+2025-04-18 07:34:15,620 - src.simulator - INFO - Generated 5900 readings
+2025-04-18 07:35:56,997 - src.simulator - INFO - Generated 6000 readings
+2025-04-18 07:37:38,727 - src.simulator - INFO - Generated 6100 readings
+2025-04-18 07:39:20,604 - src.simulator - INFO - Generated 6200 readings
+2025-04-18 07:41:02,288 - src.simulator - INFO - Generated 6300 readings
+2025-04-18 07:42:43,919 - src.simulator - INFO - Generated 6400 readings
+2025-04-18 07:44:25,517 - src.simulator - INFO - Generated 6500 readings
+2025-04-18 07:46:07,225 - src.simulator - INFO - Generated 6600 readings
+2025-04-18 07:47:48,869 - src.simulator - INFO - Generated 6700 readings
+2025-04-18 07:49:30,634 - src.simulator - INFO - Generated 6800 readings
+2025-04-18 07:51:12,376 - src.simulator - INFO - Generated 6900 readings
+2025-04-18 07:52:53,905 - src.simulator - INFO - Generated 7000 readings
+2025-04-18 07:54:35,443 - src.simulator - INFO - Generated 7100 readings
+2025-04-18 07:56:17,031 - src.simulator - INFO - Generated 7200 readings
+2025-04-18 07:57:58,622 - src.simulator - INFO - Generated 7300 readings
+2025-04-18 07:59:40,252 - src.simulator - INFO - Generated 7400 readings
+2025-04-18 08:01:22,407 - src.simulator - INFO - Generated 7500 readings
+2025-04-18 08:03:04,474 - src.simulator - INFO - Generated 7600 readings
+2025-04-18 08:04:46,356 - src.simulator - INFO - Generated 7700 readings
+2025-04-18 08:06:28,256 - src.simulator - INFO - Generated 7800 readings
+2025-04-18 08:08:10,208 - src.simulator - INFO - Generated 7900 readings
+2025-04-18 08:09:52,328 - src.simulator - INFO - Generated 8000 readings
+2025-04-18 08:11:34,268 - src.simulator - INFO - Generated 8100 readings
+2025-04-18 08:13:16,202 - src.simulator - INFO - Generated 8200 readings
+2025-04-18 08:14:57,887 - src.simulator - INFO - Generated 8300 readings
+2025-04-18 08:16:39,178 - src.simulator - INFO - Generated 8400 readings
+2025-04-18 08:18:20,577 - src.simulator - INFO - Generated 8500 readings
+2025-04-18 08:20:02,291 - src.simulator - INFO - Generated 8600 readings
+2025-04-18 08:21:44,212 - src.simulator - INFO - Generated 8700 readings
+2025-04-18 08:23:26,194 - src.simulator - INFO - Generated 8800 readings
+2025-04-18 08:25:07,847 - src.simulator - INFO - Generated 8900 readings
+2025-04-18 08:26:49,735 - src.simulator - INFO - Generated 9000 readings
+2025-04-18 08:28:31,268 - src.simulator - INFO - Generated 9100 readings
+2025-04-18 08:30:13,240 - src.simulator - INFO - Generated 9200 readings
+2025-04-18 08:31:54,824 - src.simulator - INFO - Generated 9300 readings
+2025-04-18 08:33:36,322 - src.simulator - INFO - Generated 9400 readings
+2025-04-18 08:35:17,922 - src.simulator - INFO - Generated 9500 readings
+2025-04-18 08:36:59,252 - src.simulator - INFO - Generated 9600 readings
+2025-04-18 08:38:40,805 - src.simulator - INFO - Generated 9700 readings
+2025-04-18 08:40:22,505 - src.simulator - INFO - Generated 9800 readings
+2025-04-18 08:42:04,366 - src.simulator - INFO - Generated 9900 readings
+2025-04-18 08:43:46,141 - src.simulator - INFO - Generated 10000 readings
+2025-04-18 08:45:28,077 - src.simulator - INFO - Generated 10100 readings
+2025-04-18 08:47:09,559 - src.simulator - INFO - Generated 10200 readings
+2025-04-18 08:48:50,713 - src.simulator - INFO - Generated 10300 readings
+2025-04-18 08:50:32,597 - src.simulator - INFO - Generated 10400 readings
+2025-04-18 08:52:14,636 - src.simulator - INFO - Generated 10500 readings
+2025-04-18 08:53:56,527 - src.simulator - INFO - Generated 10600 readings
+2025-04-18 08:55:38,243 - src.simulator - INFO - Generated 10700 readings
+2025-04-18 08:57:20,005 - src.simulator - INFO - Generated 10800 readings
+2025-04-18 08:59:01,492 - src.simulator - INFO - Generated 10900 readings
+2025-04-18 09:00:43,538 - src.simulator - INFO - Generated 11000 readings
+2025-04-18 09:02:25,736 - src.simulator - INFO - Generated 11100 readings
+2025-04-18 09:04:07,882 - src.simulator - INFO - Generated 11200 readings
+2025-04-18 09:05:49,903 - src.simulator - INFO - Generated 11300 readings
+2025-04-18 09:07:31,903 - src.simulator - INFO - Generated 11400 readings
+2025-04-18 09:09:13,774 - src.simulator - INFO - Generated 11500 readings
+2025-04-18 09:10:55,523 - src.simulator - INFO - Generated 11600 readings
+2025-04-18 09:12:37,271 - src.simulator - INFO - Generated 11700 readings
+2025-04-18 09:14:19,077 - src.simulator - INFO - Generated 11800 readings
+2025-04-18 09:16:01,053 - src.simulator - INFO - Generated 11900 readings
+2025-04-18 09:17:42,895 - src.simulator - INFO - Generated 12000 readings
+2025-04-18 09:19:24,726 - src.simulator - INFO - Generated 12100 readings
+2025-04-18 09:21:06,528 - src.simulator - INFO - Generated 12200 readings
+2025-04-18 09:22:48,259 - src.simulator - INFO - Generated 12300 readings
+2025-04-18 09:24:30,187 - src.simulator - INFO - Generated 12400 readings
+2025-04-18 09:26:11,883 - src.simulator - INFO - Generated 12500 readings
+2025-04-18 09:27:53,603 - src.simulator - INFO - Generated 12600 readings
+2025-04-18 09:29:35,358 - src.simulator - INFO - Generated 12700 readings
+2025-04-18 09:31:17,008 - src.simulator - INFO - Generated 12800 readings
+2025-04-18 09:32:58,943 - src.simulator - INFO - Generated 12900 readings
+2025-04-18 09:34:41,050 - src.simulator - INFO - Generated 13000 readings
+2025-04-18 09:36:22,663 - src.simulator - INFO - Generated 13100 readings
+2025-04-18 09:38:04,691 - src.simulator - INFO - Generated 13200 readings
+2025-04-18 09:39:46,446 - src.simulator - INFO - Generated 13300 readings
+2025-04-18 09:41:28,248 - src.simulator - INFO - Generated 13400 readings
+2025-04-18 09:43:10,045 - src.simulator - INFO - Generated 13500 readings
+2025-04-18 09:44:51,745 - src.simulator - INFO - Generated 13600 readings
+2025-04-18 09:46:34,109 - src.simulator - INFO - Generated 13700 readings
+2025-04-18 09:48:15,826 - src.simulator - INFO - Generated 13800 readings
+2025-04-18 09:49:57,613 - src.simulator - INFO - Generated 13900 readings
+2025-04-18 09:51:39,405 - src.simulator - INFO - Generated 14000 readings
+2025-04-18 09:53:20,858 - src.simulator - INFO - Generated 14100 readings
+2025-04-18 09:55:02,592 - src.simulator - INFO - Generated 14200 readings
+2025-04-18 09:56:44,289 - src.simulator - INFO - Generated 14300 readings
+2025-04-18 09:58:26,111 - src.simulator - INFO - Generated 14400 readings
+2025-04-18 10:00:08,056 - src.simulator - INFO - Generated 14500 readings
+2025-04-18 10:01:50,118 - src.simulator - INFO - Generated 14600 readings
+2025-04-18 10:03:32,038 - src.simulator - INFO - Generated 14700 readings
+2025-04-18 10:05:13,818 - src.simulator - INFO - Generated 14800 readings
+2025-04-18 10:06:55,761 - src.simulator - INFO - Generated 14900 readings
+2025-04-18 10:08:37,512 - src.simulator - INFO - Generated 15000 readings
+2025-04-18 10:10:18,813 - src.simulator - INFO - Generated 15100 readings
+2025-04-18 10:12:00,312 - src.simulator - INFO - Generated 15200 readings
+2025-04-18 10:13:42,434 - src.simulator - INFO - Generated 15300 readings
+2025-04-18 10:15:24,332 - src.simulator - INFO - Generated 15400 readings
+2025-04-18 10:17:06,188 - src.simulator - INFO - Generated 15500 readings
+2025-04-18 10:18:47,330 - src.simulator - INFO - Generated 15600 readings
+2025-04-18 10:20:28,501 - src.simulator - INFO - Generated 15700 readings
+2025-04-18 10:22:10,544 - src.simulator - INFO - Generated 15800 readings
+2025-04-18 10:23:52,160 - src.simulator - INFO - Generated 15900 readings
+2025-04-18 10:25:33,855 - src.simulator - INFO - Generated 16000 readings
+2025-04-18 10:27:15,869 - src.simulator - INFO - Generated 16100 readings
+2025-04-18 10:28:57,920 - src.simulator - INFO - Generated 16200 readings
+2025-04-18 10:30:39,798 - src.simulator - INFO - Generated 16300 readings
+2025-04-18 10:32:21,415 - src.simulator - INFO - Generated 16400 readings
+2025-04-18 10:34:02,920 - src.simulator - INFO - Generated 16500 readings
+2025-04-18 10:35:44,528 - src.simulator - INFO - Generated 16600 readings
+2025-04-18 10:37:26,455 - src.simulator - INFO - Generated 16700 readings
+2025-04-18 10:39:08,430 - src.simulator - INFO - Generated 16800 readings
+2025-04-18 10:40:50,490 - src.simulator - INFO - Generated 16900 readings
+2025-04-18 10:42:32,227 - src.simulator - INFO - Generated 17000 readings
+2025-04-18 10:44:14,042 - src.simulator - INFO - Generated 17100 readings
+2025-04-18 10:45:55,945 - src.simulator - INFO - Generated 17200 readings
+2025-04-18 10:47:37,668 - src.simulator - INFO - Generated 17300 readings
+2025-04-18 10:49:19,498 - src.simulator - INFO - Generated 17400 readings
+2025-04-18 10:51:01,294 - src.simulator - INFO - Generated 17500 readings
+2025-04-18 10:52:43,080 - src.simulator - INFO - Generated 17600 readings
+2025-04-18 10:54:24,836 - src.simulator - INFO - Generated 17700 readings
+2025-04-18 10:56:06,508 - src.simulator - INFO - Generated 17800 readings
+2025-04-18 10:57:48,259 - src.simulator - INFO - Generated 17900 readings
+2025-04-18 10:59:30,209 - src.simulator - INFO - Generated 18000 readings
+2025-04-18 11:01:12,267 - src.simulator - INFO - Generated 18100 readings
+2025-04-18 11:02:54,138 - src.simulator - INFO - Generated 18200 readings
+2025-04-18 11:04:36,119 - src.simulator - INFO - Generated 18300 readings
+2025-04-18 11:06:18,044 - src.simulator - INFO - Generated 18400 readings
+2025-04-18 11:07:59,983 - src.simulator - INFO - Generated 18500 readings
+2025-04-18 11:09:41,797 - src.simulator - INFO - Generated 18600 readings
+2025-04-18 11:11:23,201 - src.simulator - INFO - Generated 18700 readings
+2025-04-18 11:13:04,853 - src.simulator - INFO - Generated 18800 readings
+2025-04-18 11:14:46,654 - src.simulator - INFO - Generated 18900 readings
+2025-04-18 11:16:28,667 - src.simulator - INFO - Generated 19000 readings
+2025-04-18 11:18:10,624 - src.simulator - INFO - Generated 19100 readings
+2025-04-18 11:19:52,314 - src.simulator - INFO - Generated 19200 readings
+2025-04-18 11:21:33,962 - src.simulator - INFO - Generated 19300 readings
+2025-04-18 11:23:15,806 - src.simulator - INFO - Generated 19400 readings
+2025-04-18 11:24:57,855 - src.simulator - INFO - Generated 19500 readings
+2025-04-18 11:26:39,507 - src.simulator - INFO - Generated 19600 readings
+2025-04-18 11:28:21,512 - src.simulator - INFO - Generated 19700 readings
+2025-04-18 11:30:03,170 - src.simulator - INFO - Generated 19800 readings
+2025-04-18 11:31:44,954 - src.simulator - INFO - Generated 19900 readings
+2025-04-18 11:33:26,992 - src.simulator - INFO - Generated 20000 readings
+2025-04-18 11:35:08,774 - src.simulator - INFO - Generated 20100 readings
+2025-04-18 11:36:50,220 - src.simulator - INFO - Generated 20200 readings
+2025-04-18 11:38:32,035 - src.simulator - INFO - Generated 20300 readings
+2025-04-18 11:40:14,028 - src.simulator - INFO - Generated 20400 readings
+2025-04-18 11:41:55,883 - src.simulator - INFO - Generated 20500 readings
+2025-04-18 11:43:37,547 - src.simulator - INFO - Generated 20600 readings
+2025-04-18 11:45:19,159 - src.simulator - INFO - Generated 20700 readings
+2025-04-18 11:47:01,130 - src.simulator - INFO - Generated 20800 readings
+2025-04-18 11:48:42,697 - src.simulator - INFO - Generated 20900 readings
+2025-04-18 11:50:24,276 - src.simulator - INFO - Generated 21000 readings
+2025-04-18 11:52:06,176 - src.simulator - INFO - Generated 21100 readings
+2025-04-18 11:53:48,014 - src.simulator - INFO - Generated 21200 readings
+2025-04-18 11:55:29,687 - src.simulator - INFO - Generated 21300 readings
+2025-04-18 11:57:11,393 - src.simulator - INFO - Generated 21400 readings
+2025-04-18 11:58:53,013 - src.simulator - INFO - Generated 21500 readings
+2025-04-18 12:00:34,886 - src.simulator - INFO - Generated 21600 readings
+2025-04-18 12:02:16,601 - src.simulator - INFO - Generated 21700 readings
+2025-04-18 12:03:58,589 - src.simulator - INFO - Generated 21800 readings
+2025-04-18 12:05:40,339 - src.simulator - INFO - Generated 21900 readings
+2025-04-18 12:07:22,194 - src.simulator - INFO - Generated 22000 readings
+2025-04-18 12:09:03,924 - src.simulator - INFO - Generated 22100 readings
+2025-04-18 12:10:45,051 - src.simulator - INFO - Generated 22200 readings
+2025-04-18 12:12:26,530 - src.simulator - INFO - Generated 22300 readings
+2025-04-18 12:14:08,006 - src.simulator - INFO - Generated 22400 readings
+2025-04-18 12:15:49,506 - src.simulator - INFO - Generated 22500 readings
+2025-04-18 12:17:30,981 - src.simulator - INFO - Generated 22600 readings
+2025-04-18 12:19:12,562 - src.simulator - INFO - Generated 22700 readings
+2025-04-18 12:20:54,018 - src.simulator - INFO - Generated 22800 readings
+2025-04-18 12:22:35,420 - src.simulator - INFO - Generated 22900 readings
+2025-04-18 12:24:16,789 - src.simulator - INFO - Generated 23000 readings
+2025-04-18 12:25:58,394 - src.simulator - INFO - Generated 23100 readings
+2025-04-18 12:27:40,190 - src.simulator - INFO - Generated 23200 readings
+2025-04-18 12:29:22,137 - src.simulator - INFO - Generated 23300 readings
+2025-04-18 12:31:04,085 - src.simulator - INFO - Generated 23400 readings
+2025-04-18 12:32:45,939 - src.simulator - INFO - Generated 23500 readings
+2025-04-18 12:34:27,702 - src.simulator - INFO - Generated 23600 readings
+2025-04-18 12:36:09,442 - src.simulator - INFO - Generated 23700 readings
+2025-04-18 12:37:51,365 - src.simulator - INFO - Generated 23800 readings
+2025-04-18 12:39:33,072 - src.simulator - INFO - Generated 23900 readings
+2025-04-18 12:41:15,157 - src.simulator - INFO - Generated 24000 readings
+2025-04-18 12:42:56,748 - src.simulator - INFO - Generated 24100 readings
+2025-04-18 12:44:38,341 - src.simulator - INFO - Generated 24200 readings
+2025-04-18 12:46:19,986 - src.simulator - INFO - Generated 24300 readings
+2025-04-18 12:48:01,495 - src.simulator - INFO - Generated 24400 readings
+2025-04-18 12:49:42,537 - src.simulator - INFO - Generated 24500 readings
+2025-04-18 12:51:24,120 - src.simulator - INFO - Generated 24600 readings
+2025-04-18 12:53:06,260 - src.simulator - INFO - Generated 24700 readings
+2025-04-18 12:54:48,032 - src.simulator - INFO - Generated 24800 readings
+2025-04-18 12:56:29,765 - src.simulator - INFO - Generated 24900 readings
+2025-04-18 12:58:11,434 - src.simulator - INFO - Generated 25000 readings
+2025-04-18 12:59:53,127 - src.simulator - INFO - Generated 25100 readings
+2025-04-18 13:01:34,888 - src.simulator - INFO - Generated 25200 readings
+2025-04-18 13:03:17,026 - src.simulator - INFO - Generated 25300 readings
+2025-04-18 13:04:58,907 - src.simulator - INFO - Generated 25400 readings
+2025-04-18 13:06:40,612 - src.simulator - INFO - Generated 25500 readings
+2025-04-18 13:08:22,222 - src.simulator - INFO - Generated 25600 readings
+2025-04-18 13:10:03,906 - src.simulator - INFO - Generated 25700 readings
+2025-04-18 13:11:45,720 - src.simulator - INFO - Generated 25800 readings
+2025-04-18 13:13:27,747 - src.simulator - INFO - Generated 25900 readings
+2025-04-18 13:15:09,526 - src.simulator - INFO - Generated 26000 readings
+2025-04-18 13:16:50,961 - src.simulator - INFO - Generated 26100 readings
+2025-04-18 13:18:32,751 - src.simulator - INFO - Generated 26200 readings
+2025-04-18 13:20:14,038 - src.simulator - INFO - Generated 26300 readings
+2025-04-18 13:21:55,920 - src.simulator - INFO - Generated 26400 readings
+2025-04-18 13:23:37,840 - src.simulator - INFO - Generated 26500 readings
+2025-04-18 13:25:19,322 - src.simulator - INFO - Generated 26600 readings
+2025-04-18 13:27:01,111 - src.simulator - INFO - Generated 26700 readings
+2025-04-18 13:28:42,801 - src.simulator - INFO - Generated 26800 readings
+2025-04-18 13:30:24,677 - src.simulator - INFO - Generated 26900 readings
+2025-04-18 13:32:06,693 - src.simulator - INFO - Generated 27000 readings
+2025-04-18 13:33:48,472 - src.simulator - INFO - Generated 27100 readings
+2025-04-18 13:35:30,208 - src.simulator - INFO - Generated 27200 readings
+2025-04-18 13:37:11,372 - src.simulator - INFO - Generated 27300 readings
+2025-04-18 13:38:52,815 - src.simulator - INFO - Generated 27400 readings
+2025-04-18 13:40:34,620 - src.simulator - INFO - Generated 27500 readings
+2025-04-18 13:42:16,715 - src.simulator - INFO - Generated 27600 readings
+2025-04-18 13:43:58,434 - src.simulator - INFO - Generated 27700 readings
+2025-04-18 13:45:40,263 - src.simulator - INFO - Generated 27800 readings
+2025-04-18 13:47:21,232 - src.simulator - INFO - Generated 27900 readings
+2025-04-18 13:49:03,015 - src.simulator - INFO - Generated 28000 readings
+2025-04-18 13:50:44,907 - src.simulator - INFO - Generated 28100 readings
+2025-04-18 13:52:26,864 - src.simulator - INFO - Generated 28200 readings
+2025-04-18 13:54:08,434 - src.simulator - INFO - Generated 28300 readings
+2025-04-18 13:55:49,955 - src.simulator - INFO - Generated 28400 readings
+2025-04-18 13:57:31,658 - src.simulator - INFO - Generated 28500 readings
+2025-04-18 13:59:13,271 - src.simulator - INFO - Generated 28600 readings
+2025-04-18 14:00:54,983 - src.simulator - INFO - Generated 28700 readings
+2025-04-18 14:02:36,546 - src.simulator - INFO - Generated 28800 readings
+2025-04-18 14:04:18,020 - src.simulator - INFO - Generated 28900 readings
+2025-04-18 14:05:59,537 - src.simulator - INFO - Generated 29000 readings
+2025-04-18 14:07:41,184 - src.simulator - INFO - Generated 29100 readings
+2025-04-18 14:09:22,570 - src.simulator - INFO - Generated 29200 readings
+2025-04-18 14:11:04,498 - src.simulator - INFO - Generated 29300 readings
+2025-04-18 14:12:46,154 - src.simulator - INFO - Generated 29400 readings
+2025-04-18 14:14:27,740 - src.simulator - INFO - Generated 29500 readings
+2025-04-18 14:16:09,483 - src.simulator - INFO - Generated 29600 readings
+2025-04-18 14:17:51,447 - src.simulator - INFO - Generated 29700 readings
+2025-04-18 14:19:33,443 - src.simulator - INFO - Generated 29800 readings
+2025-04-18 14:21:15,121 - src.simulator - INFO - Generated 29900 readings
+2025-04-18 14:22:56,924 - src.simulator - INFO - Generated 30000 readings
+2025-04-18 14:24:38,685 - src.simulator - INFO - Generated 30100 readings
+2025-04-18 14:26:20,282 - src.simulator - INFO - Generated 30200 readings
+2025-04-18 14:28:01,995 - src.simulator - INFO - Generated 30300 readings
+2025-04-18 14:29:43,924 - src.simulator - INFO - Generated 30400 readings
+2025-04-18 14:31:25,926 - src.simulator - INFO - Generated 30500 readings
+2025-04-18 14:33:07,669 - src.simulator - INFO - Generated 30600 readings
+2025-04-18 14:34:49,401 - src.simulator - INFO - Generated 30700 readings
+2025-04-18 14:36:31,316 - src.simulator - INFO - Generated 30800 readings
+2025-04-18 14:38:12,911 - src.simulator - INFO - Generated 30900 readings
+2025-04-18 14:39:54,620 - src.simulator - INFO - Generated 31000 readings
+2025-04-18 14:41:36,706 - src.simulator - INFO - Generated 31100 readings
+2025-04-18 14:43:18,542 - src.simulator - INFO - Generated 31200 readings
+2025-04-18 14:45:00,287 - src.simulator - INFO - Generated 31300 readings
+2025-04-18 14:46:42,131 - src.simulator - INFO - Generated 31400 readings
+2025-04-18 14:48:24,178 - src.simulator - INFO - Generated 31500 readings
+2025-04-18 14:50:05,993 - src.simulator - INFO - Generated 31600 readings
+2025-04-18 14:51:47,710 - src.simulator - INFO - Generated 31700 readings
+2025-04-18 14:53:29,641 - src.simulator - INFO - Generated 31800 readings
+2025-04-18 14:55:11,388 - src.simulator - INFO - Generated 31900 readings
+2025-04-18 14:56:52,918 - src.simulator - INFO - Generated 32000 readings
+2025-04-18 14:58:34,091 - src.simulator - INFO - Generated 32100 readings
+2025-04-18 15:00:15,384 - src.simulator - INFO - Generated 32200 readings
+2025-04-18 15:01:57,128 - src.simulator - INFO - Generated 32300 readings
+2025-04-18 15:03:38,862 - src.simulator - INFO - Generated 32400 readings
+2025-04-18 15:05:20,518 - src.simulator - INFO - Generated 32500 readings
+2025-04-18 15:07:02,322 - src.simulator - INFO - Generated 32600 readings
+2025-04-18 15:08:43,985 - src.simulator - INFO - Generated 32700 readings
+2025-04-18 15:10:25,568 - src.simulator - INFO - Generated 32800 readings
+2025-04-18 15:12:07,473 - src.simulator - INFO - Generated 32900 readings
+2025-04-18 15:13:49,005 - src.simulator - INFO - Generated 33000 readings
+2025-04-18 15:15:30,728 - src.simulator - INFO - Generated 33100 readings
+2025-04-18 15:17:12,524 - src.simulator - INFO - Generated 33200 readings
+2025-04-18 15:18:54,390 - src.simulator - INFO - Generated 33300 readings
+2025-04-18 15:20:36,689 - src.simulator - INFO - Generated 33400 readings
+2025-04-18 15:22:18,181 - src.simulator - INFO - Generated 33500 readings
+2025-04-18 15:23:59,718 - src.simulator - INFO - Generated 33600 readings
+2025-04-18 15:25:41,427 - src.simulator - INFO - Generated 33700 readings
+2025-04-18 15:27:23,118 - src.simulator - INFO - Generated 33800 readings
+2025-04-18 15:29:04,583 - src.simulator - INFO - Generated 33900 readings
+2025-04-18 15:30:46,053 - src.simulator - INFO - Generated 34000 readings
+2025-04-18 15:32:28,078 - src.simulator - INFO - Generated 34100 readings
+2025-04-18 15:34:09,637 - src.simulator - INFO - Generated 34200 readings
+2025-04-18 15:35:51,216 - src.simulator - INFO - Generated 34300 readings
+2025-04-18 15:37:33,015 - src.simulator - INFO - Generated 34400 readings
+2025-04-18 15:39:14,888 - src.simulator - INFO - Generated 34500 readings
+2025-04-18 15:40:56,748 - src.simulator - INFO - Generated 34600 readings
+2025-04-18 15:42:38,740 - src.simulator - INFO - Generated 34700 readings
+2025-04-18 15:44:20,706 - src.simulator - INFO - Generated 34800 readings
+2025-04-18 15:46:02,787 - src.simulator - INFO - Generated 34900 readings
+2025-04-18 15:47:44,531 - src.simulator - INFO - Generated 35000 readings
+2025-04-18 15:49:26,317 - src.simulator - INFO - Generated 35100 readings
+2025-04-18 15:51:07,888 - src.simulator - INFO - Generated 35200 readings

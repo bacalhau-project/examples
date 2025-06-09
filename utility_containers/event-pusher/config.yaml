@@ -1,0 +1,19 @@
+# Event Pusher Configuration File
+
+# HTTP mode configuration
+method: "GET" # HTTP method (GET, POST, PUT, DELETE)
+url: "https://httpbin.org/get" # HTTP URL to send requests to
+headers: "Accept: application/json" # HTTP headers in format "Key1: Value1\nKey2: Value2"
+body: "" # HTTP request body
+
+# Event pusher mode configuration
+region: "us-east-2" # AWS region
+access_key: "AKIA3FLDYOBFFHBGHZ4P" # AWS access key ID
+secret_key: "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" # AWS secret access key
+queue_url: "https://sqs.us-east-2.amazonaws.com/767397752906/scale-tester-events.fifo" # SQS queue URL
+color: "#4287fa" # Event color (hex code)
+max_interval_seconds: 5 # Maximum interval between messages in seconds
+random_off: false # Disable randomization of intervals
+max_messages: 0 # Max messages to send (0 = unlimited)
+simulate: false # Simulate mode (no actual AWS API calls)
+mode: "event-pusher" # Mode (auto, http, event-pusher)

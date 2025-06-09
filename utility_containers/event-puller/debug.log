@@ -1,0 +1,57 @@
+2025/04/08 09:30:34.021766 Starting environment configuration...
+2025/04/08 09:30:34.021950 No ENV_FILE specified, looking for .env in current directory
+2025/04/08 09:30:34.022305 Successfully loaded environment from default .env file
+2025/04/08 09:30:34.022336 Checking for required environment variables...
+2025/04/08 09:30:34.022341 Found required environment variable: SQS_QUEUE_URL = https://sqs.us-east-2.amazonaws.com/767397752906/scale-tester-events.fifo
+2025/04/08 09:30:34.022346 Found required environment variable: AWS_REGION = us-east-2
+2025/04/08 09:30:34.022351 Found required environment variable: AWS_ACCESS_KEY_ID = AKIA3FLDYOBFCMWN4SFC
+2025/04/08 09:30:34.022354 Found required environment variable: AWS_SECRET_ACCESS_KEY = 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
+2025/04/08 09:30:34.022358 Configuration settings:
+2025/04/08 09:30:34.022361   SQS_QUEUE_URL = https://sqs.us-east-2.amazonaws.com/767397752906/scale-tester-events.fifo
+2025/04/08 09:30:34.022364   AWS_REGION = us-east-2
+2025/04/08 09:30:34.022367   AWS_ACCESS_KEY_ID = AKIA3FLDYOBFCMWN4SFC
+2025/04/08 09:30:34.022371   AWS_SECRET_ACCESS_KEY = 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
+2025/04/08 09:30:34.022378   POLL_INTERVAL = 100ms (user-defined)
+2025/04/08 09:30:34.022381   MAX_MESSAGES = 10 (user-defined)
+2025/04/08 09:30:34.022385   NUM_WORKERS = 5 (user-defined)
+2025/04/08 09:30:34.022392   WS_BATCH_SIZE = 100 (user-defined)
+2025/04/08 09:30:34.022395   BUFFER_SIZE = 1000 (user-defined)
+2025/04/08 09:30:34.022398   MAX_RETRY_ATTEMPTS = 5 (user-defined)
+2025/04/08 09:30:34.022401   INITIAL_RETRY_DELAY = 100ms (user-defined)
+2025/04/08 09:30:34.022405   MAX_RETRY_DELAY = 5s (user-defined)
+2025/04/08 09:30:34.022411   SQS_VISIBILITY_TIMEOUT = 30 (user-defined)
+2025/04/08 09:30:34.022414   SQS_WAIT_TIME = 0 (user-defined)
+2025/04/08 09:30:34.022418 Cosmos DB integration enabled:
+2025/04/08 09:30:34.022421   COSMOS_ENDPOINT = https://cosmos-bacalhau-13843.documents.azure.com:443/
+2025/04/08 09:30:34.022425   COSMOS_KEY = QbmvsWX6ogsCvaUiazYMNLpGMNMixdr3pRpjHKw7I5UXasG9inYTXomadI4k5pCSw1oVaJAk78q4ACDb9YOMeQ==
+2025/04/08 09:30:34.022428   COSMOS_DATABASE = LogDatabase
+2025/04/08 09:30:34.022431   COSMOS_CONTAINER = global-telemetry
+2025/04/08 09:30:34.022434   COSMOS_BATCH_SIZE = 100 (user-defined)
+2025/04/08 09:30:34.022438   AZURE_REGION = eastus (user-defined)
+2025/04/08 09:30:34.022441 Environment configuration completed successfully
+2025/04/08 09:30:34.469112 Starting HTTP server on port 8080
+2025/04/08 09:30:34.469490 Worker 1 started
+2025/04/08 09:30:34.469549 Worker 3 started
+2025/04/08 09:30:34.469684 Worker 4 started
+2025/04/08 09:30:34.469860 Worker 2 started
+2025/04/08 09:30:34.469947 Worker 3 started
+2025/04/08 09:30:34.469997 Worker 0 started
+2025/04/08 09:30:34.469499 Worker 0 started
+2025/04/08 09:30:34.470178 Worker 4 started
+2025/04/08 09:30:34.469524 Worker 1 started
+2025/04/08 09:30:34.469537 Worker 2 started
+2025/04/08 10:43:56.116388 Worker 2 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116410 Worker 2 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116419 Worker 3 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116427 Worker 4 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116419 Worker 4 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116511 Worker 1 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.116829 Worker 0 error receiving messages: failed to receive messages: RequestCanceled: request context canceled
+caused by: context canceled
+2025/04/08 10:43:56.122183 Worker 1 shutting down
