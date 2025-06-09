@@ -61,3 +61,4 @@ event-pusher/*.json
 *.specstory*
 *debug.log*
 *.db
+*.bundle
