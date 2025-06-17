@@ -4,6 +4,7 @@ services:
     image: opensearchproject/opensearch:2.9.0
     environment:
       - discovery.type=single-node
+      - plugins.security.disabled=true
     ports:
       - "9200:9200"
     networks:
@@ -15,7 +16,9 @@ services:
     networks:
       - opensearch-net
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+#      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
     depends_on:
       - opensearch
 networks:

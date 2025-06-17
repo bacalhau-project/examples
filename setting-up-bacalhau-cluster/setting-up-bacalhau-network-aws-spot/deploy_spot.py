@@ -4,8 +4,10 @@
 # dependencies = [
 #     "boto3",
 #     "botocore",
-#     "pyyaml",
 #     "rich",
+#     "aiosqlite",
+#     "aiofiles",
+#     "pyyaml",
 # ]
 # ///
 
@@ -19,7 +21,8 @@ import sqlite3
 import subprocess
 import sys
 import time
-from concurrent.futures import TimeoutError
+import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -30,35 +33,49 @@ from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 
 from util.config import Config
 from util.scripts_provider import ScriptsProvider
 
-# Formatter for logs
-log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-
-# We'll configure the logger later after parsing command-line arguments
-# to respect the verbose flag
-file_handler = None
-logging.basicConfig(level=logging.INFO)  # Default to INFO level
-
-logger = logging.getLogger(__name__)
-
 # Tag to filter instances by
 FILTER_TAG_NAME = "ManagedBy"
 FILTER_TAG_VALUE = "SpotInstanceScript"
 
-# Initialize console with auto-detection of width
+# Create console instance for rich output
 console = Console()
+
+# Set up logging to file only (no console output)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# Disable noisy boto3/botocore logging
+logging.getLogger("boto3").setLevel(logging.WARNING)
+logging.getLogger("botocore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+# Clear existing handlers to prevent any console output
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Create file handler
+try:
+    # Truncate the file by opening in 'w' mode
+    open("debug_deploy_spot.log", "w").close()
+    file_handler = logging.FileHandler("debug_deploy_spot.log")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
+        )
+    )
+    logger.addHandler(file_handler)
+    logger.debug("Logging initialized")
+except Exception as e:
+    # Don't print to console, just write to the log file if possible
+    with open("debug_deploy_spot.log", "a") as f:
+        f.write(f"Failed to set up file logging: {e}\n")
 
 config = Config("config.yaml")
 scripts_provider = ScriptsProvider(config)
@@ -77,16 +94,15 @@ current_dir = os.path.dirname(__file__)
 
 SCRIPT_DIR = "instance/scripts"
 
-# Status tracking
-all_statuses = {}  # Dictionary to track all instance statuses
-status_lock = asyncio.Lock()  # Lock for thread-safe updates to all_statuses
+all_statuses = {}  # Moved to global scope
+global_node_count = 0
 
-# Event for signaling the table update task to stop
+table_update_running = False
 table_update_event = asyncio.Event()
 
-# Task tracking
 task_name = "TASK NAME"
 task_total = 10000
+task_count = 0
 events_to_progress = []
 events_to_progress_lock = (
     asyncio.Lock()
@@ -192,15 +208,23 @@ async def log_operation_async(message, level="info", region=None):
 # Global lock for thread-safe updates to shared state
 all_statuses_lock = asyncio.Lock()
 
-# AWS API timeouts
-AWS_API_TIMEOUT = 30  # seconds
+
+def update_all_statuses(status):
+    """
+    Update the global status dictionary (sync version)
+    This must be called from synchronous code
+    """
+    all_statuses[status.id] = status
 
 
-async def update_status(status):
-    """Thread-safe update of instance status"""
-    async with status_lock:
+async def update_all_statuses_async(status):
+    """
+    Update the global status dictionary (async version)
+    This must be called from async code
+    """
+    async with all_statuses_lock:
         all_statuses[status.id] = status
-        # Add to events queue for progress tracking
+        # Also add to events_to_progress to trigger UI update
         events_to_progress.append(status)
 
 
@@ -211,33 +235,67 @@ class InstanceStatus:
         self._temp_id = str(uuid.uuid4())
         self.region = region
         self.zone = zone
-        self.status = "Initializing"
-        self.detailed_status = "Initializing"
-        self.start_time = time.time()
-        self.elapsed_time = 0
+        self.index = index
         self.instance_id = instance_id
-        self.public_ip = None
-        self.private_ip = None
-        self.vpc_id = None
+        self.spot_request_id = None
+        self.status = "Initializing"
+        self.detailed_status = "Starting spot instance creation"
+        self.elapsed_time = 0
+        self.start_time = time.time()
+        self.public_ip = ""
+        self.private_ip = ""
+        self.vpc_id = ""
+        self.creation_state = {
+            "phase": "initializing",  # initializing, requesting, provisioning, finalized
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "details": {},
+        }
 
-        if self.instance_id is not None:
-            self.id = self.instance_id
-
-    def update_elapsed_time(self):
-        self.elapsed_time = time.time() - self.start_time
-        return self.elapsed_time
+    @property
+    def id(self):
+        """Return the instance ID if available, otherwise return the temporary ID.
+        This ensures that once we have a real AWS instance ID, we use that as our identifier.
+        """
+        if self.instance_id:
+            return self.instance_id
+        return self._temp_id
 
     def combined_status(self):
-        if self.detailed_status and self.detailed_status != self.status:
-            combined = f"{self.detailed_status}"
-            if len(combined) > 30:
-                return combined[:27] + "..."
-            return combined
+        """Returns a combined status string for display in the table."""
+        if self.detailed_status:
+            return f"{self.status}: {self.detailed_status}"
         return self.status
+
+    def to_dict(self):
+        return {
+            "id": self.id,  # This will be instance_id if available
+            "_temp_id": self._temp_id,  # Keep the temp ID for reference
+            "region": self.region,
+            "zone": self.zone,
+            "index": self.index,
+            "instance_id": self.instance_id,
+            "spot_request_id": self.spot_request_id,
+            "status": self.status,
+            "detailed_status": self.detailed_status,
+            "elapsed_time": self.elapsed_time,
+            "start_time": self.start_time,
+            "public_ip": self.public_ip,
+            "private_ip": self.private_ip,
+            "vpc_id": self.vpc_id,
+            "creation_state": self.creation_state,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def update_creation_state(self, phase, details=None):
+        """Update the creation state with a new phase and optional details."""
+        self.creation_state = {
+            "phase": phase,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "details": details or {},
+        }
 
 
 def format_elapsed_time(seconds):
-    """Format elapsed time in a human-readable format"""
     if seconds < 60:
         return f"{seconds:.1f}s"
     elif seconds < 3600:
@@ -249,42 +307,71 @@ def format_elapsed_time(seconds):
 
 
 def make_progress_table():
-    """Create a table showing instance status with adaptive column widths"""
-    # Get terminal width
-    width = console.width
-
-    # Calculate column widths based on available space
-    id_width = 6
-    region_width = min(15, max(10, int(width * 0.10)))
-    zone_width = min(15, max(10, int(width * 0.10)))
-    status_width = min(30, max(20, int(width * 0.20)))  # Wider status column
-    elapsed_width = 8
-    instance_id_width = min(20, max(10, int(width * 0.12)))
-    ip_width = min(15, max(10, int(width * 0.08)))
-
-    # Create table with adaptive column widths
-    table = Table(show_header=True, header_style="bold magenta", expand=False)
-
-    # Add columns with appropriate widths
-    table.add_column("ID", width=id_width, style="cyan", no_wrap=True)
-    table.add_column("Region", width=region_width, style="cyan", no_wrap=True)
-    table.add_column("Zone", width=zone_width, style="cyan", no_wrap=True)
-    table.add_column("Status", width=status_width, style="yellow", no_wrap=True)
+    global all_statuses
+    table = Table(show_header=True, header_style="bold magenta", show_lines=False)
+    table.overflow = "ellipsis"
+    table.add_column("ID", width=5, style="cyan", no_wrap=True)
+    table.add_column("Region", width=15, style="cyan", no_wrap=True)
+    table.add_column("Zone", width=15, style="cyan", no_wrap=True)
     table.add_column(
-        "Time", width=elapsed_width, justify="right", style="magenta", no_wrap=True
-    )
-    table.add_column("Instance ID", width=instance_id_width, style="blue", no_wrap=True)
-    table.add_column("Public IP", width=ip_width, style="green", no_wrap=True)
-    table.add_column("Private IP", width=ip_width, style="blue", no_wrap=True)
+        "Status", width=40, style="yellow", no_wrap=True
+    )  # Increased from 20 to 40
+    table.add_column(
+        "Elapsed", width=10, justify="right", style="magenta", no_wrap=True
+    )  # Reduced from 20 to 10
+    table.add_column(
+        "Instance ID", width=25, style="blue", no_wrap=True
+    )  # Increased from 20 to 25
+    table.add_column(
+        "Public IP", width=15, style="blue", no_wrap=True
+    )  # Reduced from 20 to 15
+    table.add_column(
+        "Private IP", width=15, style="blue", no_wrap=True
+    )  # Reduced from 20 to 15
 
-    # Update elapsed time for all statuses
-    for status in all_statuses.values():
-        status.update_elapsed_time()
+    # Define the failed status list for display consistency
+    FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
 
-    # Sort statuses for consistent display
-    sorted_statuses = sorted(all_statuses.values(), key=lambda x: (x.region, x.zone))
+    # Sort statuses in the following order:
+    # 1. Prioritize instances waiting for IP addresses at the very top
+    # 2. Then instances that are initializing/in-progress
+    # 3. Then completed instances (have IPs) in the middle
+    # 4. Failed instances after completed ones
+    # 5. Finally terminated instances at the bottom
+    # Within each priority group, sort by region/zone
+    def sort_key(status):
+        # Define a priority score (lower = higher in the list)
+        if status.status == "Terminated":
+            priority = 6  # Terminated instances at the bottom
+        elif status.status in FAILED_STATUSES:
+            priority = 5  # Failed instances just above terminated ones
+        elif status.instance_id and not status.public_ip:
+            # Instance exists but has no public IP - highest priority
+            priority = 0  # Waiting for IP instances at the very top
+            if "Waiting for IP" not in status.detailed_status:
+                status.detailed_status = "Waiting for IP address..."
+        elif status.instance_id and not status.private_ip:
+            # Has public IP but no private IP
+            priority = 1  # Still high priority but below waiting for public IP
+        elif not status.instance_id:
+            # Initializing (no instance ID yet)
+            priority = 2
+        elif status.public_ip and status.private_ip and "Done" in status.status:
+            # Completed instances
+            priority = 3
+        elif status.public_ip and status.private_ip:
+            # Instances with IPs but not marked as Done
+            priority = 4
+        else:
+            # Default case
+            priority = 2
 
-    # Add rows to the table
+        # Return tuple for sorting: (priority, region, zone, id)
+        # This will sort first by priority, then by region/zone within each priority group
+        return (priority, status.region, status.zone, status.id)
+
+    sorted_statuses = sorted(all_statuses.values(), key=sort_key)
+
     for status in sorted_statuses:
         # Apply appropriate styling based on instance status
         status_style = ""
@@ -341,26 +428,20 @@ def make_progress_table():
             status.id,
             status.region,
             status.zone,
-            status.combined_status(),
-            format_elapsed_time(status.elapsed_time),
-            status.instance_id or "",
-            status.public_ip or "",
-            status.private_ip or "",
+            combined_status,
+            f"{status.elapsed_time:.1f}s",
+            instance_id_display,
+            public_ip_display,
+            private_ip_display,
         )
-
     return table
 
 
 def create_layout(progress, table):
-    """Create a responsive layout that adapts to terminal size"""
+    # Create main layout
     layout = Layout()
 
-    # Calculate panel heights based on terminal height
-    height = console.height
-    progress_height = min(4, max(3, int(height * 0.1)))  # 10% for progress
-    console_height = min(6, max(4, int(height * 0.2)))  # 20% for console
-
-    # Create progress panel
+    # Progress panel
     progress_panel = Panel(
         progress,
         title="Progress",
@@ -368,183 +449,195 @@ def create_layout(progress, table):
         padding=(1, 1),
     )
 
-    # Create console panel for log messages
-    console_panel = Panel(
-        "",  # Start with empty content
-        title="Console Output",
-        border_style="blue",
-        padding=(0, 1),
+    # Operations log panel
+    global operations_logs
+    ops_content = (
+        "\n".join(operations_logs)
+        if operations_logs
+        else "[dim]No operations logged yet...[/dim]"
+    )
+    operations_panel = Panel(
+        ops_content,
+        title="AWS Operations",
+        border_style="yellow",
+        padding=(1, 1),
     )
 
-    # Split layout with responsive sizing
+    # Split layout into three sections, with operations at the bottom
     layout.split(
-        Layout(progress_panel, size=progress_height),
-        Layout(table),  # This will take the remaining space (about 70%)
-        Layout(console_panel, size=console_height),
+        Layout(progress_panel, name="progress", size=4),
+        Layout(table, name="table", ratio=10),
+        Layout(operations_panel, name="operations", ratio=1),
     )
 
     return layout
 
 
-# Configure console handler to use rich console
-class RichConsoleHandler(logging.Handler):
-    def __init__(self, live, layout):
-        super().__init__()
-        self.live = live
-        self.layout = layout  # Store the layout directly
-        self.messages = ["Waiting for log messages..."]  # Start with a default message
-        self.setFormatter(logging.Formatter("%(message)s"))
-        self.setLevel(logging.INFO)
+async def update_table(live):
+    global \
+        table_update_running, \
+        task_total, \
+        events_to_progress, \
+        all_statuses, \
+        console, \
+        task_name, \
+        operations_logs
+    if table_update_running:
+        logger.debug("Table update already running. Exiting.")
+        return
 
-        # Initialize the console panel content right away
-        console_panel = self.layout.children[-1].renderable
-        console_panel.renderable = "\n".join(self.messages)
+    logger.debug("Starting table update.")
 
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-
-            # If we still have the default message, clear it first
-            if (
-                len(self.messages) == 1
-                and self.messages[0] == "Waiting for log messages..."
-            ):
-                self.messages = []
-
-            self.messages.append(msg)
-
-            # Keep only the last 10 messages
-            if len(self.messages) > 10:
-                self.messages = self.messages[-10:]
-
-            # If no messages (unlikely now), show the waiting message
-            if not self.messages:
-                self.messages = ["Waiting for log messages..."]
-
-            # Update the console panel content
-            console_panel = self.layout.children[-1].renderable
-            console_panel.renderable = "\n".join(self.messages)
-        except Exception:
-            self.handleError(record)
-
-
-async def update_display(live):
-    """Update the live display with current status information"""
-    logger.debug("Entering update_display function")
     try:
-        logger.debug("Creating progress bar")
+        table_update_running = True
         progress = Progress(
             TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
+            BarColumn(bar_width=None),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TextColumn("[progress.completed]{task.completed} of {task.total}"),
+            TextColumn("[progress.elapsed]{task.elapsed:>3.0f}s"),
             expand=True,
         )
-
-        logger.debug(f"Adding task: {task_name} with total: {task_total}")
         task = progress.add_task(task_name, total=task_total)
 
-        # Create initial layout
-        logger.debug("Creating table")
+        # Initial layout creation
         table = make_progress_table()
-        logger.debug("Creating layout")
         layout = create_layout(progress, table)
+        live.update(layout)
 
-        # Add handler if needed
-        handlers = logger.handlers
-        rich_handler = None
-        for h in handlers:
-            if isinstance(h, RichConsoleHandler):
-                rich_handler = h
-                break
+        # Track last operations update time to ensure updates even when idle
+        last_ops_update = time.time()
+        ops_update_interval = 1.0  # Update operations panel at least every second
 
-        if rich_handler is None:
-            logger.debug("Creating new RichConsoleHandler")
-            rich_handler = RichConsoleHandler(live, layout)
-            logger.addHandler(rich_handler)
-        else:
-            # Update the existing handler with the new layout
-            logger.debug("Updating existing RichConsoleHandler")
-            rich_handler.layout = layout
-
-        logger.debug("Starting update loop")
         while not table_update_event.is_set():
-            logger.debug("Processing status updates")
-            async with status_lock:
-                events_to_progress.clear()
-                progress.update(task, completed=len(all_statuses), refresh=True)
+            update_needed = False
 
-            logger.debug("Creating table and layout")
-            table = make_progress_table()
-            layout = create_layout(progress, table)
+            # Process pending events with proper locking
+            current_events = []
+            try:
+                # Get a snapshot of events_to_progress to process, using a non-blocking approach
+                if events_to_progress:
+                    # Make a copy to process without holding the lock for too long
+                    current_events = events_to_progress.copy()
+                    events_to_progress.clear()
+            except Exception as e:
+                logger.error(f"Error processing events: {e}")
 
-            # Update the handler's layout reference
-            rich_handler.layout = layout
+            # Process the events we captured
+            if current_events:
+                update_needed = True
+                for event in current_events:
+                    try:
+                        if isinstance(event, str):
+                            # For list operation, event is instance_id
+                            all_statuses[event].status = "Listed"
+                        else:
+                            # For create and destroy operations, event is InstanceStatus object
+                            all_statuses[event.id] = event
+                    except Exception as e:
+                        logger.error(f"Error processing event {event}: {e}")
 
-            logger.debug("Updating live display")
-            live.update(layout)
+                # Log how many events we processed to help with debugging
+                if len(current_events) > 5:
+                    logger.debug(f"Processed {len(current_events)} UI events")
 
-            await asyncio.sleep(0.2)
+            # Calculate progress
+            if task_name == "Creating Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status != "Initializing"]
+                )
+            elif task_name == "Terminating Spot Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status == "Terminated"]
+                )
+            elif task_name == "Listing Spot Instances":
+                completed = len(
+                    [s for s in all_statuses.values() if s.status == "Listed"]
+                )
+            else:
+                completed = 0
+
+            # Update task_total if it has changed
+            if task_total != progress.tasks[0].total:
+                progress.update(task, total=task_total)
+                update_needed = True
+
+            # Update progress
+            progress.update(task, completed=completed)
+
+            # Update elapsed time for all instances
+            now = time.time()
+            for status in all_statuses.values():
+                status.elapsed_time = now - status.start_time
+
+            # Check if operations panel needs updating
+            force_ops_update = (now - last_ops_update) >= ops_update_interval
+
+            # Determine if we need to update any part of the UI
+            ops_update_needed = force_ops_update
+            table_update_needed = update_needed
+
+            if ops_update_needed or table_update_needed:
+                logger.debug(
+                    f"UI update: ops={ops_update_needed}, table={table_update_needed}"
+                )
+
+                # Always rebuild table if we have updates
+                if table_update_needed:
+                    table = make_progress_table()
+
+                # Get operations content
+                ops_content = (
+                    "\n".join(operations_logs)
+                    if operations_logs
+                    else "[dim]No operations logged yet...[/dim]"
+                )
+
+                # Strategy: Only rebuild entire layout if we absolutely must
+                # Otherwise just update the parts that changed
+                if hasattr(live, "_layout") and live._layout is not None:
+                    # If we have a layout already, try to update parts individually
+                    if "operations" in live._layout and ops_update_needed:
+                        live._layout["operations"].update(
+                            Panel(
+                                ops_content,
+                                title="AWS Operations",
+                                border_style="yellow",
+                                padding=(1, 1),
+                            )
+                        )
+
+                    if "table" in live._layout and table_update_needed:
+                        live._layout["table"].update(table)
+
+                    # Only refresh if we updated something
+                    if ops_update_needed or table_update_needed:
+                        live.refresh()
+                else:
+                    # First time or layout was reset - create full layout
+                    layout = create_layout(progress, table)
+                    live.update(layout)
+
+                # Reset the update timer
+                if ops_update_needed:
+                    last_ops_update = now
+
+            # More responsive sleep - short interval for better UI responsiveness
+            await asyncio.sleep(0.05)
 
     except Exception as e:
-        logger.error(f"Error updating display: {str(e)}", exc_info=True)
-        # Don't re-raise the exception to keep the display running
+        logger.error(f"Error in update_table: {str(e)}", exc_info=True)
+    finally:
+        table_update_running = False
+        logger.debug("Table update finished.")
 
 
 def get_ec2_client(region):
-    """Get EC2 client with proper configuration for the specified region"""
-    logger.debug(f"Creating EC2 client for region {region}")
-    try:
-        # Create a boto3 client with explicit timeout configuration
-        logger.debug(f"Configuring boto3 client with timeout={AWS_API_TIMEOUT}")
-        config = botocore.config.Config(
-            connect_timeout=AWS_API_TIMEOUT,
-            read_timeout=AWS_API_TIMEOUT,
-            retries={"max_attempts": 3, "mode": "standard"},
-        )
-        logger.debug("Creating boto3 client")
-        client = boto3.client("ec2", region_name=region, config=config)
-        logger.debug("Successfully created EC2 client")
-        return client
-    except Exception as e:
-        logger.error(
-            f"Error creating EC2 client for region {region}: {str(e)}", exc_info=True
-        )
-        raise
-
-
-async def safe_aws_call(func, *args, **kwargs):
-    """Execute AWS API calls with proper timeout handling"""
-    try:
-        # Set a timeout for the AWS API call
-        return await asyncio.wait_for(
-            asyncio.to_thread(func, *args, **kwargs), timeout=AWS_API_TIMEOUT
-        )
-    except asyncio.TimeoutError:
-        error_msg = (
-            f"AWS API call timed out after {AWS_API_TIMEOUT} seconds: {func.__name__}"
-        )
-        logging.error(error_msg)
-        if "describe_instances" in func.__name__:
-            logging.error(
-                "This may be due to SSO credential issues. Please check your AWS credentials."
-            )
-            logging.error("Try running 'aws sso login' to refresh your credentials.")
-        raise TimeoutError(error_msg)
-    except botocore.exceptions.ClientError as e:
-        if "ExpiredToken" in str(e) or "InvalidToken" in str(e):
-            logging.error(
-                "AWS credentials have expired. Please refresh your credentials."
-            )
-            logging.error("Try running 'aws sso login' to refresh your credentials.")
-        raise
-    except Exception as e:
-        logging.error(f"Error in AWS API call {func.__name__}: {str(e)}")
-        raise
+    return boto3.client("ec2", region_name=region)
 
 
 async def get_availability_zones(ec2):
-    response = await safe_aws_call(
+    response = await asyncio.to_thread(
         ec2.describe_availability_zones,
         Filters=[{"Name": "opt-in-status", "Values": ["opt-in-not-required"]}],
     )
@@ -695,221 +788,36 @@ async def create_spot_instances_in_region(config: Config, instances_to_create, r
                 ],
             )
 
-            spot_request_ids = [
-                request["SpotInstanceRequestId"]
-                for request in response["SpotInstanceRequests"]
-            ]
-            logging.debug(f"Spot request IDs: {spot_request_ids}")
-
-            thisInstanceStatusObject.status = "Waiting for fulfillment"
-
-            # Wait for spot instances to be fulfilled
-            waiter = ec2.get_waiter("spot_instance_request_fulfilled")
-            max_wait_time = 600  # 10 minutes timeout
-            start_wait_time = time.time()
-            
-            # Update instance status
-            thisInstanceStatusObject.status = "Waiting for fulfillment"
-            all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-            events_to_progress.append(thisInstanceStatusObject)
-            
-            # Setup polling for spot request status with timeout
-            async def poll_spot_request_status():
-                timeout_reached = False
-                while not timeout_reached:
-                    # Check if timeout reached
-                    if time.time() - start_wait_time > max_wait_time:
-                        logging.error(f"Timeout waiting for spot instance in {region}-{zone}")
-                        return None
-                    
-                    # Check spot request status
-                    try:
-                        describe_response = await asyncio.to_thread(
-                            ec2.describe_spot_instance_requests,
-                            SpotInstanceRequestIds=spot_request_ids,
-                        )
-                        
-                        for request in describe_response["SpotInstanceRequests"]:
-                            status_code = request["Status"]["Code"]
-                            status_message = request["Status"].get("Message", "No message")
-                            
-                            # Update status object with details
-                            thisInstanceStatusObject.detailed_status = f"{status_code}: {status_message}"
-                            thisInstanceStatusObject.elapsed_time = time.time() - start_time
-                            all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-                            events_to_progress.append(thisInstanceStatusObject)
-                            
-                            logging.debug(f"Status in {region}-{zone}: {status_code} - {status_message}")
-                            
-                            # Check for failures
-                            if status_code in ["price-too-low", "capacity-not-available"]:
-                                logging.error(f"Spot request failed: {status_code} - {status_message}")
-                                return None
-                            
-                            # Check for success - instance ID is present
-                            if "InstanceId" in request:
-                                return describe_response
-                    
-                    except Exception as e:
-                        logging.error(f"Error checking spot request status: {str(e)}")
-                    
-                    # Sleep before next poll
-                    await asyncio.sleep(5)
-                
-                return None
-            
-            # Try to use waiter first (faster) with timeout protection
-            waiter_task = asyncio.create_task(
-                asyncio.wait_for(
-                    asyncio.to_thread(
-                        waiter.wait,
-                        SpotInstanceRequestIds=spot_request_ids,
-                        WaiterConfig={"MaxAttempts": 40, "Delay": 15},  # 40 attempts * 15 sec = 10 min max
-                    ),
-                    timeout=max_wait_time
-                )
+            # Fetch instance details
+            instance_details = await asyncio.to_thread(
+                ec2.describe_instances,
+                InstanceIds=[instance_id],
             )
-            
-            # Start the polling task as a backup
-            polling_task = asyncio.create_task(poll_spot_request_status())
-            
-            # Wait for either task to complete
-            done, pending = await asyncio.wait(
-                [waiter_task, polling_task],
-                return_when=asyncio.FIRST_COMPLETED
+            if instance_details["Reservations"]:
+                instance = instance_details["Reservations"][0]["Instances"][0]
+                thisInstanceStatusObject.public_ip = instance.get("PublicIpAddress", "")
+                thisInstanceStatusObject.private_ip = instance.get(
+                    "PrivateIpAddress", ""
+                )
+                thisInstanceStatusObject.vpc_id = vpc_id
+
+            # Save to MACHINES.json using the AWS instance ID as the key
+            # This ensures each machine has a proper AWS identifier in the state file
+            machine_state.set(
+                thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict()
             )
-            
-            # Cancel the pending task
-            for task in pending:
-                task.cancel()
-            
-            # Get results
-            describe_response = None
-            waiter_succeeded = False
-            
-            for task in done:
-                try:
-                    if task == waiter_task:
-                        await task  # Just to get any exceptions
-                        waiter_succeeded = True
-                        logging.debug(f"Waiter succeeded for {region}-{zone}")
-                    elif task == polling_task:
-                        describe_response = await task
-                
-                except (asyncio.TimeoutError, asyncio.CancelledError):
-                    pass
-                except Exception as e:
-                    logging.error(f"Error in spot instance fulfillment: {str(e)}")
-            
-            # If waiter succeeded but we don't have response, get it now
-            if waiter_succeeded and not describe_response:
-                try:
-                    describe_response = await asyncio.to_thread(
-                        ec2.describe_spot_instance_requests,
-                        SpotInstanceRequestIds=spot_request_ids,
-                    )
-                except Exception as e:
-                    logging.error(f"Error getting spot request details: {str(e)}")
-                    describe_response = None
+            await log_operation_async(f"Saved instance {instance_id} to MACHINES.json")
 
-            # Check if we got a valid response
-            if describe_response is None:
-                thisInstanceStatusObject.status = "Failed to request spot instance"
-                thisInstanceStatusObject.detailed_status = "Timeout or API error"
-                all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-                events_to_progress.append(thisInstanceStatusObject)
-                continue  # Skip to next instance
-                
-            # Get instance IDs
-            zone_instance_ids = [
-                request["InstanceId"]
-                for request in describe_response.get("SpotInstanceRequests", [])
-                if "InstanceId" in request
-            ]
-            
-            if not zone_instance_ids:
-                thisInstanceStatusObject.status = "Failed to request spot instance"
-                thisInstanceStatusObject.detailed_status = "No instance ID returned"
-                all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-                events_to_progress.append(thisInstanceStatusObject)
-                continue  # Skip to next instance
-                
-            # Add to our overall list of instance IDs
-            instance_ids.extend(zone_instance_ids)
-            
-            # Process the first instance ID (we request only one per spot request)
-            thisInstanceStatusObject.instance_id = zone_instance_ids[0]
-            thisInstanceStatusObject.status = "Tagging"
-            all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-            events_to_progress.append(thisInstanceStatusObject)
+            # Mark the instance as done when it's been created successfully
+            thisInstanceStatusObject.status = "Done"
+            thisInstanceStatusObject.detailed_status = "Instance created successfully"
+            # Force UI update
+            await update_all_statuses_async(thisInstanceStatusObject)
 
-            try:
-                # Run tagging and instance details fetching in parallel
-                tagging_task = asyncio.create_task(
-                    asyncio.to_thread(
-                        ec2.create_tags,
-                        Resources=zone_instance_ids,
-                        Tags=[
-                            {"Key": FILTER_TAG_NAME, "Value": FILTER_TAG_VALUE},
-                            {"Key": "Name", "Value": f"SpotInstance-{region}-{zone}"},
-                            {"Key": "AZ", "Value": zone},
-                        ],
-                    )
-                )
-                
-                fetching_task = asyncio.create_task(
-                    asyncio.to_thread(
-                        ec2.describe_instances,
-                        InstanceIds=[thisInstanceStatusObject.instance_id],
-                    )
-                )
-                
-                # Wait for both tasks to complete with timeout
-                done, pending = await asyncio.wait(
-                    [tagging_task, fetching_task],
-                    timeout=30
-                )
-                
-                # Cancel any pending tasks that didn't complete
-                for task in pending:
-                    task.cancel()
-                
-                # Process the results
-                instance_details = None
-                tagging_completed = False
-                
-                for task in done:
-                    try:
-                        if task == tagging_task:
-                            await task
-                            tagging_completed = True
-                        elif task == fetching_task:
-                            instance_details = await task
-                    except Exception as e:
-                        logging.error(f"Error in instance initialization: {str(e)}")
-                
-                # Extract IP addresses if we got instance details
-                if instance_details and instance_details.get("Reservations"):
-                    instance = instance_details["Reservations"][0]["Instances"][0]
-                    thisInstanceStatusObject.public_ip = instance.get("PublicIpAddress", "")
-                    thisInstanceStatusObject.private_ip = instance.get("PrivateIpAddress", "")
-                
-                # Update final status
-                if tagging_completed:
-                    thisInstanceStatusObject.status = "Done"
-                else:
-                    thisInstanceStatusObject.status = "Tagged with warnings"
-                    thisInstanceStatusObject.detailed_status = "Tagging may not have completed"
-                
-                all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-                events_to_progress.append(thisInstanceStatusObject)
-                
-            except Exception as e:
-                logging.error(f"Error processing instance {thisInstanceStatusObject.instance_id}: {str(e)}")
-                thisInstanceStatusObject.status = "Error processing instance"
-                thisInstanceStatusObject.detailed_status = str(e)[:30]
-                all_statuses[thisInstanceStatusObject.id] = thisInstanceStatusObject
-                events_to_progress.append(thisInstanceStatusObject)
+            # Update the status in MACHINES.json
+            machine_state.set(
+                thisInstanceStatusObject.id, thisInstanceStatusObject.to_dict()
+            )
 
     except Exception as e:
         logger.error(f"An error occurred in {region}: {str(e)}", exc_info=True)
@@ -997,7 +905,10 @@ async def create_subnet(ec2, vpc_id, zone, cidr_block=None):
                 if cidr_block
                 else cidr_base_prefix + str(i) + cidr_base_suffix
             )
-            logging.debug(f"Creating subnet in {zone} with CIDR block {cidrBlock}")
+            logger.debug(f"Creating subnet in {zone} with CIDR block {cidrBlock}")
+            await log_operation_async(
+                f"Attempting CIDR block {cidrBlock} in zone {zone}"
+            )
             subnet = await asyncio.to_thread(
                 ec2.create_subnet,
                 VpcId=vpc_id,
@@ -1280,8 +1191,44 @@ async def create_spot_instances():
         logger.debug(create_msg)
         log_operation(create_msg, "info", region)
         global_node_count += instances_to_create
-        instance_ids = await create_spot_instances_in_region(
-            config, instances_to_create, region
+
+        try:
+            instance_ids = await create_spot_instances_in_region(
+                config, instances_to_create, region
+            )
+            result_msg = f"Created {len(instance_ids)} instances"
+            logger.debug(f"Created instances in {region}: {instance_ids}")
+            log_operation(result_msg, "info", region)
+            return instance_ids
+        except Exception as e:
+            error_msg = f"Failed to create instances: {str(e)}"
+            logger.exception(f"Failed to create instances in region {region}")
+            log_operation(error_msg, "error", region)
+            return [], {}
+
+    try:
+        log_operation("Launching creation tasks in parallel across regions")
+        tasks = [create_in_region(region) for region in AWS_REGIONS]
+        results = await asyncio.gather(*tasks)
+        log_operation("All region creation tasks completed")
+        logger.debug(f"All region creation tasks completed. Results: {results}")
+    except Exception as e:
+        error_msg = f"Failed during instance creation: {str(e)}"
+        logger.exception("Failed during instance creation across regions")
+        log_operation(error_msg, "error")
+        raise
+
+    # Check for any failed instances before waiting for IPs
+    FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
+    failed_instances = [
+        status.id
+        for status in all_statuses.values()
+        if status.status in FAILED_STATUSES
+    ]
+
+    if failed_instances:
+        await log_operation_async(
+            f"Detected {len(failed_instances)} failed instance requests", "warning"
         )
         # Log details about the failed instances
         for status_id in failed_instances:
@@ -1468,189 +1415,209 @@ async def wait_for_public_ips():
     global all_statuses
     timeout = 300  # 5 minutes timeout
     start_time = time.time()
-    poll_interval = 5  # seconds between polls
 
-    # Group instances by region for parallel processing
-    def get_instances_by_region():
-        instances_by_region = {}
-        for status in all_statuses.values():
-            if not status.public_ip and status.instance_id and status.region:
-                if status.region not in instances_by_region:
-                    instances_by_region[status.region] = []
-                instances_by_region[status.region].append(status.instance_id)
-        return instances_by_region
+    NO_IP_STATUS = "-----"
+    FAILED_STATUSES = ["Failed", "Bad Instance", "Error", "Timeout"]
+    await log_operation_async("Checking for public IP addresses on all instances")
 
-    while True:
-        # Check if we're done or timed out
-        all_have_ips = all(
-            status.public_ip or not status.instance_id  # Either has IP or no instance
-            for status in all_statuses.values()
+    # Count initial instances without IPs
+    instances_without_ip = get_instances_without_ip(
+        all_statuses, NO_IP_STATUS, FAILED_STATUSES
+    )
+    await log_operation_async(
+        f"Waiting for IP addresses for {len(instances_without_ip)} instances"
+    )
+
+    # Identify failed instances that we won't wait for
+    failed_instances = [
+        status.id
+        for status in all_statuses.values()
+        if status.status in FAILED_STATUSES
+    ]
+    if failed_instances:
+        await log_operation_async(
+            f"Ignoring {len(failed_instances)} failed instances: {', '.join(failed_instances)}",
+            "warning",
         )
-        
-        if all_have_ips or time.time() - start_time > timeout:
-            # If we timed out, update status for instances without IPs
-            if time.time() - start_time > timeout:
-                for status in all_statuses.values():
-                    if status.instance_id and not status.public_ip:
-                        status.detailed_status = "No public IP after timeout"
-                        events_to_progress.append(status)
-                logging.warning(f"Timed out after {timeout}s waiting for public IPs")
-            break
 
-        # Get instances grouped by region
-        instances_by_region = get_instances_by_region()
-        if not instances_by_region:
-            # No instances need IPs, we're done
-            break
-            
-        # Create tasks to query each region in parallel
-        async def query_region_instances(region, instance_ids):
-            try:
-                ec2 = get_ec2_client(region)
-                response = await asyncio.to_thread(
-                    ec2.describe_instances, InstanceIds=instance_ids
+    check_count = 0
+    try:
+        while True:
+            # Check if all instances have required IPs or are in terminal states
+            all_have_ips = all(
+                status.public_ip
+                or status.status == NO_IP_STATUS
+                or status.status in FAILED_STATUSES
+                for status in all_statuses.values()
+            )
+
+            if all_have_ips:
+                await log_operation_async(
+                    "All non-failed instances have IP addresses assigned"
                 )
-                
-                # Process results and update statuses
-                updated_ips = {}
-                for reservation in response.get("Reservations", []):
-                    for instance in reservation.get("Instances", []):
-                        instance_id = instance["InstanceId"]
-                        public_ip = instance.get("PublicIpAddress", "")
-                        private_ip = instance.get("PrivateIpAddress", "")
-                        
-                        if instance_id:
-                            updated_ips[instance_id] = {
-                                "public_ip": public_ip,
-                                "private_ip": private_ip
-                            }
-                
-                return updated_ips
-            except Exception as e:
-                logger.error(f"Error querying instances in {region}: {str(e)}")
-                return {}
-        
-        # Create and run tasks for all regions in parallel
-        tasks = [
-            query_region_instances(region, instance_ids)
-            for region, instance_ids in instances_by_region.items()
-        ]
-        
-        if tasks:
-            # Wait for all regions to be queried with timeout protection
-            try:
-                results = await asyncio.gather(*tasks)
-                
-                # Process all results and update instance statuses
-                for result in results:
-                    for instance_id, ips in result.items():
+                # Mark all valid instances as done
+                for status in all_statuses.values():
+                    await update_instance_status(status, mark_done=True)
+                break
+
+            # Check for timeout
+            if time.time() - start_time > timeout:
+                await log_operation_async(
+                    "Timed out waiting for IP addresses", "warning"
+                )
+                # Mark instances with IPs as done
+                for status in all_statuses.values():
+                    await update_instance_status(status, mark_done=True)
+
+                # Report instances still waiting
+                still_waiting = [
+                    f"{status.id} ({status.region})"
+                    for status in get_instances_without_ip(
+                        all_statuses, NO_IP_STATUS, FAILED_STATUSES
+                    )
+                ]
+                if still_waiting:
+                    await log_operation_async(
+                        f"Giving up on waiting for IPs for instances: {', '.join(still_waiting)}",
+                        "warning",
+                    )
+                break
+
+            # Periodic status update
+            if check_count % 6 == 0:  # Every ~30 seconds
+                waiting_count = len(
+                    get_instances_without_ip(
+                        all_statuses, NO_IP_STATUS, FAILED_STATUSES
+                    )
+                )
+                elapsed = int(time.time() - start_time)
+                await log_operation_async(
+                    f"Still waiting for {waiting_count} IP addresses... ({elapsed}s elapsed)"
+                )
+
+            check_count += 1
+
+            # Check each region for IP updates
+            for region in AWS_REGIONS:
+                ec2 = get_ec2_client(region)
+                instance_ids = [
+                    status.instance_id
+                    for status in all_statuses.values()
+                    if (
+                        status.region == region
+                        and not status.public_ip
+                        and status.status != NO_IP_STATUS
+                        and status.status not in FAILED_STATUSES
+                        and status.instance_id is not None
+                    )
+                ]
+
+                if not instance_ids:
+                    continue
+
+                try:
+                    # Update status to show we're checking
+                    for instance_id in instance_ids:
                         for status in all_statuses.values():
                             if status.instance_id == instance_id:
-                                if ips.get("public_ip"):
-                                    status.public_ip = ips["public_ip"]
-                                if ips.get("private_ip"):
-                                    status.private_ip = ips["private_ip"]
-                                events_to_progress.append(status)
-                
-            except Exception as e:
-                logger.error(f"Error waiting for public IPs: {str(e)}")
-        
-        # Wait before next poll
-        await asyncio.sleep(poll_interval)
+                                status.detailed_status = "🔄 Checking IP addresses..."
+                                await update_all_statuses_async(status)
+
+                    # Get instance information from AWS
+                    response = await asyncio.to_thread(
+                        ec2.describe_instances, InstanceIds=instance_ids
+                    )
+
+                    # Process each instance
+                    for reservation in response["Reservations"]:
+                        for instance in reservation["Instances"]:
+                            instance_id = instance["InstanceId"]
+                            public_ip = instance.get("PublicIpAddress", "")
+                            private_ip = instance.get("PrivateIpAddress", "")
+
+                            # Update matching status
+                            for status in all_statuses.values():
+                                if status.instance_id == instance_id:
+                                    await update_instance_status(
+                                        status,
+                                        public_ip=public_ip,
+                                        private_ip=private_ip,
+                                    )
+
+                except Exception as e:
+                    logger.warning(f"Error checking IPs in region {region}: {str(e)}")
+                    await log_operation_async(
+                        f"Error checking IPs: {str(e)}", "warning", region
+                    )
+
+            # Short sleep with cancellation check
+            for _ in range(5):
+                await asyncio.sleep(1)
+
+    except asyncio.CancelledError:
+        logger.info("IP address check was cancelled")
+        await log_operation_async("IP address check was cancelled", "warning")
+        raise
 
 
 async def list_spot_instances():
-    logger.debug("Entering list_spot_instances function")
     global all_statuses, events_to_progress, task_total
-    logger.debug("Resetting global statuses and events")
-    all_statuses = {}  # Reset the global statuses
-    events_to_progress = []  # Clear the events list
+    all_statuses = {}
+    events_to_progress = []
 
     global task_name
     task_name = "Listing Spot Instances"
     task_total = 0
 
-    logger.info("Starting to list spot instances")
+    logger.debug("Starting to list spot instances")
 
-    for region in AWS_REGIONS:
-        logger.info(f"Processing region: {region}")
-        logger.debug(f"Getting EC2 client for region {region}")
+    # First load from MACHINES.json
+    machines = await machine_state.load()
+    task_total = len(machines)
+
+    # Verify each instance in MACHINES.json still exists and update its status
+    for instance_id, machine in machines.items():
+        region = machine["region"]
         ec2 = get_ec2_client(region)
 
         try:
-            logger.info(f"Fetching availability zones for region {region}")
-            az_response = await asyncio.to_thread(ec2.describe_availability_zones)
-            availability_zones = [
-                az["ZoneName"] for az in az_response["AvailabilityZones"]
-            ]
-            logger.info(
-                f"Found {len(availability_zones)} availability zones in {region}: {', '.join(availability_zones)}"
+            response = await asyncio.to_thread(
+                ec2.describe_instances, InstanceIds=[instance_id]
             )
 
-            for az in availability_zones:
-                logger.info(f"Querying instances in {region}/{az}")
-                response = await asyncio.to_thread(
-                    ec2.describe_instances,
-                    Filters=[
-                        {
-                            "Name": "instance-state-name",
-                            "Values": ["pending", "running", "stopped"],
-                        },
-                        {"Name": "availability-zone", "Values": [az]},
-                        {
-                            "Name": f"tag:{FILTER_TAG_NAME}",
-                            "Values": [FILTER_TAG_VALUE],
-                        },
-                    ],
+            if response["Reservations"]:
+                instance = response["Reservations"][0]["Instances"][0]
+                thisInstanceStatusObject = InstanceStatus(
+                    machine["region"], machine["zone"], 0, instance_id
+                )
+                thisInstanceStatusObject.status = instance["State"]["Name"].capitalize()
+                thisInstanceStatusObject.elapsed_time = (
+                    datetime.now(timezone.utc) - instance["LaunchTime"]
+                ).total_seconds()
+                thisInstanceStatusObject.public_ip = instance.get("PublicIpAddress", "")
+                thisInstanceStatusObject.private_ip = instance.get(
+                    "PrivateIpAddress", ""
+                )
+                thisInstanceStatusObject.vpc_id = machine["vpc_id"]
+
+                events_to_progress.append(instance_id)
+                all_statuses[instance_id] = thisInstanceStatusObject
+            else:
+                # Instance no longer exists, remove from MACHINES.json
+                machine_state.delete(instance_id)
+                logger.debug(
+                    f"Removed non-existent instance {instance_id} from state file"
                 )
 
-                instance_count = 0
-                for reservation in response["Reservations"]:
-                    for instance in reservation["Instances"]:
-                        instance_count += 1
-                        logger.info(
-                            f"Found instance: {instance['InstanceId']} in {region}/{az}"
-                        )
-                        instance_id = instance["InstanceId"]
-                        thisInstanceStatusObject = InstanceStatus(
-                            region, az, 0, instance_id
-                        )
-                        thisInstanceStatusObject.status = instance["State"][
-                            "Name"
-                        ].capitalize()
-                        thisInstanceStatusObject.elapsed_time = (
-                            datetime.now(timezone.utc) - instance["LaunchTime"]
-                        ).total_seconds()
-                        thisInstanceStatusObject.public_ip = instance.get(
-                            "PublicIpAddress", ""
-                        )
-                        thisInstanceStatusObject.private_ip = instance.get(
-                            "PrivateIpAddress", ""
-                        )
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
+                # Instance no longer exists, remove from MACHINES.json
+                machine_state.delete(instance_id)
+                logger.debug(f"Removed invalid instance {instance_id} from state file")
+            else:
+                logger.error(f"Error checking instance {instance_id}: {str(e)}")
 
-                        logger.debug(
-                            f"Adding instance {instance_id} to status tracking"
-                        )
-                        events_to_progress.append(instance_id)
-                        all_statuses[instance_id] = thisInstanceStatusObject
-                        task_total += 1
-
-                if instance_count == 0:
-                    logger.info(f"No instances found in {region}/{az}")
-
-            logger.info(
-                f"Completed scan of region {region}, found {sum(1 for status in all_statuses.values() if status.region == region)} instances"
-            )
-
-        except Exception as e:
-            logger.error(
-                f"An error occurred while listing instances in {region}: {str(e)}",
-                exc_info=True,
-            )
-
-    logger.info(
-        f"Finished listing spot instances, found {len(all_statuses)} instances in total"
-    )
+    logger.debug("Finished listing spot instances")
     return all_statuses
 
 
@@ -1659,115 +1626,73 @@ async def destroy_instances():
     task_name = "Terminating Spot Instances"
     events_to_progress = []
 
-    logger.info("Identifying instances to terminate...")
-    for region in AWS_REGIONS:
-        logger.info(f"Checking region {region} for instances to terminate...")
-        ec2 = get_ec2_client(region)
-        try:
-            # Use safe_aws_call instead of asyncio.to_thread directly
-            logger.info(f"Querying AWS API for instances in {region}...")
-            response = await safe_aws_call(
-                ec2.describe_instances,
-                Filters=[
-                    {
-                        "Name": "instance-state-name",
-                        "Values": ["pending", "running", "stopping", "stopped"],
-                    },
-                    {"Name": f"tag:{FILTER_TAG_NAME}", "Values": [FILTER_TAG_VALUE]},
-                ],
-            )
+    logger.info("Loading instance information from machines.db...")
+    log_operation("Loading instance information from machines.db...")
 
-            instance_count = 0
-            for reservation in response["Reservations"]:
-                for instance in reservation["Instances"]:
-                    instance_count += 1
-                    instance_id = instance["InstanceId"]
-                    az = instance["Placement"]["AvailabilityZone"]
-                    vpc_id = instance.get("VpcId")
-                    logger.info(f"Found instance {instance_id} in {az}")
-                    thisInstanceStatusObject = InstanceStatus(region, az)
-                    thisInstanceStatusObject.instance_id = instance_id
-                    thisInstanceStatusObject.status = "Terminating"
-                    thisInstanceStatusObject.detailed_status = (
-                        "Initializing termination"
-                    )
-                    thisInstanceStatusObject.vpc_id = vpc_id
-                    all_statuses[instance_id] = thisInstanceStatusObject
-                    instance_region_map[instance_id] = {
-                        "region": region,
-                        "vpc_id": vpc_id,
-                    }
+    # Check if machines.db exists and has instances
+    if machine_state.count() == 0:
+        msg = "No instances found in database. No instances to terminate."
+        logger.info(msg)
+        log_operation(msg, "warning")
 
-            if instance_count == 0:
-                logger.info(f"No instances found in region {region}")
-
-        except TimeoutError:
-            logger.error(
-                f"Timeout while listing instances in {region}. Check your AWS credentials."
-            )
-            continue
-        except Exception as e:
-            logger.error(
-                f"An error occurred while listing instances in {region}: {str(e)}"
-            )
-            continue
-
-    if not all_statuses:
-        logger.info("No instances found to terminate.")
+        # Clean up empty database file if it exists
+        if os.path.exists(machine_state.db_path):
+            try:
+                os.remove(machine_state.db_path)
+                logger.info("Removed empty machines.db file")
+                log_operation("Removed empty machines.db file")
+            except Exception as e:
+                logger.warning(f"Failed to remove machines.db: {str(e)}")
         return
 
-    task_total = len(all_statuses)
+    machines = await machine_state.load()
+
+    if not machines:
+        msg = "Database exists but contains no instances to terminate."
+        logger.info(msg)
+        log_operation(msg, "warning")
+
+        # Clean up empty database file
+        if os.path.exists(machine_state.db_path):
+            try:
+                os.remove(machine_state.db_path)
+                logger.info("Removed empty machines.db file")
+                log_operation("Removed empty machines.db file")
+            except Exception as e:
+                logger.warning(f"Failed to remove machines.db: {str(e)}")
+        return
+
+    task_total = len(machines)
     logger.info(f"Found {task_total} instances to terminate.")
+    log_operation(f"Found {task_total} instances to terminate.")
 
-    async def terminate_instances_in_region(region, region_instances):
-        ec2 = get_ec2_client(region)
-        try:
-            logger.info(f"Terminating {len(region_instances)} instances in {region}...")
-            await safe_aws_call(ec2.terminate_instances, InstanceIds=region_instances)
+    # Group instances by region and collect actual instance IDs
+    region_instances = {}
+    region_spot_requests = {}
+    status_by_machine_id = {}
+
+    # First, create status objects for all machines in the state file
+    for machine_id, machine in machines.items():
+        region = machine["region"]
+        instance_id = machine.get("instance_id", None)
+        spot_request_id = machine.get("spot_request_id", None)
+
+        # Setup region containers if not already created
+        if region not in region_instances:
+            region_instances[region] = []
+        if region not in region_spot_requests:
+            region_spot_requests[region] = []
+
+        # Handle machines with instance IDs
+        if instance_id:
             logger.info(
-                f"Instances terminate request sent in {region}, waiting for completion..."
+                f"Will terminate instance {instance_id} in {region}-{machine['zone']}"
             )
-
-            waiter = ec2.get_waiter("instance_terminated")
-            start_time = time.time()
-            while True:
-                try:
-                    logger.info(f"Checking if instances in {region} are terminated...")
-                    await safe_aws_call(
-                        waiter.wait,
-                        InstanceIds=region_instances,
-                        WaiterConfig={"MaxAttempts": 1},
-                    )
-                    logger.info(f"All instances in {region} terminated successfully")
-                    break
-                except botocore.exceptions.WaiterError:
-                    elapsed_time = time.time() - start_time
-                    logger.info(
-                        f"Instances in {region} still terminating after {elapsed_time:.0f}s"
-                    )
-                    for instance_id in region_instances:
-                        thisInstanceStatusObject = all_statuses[instance_id]
-                        thisInstanceStatusObject.elapsed_time = elapsed_time
-                        thisInstanceStatusObject.detailed_status = (
-                            f"Terminating ({elapsed_time:.0f}s)"
-                        )
-                        events_to_progress.append(thisInstanceStatusObject)
-                        all_statuses[instance_id] = thisInstanceStatusObject
-                    await asyncio.sleep(10)
-                except TimeoutError:
-                    # Handle timeout during waiter
-                    logger.error(
-                        f"Timeout waiting for instances to terminate in {region}"
-                    )
-                    for instance_id in region_instances:
-                        thisInstanceStatusObject = all_statuses[instance_id]
-                        thisInstanceStatusObject.status = "Timeout"
-                        thisInstanceStatusObject.detailed_status = (
-                            "AWS API timeout during termination"
-                        )
-                        events_to_progress.append(thisInstanceStatusObject)
-                        all_statuses[instance_id] = thisInstanceStatusObject
-                    break
+            log_operation(
+                f"Will terminate instance {instance_id} in {region}-{machine['zone']}",
+                "info",
+                region,
+            )
 
             # Add this instance to the region's instance list
             region_instances[region].append(instance_id)
@@ -2028,11 +1953,6 @@ async def destroy_instances():
                 if instance_id in all_statuses and all_statuses[instance_id].vpc_id
             )
 
-            if vpcs_to_delete:
-                logger.info(f"Cleaning up {len(vpcs_to_delete)} VPCs in {region}")
-            else:
-                logger.info(f"No VPCs to clean up in {region}")
-
             for vpc_id in vpcs_to_delete:
                 if not vpc_id.startswith("vpc-"):
                     log_operation(
@@ -2041,23 +1961,49 @@ async def destroy_instances():
                     continue
 
                 try:
-                    logger.info(f"Starting cleanup of VPC {vpc_id} in {region}")
-                    for instance_id, status in all_statuses.items():
-                        if status.vpc_id == vpc_id:
-                            status.detailed_status = "Cleaning up VPC resources"
-                            events_to_progress.append(status)
+                    log_operation(f"Cleaning up VPC {vpc_id}", "info", region)
+
+                    for instance_id in instance_ids:
+                        if (
+                            instance_id in all_statuses
+                            and all_statuses[instance_id].vpc_id == vpc_id
+                        ):
+                            all_statuses[
+                                instance_id
+                            ].detailed_status = "Cleaning up VPC resources"
+                            events_to_progress.append(all_statuses[instance_id])
 
                     await clean_up_vpc_resources(ec2, vpc_id)
-                    logger.info(f"Completed cleanup of VPC {vpc_id} in {region}")
+                    log_operation(f"VPC {vpc_id} cleanup complete", "info", region)
 
                 except Exception as e:
-                    logger.error(
-                        f"An error occurred while cleaning up VPC {vpc_id} in {region}: {str(e)}"
-                    )
+                    error_msg = f"Error cleaning up VPC {vpc_id}: {str(e)}"
+                    logger.error(error_msg)
+                    log_operation(error_msg, "error", region)
 
         except Exception as e:
-            logger.error(
-                f"An error occurred while cleaning up resources in {region}: {str(e)}"
+            error_msg = f"Error cleaning up resources: {str(e)}"
+            logger.error(error_msg)
+            log_operation(error_msg, "error", region)
+
+    # Define a function to cancel spot requests
+    async def cancel_spot_requests_in_region(region, spot_request_ids):
+        if not spot_request_ids:
+            return
+
+        ec2 = get_ec2_client(region)
+        log_operation(
+            f"Starting cancellation of {len(spot_request_ids)} spot requests",
+            "info",
+            region,
+        )
+
+        try:
+            # Cancel the spot requests
+            log_operation(
+                f"Cancelling spot requests: {', '.join(spot_request_ids)}",
+                "info",
+                region,
             )
 
             # Update status for each spot request
@@ -2068,156 +2014,174 @@ async def destroy_instances():
                         status.detailed_status = "Cancelling request"
                         events_to_progress.append(status)
 
-    # Terminate instances in parallel
-    termination_tasks = []
-    for region, instances in region_instances.items():
-        logger.info(
-            f"Creating termination task for {len(instances)} instances in {region}"
-        )
-        termination_tasks.append(terminate_instances_in_region(region, instances))
+            try:
+                # Request cancellation via AWS API
+                await asyncio.to_thread(
+                    ec2.cancel_spot_instance_requests,
+                    SpotInstanceRequestIds=spot_request_ids,
+                )
 
-    if termination_tasks:
-        logger.info(f"Starting {len(termination_tasks)} parallel termination tasks")
-        await asyncio.gather(*termination_tasks)
-        logger.info("All termination tasks completed")
-    else:
-        logger.info("No termination tasks to execute")
+                # Update status for successful cancellation
+                for spot_id in spot_request_ids:
+                    for status_id, status in all_statuses.items():
+                        if status.spot_request_id == spot_id:
+                            status.status = "Cancelled"
+                            status.detailed_status = "Spot request cancelled"
+                            events_to_progress.append(status)
+                            log_operation(
+                                f"Spot request {spot_id} cancelled successfully",
+                                "info",
+                                region,
+                            )
 
-    logger.info("All instances have been terminated.")
+                # Remove from MACHINES.json
+                async with machine_state.update() as current_machines:
+                    # Remove machines with these spot request IDs
+                    keys_to_remove = []
+                    for machine_id, machine in current_machines.items():
+                        if machine.get("spot_request_id") in spot_request_ids:
+                            keys_to_remove.append(machine_id)
+                            log_operation(
+                                f"Removing machine {machine_id} from state file",
+                                "info",
+                                region,
+                            )
+
+                    # Remove after iteration to avoid modifying dict during iteration
+                    for key in keys_to_remove:
+                        current_machines.pop(key, None)
+
+            except botocore.exceptions.ClientError as e:
+                log_operation(
+                    f"Error cancelling spot requests: {str(e)}", "error", region
+                )
+                logger.error(f"Error cancelling spot requests in {region}: {str(e)}")
+
+                # Update status for failed cancellation
+                for spot_id in spot_request_ids:
+                    for status_id, status in all_statuses.items():
+                        if status.spot_request_id == spot_id:
+                            status.status = "Failed"
+                            status.detailed_status = (
+                                f"Cancellation failed: {str(e)[:30]}"
+                            )
+                            events_to_progress.append(status)
+
+        except Exception as e:
+            log_operation(f"Error processing spot requests: {str(e)}", "error", region)
+            logger.error(f"Error in spot request cancellation for {region}: {str(e)}")
+
+    try:
+        # Track what tasks need to be run
+        termination_tasks = []
+        cancellation_tasks = []
+
+        # Add termination tasks if needed
+        if any(region_instances.values()):
+            log_operation(
+                f"Starting parallel termination in {sum(1 for v in region_instances.values() if v)} regions"
+            )
+            termination_tasks = [
+                terminate_instances_in_region(region, instances)
+                for region, instances in region_instances.items()
+                if instances
+            ]
+
+        # Add cancellation tasks if needed
+        if any(region_spot_requests.values()):
+            log_operation(
+                f"Starting spot request cancellation in {sum(1 for v in region_spot_requests.values() if v)} regions"
+            )
+            cancellation_tasks = [
+                cancel_spot_requests_in_region(region, spot_requests)
+                for region, spot_requests in region_spot_requests.items()
+                if spot_requests
+            ]
+
+        # Execute all tasks in parallel
+        all_tasks = termination_tasks + cancellation_tasks
+        if all_tasks:
+            await asyncio.gather(*all_tasks)
+
+        # Log completion messages for each resource type
+        if termination_tasks:
+            log_operation("All instance termination operations completed")
+        if cancellation_tasks:
+            log_operation("All spot request cancellation operations completed")
+
+    except Exception as e:
+        error_msg = f"Error during termination operations: {str(e)}"
+        logger.exception(error_msg)
+        log_operation(error_msg, "error")
+
+    logger.info("All instances and spot requests have been terminated.")
+
+    # After all instances are terminated and database is empty, remove the file
+    if machine_state.count() == 0 and os.path.exists(machine_state.db_path):
+        try:
+            os.remove(machine_state.db_path)
+            logger.info("Cleanup complete - removed machines.db file")
+            log_operation("Cleanup complete - removed machines.db file")
+        except Exception as e:
+            logger.warning(f"Failed to remove machines.db after cleanup: {str(e)}")
+            log_operation("Warning: Could not remove machines.db file", "warning")
 
 
 async def clean_up_vpc_resources(ec2, vpc_id):
     async def update_status(message):
-        logger.info(message)
         for status in all_statuses.values():
             if status.vpc_id == vpc_id:
                 status.detailed_status = message
 
-    await update_status(f"Looking for security groups in VPC {vpc_id}")
+    await update_status("Deleting Security Groups")
     sgs = await asyncio.to_thread(
         ec2.describe_security_groups,
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
     )
-
-    sg_count = 0
     for sg in sgs["SecurityGroups"]:
         if sg["GroupName"] != "default":
-            sg_count += 1
-            await update_status(
-                f"Deleting security group {sg['GroupId']} ({sg['GroupName']})"
-            )
             await asyncio.to_thread(ec2.delete_security_group, GroupId=sg["GroupId"])
 
-    if sg_count == 0:
-        await update_status(f"No non-default security groups found in VPC {vpc_id}")
-
-    await update_status(f"Looking for subnets in VPC {vpc_id}")
+    await update_status("Deleting Subnets")
     subnets = await asyncio.to_thread(
         ec2.describe_subnets,
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
     )
-
-    subnet_count = 0
     for subnet in subnets["Subnets"]:
-        subnet_count += 1
-        await update_status(f"Deleting subnet {subnet['SubnetId']}")
         await asyncio.to_thread(ec2.delete_subnet, SubnetId=subnet["SubnetId"])
 
-    if subnet_count == 0:
-        await update_status(f"No subnets found in VPC {vpc_id}")
-
-    await update_status(f"Looking for route tables in VPC {vpc_id}")
+    await update_status("Deleting Route Tables")
     rts = await asyncio.to_thread(
         ec2.describe_route_tables,
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}],
     )
-
-    rt_count = 0
     for rt in rts["RouteTables"]:
         if not any(
             association.get("Main", False) for association in rt.get("Associations", [])
         ):
-            rt_count += 1
-            await update_status(f"Deleting route table {rt['RouteTableId']}")
             await asyncio.to_thread(
                 ec2.delete_route_table,
                 RouteTableId=rt["RouteTableId"],
             )
 
-    if rt_count == 0:
-        await update_status(f"No non-main route tables found in VPC {vpc_id}")
-
-    await update_status(f"Looking for internet gateways attached to VPC {vpc_id}")
+    await update_status("Detaching and Deleting Internet Gateways")
     igws = await asyncio.to_thread(
         ec2.describe_internet_gateways,
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}],
     )
-
-    igw_count = 0
     for igw in igws["InternetGateways"]:
-        igw_count += 1
-        await update_status(f"Detaching internet gateway {igw['InternetGatewayId']}")
         await asyncio.to_thread(
             ec2.detach_internet_gateway,
             InternetGatewayId=igw["InternetGatewayId"],
             VpcId=vpc_id,
         )
-        await update_status(f"Deleting internet gateway {igw['InternetGatewayId']}")
         await asyncio.to_thread(
             ec2.delete_internet_gateway,
             InternetGatewayId=igw["InternetGatewayId"],
         )
 
-    if igw_count == 0:
-        await update_status(f"No internet gateways found attached to VPC {vpc_id}")
-
-    await update_status(f"Deleting VPC {vpc_id}")
+    await update_status("Deleting VPC")
     await asyncio.to_thread(ec2.delete_vpc, VpcId=vpc_id)
-    await update_status(f"VPC {vpc_id} successfully deleted")
-
-
-async def delete_disconnected_aws_nodes():
-    try:
-        # Run bacalhau node list command and capture output
-        result = subprocess.run(
-            ["bacalhau", "node", "list", "--output", "json"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        nodes = json.loads(result.stdout)
-
-        disconnected_aws_nodes = []
-
-        for node in nodes:
-            if (
-                node["Connection"] == "DISCONNECTED"
-                and node["Info"]["NodeType"] == "Compute"
-                and "EC2_INSTANCE_FAMILY" in node["Info"]["Labels"]
-            ):
-                disconnected_aws_nodes.append(node["Info"]["NodeID"])
-
-        if not disconnected_aws_nodes:
-            print("No disconnected AWS nodes found.")
-            return
-
-        print(f"Found {len(disconnected_aws_nodes)} disconnected AWS node(s).")
-
-        for node_id in disconnected_aws_nodes:
-            print(f"Deleting node: {node_id}")
-            try:
-                # Run bacalhau admin node delete command
-                subprocess.run(["bacalhau", "node", "delete", node_id], check=True)
-                print(f"Successfully deleted node: {node_id}")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to delete node {node_id}. Error: {e}")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error running bacalhau node list: {e}")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON output: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
 
 
 def all_statuses_to_dict():
@@ -2238,227 +2202,727 @@ def all_statuses_to_dict():
     }
 
 
-def parse_args():
-    """Parse command line arguments"""
+class SQLiteMachineStateManager:
+    def __init__(self, db_path="machines.db"):
+        self.db_path = db_path
+        self._ensure_db_exists()
+
+    def _ensure_db_exists(self):
+        """Create the database and table if they don't exist"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS machines (
+                    instance_id TEXT PRIMARY KEY,
+                    region TEXT NOT NULL,
+                    zone TEXT NOT NULL,
+                    vpc_id TEXT,
+                    public_ip TEXT,
+                    private_ip TEXT,
+                    spot_request_id TEXT,
+                    status TEXT,
+                    detailed_status TEXT,
+                    creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    data JSON
+                )
+            """)
+            conn.commit()
+
+    async def check_existing_file(self, overwrite=False):
+        """Check if there are existing machines in the database"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM machines")
+            count = (await cursor.fetchone())[0]
+
+            if count > 0 and not overwrite:
+                print(
+                    f"WARNING: Database already contains {count} instances. Cannot proceed without --overwrite flag."
+                )
+                print(
+                    "Use --overwrite flag to continue anyway, or --action destroy to delete existing instances first."
+                )
+                return False
+
+            if overwrite:
+                await db.execute("DELETE FROM machines")
+                await db.commit()
+
+            return True
+
+    def get(self, instance_id, default=None):
+        """Get machine data by instance ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT data FROM machines WHERE instance_id = ?", (instance_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return json.loads(row[0])
+            return default
+
+    def set(self, instance_id, data):
+        """Set machine data by instance ID"""
+        if not (
+            isinstance(data, dict)
+            and data.get("instance_id")
+            and str(data.get("instance_id")).startswith("i-")
+        ):
+            return False
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO machines (
+                    instance_id, region, zone, vpc_id, public_ip, private_ip,
+                    spot_request_id, status, detailed_status, data
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    instance_id,
+                    data.get("region"),
+                    data.get("zone"),
+                    data.get("vpc_id"),
+                    data.get("public_ip"),
+                    data.get("private_ip"),
+                    data.get("spot_request_id"),
+                    data.get("status"),
+                    data.get("detailed_status"),
+                    json.dumps(data),
+                ),
+            )
+            conn.commit()
+            return True
+
+    def delete(self, instance_id):
+        """Delete machine data by instance ID"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "DELETE FROM machines WHERE instance_id = ?", (instance_id,)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    async def load(self):
+        """Load all machine data"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT data FROM machines")
+            rows = await cursor.fetchall()
+            return {
+                json.loads(row[0])["instance_id"]: json.loads(row[0]) for row in rows
+            }
+
+    def get_all(self):
+        """Get all machine data"""
+        with sqlite3.connect(self.db_path) as conn:
+            # Ensure table exists before querying
+            self._ensure_db_exists()
+            cursor = conn.execute("SELECT data FROM machines")
+            return {
+                json.loads(row[0])["instance_id"]: json.loads(row[0])
+                for row in cursor.fetchall()
+            }
+
+    def count(self):
+        """Count valid machines"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM machines")
+            return cursor.fetchone()[0]
+
+    def clear(self):
+        """Clear all machines"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM machines")
+            conn.commit()
+
+    def debug_state(self):
+        """Print debug information about the current machine state"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT data FROM machines")
+            machines = {
+                json.loads(row[0])["instance_id"]: json.loads(row[0])
+                for row in cursor.fetchall()
+            }
+
+            aws_instance_ids = [m.get("instance_id") for m in machines.values()]
+
+            logger.debug(f"Database has {len(machines)} valid AWS instances")
+            if machines:
+                logger.debug(f"Instance IDs: {aws_instance_ids}")
+
+            return {
+                "total": len(machines),
+                "aws_ids": len(machines),
+                "aws_id_list": aws_instance_ids,
+                "machines": machines,
+            }
+
+    @asynccontextmanager
+    async def update(self):
+        """
+        Async context manager for atomic updates to the machine state.
+        This ensures that all updates within the context are atomic.
+        """
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("BEGIN TRANSACTION")
+            try:
+                cursor = await db.execute("SELECT instance_id, data FROM machines")
+                rows = await cursor.fetchall()
+                machines = {row[0]: json.loads(row[1]) for row in rows}
+
+                yield machines
+
+                # Update all machines in the transaction
+                await db.execute("DELETE FROM machines")
+                for instance_id, data in machines.items():
+                    await db.execute(
+                        """
+                        INSERT INTO machines (
+                            instance_id, region, zone, vpc_id, public_ip, private_ip,
+                            spot_request_id, status, detailed_status, data
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            instance_id,
+                            data.get("region"),
+                            data.get("zone"),
+                            data.get("vpc_id"),
+                            data.get("public_ip"),
+                            data.get("private_ip"),
+                            data.get("spot_request_id"),
+                            data.get("status"),
+                            data.get("detailed_status"),
+                            json.dumps(data),
+                        ),
+                    )
+                await db.commit()
+            except:
+                await db.rollback()
+                raise
+
+
+# Replace the JSON-based manager with the SQLite-based one
+machine_state = SQLiteMachineStateManager()
+
+
+async def handle_spot_request(
+    ec2, launch_specification, region, zone, instance_status, max_retries=3
+):
+    """
+    Handle spot instance request and track its status.
+
+    Args:
+        ec2: EC2 client
+        launch_specification: Launch specification for the spot instance
+        region: AWS region
+        zone: Availability zone
+        instance_status: InstanceStatus object to track the instance
+        max_retries: Maximum number of retries for spot request
+
+    Returns:
+        Instance ID if successful, None otherwise
+    """
+    # We no longer save the initial state - only save instances with actual AWS IDs
+    # This is critical to prevent accumulation of temporary IDs in MACHINES.json
+
+    for attempt in range(max_retries):
+        try:
+            attempt_msg = f"Attempting spot request in {region}-{zone} (attempt {attempt + 1}/{max_retries})"
+            logger.debug(attempt_msg)
+            await log_operation_async(attempt_msg, "info", region)
+
+            # Add info about instance type being requested
+            instance_type = launch_specification.get("InstanceType", "unknown")
+            await log_operation_async(
+                f"Requesting spot instance type: {instance_type}", "info", region
+            )
+
+            try:
+                await log_operation_async(
+                    "Sending spot request to AWS with one-time request type",
+                    "info",
+                    region,
+                )
+                response = await asyncio.to_thread(
+                    ec2.request_spot_instances,
+                    InstanceCount=1,
+                    Type="one-time",
+                    InstanceInterruptionBehavior="terminate",
+                    LaunchSpecification=launch_specification,
+                )
+            except botocore.exceptions.ClientError as e:
+                # Handle specific instance type errors
+                if (
+                    "InvalidParameterValue" in str(e)
+                    and "instance type" in str(e).lower()
+                ):
+                    error_msg = f"Invalid instance type '{instance_type}' in {region}-{zone}: {str(e)}"
+                    logger.error(error_msg)
+                    await log_operation_async(error_msg, "error", region)
+
+                    # Mark as bad instance type and update status
+                    instance_status.status = "Bad Instance"
+                    instance_status.detailed_status = (
+                        f"Invalid instance type: {instance_type}"
+                    )
+                    instance_status.update_creation_state(
+                        "failed",
+                        {
+                            "reason": "invalid_instance_type",
+                            "message": str(e),
+                            "instance_type": instance_type,
+                        },
+                    )
+                    # We don't save failed instance types to MACHINES.json anymore
+                    await update_all_statuses_async(instance_status)
+                    return None
+                # Rethrow other client errors to be handled by the outer exception handler
+                raise
+
+            request_id = response["SpotInstanceRequests"][0]["SpotInstanceRequestId"]
+            logger.debug(f"Spot request {request_id} created in {region}-{zone}")
+            await log_operation_async(
+                f"Spot request {request_id} created successfully", "info", region
+            )
+
+            # Update instance status to reflect spot request creation
+            instance_status.spot_request_id = request_id
+            instance_status.detailed_status = "Waiting for spot request fulfillment"
+            instance_status.update_creation_state(
+                "requesting",
+                {
+                    "spot_request_id": request_id,
+                    "attempt": attempt + 1,
+                    "launch_specification": {
+                        k: v
+                        for k, v in launch_specification.items()
+                        if k not in ["UserData"]  # Exclude UserData as it's too large
+                    },
+                },
+            )
+            # Only update the UI, don't save to MACHINES.json yet
+            await update_all_statuses_async(instance_status)
+
+            await log_operation_async(
+                "Waiting for spot request fulfillment...", "info", region
+            )
+
+            async with asyncio.timeout(300):
+                status_check_count = 0
+                while True:
+                    status = await get_spot_request_status(ec2, request_id)
+                    logger.debug(f"Spot request {request_id} status: {status}")
+
+                    # Only log every 3rd check to avoid flooding the operations log
+                    if status_check_count % 3 == 0:
+                        await log_operation_async(
+                            f"Spot request status: {status['state']}", "info", region
+                        )
+                    status_check_count += 1
+
+                    if status["state"] == "fulfilled":
+                        fulfilled_msg = f"Spot request {request_id} fulfilled with instance {status['instance_id']}"
+                        logger.info(fulfilled_msg)
+                        await log_operation_async(fulfilled_msg, "info", region)
+
+                        # Set the instance ID - this will change the ID property
+                        instance_status.instance_id = status["instance_id"]
+
+                        # Update the key in all_statuses to use the new instance ID
+                        old_id = instance_status._temp_id
+                        all_statuses[status["instance_id"]] = instance_status
+                        if old_id in all_statuses:
+                            del all_statuses[old_id]
+
+                        # Update instance status for provisioning phase
+                        instance_status.detailed_status = "Spot request fulfilled"
+                        instance_status.update_creation_state(
+                            "provisioning",
+                            {
+                                "instance_id": status["instance_id"],
+                                "fulfillment_time": datetime.now(
+                                    timezone.utc
+                                ).isoformat(),
+                            },
+                        )
+
+                        # Now that we have a valid AWS instance ID, save it to MACHINES.json
+                        # The thread-safe dict will handle the write to disk
+                        machine_state.set(instance_status.id, instance_status.to_dict())
+                        await log_operation_async(
+                            f"Saved instance {instance_status.id} to MACHINES.json"
+                        )
+
+                        # Make sure UI is updated with new ID
+                        await update_all_statuses_async(instance_status)
+
+                        await log_operation_async(
+                            f"Instance {status['instance_id']} is being provisioned",
+                            "info",
+                            region,
+                        )
+                        return status["instance_id"]
+                    elif status["state"] in ["capacity-not-available", "price-too-low"]:
+                        error_msg = f"Spot capacity not available in {region}-{zone}: {status['message']}"
+                        logger.warning(error_msg)
+                        await log_operation_async(error_msg, "warning", region)
+
+                        # Update instance status for failure
+                        instance_status.status = "Failed"
+                        instance_status.detailed_status = "No capacity available"
+                        instance_status.update_creation_state(
+                            "failed",
+                            {"reason": status["state"], "message": status["message"]},
+                        )
+
+                        # We don't save failed capacity instances to MACHINES.json
+                        # since they don't have AWS instance IDs
+                        await log_operation_async(
+                            "Abandoning spot request due to no capacity",
+                            "warning",
+                            region,
+                        )
+
+                        # Update UI then return to abandon this attempt
+                        await update_all_statuses_async(instance_status)
+                        return None
+                    elif status["state"] in ["failed", "cancelled", "closed"]:
+                        if attempt < max_retries - 1:
+                            retry_msg = f"Spot request {request_id} {status['state']}, retrying..."
+                            logger.warning(retry_msg)
+                            await log_operation_async(retry_msg, "warning", region)
+
+                            # Update status for retry
+                            instance_status.detailed_status = (
+                                f"Request {status['state']}, retrying..."
+                            )
+                            await update_all_statuses_async(instance_status)
+
+                            await asyncio.sleep(5 * (attempt + 1))
+                            break
+
+                        error_msg = f"Spot request {request_id} failed after all retries: {status['message']}"
+                        logger.error(error_msg)
+                        await log_operation_async(error_msg, "error", region)
+
+                        # Update instance status for failure
+                        instance_status.status = "Failed"
+                        instance_status.detailed_status = (
+                            f"Request failed: {status['state']}"
+                        )
+                        instance_status.update_creation_state(
+                            "failed",
+                            {
+                                "reason": status["state"],
+                                "message": status["message"],
+                                "final_attempt": True,
+                            },
+                        )
+                        # We don't save to MACHINES.json for failed instances anymore
+                        await update_all_statuses_async(instance_status)
+                        return None
+
+                    # Update status periodically during waiting
+                    if status_check_count % 5 == 0:
+                        instance_status.detailed_status = (
+                            f"Waiting for request: {status['state']}"
+                        )
+                        await update_all_statuses_async(instance_status)
+                        # We don't save intermediate state to MACHINES.json anymore
+                        # Just log a status update for visibility every 15 checks
+                        if status_check_count % 15 == 0:
+                            await log_operation_async(
+                                f"Still waiting for spot request {request_id}: {status['state']}",
+                                "info",
+                                region,
+                            )
+
+                    await asyncio.sleep(5)
+
+        except asyncio.TimeoutError:
+            timeout_msg = f"Timeout waiting for spot request in {region}-{zone}"
+            logger.warning(timeout_msg)
+            await log_operation_async(timeout_msg, "warning", region)
+
+            # Update instance status for timeout
+            instance_status.status = "Timeout"
+            instance_status.detailed_status = "Request timed out"
+            instance_status.update_creation_state(
+                "failed",
+                {
+                    "reason": "timeout",
+                    "message": f"Request timed out after {300} seconds",
+                },
+            )
+            # We don't save timeout instances to MACHINES.json anymore
+            await update_all_statuses_async(instance_status)
+            return None
+        except Exception as e:
+            if attempt < max_retries - 1:
+                error_msg = f"Error in spot request for {region}-{zone}, retrying: {e}"
+                logger.warning(error_msg)
+                await log_operation_async(error_msg, "warning", region)
+
+                # Update status for retry
+                instance_status.detailed_status = f"Error, retrying: {str(e)[:50]}"
+                await update_all_statuses_async(instance_status)
+
+                await asyncio.sleep(5 * (attempt + 1))
+                continue
+
+            error_msg = f"Error requesting spot instance in {region}-{zone}: {str(e)}"
+            logger.exception(error_msg)
+            await log_operation_async(error_msg, "error", region)
+
+            # Update instance status for error
+            instance_status.status = "Error"
+            instance_status.detailed_status = f"Request error: {str(e)[:50]}"
+            instance_status.update_creation_state(
+                "failed", {"reason": "error", "message": str(e), "final_attempt": True}
+            )
+            # We don't save error instances to MACHINES.json anymore
+            await update_all_statuses_async(instance_status)
+            return None
+    return None
+
+
+async def get_spot_request_status(ec2, request_id):
+    try:
+        response = await asyncio.to_thread(
+            ec2.describe_spot_instance_requests, SpotInstanceRequestIds=[request_id]
+        )
+        request = response["SpotInstanceRequests"][0]
+        return {
+            "state": request["Status"]["Code"],
+            "message": request["Status"].get("Message", ""),
+            "instance_id": request.get("InstanceId"),
+        }
+    except Exception as e:
+        logger.error(f"Error getting spot request status: {e}")
+        return {"state": "failed", "message": str(e), "instance_id": None}
+
+
+def print_machines_table():
+    """Print a simple text table of machine information."""
+    machines = machine_state.get_all()
+    if not machines:
+        print("No machines found in database")
+        return
+
+    # Define column widths
+    col_widths = {
+        "instance_id": 20,
+        "region": 15,
+        "vpc_id": 22,  # VPC IDs are 'vpc-' followed by 17 chars
+        "status": 15,
+        "public_ip": 16,
+        "private_ip": 16,
+    }
+
+    # Print header
+    header = (
+        f"{'Instance ID':<{col_widths['instance_id']}} "
+        f"{'Region':<{col_widths['region']}} "
+        f"{'VPC ID':<{col_widths['vpc_id']}} "
+        f"{'Status':<{col_widths['status']}} "
+        f"{'Public IP':<{col_widths['public_ip']}} "
+        f"{'Private IP':<{col_widths['private_ip']}}"
+    )
+    print("\n" + "=" * (sum(col_widths.values()) + 6))
+    print(header)
+    print("-" * (sum(col_widths.values()) + 6))
+
+    # Print each machine
+    for machine_id, machine in machines.items():
+        instance_id = machine.get("instance_id", "N/A")
+        region = machine.get("region", "N/A")
+        vpc_id = machine.get("vpc_id", "N/A")
+        status = machine.get("status", "N/A")
+        public_ip = machine.get("public_ip", "N/A")
+        private_ip = machine.get("private_ip", "N/A")
+
+        row = (
+            f"{instance_id:<{col_widths['instance_id']}} "
+            f"{region:<{col_widths['region']}} "
+            f"{vpc_id:<{col_widths['vpc_id']}} "
+            f"{status:<{col_widths['status']}} "
+            f"{public_ip:<{col_widths['public_ip']}} "
+            f"{private_ip:<{col_widths['private_ip']}}"
+        )
+        print(row)
+
+    print("=" * (sum(col_widths.values()) + 6) + "\n")
+
+
+def check_aws_sso_token() -> bool:
+    """Check if AWS SSO token is valid."""
+    try:
+        logger.info("Checking AWS SSO token")
+        logger.debug("Inside of check_aws_sso_token")
+        result = boto3.client("sts").get_caller_identity()
+        logger.debug(f"Result of get_caller_identity: {result}")
+        logger.info(
+            f"Successfully authenticated as {result.get('Arn', 'unknown user')}"
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error checking AWS SSO token: {str(e)}")
+        if hasattr(e, "response"):
+            error_code = e.response.get("Error", {}).get("Code", "")
+            error_msg = e.response.get("Error", {}).get("Message", str(e))
+            if error_code in ["ExpiredToken", "InvalidClientTokenId"]:
+                console.print("\n[bold red]Authentication Error[/bold red]")
+                console.print(
+                    "[yellow]AWS SSO token has expired. Please follow these steps:[/yellow]"
+                )
+                console.print("1. Run: [bold]aws sso login[/bold]")
+                console.print("2. Wait for authentication to complete in your browser")
+                console.print("3. Try running this script again\n")
+                logger.error(f"AWS SSO token expired: {error_msg}")
+            else:
+                console.print("\n[bold red]AWS Authentication Error[/bold red]")
+                console.print(f"[yellow]Error: {error_msg}[/yellow]")
+                console.print("Please check your AWS credentials and try again.\n")
+                logger.error(f"AWS authentication error: {error_msg}")
+        else:
+            console.print("\n[bold red]AWS Authentication Error[/bold red]")
+            console.print(f"[yellow]Error: {str(e)}[/yellow]")
+            console.print("Please check your AWS configuration and try again.\n")
+            logger.error(f"AWS authentication error: {str(e)}")
+        return False
+
+
+def check_ssh_key() -> bool:
+    """Check if SSH key exists and has proper permissions."""
+    private_ssh_key_path = config.get("private_ssh_key_path")
+    public_ssh_key_path = config.get("public_ssh_key_path")
+
+    logger.debug(f"Checking private SSH key at: {private_ssh_key_path}")
+    logger.debug(f"Checking public SSH key at: {public_ssh_key_path}")
+
+    if not private_ssh_key_path or not public_ssh_key_path:
+        error_msg = "Both private_ssh_key_path and public_ssh_key_path must be specified in config.yaml"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+    # Expand paths
+    private_ssh_key_path = os.path.expanduser(private_ssh_key_path)
+    public_ssh_key_path = os.path.expanduser(public_ssh_key_path)
+
+    # Check file permissions on private key
+    try:
+        mode = os.stat(private_ssh_key_path).st_mode
+        if (mode & 0o077) != 0:
+            error_msg = f"Private key file {private_ssh_key_path} has too open permissions. Please run: chmod 600 {private_ssh_key_path}"
+            logger.error(error_msg)
+            console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+            return False
+        return True
+    except Exception as e:
+        error_msg = f"Error checking private key permissions: {str(e)}"
+        logger.error(error_msg)
+        console.print(f"\n[bold red]ERROR:[/bold red] {error_msg}")
+        return False
+
+
+async def main():
+    global table_update_running
+    table_update_running = False
+
+    # Check AWS SSO token first
+    if not check_aws_sso_token():
+        return 1
+
+    logger.debug("Starting main execution")
     parser = argparse.ArgumentParser(
         description="Manage spot instances across multiple AWS regions."
     )
     parser.add_argument(
-        "action",  # Changed from --action to positional argument
-        choices=["create", "destroy", "list", "delete_disconnected_aws_nodes"],
+        "--action",
+        choices=[
+            "create",
+            "destroy",
+            "list",
+            "print-database",
+        ],
         help="Action to perform",
-        nargs="?",  # Make it optional
-        default="list",  # Default to list if not provided
+        default="list",
     )
     parser.add_argument(
         "--format", choices=["default", "json"], default="default", help="Output format"
     )
     parser.add_argument(
-        "--timeout", type=int, default=30, help="AWS API timeout in seconds"
+        "--overwrite", action="store_true", help="Overwrite database if it exists"
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose debug output"
-    )
-
     args = parser.parse_args()
 
-    # Configure logging based on verbose flag
-    global file_handler
-    # Truncate debug.log file if it exists or create a new one
     try:
-        with open("debug.log", "w") as f:
-            pass  # Just open in write mode to truncate
-    except Exception as e:
-        print(f"Warning: Could not truncate debug.log: {e}")
+        # Log the action being performed at INFO level for better visibility
+        action_msg = f"Starting {args.action} operation..."
+        logger.info(action_msg)
+        log_operation(action_msg)
 
-    # Create and configure file handler
-    file_handler = logging.FileHandler("debug.log")
-    file_handler.setFormatter(log_formatter)
-    
-    # Set file_handler level based on verbose flag
-    if args.verbose:
-        file_handler.setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
-    else:
-        file_handler.setLevel(logging.INFO)
-        logger.setLevel(logging.INFO)
-    
-    # Add the handler to our logger
-    logger.addHandler(file_handler)
-    
-    # Log initial startup message
-    logger.info(f"Starting with action: {args.action}, verbose: {args.verbose}")
-    
-    # Set global timeout from command line argument
-    global AWS_API_TIMEOUT
-    AWS_API_TIMEOUT = args.timeout
-    logger.info(f"Set AWS API timeout to {AWS_API_TIMEOUT} seconds")
+        # Load existing machine state
+        log_operation("Loading machine state...")
+        machines = await machine_state.load()
 
-    # Set task name based on action
-    global task_name, task_total
-    if args.action == "create":
-        task_name = "Creating Spot Instances"
-        task_total = TOTAL_INSTANCES
-    elif args.action == "destroy":
-        task_name = "Terminating Spot Instances"
-        task_total = 100  # Will be updated when we know how many instances to terminate
-    elif args.action == "list":
-        task_name = "Listing Spot Instances"
-        task_total = 100  # Will be updated when we know how many instances to list
-    elif args.action == "delete_disconnected_aws_nodes":
-        task_name = "Deleting Disconnected AWS Nodes"
-        task_total = 100  # Will be updated when we know how many nodes to delete
+        if args.action == "print-database":
+            return 0
 
-    logger.info(f"Set task: '{task_name}' with target: {task_total}")
-    return args
-
-
-async def perform_action():
-    """Execute the requested action"""
-    args = parse_args()
-    logger.debug(f"Starting perform_action with action: {args.action}")
-    try:
-        if args.action == "create":
-            logger.info("Initiating create_spot_instances")
-            await create_spot_instances()
-        elif args.action == "list":
-            logger.info("Initiating list_spot_instances")
-            await list_spot_instances()
-        elif args.action == "destroy":
-            logger.info("Initiating destroy_instances")
-            await destroy_instances()
-        elif args.action == "delete_disconnected_aws_nodes":
-            logger.info("Initiating delete_disconnected_aws_nodes")
-            await delete_disconnected_aws_nodes()
-        logger.debug(f"Completed action: {args.action}")
-    except TimeoutError as e:
-        logger.error(f"TimeoutError occurred: {str(e)}")
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        console.print("[yellow]This may be due to AWS credential issues.[/yellow]")
-        console.print(
-            "[yellow]Try running 'aws sso login' to refresh your credentials.[/yellow]"
-        )
-        table_update_event.set()
-        return
-    except botocore.exceptions.ClientError as e:
-        logger.error(f"AWS ClientError occurred: {str(e)}")
-        if "ExpiredToken" in str(e) or "InvalidToken" in str(e):
-            console.print("[bold red]AWS credentials have expired.[/bold red]")
-            console.print(
-                "[yellow]Try running 'aws sso login' to refresh your credentials.[/yellow]"
+        # For 'create' action, check if database exists and would be overwritten
+        if args.action == "create" and not args.overwrite:
+            can_proceed = await machine_state.check_existing_file(
+                overwrite=args.overwrite
             )
-        else:
-            console.print(f"[bold red]AWS Error:[/bold red] {str(e)}")
-        table_update_event.set()
-        return
-    except Exception as e:
-        logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        table_update_event.set()
-        return
+            if not can_proceed:
+                logger.error(
+                    "Cannot proceed with create operation - database already contains instances"
+                )
+                log_operation(
+                    "Cannot proceed without --overwrite flag when database contains instances",
+                    "error",
+                )
+                return 1
 
+        # Report valid AWS instances
+        valid_count = machine_state.count()
+        print(f"Loaded {valid_count} valid AWS instances from database")
+        log_operation(f"Found {valid_count} valid AWS instances in database")
 
-async def main():
-    """Main execution function"""
-    handler = None  # Initialize handler to None
-    try:
-        args = parse_args()
+        with Live(console=console, refresh_per_second=4, screen=True) as live:
+            update_task = asyncio.create_task(update_table(live))
 
-        # Set logging level based on verbosity
-        if args.verbose:
-            logger.setLevel(logging.DEBUG)
-            logger.debug("Verbose logging enabled")
-        else:
-            logger.setLevel(logging.INFO)
-
-        logger.info(f"Starting action: {args.action}")
-
-        if args.format == "json":
-            logger.info("Using JSON output format")
-            await perform_action()
-            print(json.dumps(all_statuses_to_dict(), indent=2))
-            return
-
-        # Create initial progress and table
-        progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-        )
-        table = make_progress_table()
-
-        # Create layout before using it in Live
-        layout = create_layout(progress, table)
-
-        # Initialize the live display with the layout
-        with Live(
-            layout,
-            console=console,
-            refresh_per_second=5,
-            auto_refresh=True,
-            screen=True,
-            transient=False,  # Keep the display visible after exit
-        ) as live:
             try:
-                # Update our global flag to indicate terminal has been cleared
-                global is_terminal_cleared
-                is_terminal_cleared = True
-                
-                # Add the rich console handler for logging with separate layout reference
-                handler = RichConsoleHandler(live, layout)  # Pass layout directly
-                logger.addHandler(handler)
+                if args.action == "list":
+                    log_operation("Starting 'list' action")
+                    await list_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
+                    await asyncio.sleep(1)
+                    log_operation("List action completed successfully")
+                elif args.action == "create":
+                    log_operation("Starting 'create' action")
+                    await create_spot_instances()
+                    # Ensure table is visible
+                    await update_table_now()
+                    await asyncio.sleep(1)
+                    log_operation("Create action completed successfully")
+                elif args.action == "destroy":
+                    log_operation("Starting 'destroy' action")
+                    await destroy_instances()
+                    log_operation("Destroy action completed successfully")
 
-                # Start display update task in a separate thread
-                loop = asyncio.get_event_loop()
-                display_task = loop.create_task(update_display(live))
+                logger.debug("Action %s completed successfully", args.action)
+                logger.debug("Main execution completed successfully")
+                logger.info("Operation completed successfully")
 
-                # Set up exception handler for display_task
-                def handle_display_task_exception(task):
-                    try:
-                        # Get the exception if any
-                        task.result()
-                    except Exception as e:
-                        logger.error(f"Display task failed: {str(e)}", exc_info=True)
-                        # We don't reraise here - just log it
-                
-                display_task.add_done_callback(handle_display_task_exception)
+                # Give time for final table update to be visible
+                if args.action in ["list", "create"]:
+                    await asyncio.sleep(2)
 
-                # Perform the requested action
-                await perform_action()
-
-                # Signal display task to stop and wait for completion
-                logger.debug("Signaling display task to stop")
-                table_update_event.set()
-
-                # Wait for display to finish updating with a timeout
-                try:
-                    logger.debug("Waiting for display task to complete")
-                    await asyncio.wait_for(asyncio.shield(display_task), timeout=5.0)
-                    logger.debug("Display task completed")
-                except asyncio.TimeoutError:
-                    logger.warning("Display task did not complete within timeout")
-                    # We continue anyway, the task will be cancelled in the finally block
-
-            except Exception as e:
-                logger.error(f"Error in main execution: {str(e)}", exc_info=True)
-                # Don't try to use rich console here, as it might be the source of the error
-                # Error will be printed by our outer exception handler
-                raise
             finally:
-                # Stop the display task if it's still running
-                if display_task and not display_task.done():
-                    display_task.cancel()
-                
-                # Remove the rich console handler if it was added
-                if handler is not None and handler in logger.handlers:
-                    logger.removeHandler(handler)
-
-    except Exception as e:
-        logger.error(f"Fatal error occurred: {str(e)}", exc_info=True)
-        console.print(f"\n[bold red]Fatal error:[/bold red] {str(e)}")
-        raise
+                # Stop the table update task
+                table_update_event.set()
+                await update_task
 
     except Exception as e:
         logger.exception("Error in main execution")
@@ -2494,40 +2958,29 @@ async def update_table_now():
 
 
 if __name__ == "__main__":
-    # Store the original terminal settings to ensure we can properly display errors
-    is_terminal_cleared = False
-    
-    # Function to print error outside of rich Live display context
-    def print_error_message(message):
-        if is_terminal_cleared:
-            # If terminal was cleared by rich Live display, add newlines for visibility
-            print("\n\n")
-        print(f"\n[ERROR] {message}")
-        print("Check debug.log for more details.")
-        
     try:
-        logger.info("Starting main execution")
+        logger.info("Starting deploy_spot.py")
+
+        # Check AWS SSO token before anything else
+        if not check_aws_sso_token():
+            logger.error("Script exiting due to AWS authentication failure")
+            sys.exit(1)
+
+        # Check SSH key before proceeding
+        if not check_ssh_key():
+            logger.error("Script exiting due to SSH key issues")
+            sys.exit(1)
+
         asyncio.run(main())
-        logger.info("Main execution completed")
+        logger.debug("Script completed successfully")
     except KeyboardInterrupt:
-        logger.info("Operation cancelled by user")
-        print_error_message("Operation cancelled by user.")
-        sys.exit(1)
+        logger.info("Script was manually interrupted by user (Ctrl+C)")
+        console.print("\n[yellow]Operation cancelled by user (Ctrl+C)[/yellow]")
     except Exception as e:
-        # Log detailed error
-        logger.error(f"Fatal error occurred: {str(e)}", exc_info=True)
-        
-        # Print user-friendly error message outside of any rich context
-        error_msg = f"Fatal error occurred: {str(e)}"
-        
-        # Add additional context for common errors
-        if "TimeoutError" in str(e):
-            error_msg += "\nThis may be due to AWS credential issues or network problems."
-            error_msg += "\nTry running 'aws sso login' to refresh your credentials."
-        elif "ExpiredToken" in str(e) or "InvalidToken" in str(e):
-            error_msg += "\nAWS credentials have expired. Try running 'aws sso login'."
-        elif "InstanceId" in str(e) and "does not exist" in str(e):
-            error_msg += "\nThe specified instance may have been terminated or never created."
-            
-        print_error_message(error_msg)
+        logger.exception("Script failed with unhandled exception")
+        console.print(
+            "\n[bold red]ERROR:[/bold red] Operation failed unexpectedly.",
+            f"Error: {str(e)}",
+            "\nSee debug_deploy_spot.log for details.",
+        )
         sys.exit(1)
