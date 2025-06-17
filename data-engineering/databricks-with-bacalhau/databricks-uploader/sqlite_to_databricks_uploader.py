@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#     "numpy<2.0.0",
 #     "pandas>=2.0.0",
 #     "pyarrow>=12.0.0",
 #     "pyyaml>=6.0",
