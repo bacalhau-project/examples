@@ -7,6 +7,7 @@ The combination of Bacalhau and BigQuery offers several key advantages:
 - Scale processing across multiple nodes in different cloud providers
 - Leverage BigQuery's powerful analytics capabilities for processed data
 - Implement privacy-conscious data handling and efficient aggregation strategies
+- Automatic timestamp tracking prevents duplicate processing and enables incremental updates
 
 Through this tutorial, you'll evolve from basic log collection to implementing a production-ready system with privacy protection and smart aggregation. Whether you're handling application logs, system metrics, or security events, this pipeline provides a robust foundation for distributed log analytics.
 
@@ -199,6 +200,228 @@ ORDER BY time_window DESC LIMIT 5;
 SELECT * FROM \`$PROJECT_ID.log_analytics.emergency_logs\`
 ORDER BY timestamp DESC LIMIT 5;
 ```
+
+## Unified Configuration-Driven Processor
+
+We also provide a unified log processor that combines all four processing modes into a single, configuration-driven application. This allows you to:
+
+- Switch between processing modes without changing code
+- Automatically watch for configuration updates
+- Maintain a single deployment while adjusting behavior
+
+### Using the Unified Processor
+
+```bash
+# Deploy the unified processor
+./utility_scripts/manage_unified_processor.sh deploy
+
+# Update configuration to switch modes
+./utility_scripts/manage_unified_processor.sh run sanitized
+
+# Check job status
+./utility_scripts/manage_unified_processor.sh status <job-id>
+```
+
+The unified processor supports these pipeline modes:
+- **raw**: Minimal processing, preserves original logs
+- **schematized**: Structured parsing of Apache logs
+- **sanitized**: Schematized + IP anonymization
+- **aggregated**: Sanitized + hourly aggregates + emergency events
+
+See [UNIFIED_PROCESSOR.md](bigquery-exporter/UNIFIED_PROCESSOR.md) for detailed configuration options.
+
+## Testing
+
+Comprehensive tests are available in the `tests/` directory:
+
+```bash
+# Run quick smoke tests
+python tests/test_smoke.py
+
+# Run full test suite
+cd tests && ./run_tests.sh
+
+# Run specific test categories
+pytest tests/test_unified_processor.py::TestConfigurationHandling -v
+pytest tests/test_integration.py -v -s  # Requires BigQuery credentials
+```
+
+The tests verify:
+- Configuration loading and validation
+- BigQuery connectivity (read-only operations)
+- Utility functions and error handling
+- Integration with real BigQuery endpoints
+
+See [tests/README.md](tests/README.md) for detailed testing information.
+
+## Debugging and Local Testing
+
+For debugging the unified log processor locally, you have several options from simple command-line execution to a comprehensive debugging suite.
+
+### Quick Start: Debug Suite (Recommended)
+
+The easiest way to get started with debugging is using our comprehensive debug suite:
+
+```bash
+# Interactive setup - walks you through configuration
+./debug_suite.sh setup
+
+# Run all validation tests
+./debug_suite.sh test
+
+# Run the processor with generated logs
+./debug_suite.sh run --generate --mode sanitized --project your-gcp-project-id
+
+# Validate your environment and configuration
+./debug_suite.sh validate
+
+# Clean up debug files when done
+./debug_suite.sh clean
+```
+
+### Manual Setup
+
+For more control, you can run the processor directly from the command line:
+
+### Step 1: Create a config file
+First, copy the template config and customize it:
+
+```bash
+cp demo-network/files/config.template.yaml debug-config.yaml
+```
+
+Edit `debug-config.yaml` with your settings:
+```yaml
+pipeline_mode: sanitized
+chunk_size: 10000
+project_id: your-gcp-project-id
+dataset: log_analytics
+credentials_path: /path/to/your/service-account-key.json
+input_paths:
+  - ./logs/access.log
+```
+
+### Step 2: Generate test logs
+Create some test log data:
+
+```bash
+# Create logs directory
+mkdir -p logs
+
+# Generate test logs using Docker
+docker run --rm -v ./logs:/logs \
+  -e NO_ERROR_LOG=true \
+  -e NO_SYSTEM_LOG=true \
+  -e LOG_DIR_OVERRIDE=/logs \
+  ghcr.io/bacalhau-project/access-log-generator:latest
+```
+
+### Step 3: Run the processor
+
+**Option A: Use the debugging script (Recommended)**
+```bash
+# Generate logs and run in sanitized mode
+./debug_local.sh --generate --mode sanitized --project your-gcp-project-id
+
+# Or use existing logs with custom config
+./debug_local.sh --config custom-config.yaml --logs-dir ./my-logs
+```
+
+**Option B: Run manually**
+```bash
+# Set up your environment variables
+export CONFIG_FILE=./debug-config.yaml
+
+# Run the uploader directly
+cd bigquery-uploader
+uv run --no-project bigquery_uploader.py
+```
+
+Example with actual paths:
+```bash
+CONFIG_FILE=/Users/username/bacalhau-examples/data-engineering/bigquery-with-bacalhau/debug-config.yaml \
+uv run --no-project bigquery_uploader.py
+```
+
+### Common Environment Variables
+
+- `CONFIG_FILE`: Required. Path to your YAML configuration file
+- `CREDENTIALS_PATH` or `CREDENTIALS_FILE`: Path to your BigQuery service account credentials JSON
+- `LOG_FILE` or `LOG_DIR`: Override input paths from config with specific log file locations
+- `PROJECT_ID`: Override the BigQuery project ID from config
+- `DATASET`: Override the BigQuery dataset name from config
+- `NODE_ID`: Override the node identifier
+- `REGION`: Override the region metadata
+- `PROVIDER`: Override the cloud provider metadata
+- `HOSTNAME`: Override the hostname metadata
+
+### Debugging Tips
+
+1. **File Not Found Errors**: The uploader will now immediately crash with a clear error message if log files are not found, rather than continuing to process empty chunks
+2. **BigQuery Connection Issues**: Check your credentials path and ensure your service account has the necessary permissions
+3. **Config File Issues**: Verify your config.yaml file exists and has the correct structure
+4. **Local Log Generation**: Use the log generator to create test data:
+   ```bash
+   docker run --rm -v ./logs:/logs -e NO_ERROR_LOG=true -e NO_SYSTEM_LOG=true -e LOG_DIR_OVERRIDE=/logs ghcr.io/bacalhau-project/access-log-generator:latest
+   ```
+
+### Testing and Validation
+
+#### Debug Suite Commands
+```bash
+# Run comprehensive test suite (includes fail-fast tests)
+./debug_suite.sh test
+
+# Validate environment and configuration
+./debug_suite.sh validate --config your-config.yaml
+
+# Interactive setup with guided configuration
+./debug_suite.sh setup
+```
+
+#### Manual Testing
+To verify that the fail-fast behavior is working correctly, you can run the included test script:
+
+```bash
+# Test that the processor fails fast when no log files are found
+python3 test_failfast.py
+```
+
+This test script will:
+- Create temporary directories and config files
+- Test the processor with missing log files (should fail fast)
+- Test the processor with existing log files (should start processing)
+- Validate that error messages are clear and immediate
+
+Expected output for missing files:
+```
+FATAL: No log files found matching patterns: ['/var/log/app/access.log']
+Error: IO Error: No files found that match the pattern "/var/log/app/access.log"
+Please check that log files exist at the specified paths and try again.
+Fatal error encountered: No log files found matching patterns: ['/var/log/app/access.log']. Cannot proceed with processing.
+Exiting immediately - this error cannot be recovered from.
+```
+
+#### Quick Demo
+To see the fail-fast behavior in action without requiring BigQuery dependencies:
+
+```bash
+# Run a demonstration of the fail-fast behavior
+python3 demo_failfast.py
+```
+
+This demo shows:
+- How the processor behaves when files exist (continues processing)
+- How the processor behaves when files are missing (fails fast)
+- How the main loop exits immediately on fatal errors
+
+#### Debug Suite Features
+The debug suite (`debug_suite.sh`) provides:
+- **Interactive setup**: Guided configuration creation with credential detection
+- **Comprehensive testing**: Validates fail-fast behavior and processor functionality
+- **Environment validation**: Checks prerequisites and configuration files
+- **Automated log generation**: Creates realistic test data using Docker
+- **Clean execution**: Manages temporary files and provides clear status messages
 
 ## What's Next?
 

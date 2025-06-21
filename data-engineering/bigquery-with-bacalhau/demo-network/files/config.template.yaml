@@ -1,0 +1,50 @@
+# Template configuration file for the unified log processor
+
+# Processing mode: raw, schematized, sanitized, or aggregated
+pipeline_mode: raw
+
+# Number of rows to process in each batch
+chunk_size: 500000
+
+# Maximum number of retries for BigQuery operations
+max_retries: 20
+
+# Initial delay in seconds for exponential backoff
+base_retry_delay: 1
+
+# Maximum delay in seconds between retries
+max_retry_delay: 60
+
+# Seconds between configuration file checks
+check_interval: 30
+
+# Google Cloud Project ID for BigQuery
+project_id: your-gcp-project-id
+
+# BigQuery dataset name
+dataset: log_analytics
+
+# Path to Google Cloud service account JSON file
+credentials_path: /path/to/service-account-key.json
+
+# Array of file paths or glob patterns for log files to process
+input_paths:
+  - /var/log/app/access.log
+  - /var/log/app/*.log
+
+# BigQuery table names for each processing mode
+tables:
+  raw: raw_logs
+  schematized: log_results
+  sanitized: log_results
+  aggregated: log_aggregates
+  emergency: emergency_logs
+
+# Unique identifier for this processing node
+node_id: bacalhau-node-1
+
+# Additional metadata added to all processed records
+metadata:
+  region: us-central1
+  provider: gcp
+  hostname: bacalhau-cluster

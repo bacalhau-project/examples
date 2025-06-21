@@ -1,0 +1,13 @@
+pipeline_mode: 'raw'
+project_id: 'test-project'
+dataset: 'test_dataset'
+credentials_path: '/tmp/dummy_creds.json'
+input_paths: ['/tmp/nonexistent/*.log']
+tables:
+  raw: 'raw_logs'
+node_id: 'test-node'
+metadata:
+  region: 'test-region'
+  provider: 'test'
+  hostname: 'test-host'
+chunk_size: 1000

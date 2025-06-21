@@ -1,0 +1,24 @@
+# Test configuration file for unit tests
+pipeline_mode: sanitized
+chunk_size: 1000
+max_retries: 3
+base_retry_delay: 0.1
+max_retry_delay: 1
+check_interval: 5
+project_id: test-project-123
+dataset: test_log_analytics
+credentials_path: /path/to/test/credentials.json
+input_paths:
+  - /test/logs/*.log
+  - /test/access.log
+tables:
+  raw: test_raw_logs
+  schematized: test_log_results
+  sanitized: test_log_results_sanitized
+  aggregated: test_log_aggregates
+  emergency: test_emergency_logs
+node_id: test-node
+metadata:
+  region: us-west1
+  provider: test-provider
+  hostname: test-cluster

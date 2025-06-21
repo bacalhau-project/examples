@@ -4,7 +4,7 @@
 set -e
 
 # Read project ID from config.yaml using yq
-PROJECT_ID=$(yq e '.project.id' ../config.yaml)
+PROJECT_ID=$(yq e '.project.id' config.yaml)
 
 echo "Creating and configuring tables in project: $PROJECT_ID"
 
@@ -24,7 +24,10 @@ echo "Creating raw_logs table with basic schema..."
 bq query --use_legacy_sql=false \
 "CREATE TABLE \`$PROJECT_ID.log_analytics.raw_logs\` (
     raw_line STRING,
-    upload_time TIMESTAMP
+    upload_time TIMESTAMP,
+    project_id STRING,
+    region STRING,
+    nodeName STRING
 )"
 
 # Drop and recreate log_results table to fix schema
@@ -105,9 +108,11 @@ bq query --use_legacy_sql=false --format=pretty \
 "WITH required_columns AS (
   SELECT table_name, column_name, data_type
   FROM UNNEST([
-    STRUCT('raw_logs' as table_name, 'timestamp' as column_name, 'TIMESTAMP' as data_type),
-    ('raw_logs', 'raw_line', 'STRING'),
+    STRUCT('raw_logs' as table_name, 'raw_line' as column_name, 'STRING' as data_type),
     ('raw_logs', 'upload_time', 'TIMESTAMP'),
+    ('raw_logs', 'project_id', 'STRING'),
+    ('raw_logs', 'region', 'STRING'),
+    ('raw_logs', 'nodeName', 'STRING'),
     ('log_results', 'project_id', 'STRING'),
     ('log_results', 'region', 'STRING'),
     ('log_results', 'nodeName', 'STRING'),
@@ -120,8 +125,8 @@ bq query --use_legacy_sql=false --format=pretty \
     ('log_results', 'method', 'STRING'),
     ('log_results', 'path', 'STRING'),
     ('log_results', 'protocol', 'STRING'),
-    ('log_results', 'status', 'INTEGER'),
-    ('log_results', 'bytes', 'INTEGER'),
+    ('log_results', 'status', 'INT64'),
+    ('log_results', 'bytes', 'INT64'),
     ('log_results', 'referer', 'STRING'),
     ('log_results', 'user_agent', 'STRING'),
     ('log_results', 'status_category', 'STRING'),
@@ -152,12 +157,12 @@ bq query --use_legacy_sql=false --format=pretty \
     ('emergency_logs', 'sync_time', 'TIMESTAMP')
   ])
 )
-SELECT 
+SELECT
   r.table_name,
   r.column_name,
   c.data_type as current_type,
   r.data_type as required_type,
-  CASE 
+  CASE
     WHEN c.data_type = r.data_type THEN '✓'
     ELSE '✗'
   END as matches
@@ -167,4 +172,4 @@ LEFT JOIN \`$PROJECT_ID.log_analytics\`.INFORMATION_SCHEMA.COLUMNS c
   AND c.column_name = r.column_name
 ORDER BY r.table_name, r.column_name"
 
-echo -e "\nDone. All tables exist with correct schema." 
+echo -e "\nDone. All tables exist with correct schema."

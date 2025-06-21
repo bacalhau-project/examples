@@ -1,0 +1,17 @@
+Orchestrator:
+  Enabled: true
+WebUI:
+  Enabled: true
+UpdateConfig:
+  Interval: 0
+JobDefaults:
+  Batch:
+    Task:
+      Resources:
+        CPU: "0.1" # Reduce default allocation from 0.5
+        Memory: "64M" # Reduce default allocation from 512Mb
+  Ops:
+    Task:
+      Resources:
+        CPU: "0.1" # Reduce default allocation from 0.5
+        Memory: "64M" # Reduce default allocation from 512Mb

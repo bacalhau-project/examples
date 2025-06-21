@@ -1,0 +1,7 @@
+# Test dependencies
+pytest>=7.0.0
+pytest-mock>=3.0.0
+PyYAML>=6.0
+pandas>=1.5.0
+duckdb>=0.8.0
+google-cloud-bigquery>=3.0.0

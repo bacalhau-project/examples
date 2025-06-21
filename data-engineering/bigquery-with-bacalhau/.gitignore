@@ -37,4 +37,11 @@ wheels/
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+# SpecStory explanation file
+.specstory/.what-is-this.md
+.claude*
+*credentials*
+!utility_scripts/get_credentials.sh
+
+*access.log*

@@ -1,0 +1,16 @@
+NameProvider: hostname
+Compute:
+  Enabled: true
+  Orchestrators:
+    - host.docker.internal:4222
+  AllowListedLocalPaths:
+    - "/root/**:rw"
+  # Allocating 100% of host capacity to each compute node:
+  # - Leverages host kernel's scheduler for workload balancing
+  # - Simple configuration but may cause resource contention
+  # - Consider fixed allocations if experiencing issues
+  AllocatedCapacity:
+    CPU: "100%"
+    Memory: "100%"
+UpdateConfig:
+  Interval: 0

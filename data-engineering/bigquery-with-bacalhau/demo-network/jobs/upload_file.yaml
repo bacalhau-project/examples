@@ -1,0 +1,31 @@
+Name: upload-file
+Type: ops
+Namespace: demo
+
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: registry-proxy:5000/astral-sh/uv:bookworm-slim
+        Parameters:
+          - /bin/sh
+          - -c
+          - |
+            echo "$SCRIPT_B64" | base64 -d > /tmp/script.py && uv run -s /tmp/script.py
+    Env:
+      SCRIPT_B64: "{{.script_b64}}"
+      FILE_B64: "{{.file_b64}}"
+      FILE_NAME: "{{.file_name}}"
+    InputSources:
+      - Source:
+          Type: "localDirectory"
+          Params:
+            SourcePath: "/root"
+            ReadWrite: true
+        Target: "/root"
+    Resources:
+      CPU: "0.5"
+      Memory: "128mb"
+    Timeouts:
+      QueueTimeout: 300
