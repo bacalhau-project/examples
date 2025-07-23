@@ -60,12 +60,35 @@ services:
       - ./data:/app/data
       - ./config:/app/config
       - ./logs:/var/log/app
+    environment:
+      - CONFIG_FILE=/app/config/config.yaml
+      - IDENTITY_FILE=/app/config/node_identity.json
 ```
 
-1. Run with Docker Compose:
+2. Run with Docker Compose:
 
 ```bash
 docker-compose up -d
+```
+
+For local development with custom configuration:
+
+```bash
+docker-compose -f docker-compose-local.yml up
+```
+
+### Multi-Platform Docker Images
+
+The project supports multi-platform images for both AMD64 and ARM64 architectures:
+
+```bash
+# Build multi-platform images
+./build.sh
+
+# The script will:
+# - Build for linux/amd64 and linux/arm64
+# - Tag with version from .version file
+# - Push to GitHub Container Registry
 ```
 
 ### Building Locally
@@ -111,11 +134,26 @@ This script:
 pip install requests numpy pyyaml psutil
 ```
 
-1. Run the simulator:
+2. Run the simulator:
 
 ```bash
 python main.py --config config.yaml --identity node_identity.json
 ```
+
+### Environment Variables
+
+The simulator supports the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CONFIG_FILE` | Path to configuration YAML file | config.yaml |
+| `IDENTITY_FILE` | Path to identity JSON file | node_identity.json |
+| `SENSOR_ID` | Override sensor ID | None (auto-generated) |
+| `SENSOR_LOCATION` | Override sensor location | None (required in config) |
+| `SQLITE_TMPDIR` | SQLite temporary directory (for containers) | /tmp |
+| `LOG_LEVEL` | Override logging level | INFO |
+
+Environment variables take precedence over configuration file values.
 
 ## Configuration
 
@@ -123,6 +161,83 @@ The simulator uses two primary configuration files:
 
 1. **Global Configuration** (`config.yaml`): Contains general simulation parameters
 2. **Node Identity** (`node_identity.json`): Contains sensor-specific identity and characteristics
+
+### Node Identity File Formats
+
+The simulator supports two identity file formats:
+
+#### Legacy Format (Flat Structure)
+Simple, backward-compatible format with basic sensor information:
+
+```json
+{
+  "id": "SENSOR_NY_123456",
+  "location": "New York",
+  "latitude": 40.7128,
+  "longitude": -74.0060,
+  "timezone": "America/New_York",
+  "manufacturer": "SensorTech",
+  "model": "TempSensor Pro",
+  "firmware_version": "1.2.0"
+}
+```
+
+#### New Format (Nested Structure)
+Enhanced format with detailed metadata and deployment information:
+
+```json
+{
+  "sensor_id": "SENSOR_CO_DEN_8548",
+  "location": {
+    "city": "Denver",
+    "state": "CO",
+    "coordinates": {
+      "latitude": 39.733741,
+      "longitude": -104.990653
+    },
+    "timezone": "America/Denver",
+    "address": "Denver, CO, USA"
+  },
+  "device_info": {
+    "manufacturer": "DataLogger",
+    "model": "AirData-Plus",
+    "firmware_version": "DLG_v3.15.21",
+    "serial_number": "DataLogger-578463",
+    "manufacture_date": "2025-03-24"
+  },
+  "deployment": {
+    "deployment_type": "mobile_unit",
+    "installation_date": "2025-03-24",
+    "height_meters": 8.3,
+    "orientation_degrees": 183
+  },
+  "metadata": {
+    "instance_id": "i-04d485582534851c9",
+    "sensor_type": "environmental_monitoring"
+  }
+}
+```
+
+Example identity files are provided:
+- `config/node-identity-legacy.json` - Legacy flat format example
+- `config/node-identity-new.json` - New nested format example
+
+To generate a new identity file template:
+```bash
+uv run main.py --generate-identity
+```
+
+### Configuration File Versions
+
+The simulator supports two configuration file versions:
+
+- **Version 1** (Legacy): Basic configuration without monitoring or dynamic reloading
+- **Version 2** (Current): Enhanced configuration with monitoring API and dynamic reloading support
+
+Example configuration files are provided:
+- `config.example.yaml` - Complete version 2 configuration with all options documented
+- `config.v1.example.yaml` - Legacy version 1 configuration for backward compatibility
+- `config/sensor-config-with-monitoring.yaml` - Production-ready version 2 configuration
 
 ### Configuration Options
 
@@ -153,8 +268,25 @@ The simulator uses two primary configuration files:
      - Location is empty or whitespace
 
 3. **Manufacturer, Model, and Firmware**:
-   - Must be from predefined valid lists
+   - Must be from predefined valid lists (defined in `src/enums.py`)
    - Will exit with error if any value is not in the valid list
+   
+   Valid Manufacturers:
+   - SensorTech (20% more anomalies)
+   - DataLogger (10% more anomalies)
+   - DataSense (20% fewer anomalies)
+   - MonitorPro (10% fewer anomalies)
+   
+   Valid Models by Manufacturer:
+   - SensorTech: TempSensor Pro, HumidCheck 2000, PressureGuard, EnvMonitor-3000
+   - DataLogger: DataLogger-X1, AirData-Plus, ClimateTracker, IndustrialMonitor-5000
+   - DataSense: TempVibe-3000, HumidPress-4000, AllSense-Pro, FactoryGuard-7000
+   - MonitorPro: ProTemp-500, ProHumid-600, ProPressure-700, ProEnviron-800
+   
+   Valid Firmware Versions:
+   - 1.0, 1.2.0, 1.4 (30% lower anomaly probability)
+   - 2.1, 2.3.5, 2.5 (15% lower anomaly probability)
+   - 3.0.0-beta, 3.1.2-alpha, 3.2-rc1 (50% higher anomaly probability)
 
 #### Simulation Parameters
 
@@ -243,6 +375,24 @@ The simulator uses two primary configuration files:
 | `replicas.count` | Number of instances to run | 1 |
 | `replicas.prefix` | Prefix for sensor IDs | SENSOR |
 | `replicas.start_index` | Starting index for sensor IDs | 1 |
+
+#### Monitoring Configuration (Version 2 only)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `monitoring.enabled` | Enable HTTP monitoring API | false |
+| `monitoring.port` | Port for monitoring API | 8080 |
+| `monitoring.host` | Host to bind monitoring API | 0.0.0.0 |
+
+#### Dynamic Configuration Reloading
+
+Version 2 configurations support dynamic reloading. Changes to configuration files are automatically detected and applied without restarting the simulator. The following settings can be changed at runtime:
+
+- Anomaly settings (probability, types, durations)
+- Logging level
+- Normal operating parameters (temperature, humidity, pressure, voltage ranges)
+
+Note: Some settings like database path and sensor identity cannot be changed at runtime.
 
 ### Example Configuration
 
@@ -337,23 +487,46 @@ anomalies:
 
 ### Database Schema
 
-The SQLite database includes the following fields:
+The SQLite database uses the following schema (defined in `src/database.py`):
 
-- `id` (PRIMARY KEY): Unique identifier for each reading
-- `timestamp`: When the reading was taken
-- `sensor_id`: Identifier for the simulated sensor
-- `temperature`: Temperature reading in Celsius
-- `humidity`: Humidity reading in percentage
-- `pressure`: Pressure reading in bar
-- `voltage`: Power supply voltage
-- `status_code`: Sensor status code (0=normal, 1=anomaly)
-- `anomaly_flag`: Boolean flag indicating if this is an anomaly
-- `anomaly_type`: Type of anomaly (if anomaly_flag is true)
-- `firmware_version`: Version of sensor firmware
-- `model`: Sensor model
-- `manufacturer`: Sensor manufacturer
-- `location`: Sensor location (required)
-- `synced`: Boolean flag indicating if this reading has been synced to a central database (0=not synced, 1=synced)
+#### Core Sensor Data Fields
+- `id` (INTEGER PRIMARY KEY AUTOINCREMENT): Unique identifier for each reading
+- `timestamp` (DATETIME): When the reading was taken
+- `sensor_id` (TEXT): Identifier for the simulated sensor
+- `temperature` (REAL): Temperature reading in Celsius
+- `humidity` (REAL): Humidity reading in percentage
+- `pressure` (REAL): Pressure reading in bar
+- `vibration` (REAL): Vibration reading (not currently used, always 0.0)
+- `voltage` (REAL): Power supply voltage
+
+#### Status and Anomaly Fields
+- `status_code` (INTEGER): Sensor status code (0=normal, 1=anomaly)
+- `anomaly_flag` (BOOLEAN): Boolean flag indicating if this is an anomaly
+- `anomaly_type` (TEXT): Type of anomaly if anomaly_flag is true (spike, trend, pattern, missing_data, noise)
+- `synced` (BOOLEAN DEFAULT 0): Boolean flag indicating if this reading has been synced to a central database
+
+#### Device Information Fields
+- `firmware_version` (TEXT): Version of sensor firmware
+- `model` (TEXT): Sensor model
+- `manufacturer` (TEXT): Sensor manufacturer
+- `serial_number` (TEXT): Device serial number
+- `manufacture_date` (TEXT): Date device was manufactured
+
+#### Location Information Fields
+- `location` (TEXT): Sensor location (required)
+- `latitude` (REAL): GPS latitude coordinate
+- `longitude` (REAL): GPS longitude coordinate
+- `original_timezone` (TEXT): Timezone of the sensor location
+
+#### Deployment Information Fields
+- `deployment_type` (TEXT): Type of deployment (e.g., fixed, mobile_unit)
+- `installation_date` (TEXT): Date sensor was installed
+- `height_meters` (REAL): Installation height in meters
+- `orientation_degrees` (REAL): Sensor orientation in degrees
+
+#### Metadata Fields
+- `instance_id` (TEXT): Cloud instance identifier (e.g., AWS EC2 instance ID)
+- `sensor_type` (TEXT): Type of sensor (e.g., environmental_monitoring)
 
 ## Querying the Data
 
@@ -399,6 +572,55 @@ GROUP BY location
 ORDER BY readings DESC;
 ```
 
+## API Endpoints
+
+When monitoring is enabled (requires version 2 configuration), the simulator provides a REST API on port 8080:
+
+### Health and Status Endpoints
+
+- **GET `/healthz`** - Health check endpoint
+  - Returns: `{"status": "healthy", "timestamp": "2025-01-21T10:00:00Z"}`
+  - HTTP 200 if healthy, 503 if unhealthy
+
+- **GET `/statusz`** - Simulator status information
+  - Returns current simulator state including:
+    - Configuration details
+    - Runtime statistics
+    - Current anomaly states
+    - Database connection status
+
+### Metrics and Data Endpoints
+
+- **GET `/metricz`** - JSON metrics endpoint
+  - Returns operational metrics:
+    - Total readings generated
+    - Anomaly counts by type
+    - Database write statistics
+    - Error counts
+
+- **GET `/samplez`** - Sample data endpoint
+  - Returns the last 10 sensor readings in JSON format
+  - Useful for debugging and monitoring data quality
+
+- **GET `/db_stats`** - Database statistics
+  - Returns:
+    - Total record count
+    - Database file size
+    - Disk usage statistics
+    - Table information
+
+### Enabling Monitoring
+
+To enable the monitoring API, use a version 2 configuration file with monitoring enabled:
+
+```yaml
+version: 2
+monitoring:
+  enabled: true
+  port: 8080
+  host: "0.0.0.0"
+```
+
 ## Technical Implementation
 
 The simulator is built with a modular architecture:
@@ -406,9 +628,11 @@ The simulator is built with a modular architecture:
 - **main.py**: Entry point that parses arguments and starts the simulator
 - **src/simulator.py**: Core simulation logic that generates readings and applies anomalies
 - **src/anomaly.py**: Implements different types of anomalies and their behaviors
-- **src/database.py**: Handles database connections and operations
+- **src/database.py**: Handles database connections and operations with SQLite
 - **src/config.py**: Loads and manages configuration from files and environment variables
 - **src/location.py**: Generates random locations and manages replicas
+- **src/monitor.py**: HTTP monitoring server providing REST API endpoints
+- **src/enums.py**: Defines valid values for manufacturers, models, and firmware versions
 
 ## License
 

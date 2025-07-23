@@ -1,0 +1,140 @@
+# Example configuration for Databricks Uploader with S3 integration
+# Copy this file to databricks-uploader-config.yaml and update with your settings
+
+# SQLite Source Configuration
+sqlite_path: "/data/sensor_data.db"
+sqlite_table_name: "sensor_logs"  # Optional - auto-detected if not specified
+timestamp_col: "timestamp"        # Optional - auto-detected if not specified
+
+# Databricks Target Configuration
+databricks_host: "your-workspace.cloud.databricks.com"
+databricks_http_path: "/sql/1.0/warehouses/your_warehouse_id"
+# databricks_token: "dapi..."  # Better to use DATABRICKS_TOKEN env var
+databricks_database: "your_database"
+databricks_table: "sensor_readings"  # Base name - will be prefixed based on scenario
+
+# AWS S3 Configuration
+s3_configuration:
+  enabled: true
+  region: "us-east-1"
+  prefix: "your-company"
+  # Buckets for each scenario (can also be set via env vars)
+  buckets:
+    raw: "your-company-databricks-raw-us-east-1"
+    schematized: "your-company-databricks-schematized-us-east-1"
+    filtered: "your-company-databricks-filtered-us-east-1"
+    emergency: "your-company-databricks-emergency-us-east-1"
+  
+  # S3 upload settings
+  upload_settings:
+    # Upload data to S3 in addition to Databricks
+    dual_upload: true
+    # Batch size for S3 uploads
+    batch_size: 1000
+    # File format for S3 (parquet, csv, json)
+    file_format: "parquet"
+    # Compression for S3 files
+    compression: "snappy"
+    # Partition by date in S3
+    partition_by_date: true
+    # S3 key prefix pattern
+    key_prefix: "data/{year}/{month}/{day}/{hour}/"
+
+# Pipeline Type Configuration
+# IMPORTANT: Pipeline type is now managed in the SQLite database for atomic updates.
+# Pipeline type determines both table and S3 bucket routing:
+#   - raw: routes to raw_* table and raw S3 bucket
+#   - schematized: routes to schematized_* table and schematized S3 bucket
+#   - filtered: routes to filtered_* table and filtered S3 bucket
+#   - emergency: routes to emergency_* table and emergency S3 bucket
+#
+# To manage pipeline types, use the pipeline_manager.py tool:
+#   View current: uv run -s pipeline_manager.py --db /path/to/sensor_data.db get
+#   Change type: uv run -s pipeline_manager.py --db /path/to/sensor_data.db set filtered --by "your_name"
+#   View history: uv run -s pipeline_manager.py --db /path/to/sensor_data.db history --limit 20
+
+# Sanitization Configuration (applies to schematized pipeline)
+sanitize_config:
+  remove_nulls: ["temperature", "humidity", "pressure"]
+  replace_values:
+    status: 
+      "error": "unknown"
+      "": "unknown"
+  remove_pii: true
+  hash_fields: ["device_id", "location_id"]
+
+# Filter Configuration (applies to filtered pipeline)
+filter_config:
+  # Only include records matching these criteria
+  temperature:
+    ">": -50
+    "<": 150
+  humidity:
+    ">": 0
+    "<=": 100
+  device_status: "active"
+  # Exclude records with these values
+  exclude:
+    error_code: ["SENSOR_FAIL", "COMM_ERROR"]
+
+# Aggregation Configuration (applies to emergency pipeline)
+aggregate_config:
+  # Group by these columns
+  group_by: ["device_id", "location", "hour"]
+  # Aggregation functions
+  aggregations:
+    temperature: "avg"
+    humidity: "max"
+    pressure: "min"
+    readings: "count"
+  # Thresholds for emergency detection
+  emergency_thresholds:
+    avg_temperature: 
+      ">": 40  # Celsius
+    max_humidity:
+      ">": 95  # Percentage
+    reading_count:
+      "<": 10  # Minimum readings per hour
+
+# Operational Settings
+state_dir: "./state"
+upload_interval: 300  # seconds between upload cycles
+batch_size: 500      # records per batch
+max_retries: 3
+retry_delay: 30      # seconds
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "json"
+  file: "./logs/uploader.log"
+  max_size: "100MB"
+  max_files: 10
+
+# Monitoring and Alerting
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check_path: "/health"
+  # Alert on upload failures
+  alert_on_failure: true
+  alert_webhook: "https://your-webhook-url"
+
+# AWS Spot Instance Configuration (for reference)
+spot_instance:
+  instance_type: "t3.medium"
+  max_price: "0.05"  # USD per hour
+  availability_zone: "us-east-1a"
+  # User data script to run on startup
+  user_data_script: |
+    #!/bin/bash
+    # Install dependencies
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    source $HOME/.cargo/env
+    
+    # Clone repository
+    git clone https://github.com/your-org/databricks-uploader.git
+    cd databricks-uploader
+    
+    # Start uploader
+    uv run -s sqlite_to_databricks_uploader.py --config databricks-uploader-config.yaml

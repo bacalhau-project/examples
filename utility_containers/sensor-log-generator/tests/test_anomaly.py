@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from src.anomaly import AnomalyGenerator
-from src.enums import AnomalyType, FirmwareVersion, Manufacturer, Model
+from src.enums import AnomalyType
 
 
 class TestAnomalyGenerator:
@@ -15,9 +15,9 @@ class TestAnomalyGenerator:
             "location": "Test Location",
             "latitude": 40.0,
             "longitude": -74.0,
-            "firmware_version": FirmwareVersion.V1_4.value,
-            "model": Model.ENVMONITOR_3000.value,
-            "manufacturer": Manufacturer.SENSORTECH.value,
+            "firmware_version": "1.4.0",
+            "model": "EnvMonitor-3000",
+            "manufacturer": "SensorTech",
         }
 
     def get_valid_config(self):
@@ -44,9 +44,9 @@ class TestAnomalyGenerator:
         assert generator.enabled is True
         assert generator.probability == 0.1
         assert generator.id == "TEST001"
-        assert generator.firmware_version == FirmwareVersion.V1_4
-        assert generator.model == Model.ENVMONITOR_3000
-        assert generator.manufacturer == Manufacturer.SENSORTECH
+        assert generator.firmware_version == "1.4.0"
+        assert generator.model == "EnvMonitor-3000"
+        assert generator.manufacturer == "SensorTech"
 
     def test_init_missing_sensor_id(self):
         """Test initialization fails when sensor ID is missing."""
@@ -70,28 +70,30 @@ class TestAnomalyGenerator:
         """Test initialization fails with invalid firmware version."""
         config = self.get_valid_config()
         identity = self.get_valid_identity()
-        identity["firmware_version"] = "INVALID_VERSION"
+        identity["firmware_version"] = "1.2"  # Invalid SemVer - missing patch version
         
         with pytest.raises(ValueError, match="Invalid firmware version"):
             AnomalyGenerator(config, identity)
 
     def test_init_invalid_model(self):
-        """Test initialization fails with invalid model."""
+        """Test model accepts any string value."""
         config = self.get_valid_config()
         identity = self.get_valid_identity()
         identity["model"] = "INVALID_MODEL"
         
-        with pytest.raises(ValueError, match="Invalid model"):
-            AnomalyGenerator(config, identity)
+        # Should not raise an exception - any string is valid
+        generator = AnomalyGenerator(config, identity)
+        assert generator.model == "INVALID_MODEL"
 
-    def test_init_invalid_manufacturer(self):
-        """Test initialization fails with invalid manufacturer."""
+    def test_init_custom_manufacturer(self):
+        """Test initialization accepts any manufacturer string."""
         config = self.get_valid_config()
         identity = self.get_valid_identity()
-        identity["manufacturer"] = "INVALID_MFG"
+        identity["manufacturer"] = "AcmeSensors"
         
-        with pytest.raises(ValueError, match="Invalid manufacturer"):
-            AnomalyGenerator(config, identity)
+        # Should not raise an exception - any string is valid
+        generator = AnomalyGenerator(config, identity)
+        assert generator.manufacturer == "AcmeSensors"
 
     def test_should_generate_anomaly_disabled(self):
         """Test that anomalies are not generated when disabled."""
@@ -131,12 +133,12 @@ class TestAnomalyGenerator:
         
         # Test V1_4 (higher probability)
         identity_v14 = self.get_valid_identity()
-        identity_v14["firmware_version"] = FirmwareVersion.V1_4.value
+        identity_v14["firmware_version"] = "1.4.0"
         generator_v14 = AnomalyGenerator(config, identity_v14)
         
         # Test V1_5 (lower probability)
         identity_v15 = self.get_valid_identity()
-        identity_v15["firmware_version"] = FirmwareVersion.V1_5.value
+        identity_v15["firmware_version"] = "1.5.0"
         generator_v15 = AnomalyGenerator(config, identity_v15)
         
         # Set random value that should work for V1_4 but not V1_5
@@ -152,11 +154,11 @@ class TestAnomalyGenerator:
         
         # Test different manufacturers
         identity_sensortech = self.get_valid_identity()
-        identity_sensortech["manufacturer"] = Manufacturer.SENSORTECH.value
+        identity_sensortech["manufacturer"] = "SensorTech"
         generator_sensortech = AnomalyGenerator(config, identity_sensortech)
         
         identity_iotpro = self.get_valid_identity()
-        identity_iotpro["manufacturer"] = Manufacturer.IOTPRO.value
+        identity_iotpro["manufacturer"] = "IoTPro"
         generator_iotpro = AnomalyGenerator(config, identity_iotpro)
         
         # SENSORTECH: 0.1 * 1.5 (firmware) * 1.0 (manufacturer) = 0.15
@@ -406,7 +408,7 @@ class TestAnomalyGenerator:
         
         # Test ENVMONITOR_3000 (prone to missing data)
         identity = self.get_valid_identity()
-        identity["model"] = Model.ENVMONITOR_3000.value
+        identity["model"] = "EnvMonitor-3000"
         generator = AnomalyGenerator(config, identity)
         
         # Check that select_anomaly_type considers model-specific weights
@@ -424,7 +426,7 @@ class TestAnomalyGenerator:
         
         # Test with V1_4 firmware (more severe spikes)
         identity = self.get_valid_identity()
-        identity["firmware_version"] = FirmwareVersion.V1_4.value
+        identity["firmware_version"] = "1.4.0"
         generator = AnomalyGenerator(config, identity)
         
         reading = {

@@ -6,7 +6,6 @@ import pytest
 import yaml
 
 from src.config import ConfigManager
-from src.enums import FirmwareVersion, Manufacturer, Model
 from src.simulator import SensorSimulator
 
 # Minimal valid config.yaml content for testing
@@ -28,9 +27,9 @@ MINIMAL_VALID_IDENTITY = {
     "latitude": 40.6943,
     "longitude": -73.9249,
     "timezone": "UTC",
-    "manufacturer": Manufacturer.SENSORTECH.value,
-    "model": Model.ENVMONITOR_3000.value,
-    "firmware_version": FirmwareVersion.V1_4.value,
+    "manufacturer": "SensorTech",
+    "model": "EnvMonitor-3000",
+    "firmware_version": "1.4.0",
 }
 
 
@@ -92,12 +91,12 @@ class TestNodeIdentityValidation:
             SensorSimulator(config_manager=config_manager)
 
     def test_invalid_value_for_sensor_attribute_identity(self):
-        """Tests identity validation with an invalid value for a sensor attribute (e.g., manufacturer)."""
+        """Tests identity validation with an invalid firmware version."""
         invalid_identity = MINIMAL_VALID_IDENTITY.copy()
-        invalid_identity["manufacturer"] = "UNKNOWN_MFG"
+        invalid_identity["firmware_version"] = "1.2"  # Invalid SemVer
         with pytest.raises(
             ValueError,
-            match=r"Invalid or missing manufacturer: UNKNOWN_MFG\. Valid manufacturers are: .*\['SensorTech', 'EnvMonitors', 'IoTPro'\]",
+            match=r"Invalid firmware version.*Must be a valid semantic version",
         ):
             config_manager = ConfigManager(
                 config=MINIMAL_VALID_CONFIG, identity=invalid_identity

@@ -36,6 +36,16 @@ class SensorReadingSchema(BaseModel):
         None  # UTC offset string like "+00:00" or "-04:00"
     )
     synced: Optional[bool] = False
+    
+    # New fields from enhanced identity
+    serial_number: Optional[str] = None
+    manufacture_date: Optional[str] = None
+    deployment_type: Optional[str] = None
+    installation_date: Optional[str] = None
+    height_meters: Optional[float] = None
+    orientation_degrees: Optional[float] = None
+    instance_id: Optional[str] = None
+    sensor_type: Optional[str] = None
 
     # Example for future: Add custom validation if needed
     # @validator('temperature')

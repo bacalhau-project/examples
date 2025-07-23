@@ -1,0 +1,32 @@
+# Test configuration without processing_mode field
+# The pipeline type is now managed in the database
+
+# SQLite source configuration
+sqlite: sample-sensor/data/sensor_data.db
+sqlite_table: sensor_logs
+timestamp_col: timestamp
+
+# Databricks target configuration
+databricks_host: test-workspace.cloud.databricks.com
+databricks_http_path: /sql/1.0/warehouses/test123
+databricks_database: sensor_data
+databricks_table: sensor_readings
+
+# Processing configuration (optional)
+gps_fuzzing_config:
+  decimal_places: 2
+
+aggregate_config:
+  window_minutes: 60
+  group_by:
+    - sensor_id
+    - location
+
+emergency_config:
+  anomaly_column: anomaly_flag
+  anomaly_value: 1
+
+# Operational settings
+state_dir: ./state
+interval: 300
+max_batch_size: 500

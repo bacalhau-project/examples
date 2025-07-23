@@ -25,9 +25,10 @@ import string
 import sys
 import threading
 from typing import Any, Callable, Dict, Optional, Union
+from datetime import datetime
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from src.config import ConfigManager
 from src.database import SensorReadingSchema
@@ -99,6 +100,7 @@ class DynamicReloadingConfig(BaseModel):
 
 
 class AppConfig(BaseModel):
+    version: Optional[int] = 1  # Config version, defaults to 1 if not specified
     database: DatabaseConfig
     logging: LoggingConfig
     random_location: RandomLocationConfig
@@ -115,12 +117,114 @@ class AppConfig(BaseModel):
     model_config = {
         "extra": "forbid"
     }  # Forbid any extra fields not defined in the model
+    
+    @model_validator(mode='after')
+    def validate_version_requirements(self):
+        """Validate that required fields are present based on config version."""
+        if self.version >= 2:
+            # Version 2 and above requires monitoring section
+            if self.monitoring is None:
+                raise ValueError(
+                    f"Config version {self.version} requires 'monitoring' section. "
+                    "Please add a monitoring section or use version: 1 for backward compatibility."
+                )
+            # Version 2 and above requires dynamic_reloading section
+            if self.dynamic_reloading is None:
+                raise ValueError(
+                    f"Config version {self.version} requires 'dynamic_reloading' section. "
+                    "Please add a dynamic_reloading section or use version: 1 for backward compatibility."
+                )
+        return self
 
 
-# Pydantic Model for Identity (node_identity.json)
+# Pydantic Models for Identity (node_identity.json)
+class LocationData(BaseModel):
+    city: Optional[str] = None
+    state: Optional[str] = None
+    coordinates: Optional[Dict[str, Union[int, float]]] = None
+    timezone: Optional[str] = None
+    address: Optional[str] = None
+
+    @field_validator('coordinates')
+    def validate_coordinates(cls, v):
+        if v is not None:
+            if 'latitude' not in v or 'longitude' not in v:
+                raise ValueError("coordinates must contain 'latitude' and 'longitude'")
+            lat = v['latitude']
+            lon = v['longitude']
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                raise ValueError("latitude and longitude must be numeric")
+            if not (-90 <= lat <= 90):
+                raise ValueError("latitude must be between -90 and 90")
+            if not (-180 <= lon <= 180):
+                raise ValueError("longitude must be between -180 and 180")
+        return v
+
+
+class DeviceInfoData(BaseModel):
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    firmware_version: Optional[str] = None
+    serial_number: Optional[str] = None
+    manufacture_date: Optional[str] = None
+
+    @field_validator('manufacture_date')
+    def validate_manufacture_date(cls, v):
+        if v is not None:
+            try:
+                datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                raise ValueError("manufacture_date must be in ISO format")
+        return v
+
+
+class DeploymentData(BaseModel):
+    deployment_type: Optional[str] = None
+    installation_date: Optional[str] = None
+    height_meters: Optional[Union[int, float]] = None
+    orientation_degrees: Optional[Union[int, float]] = None
+
+    @field_validator('installation_date')
+    def validate_installation_date(cls, v):
+        if v is not None:
+            try:
+                datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                raise ValueError("installation_date must be in ISO format")
+        return v
+
+    @field_validator('orientation_degrees')
+    def validate_orientation(cls, v):
+        if v is not None and not (0 <= v <= 360):
+            raise ValueError("orientation_degrees must be between 0 and 360")
+        return v
+
+
+class MetadataData(BaseModel):
+    instance_id: Optional[str] = None
+    identity_generation_timestamp: Optional[str] = None
+    generation_seed: Optional[Union[int, str]] = None
+    sensor_type: Optional[str] = None
+
+    @field_validator('identity_generation_timestamp')
+    def validate_timestamp(cls, v):
+        if v is not None:
+            try:
+                datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                raise ValueError("identity_generation_timestamp must be in ISO format")
+        return v
+
+
 class IdentityData(BaseModel):
+    sensor_id: Optional[str] = None
+    location: Optional[Union[str, LocationData]] = None
+    device_info: Optional[DeviceInfoData] = None
+    deployment: Optional[DeploymentData] = None
+    metadata: Optional[MetadataData] = None
+    
+    # Legacy fields for backward compatibility
     id: Optional[str] = None
-    location: Optional[str] = None
     latitude: Optional[Union[int, float]] = None
     longitude: Optional[Union[int, float]] = None
     timezone: Optional[str] = None
@@ -129,6 +233,33 @@ class IdentityData(BaseModel):
     firmware_version: Optional[str] = None
 
     model_config = {"extra": "forbid"}  # Forbid any extra fields
+
+    @model_validator(mode='after')
+    def handle_legacy_fields(self):
+        # If sensor_id is not set but id is, use id
+        if self.sensor_id is None and self.id is not None:
+            self.sensor_id = self.id
+        
+        # If location is a string (legacy), convert it
+        if isinstance(self.location, str):
+            coords = None
+            if self.latitude is not None and self.longitude is not None:
+                coords = {'latitude': self.latitude, 'longitude': self.longitude}
+            self.location = LocationData(
+                city=self.location,
+                coordinates=coords,
+                timezone=self.timezone
+            )
+        
+        # If device_info is not set but legacy fields exist, create it
+        if self.device_info is None and any([self.manufacturer, self.model, self.firmware_version]):
+            self.device_info = DeviceInfoData(
+                manufacturer=self.manufacturer,
+                model=self.model,
+                firmware_version=self.firmware_version
+            )
+        
+        return self
 
 
 def load_config(config_path: str) -> Dict:
@@ -139,6 +270,27 @@ def load_config(config_path: str) -> Dict:
         if not isinstance(raw_config_data, dict):
             logging.error(f"Config file {config_path} content must be a dictionary.")
             raise ValueError("Config file content must be a dictionary.")
+
+        # Log config version for debugging
+        config_version = raw_config_data.get("version", 1)
+        logging.info(f"Loading config file version: {config_version}")
+        
+        # If version 1 (or missing), ensure monitoring and dynamic_reloading have defaults
+        if config_version == 1:
+            if "monitoring" not in raw_config_data:
+                logging.info("Config version 1: Adding default monitoring section")
+                raw_config_data["monitoring"] = {
+                    "enabled": False,
+                    "host": "0.0.0.0",
+                    "port": 8080,
+                    "metrics_interval_seconds": 60
+                }
+            if "dynamic_reloading" not in raw_config_data:
+                logging.info("Config version 1: Adding default dynamic_reloading section")
+                raw_config_data["dynamic_reloading"] = {
+                    "enabled": False,
+                    "check_interval_seconds": 5
+                }
 
         # Validate and parse using Pydantic model
         app_config = AppConfig(**raw_config_data)
@@ -192,7 +344,16 @@ def load_identity(identity_path: str) -> Dict:
 
 def generate_sensor_id(identity: Dict) -> str:
     """Generate a new sensor ID in the format CITY_XXXXXX."""
-    location_str = identity.get("location")
+    # Handle both new nested structure and legacy format
+    location_str = None
+    
+    # Check for nested location structure first
+    location_data = identity.get("location")
+    if isinstance(location_data, dict):
+        location_str = location_data.get("city") or location_data.get("address")
+    elif isinstance(location_data, str):
+        location_str = location_data
+    
     if not location_str:  # Check if location_str is None or empty
         # This function expects location to be present in the identity dict
         raise ValueError(
@@ -242,24 +403,40 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
     gps_variation_meters = random_location_config.get("gps_variation")
 
     # Check for presence and validity of location, latitude, longitude in identity_data
-    location_value = working_identity.get("location")
+    # Handle both new nested structure and legacy format
+    location_value = None
+    latitude_value = None
+    longitude_value = None
+    
+    location_data = working_identity.get("location")
+    if isinstance(location_data, dict):
+        # New nested structure
+        location_value = location_data.get("city") or location_data.get("address")
+        coords = location_data.get("coordinates", {})
+        if isinstance(coords, dict):
+            latitude_value = coords.get("latitude")
+            longitude_value = coords.get("longitude")
+    elif isinstance(location_data, str):
+        # Legacy structure or already converted by model validator
+        location_value = location_data
+        latitude_value = working_identity.get("latitude")
+        longitude_value = working_identity.get("longitude")
+    
     # Location must be a non-empty string
     has_location = isinstance(location_value, str) and bool(location_value.strip())
-
-    latitude_value = working_identity.get("latitude")
     has_latitude = isinstance(latitude_value, (int, float))
-
-    longitude_value = working_identity.get("longitude")
     has_longitude = isinstance(longitude_value, (int, float))
 
     all_geo_fields_valid_and_present = has_location and has_latitude and has_longitude
 
     if all_geo_fields_valid_and_present:
         logger.info(
-            f"Using location '{location_value}' (Lat: {working_identity['latitude']}, Lon: {working_identity['longitude']}) "
+            f"Using location '{location_value}' (Lat: {latitude_value}, Lon: {longitude_value}) "
             "from identity file as base for geo-coordinates."
         )
-        # Base coordinates are already in working_identity from the input identity_data
+        # Ensure flat values are set for backward compatibility
+        working_identity["latitude"] = latitude_value
+        working_identity["longitude"] = longitude_value
     elif random_location_enabled:
         logger.info(
             "Not all geo-fields (location, latitude, longitude) are valid or present in identity. "
@@ -280,14 +457,35 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
         random_city_data = available_cities[random_city_name]
 
         # Set base coordinates from the randomly chosen city
-        working_identity["location"] = random_city_name
+        # Update both nested and flat structure for compatibility
+        if isinstance(working_identity.get("location"), dict):
+            working_identity["location"]["city"] = random_city_name
+            working_identity["location"]["coordinates"] = {
+                "latitude": random_city_data["latitude"],
+                "longitude": random_city_data["longitude"]
+            }
+        else:
+            # Create new location structure if needed
+            working_identity["location"] = {
+                "city": random_city_name,
+                "coordinates": {
+                    "latitude": random_city_data["latitude"],
+                    "longitude": random_city_data["longitude"]
+                }
+            }
+        
+        # Also set flat values for backward compatibility
         working_identity["latitude"] = random_city_data["latitude"]
         working_identity["longitude"] = random_city_data["longitude"]
+        
         logger.info(
             f"Randomly selected base location: {random_city_name} "
-            f"(Lat: {working_identity['latitude']:.6f}, Lon: {working_identity['longitude']:.6f})"
+            f"(Lat: {random_city_data['latitude']:.6f}, Lon: {random_city_data['longitude']:.6f})"
         )
         has_location = True  # Ensure this is set for ID generation logic
+        location_value = random_city_name
+        latitude_value = random_city_data["latitude"]
+        longitude_value = random_city_data["longitude"]
         # The old fuzzing logic and log_suffix that were here are removed.
         # Fuzzing will be handled in a separate block later.
     else:
@@ -349,10 +547,18 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
             fuzzed_latitude = round(fuzzed_latitude, 5)
             fuzzed_longitude = round(fuzzed_longitude, 5)
 
+            # Update both nested and flat structure
+            if isinstance(working_identity.get("location"), dict) and "coordinates" in working_identity["location"]:
+                working_identity["location"]["coordinates"]["latitude"] = fuzzed_latitude
+                working_identity["location"]["coordinates"]["longitude"] = fuzzed_longitude
+            
+            # Always update flat values for backward compatibility
             working_identity["latitude"] = fuzzed_latitude
             working_identity["longitude"] = fuzzed_longitude
+            
+            location_name = location_value or working_identity.get('location')
             logger.info(
-                f"Fuzzed coordinates for '{working_identity.get('location')}': "
+                f"Fuzzed coordinates for '{location_name}': "
                 f"New Lat: {fuzzed_latitude:.5f}, New Lon: {fuzzed_longitude:.5f}"
             )
         else:
@@ -377,11 +583,18 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
     # Now, ensure an ID is generated if it's missing.
     # This relies on 'location' being present and valid in working_identity,
     # which should be guaranteed by the logic above if no error was raised.
-    if not working_identity.get("id"):
+    sensor_id = working_identity.get("sensor_id") or working_identity.get("id")
+    if not sensor_id:
         # Check location again, as generate_sensor_id depends on it.
         # It should be set if we reached here (either from file or random generation).
         current_location = working_identity.get("location")
-        if not (isinstance(current_location, str) and current_location.strip()):
+        if isinstance(current_location, dict):
+            # For nested structure, create a string representation for generate_sensor_id
+            location_str = current_location.get("city") or current_location.get("address")
+        else:
+            location_str = current_location
+            
+        if not (isinstance(location_str, str) and location_str.strip()):
             critical_error_msg = (
                 "Critical internal error: 'location' is missing or invalid in identity data "
                 "just before ID generation, despite prior checks. This should not happen."
@@ -390,15 +603,22 @@ def process_identity_and_location(identity_data: Dict, app_config: Dict) -> Dict
             raise RuntimeError(critical_error_msg)
 
         logger.info(
-            "Identity file does not contain an 'id' key, or 'id' is empty. Generating new sensor ID."
+            "Identity file does not contain an 'id' or 'sensor_id' key, or it is empty. Generating new sensor ID."
         )
         try:
-            working_identity["id"] = generate_sensor_id(working_identity)
-            logger.info(f"Generated sensor ID: {working_identity['id']}")
+            generated_id = generate_sensor_id(working_identity)
+            # Set both fields for compatibility
+            working_identity["sensor_id"] = generated_id
+            working_identity["id"] = generated_id
+            logger.info(f"Generated sensor ID: {generated_id}")
         except ValueError as e:
             # This could happen if generate_sensor_id raises an error (e.g. location becomes invalid unexpectedly)
             logger.error(f"Failed to generate sensor ID: {e}")
             raise  # Re-raise to be caught by main
+    else:
+        # Ensure both fields are set for compatibility
+        working_identity["sensor_id"] = sensor_id
+        working_identity["id"] = sensor_id
 
     return working_identity
 
@@ -568,6 +788,11 @@ def main():
         action="store_true",
         help="Output the database schema as JSON and exit.",
     )
+    parser.add_argument(
+        "--generate-identity",
+        action="store_true",
+        help="Generate a new format identity template with placeholder values and exit.",
+    )
 
     args = parser.parse_args()
 
@@ -576,6 +801,47 @@ def main():
         schema_dict = SensorReadingSchema.model_json_schema()
         schema_json = json.dumps(schema_dict, indent=2)
         print(schema_json)
+        sys.exit(0)
+    
+    if args.generate_identity:
+        # Generate a new format identity template
+        from datetime import datetime
+        import uuid
+        
+        template = {
+            "sensor_id": "SENSOR_XX_YYY_ZZZZ",
+            "location": {
+                "city": "YourCity",
+                "state": "XX",
+                "coordinates": {
+                    "latitude": 40.7128,
+                    "longitude": -74.0060
+                },
+                "timezone": "America/New_York",
+                "address": "YourCity, XX, USA"
+            },
+            "device_info": {
+                "manufacturer": "SensorCorp",
+                "model": "WeatherStation Pro",
+                "firmware_version": "2.1.0",
+                "serial_number": f"SENSOR-{uuid.uuid4().hex[:6].upper()}",
+                "manufacture_date": datetime.now().strftime("%Y-%m-%d")
+            },
+            "deployment": {
+                "deployment_type": "stationary_unit",
+                "installation_date": datetime.now().strftime("%Y-%m-%d"),
+                "height_meters": 2.5,
+                "orientation_degrees": 0
+            },
+            "metadata": {
+                "instance_id": f"i-{uuid.uuid4().hex[:16]}",
+                "identity_generation_timestamp": datetime.now().isoformat(),
+                "generation_seed": random.randint(10**20, 10**40),
+                "sensor_type": "environmental_monitoring"
+            }
+        }
+        
+        print(json.dumps(template, indent=2))
         sys.exit(0)
 
     # Determine configuration file paths, prioritizing environment variables
@@ -659,12 +925,19 @@ def main():
         # Create ConfigManager with initial data
         config_manager = ConfigManager(config=initial_config, identity=initial_identity)
 
-        logging.info(
-            f"Using sensor ID: {config_manager.get_identity().get('id', 'Not Set')}"
-        )
-        logging.info(
-            f"Sensor Location: {config_manager.get_identity().get('location', 'Not Set')}"
-        )
+        # Get sensor ID and location for logging
+        identity = config_manager.get_identity()
+        sensor_id = identity.get('sensor_id') or identity.get('id', 'Not Set')
+        
+        # Handle both old and new location formats
+        location_value = identity.get('location')
+        if isinstance(location_value, dict):
+            location_display = location_value.get('city') or location_value.get('address', 'Not Set')
+        else:
+            location_display = location_value or 'Not Set'
+        
+        logging.info(f"Using sensor ID: {sensor_id}")
+        logging.info(f"Sensor Location: {location_display}")
 
         # Create and run the simulator, passing the ConfigManager
         simulator = SensorSimulator(config_manager)

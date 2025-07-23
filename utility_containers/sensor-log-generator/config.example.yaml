@@ -1,88 +1,131 @@
-# Sensor Simulator Configuration Example
-# Copy this file to config.yaml and modify as needed
-# Note: Some values can be overridden with environment variables
+# Sensor Log Generator Configuration Example
+# This is a complete example configuration file with all available options
 
-# Simulation parameters
-simulation:
-  readings_per_second: 1 # How many readings to generate per second
-  run_time_seconds: 3600 # How long to run the simulation (1 hour)
-  start_delay_seconds: 0 # Optional: Delay before starting simulation
-
-# Normal operating parameters
-normal_parameters:
-  temperature:
-    mean: 65.0 # Average temperature in Celsius
-    std_dev: 2.0 # Standard deviation
-    min: 50.0 # Minimum allowed value
-    max: 80.0 # Maximum allowed value
-    daily_pattern: true # Optional: Apply daily pattern variation
-  vibration:
-    mean: 2.5 # Average vibration in mm/s²
-    std_dev: 0.5 # Standard deviation
-    min: 0.1 # Minimum allowed value
-    max: 10.0 # Maximum allowed value
-    daily_pattern: false # Optional: Apply daily pattern variation
-  voltage:
-    mean: 12.0 # Average voltage in Volts
-    std_dev: 0.1 # Standard deviation
-    min: 11.5 # Minimum allowed value
-    max: 12.5 # Maximum allowed value
-    daily_pattern: false # Optional: Apply daily pattern variation
-
-# Anomaly configuration
-anomalies:
-  enabled: true # Master switch for anomaly generation
-  probability: 0.05 # Probability of starting a new anomaly per reading
-  types:
-    spike:
-      enabled: true # Enable spike anomalies
-      weight: 0.4 # Relative frequency (higher = more common)
-    trend:
-      enabled: true # Enable trend anomalies
-      weight: 0.2 # Relative frequency
-      duration_seconds: 300 # How long the anomaly lasts (5 minutes)
-    pattern:
-      enabled: true # Enable pattern anomalies
-      weight: 0.1 # Relative frequency
-      duration_seconds: 600 # How long the anomaly lasts (10 minutes)
-    missing_data:
-      enabled: true # Enable missing data anomalies
-      weight: 0.1 # Relative frequency
-      duration_seconds: 30 # How long the anomaly lasts (30 seconds)
-    noise:
-      enabled: true # Enable noise anomalies
-      weight: 0.2 # Relative frequency
-      duration_seconds: 180 # How long the anomaly lasts (3 minutes)
+# Configuration version
+# Version 1: Basic configuration (backward compatible)
+# Version 2: Requires monitoring and dynamic_reloading sections
+version: 2
 
 # Database configuration
 database:
-  path: "sensor_data.db" # Path to SQLite database file
-  backup_enabled: false # Enable automatic backups
-  backup_interval_hours: 24 # How often to create backups
-  backup_path: "./backups/" # Where to store backups
-  max_size_mb: 1000 # Optional: Maximum database size in MB
+  path: "data/sensor_data.db"              # Path to SQLite database file
+  backup_enabled: true                     # Enable periodic backups
+  backup_interval_hours: 24                # Hours between backups
+  max_backups: 7                           # Maximum number of backup files to keep
+  preserve_existing_db: false              # Whether to preserve existing database on startup
+  max_size_mb: 1000                        # Maximum database size in MB (optional)
 
 # Logging configuration
 logging:
-  level: "INFO" # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  file: "sensor_simulator.log" # Log file path
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" # Log format
-  console_output: true # Whether to output logs to console
-  max_file_size_mb: 10 # Optional: Maximum log file size
-  backup_count: 5 # Optional: Number of log backups to keep
+  level: "INFO"                            # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/sensor_simulator.log"        # Log file path (optional)
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console_output: true                     # Enable console output
+  max_file_size_mb: 100                    # Maximum log file size before rotation
+  backup_count: 5                          # Number of rotated log files to keep
 
-# Output configuration
-output:
-  csv_export_enabled: false # Enable CSV export
-  csv_export_path: "./exports/" # Where to store CSV files
-  csv_export_interval_minutes: 60 # How often to export data
-  json_export_enabled: false # Enable JSON export
-  json_export_path: "./exports/" # Where to store JSON files
-  json_export_interval_minutes: 60 # How often to export data
-
-# Configuration for location generation
+# Random location generation settings
 random_location:
-  enabled: true
-  number_of_cities: 10
-  gps_variation: 100 # meters
-  cities_file: "src/cities.json" # Path to cities file in src directory
+  enabled: false                           # Enable random location generation
+  gps_variation: 10                        # GPS variation in meters for fuzzing
+  city_count: 50                           # Number of cities to use for random selection
+  filter_by: "population"                  # Filter cities by: population, area, or none
+  min_population: 100000                   # Minimum population for city selection
+  max_population: 10000000                 # Maximum population for city selection
+  exclude_countries: []                    # List of countries to exclude
+  include_countries: []                    # List of countries to include (if set, only these are used)
+
+# Simulation parameters
+simulation:
+  readings_per_second: 3                   # Number of readings generated per second
+  run_time_seconds: 3600                   # Total simulation runtime in seconds (1 hour)
+  start_delay_seconds: 2                   # Delay before starting simulation
+
+# Replica configuration for multiple sensors
+replicas:
+  count: 1                                 # Number of sensor replicas to simulate
+  prefix: "SENSOR"                         # Prefix for replica sensor IDs
+  start_index: 1                           # Starting index for replica numbering
+
+# Normal sensor parameters
+normal_parameters:
+  temperature:
+    mean: 25.0                             # Mean temperature in Celsius
+    std_dev: 2.0                           # Standard deviation
+    min: -10.0                             # Minimum value
+    max: 45.0                              # Maximum value
+  humidity:
+    mean: 50.0                             # Mean humidity percentage
+    std_dev: 10.0                          # Standard deviation
+    min: 0.0                               # Minimum value
+    max: 100.0                             # Maximum value
+  pressure:
+    mean: 101325.0                         # Mean pressure in Pascals
+    std_dev: 1000.0                        # Standard deviation
+    min: 95000.0                           # Minimum value
+    max: 105000.0                          # Maximum value
+  vibration:
+    mean: 2.5                              # Mean vibration in mm/s²
+    std_dev: 0.5                           # Standard deviation
+    min: 0.0                               # Minimum value
+    max: 10.0                              # Maximum value
+  voltage:
+    mean: 12.0                             # Mean voltage
+    std_dev: 0.5                           # Standard deviation
+    min: 10.0                              # Minimum value
+    max: 14.0                              # Maximum value
+
+# Anomaly generation settings
+anomalies:
+  enabled: true                            # Enable anomaly generation
+  probability: 0.05                        # Overall probability of anomalies (5%)
+  types:
+    spike:
+      enabled: true                        # Enable spike anomalies
+      weight: 0.3                          # Relative weight (30% of anomalies)
+      severity_factor: 2.0                 # Multiplier for spike magnitude
+    trend:
+      enabled: true                        # Enable trend anomalies
+      weight: 0.25                         # Relative weight (25% of anomalies)
+      duration_seconds: 300                # Duration of trend anomaly
+      rate_change: 0.1                     # Rate of change per minute
+    pattern:
+      enabled: true                        # Enable pattern anomalies
+      weight: 0.2                          # Relative weight (20% of anomalies)
+      duration_seconds: 600                # Duration of pattern anomaly
+      frequency: 0.1                       # Frequency of oscillation
+    missing_data:
+      enabled: true                        # Enable missing data anomalies
+      weight: 0.15                         # Relative weight (15% of anomalies)
+      duration_seconds: 60                 # Duration of missing data
+    noise:
+      enabled: true                        # Enable noise anomalies
+      weight: 0.1                          # Relative weight (10% of anomalies)
+      duration_seconds: 120                # Duration of increased noise
+      noise_multiplier: 3.0                # Multiplier for noise level
+
+# Monitoring server configuration (REQUIRED for version 2+)
+monitoring:
+  enabled: true                            # Enable HTTP monitoring server
+  host: "0.0.0.0"                          # Host to bind to
+  port: 8080                               # Port to listen on
+  metrics_interval_seconds: 60             # Interval for metrics updates
+  health_check_path: "/health"             # Health check endpoint path
+  metrics_path: "/metrics"                 # Metrics endpoint path
+  enable_prometheus: false                 # Enable Prometheus-compatible metrics
+
+# Dynamic configuration reloading (REQUIRED for version 2+)
+dynamic_reloading:
+  enabled: true                            # Enable dynamic config reloading
+  check_interval_seconds: 5                # Interval to check for config changes
+  reload_on_change: true                   # Automatically reload on changes
+  validate_before_reload: true             # Validate config before applying
+
+# Advanced settings (optional)
+advanced:
+  memory_limit_mb: 500                     # Memory usage limit in MB
+  cpu_limit_percent: 80                    # CPU usage limit as percentage
+  error_retry_attempts: 3                  # Number of retry attempts on errors
+  error_retry_delay_seconds: 5             # Delay between retry attempts
+  batch_insert_size: 100                   # Database batch insert size
+  batch_timeout_seconds: 5.0               # Timeout for batch inserts

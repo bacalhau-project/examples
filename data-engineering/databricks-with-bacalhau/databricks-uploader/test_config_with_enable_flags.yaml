@@ -1,0 +1,27 @@
+# Test configuration with old enable_* flags format
+# These should be migrated to pipeline types
+
+# SQLite source configuration
+sqlite: sample-sensor/data/sensor_data.db
+sqlite_table: sensor_logs
+timestamp_col: timestamp
+
+# Databricks target configuration
+databricks_host: test-workspace.cloud.databricks.com
+databricks_http_path: /sql/1.0/warehouses/test123
+databricks_database: sensor_data
+databricks_table: sensor_readings
+
+# Old-style processing flags (should be migrated)
+enable_sanitization: true
+enable_aggregation: false
+enable_schematization: false
+
+# Processing configuration
+gps_fuzzing_config:
+  decimal_places: 2
+
+# Operational settings
+state_dir: ./state
+interval: 300
+max_batch_size: 500

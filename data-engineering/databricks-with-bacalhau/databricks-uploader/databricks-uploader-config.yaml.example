@@ -1,11 +1,28 @@
 # databricks-uploader-config.yaml.example
 # Configuration for the SQLite to Databricks Uploader
 # 
-# This uploader routes data to different tables based on processing scenario:
-# - Raw data (no processing) -> raw_<table_name>
-# - Filtered data -> filtered_<table_name>
-# - Sanitized/secure data -> secure_<table_name>
-# - Aggregated data -> aggregated_<table_name>
+# IMPORTANT: All fields in this file are REQUIRED unless marked as optional.
+# The uploader will exit with an error if any required field is missing.
+
+# === REQUIRED FIELDS ===
+
+# --- Pipeline Type Configuration ---
+# IMPORTANT: Pipeline type is now managed in the SQLite database for atomic updates.
+# Pipeline type determines which table your data will be routed to:
+#   - raw: {databricks_table}_0_raw
+#   - schematized: {databricks_table}_1_schematized  
+#   - filtered: {databricks_table}_2_filtered (replaces sanitized)
+#   - emergency: {databricks_table}_4_emergency (replaces aggregated)
+#
+# To manage pipeline types, use the pipeline_manager.py tool:
+#   View current pipeline:
+#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db get
+#   
+#   Change pipeline type:
+#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db set filtered --by "your_name"
+#   
+#   View execution history:
+#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db history --limit 20
 
 # --- SQLite Source Configuration ---
 # Path to your SQLite database file.
@@ -98,14 +115,75 @@ aggregate_config:
 # Example: "/var/run/sqlite_uploader_state" or "./uploader_state"
 state_dir: "/path/to/your/state_directory" # Directory to store the last upload timestamp
 
-# Time in seconds between consecutive upload cycles.
-# This determines how frequently the script checks for new data in the SQLite database.
-# This value is ignored if the --once command-line flag is used.
-# Default is 300 seconds (5 minutes) if not specified.
-# Example: 60 (for 1 minute), 3600 (for 1 hour)
-interval: 300
+# Time in seconds between consecutive upload cycles. REQUIRED.
+# This determines how frequently the script checks for new data.
+# Example: 60 (for 1 minute), 300 (for 5 minutes), 3600 (for 1 hour)
+interval: 30
 
-# To run the script once and then exit (instead of continuous monitoring),
-# use the --once command-line flag when running the script.
-# Example: python sqlite_to_delta_uploader.py --config uploader-config.yaml --once
-# once: false # This line is commented out as --once is preferred via CLI.
+# Maximum number of records to upload in a single batch. REQUIRED.
+# Larger batches are more efficient but use more memory.
+# Recommended: 500-1000 for stable connections, 100-500 for unreliable networks
+max_batch_size: 500
+
+# === OPTIONAL FIELDS ===
+
+# Databricks Personal Access Token (PAT). 
+# CRITICAL: Use environment variable DATABRICKS_TOKEN instead for security!
+# Only set here for local testing. NEVER commit tokens to version control.
+# databricks_token: "dapi..." # USE ENV VAR INSTEAD!
+
+# Name of the table within your SQLite database to read from.
+# If omitted, the script will auto-detect a suitable table.
+sqlite_table_name: "sensor_logs"
+
+# Name of the timestamp column for incremental loading.
+# If omitted, the script will auto-detect a timestamp column.
+timestamp_col: "timestamp"
+
+# Fuzz factor for interval randomization (0-1, default: 0.1 = ±10%)
+# Helps prevent thundering herd problems with multiple uploaders
+fuzz_factor: 0.1
+
+# --- Processing Mode Specific Configurations ---
+# These are optional and only apply to specific processing modes
+
+# GPS Fuzzing Configuration (applies to schematized pipeline)
+gps_fuzzing:
+  enabled: true
+  radius_meters: 100
+  base_lat: 37.7749
+  base_lon: -122.4194
+
+# Emergency Detection Configuration (applies to emergency pipeline)
+emergency_config:
+  trigger_keywords: 
+    - "EMERGENCY"
+    - "ALERT"
+    - "CRITICAL"
+    - "FAILURE"
+  severity_thresholds:
+    temperature: 35
+    pressure: 1030
+    humidity: 90
+
+# Aggregation Configuration (applies to emergency pipeline)
+aggregate_config:
+  window_minutes: 5
+  group_by: ["sensor_id"]
+  aggregations:
+    temperature: ["mean", "max", "min"]
+    humidity: ["mean"]
+    pressure: ["mean"]
+
+# === CONFIGURATION NOTES ===
+# 1. The configuration file is monitored for changes every 2 seconds
+# 2. Pipeline type changes must be done through pipeline_manager.py (not config file)
+# 3. Changes to database connection settings require a restart
+# 4. Use environment variables for sensitive data:
+#    - DATABRICKS_TOKEN (highest priority)
+#    - DATABRICKS_HOST
+#    - DATABRICKS_HTTP_PATH
+#    - DATABRICKS_DATABASE
+#    - DATABRICKS_TABLE
+# 5. Command-line arguments override both env vars and config file
+# 6. Old configs with processing_mode or enable_* flags will be automatically migrated

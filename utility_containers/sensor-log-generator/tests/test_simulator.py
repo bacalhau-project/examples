@@ -18,7 +18,6 @@ from src.config import (
 from src.database import SensorDatabase  # Assuming SensorDatabase is in database.py
 
 # Import Enums if they are in separate files or adjust as needed
-from src.enums import FirmwareVersion, Manufacturer, Model
 from src.simulator import SensorSimulator
 
 
@@ -58,9 +57,9 @@ def get_minimal_identity(
         "latitude": latitude,
         "longitude": longitude,
         "timezone": timezone,
-        "manufacturer": Manufacturer.SENSORTECH.value,
-        "model": Model.ENVMONITOR_3000.value,
-        "firmware_version": FirmwareVersion.V1_4.value,
+        "manufacturer": "SensorTech",
+        "model": "EnvMonitor-3000",
+        "firmware_version": "1.4.0",
     }
 
 
@@ -196,10 +195,10 @@ class TestSensorSimulator(unittest.TestCase):
         """Test simulator with different firmware versions."""
         config = get_minimal_config(self.db_path)
         
-        for firmware_version in [FirmwareVersion.V1_4, FirmwareVersion.V1_5, FirmwareVersion.V2_0]:
+        for firmware_version in ["1.4.0", "1.5.0", "2.0.0"]:
             with self.subTest(firmware_version=firmware_version):
                 identity = get_minimal_identity()
-                identity["firmware_version"] = firmware_version.value
+                identity["firmware_version"] = firmware_version
                 
                 config_manager = ConfigManager(config=config, identity=identity)
                 simulator = SensorSimulator(config_manager=config_manager)
@@ -211,10 +210,10 @@ class TestSensorSimulator(unittest.TestCase):
         """Test simulator with different manufacturers."""
         config = get_minimal_config(self.db_path)
         
-        for manufacturer in [Manufacturer.SENSORTECH, Manufacturer.ENVMONITORS, Manufacturer.IOTPRO]:
+        for manufacturer in ["SensorTech", "EnvMonitors", "IoTPro", "AcmeSensors", "CustomManufacturer"]:
             with self.subTest(manufacturer=manufacturer):
                 identity = get_minimal_identity()
-                identity["manufacturer"] = manufacturer.value
+                identity["manufacturer"] = manufacturer
                 
                 config_manager = ConfigManager(config=config, identity=identity)
                 simulator = SensorSimulator(config_manager=config_manager)
@@ -226,10 +225,10 @@ class TestSensorSimulator(unittest.TestCase):
         """Test simulator with different models."""
         config = get_minimal_config(self.db_path)
         
-        for model in [Model.ENVMONITOR_3000, Model.ENVMONITOR_4000, Model.ENVMONITOR_5000]:
+        for model in ["EnvMonitor-3000", "EnvMonitor-4000", "EnvMonitor-5000"]:
             with self.subTest(model=model):
                 identity = get_minimal_identity()
-                identity["model"] = model.value
+                identity["model"] = model
                 
                 config_manager = ConfigManager(config=config, identity=identity)
                 simulator = SensorSimulator(config_manager=config_manager)

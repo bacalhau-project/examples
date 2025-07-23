@@ -1,11 +1,12 @@
 import logging
 import random
+import re
 import time
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .enums import AnomalyType, FirmwareVersion, Manufacturer, Model, ParameterType
+from .enums import AnomalyType, ParameterType
 
 logger = logging.getLogger(__name__)
 
@@ -27,42 +28,47 @@ class AnomalyGenerator:
         self.probability = self.anomaly_config.get("probability", 0.05)
         self.types = self.anomaly_config.get("types", {})
 
-        # Get firmware version
-        self.id = identity.get("id")
+        # Get sensor ID - handle both old and new formats
+        self.id = identity.get("sensor_id") or identity.get("id")
         if not self.id:
             raise ValueError("Sensor ID is required in identity configuration")
 
-        # Initialize identity with validation
-        try:
-            self.firmware_version = FirmwareVersion(identity.get("firmware_version"))
-        except ValueError:
-            valid_versions = [v.value for v in FirmwareVersion]
+        # Extract device info based on format
+        device_info = identity.get("device_info", {})
+        
+        # Initialize identity with validation - check nested first, then flat
+        firmware_val = device_info.get("firmware_version") or identity.get("firmware_version")
+        if not self._is_valid_semver(firmware_val):
             raise ValueError(
-                f"Invalid firmware version: {identity.get('firmware_version')}. "
-                f"Valid versions are: {valid_versions}"
+                f"Invalid firmware version: {firmware_val}. "
+                f"Must be a valid semantic version (e.g., 1.0.0, 2.1.3-beta, 1.0.0+build123)"
             )
+        self.firmware_version = firmware_val
 
-        try:
-            self.model = Model(identity.get("model"))
-        except ValueError:
-            valid_models = [m.value for m in Model]
-            raise ValueError(
-                f"Invalid model: {identity.get('model')}. "
-                f"Valid models are: {valid_models}"
-            )
+        model_val = device_info.get("model") or identity.get("model")
+        # Accept any string as model
+        self.model = model_val
 
-        try:
-            self.manufacturer = Manufacturer(identity.get("manufacturer"))
-        except ValueError:
-            valid_manufacturers = [m.value for m in Manufacturer]
-            raise ValueError(
-                f"Invalid manufacturer: {identity.get('manufacturer')}. "
-                f"Valid manufacturers are: {valid_manufacturers}"
-            )
+        manufacturer_val = device_info.get("manufacturer") or identity.get("manufacturer")
+        if not manufacturer_val:
+            raise ValueError("Manufacturer is required in identity configuration")
+        # Accept any string as manufacturer
+        self.manufacturer = manufacturer_val
 
-        self.location = identity.get("location")
-        self.latitude = identity.get("latitude")
-        self.longitude = identity.get("longitude")
+        # Extract location data based on format
+        location_data = identity.get("location")
+        if isinstance(location_data, dict):
+            # New nested format
+            self.location = location_data.get("city") or location_data.get("address")
+            coords = location_data.get("coordinates", {})
+            self.latitude = coords.get("latitude", identity.get("latitude"))
+            self.longitude = coords.get("longitude", identity.get("longitude"))
+        else:
+            # Legacy flat format
+            self.location = location_data
+            self.latitude = identity.get("latitude")
+            self.longitude = identity.get("longitude")
+            
         if not self.location:
             raise ValueError("Location is required in identity configuration")
 
@@ -72,9 +78,23 @@ class AnomalyGenerator:
 
         # Log sensor identity
         logger.info(f"Initializing anomaly generator for sensor: {self.id}")
-        logger.info(f"  Firmware: {self.firmware_version.value}")
-        logger.info(f"  Model: {self.model.value}")
-        logger.info(f"  Manufacturer: {self.manufacturer.value}")
+        logger.info(f"  Firmware: {self.firmware_version}")
+        logger.info(f"  Model: {self.model}")
+        logger.info(f"  Manufacturer: {self.manufacturer}")
+
+    def _is_valid_semver(self, version: str) -> bool:
+        """Validate if a string is a valid semantic version.
+        
+        Args:
+            version: Version string to validate
+            
+        Returns:
+            True if valid SemVer, False otherwise
+        """
+        # SemVer regex pattern
+        # Matches: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+        semver_pattern = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+        return bool(re.match(semver_pattern, version))
 
     def should_generate_anomaly(self):
         """Determine if an anomaly should be generated based on probability and firmware version."""
@@ -84,21 +104,21 @@ class AnomalyGenerator:
         # Adjust probability based on firmware version
         adjusted_probability = self.probability
 
-        # Firmware 1.3 has higher anomaly probability
-        if self.firmware_version == FirmwareVersion.V1_4:
+        # Firmware 1.4 has higher anomaly probability
+        if self.firmware_version == "1.4" or self.firmware_version == "1.4.0":
             adjusted_probability *= 1.5  # 50% more anomalies
 
-        # Firmware 1.4 has lower anomaly probability
-        elif self.firmware_version == FirmwareVersion.V1_5:
+        # Firmware 1.5 has lower anomaly probability
+        elif self.firmware_version == "1.5" or self.firmware_version == "1.5.0":
             adjusted_probability *= 0.7  # 30% fewer anomalies
 
         # Adjust based on manufacturer
-        if self.manufacturer == Manufacturer.SENSORTECH:
+        if self.manufacturer == "SensorTech":
             # Standard probability
             pass
-        elif self.manufacturer == Manufacturer.ENVMONITORS:
+        elif self.manufacturer == "EnvMonitors":
             adjusted_probability *= 0.8  # 20% fewer anomalies but more severe
-        elif self.manufacturer == Manufacturer.IOTPRO:
+        elif self.manufacturer == "IoTPro":
             adjusted_probability *= 1.2  # 20% more anomalies
 
         return random.random() < adjusted_probability
@@ -115,27 +135,27 @@ class AnomalyGenerator:
             return None
 
         # Adjust weights based on model
-        if self.model == Model.ENVMONITOR_3000:
+        if self.model == "EnvMonitor-3000":
             # More prone to missing data
             if AnomalyType.MISSING_DATA in enabled_types:
                 enabled_types[AnomalyType.MISSING_DATA] *= 2.0
-        elif self.model == Model.ENVMONITOR_4000:
+        elif self.model == "EnvMonitor-4000":
             # More prone to pattern anomalies
             if AnomalyType.PATTERN in enabled_types:
                 enabled_types[AnomalyType.PATTERN] *= 1.5
-        elif self.model == Model.ENVMONITOR_5000:
+        elif self.model == "EnvMonitor-5000":
             # More prone to spike anomalies
             if AnomalyType.SPIKE in enabled_types:
                 enabled_types[AnomalyType.SPIKE] *= 1.5
 
         # Adjust weights based on firmware
-        if self.firmware_version == FirmwareVersion.V1_4:
+        if self.firmware_version == "1.4" or self.firmware_version == "1.4.0":
             # More temperature spikes and noise
             if AnomalyType.SPIKE in enabled_types:
                 enabled_types[AnomalyType.SPIKE] *= 1.3
             if AnomalyType.NOISE in enabled_types:
                 enabled_types[AnomalyType.NOISE] *= 1.5
-        elif self.firmware_version == FirmwareVersion.V1_5:
+        elif self.firmware_version == "1.5" or self.firmware_version == "1.5.0":
             # Fewer spikes, more stable
             if AnomalyType.SPIKE in enabled_types:
                 enabled_types[AnomalyType.SPIKE] *= 0.7
@@ -302,8 +322,8 @@ class AnomalyGenerator:
         ]:
             base_value = reading[param.value]
 
-            # Firmware 1.3 has more noise
-            if self.firmware_version == FirmwareVersion.V1_4:
+            # Firmware 1.4 has more noise
+            if self.firmware_version == "1.4" or self.firmware_version == "1.4.0":
                 noise_factor = 0.15  # 15% of the value as noise
             else:
                 noise_factor = 0.1  # 10% of the value as noise
@@ -311,7 +331,7 @@ class AnomalyGenerator:
             # VibrationPlus sensors have more vibration noise
             if (
                 param == ParameterType.HUMIDITY
-                and self.manufacturer == Manufacturer.ENVMONITORS
+                and self.manufacturer == "EnvMonitors"
             ):
                 noise_factor *= 1.5
 
@@ -319,3 +339,70 @@ class AnomalyGenerator:
             modified[param.value] = base_value + noise
 
         return modified, True, AnomalyType.NOISE
+    
+    def update_identity(self, new_identity):
+        """Update the identity configuration when it changes.
+        
+        Args:
+            new_identity: New identity configuration
+            
+        Raises:
+            ValueError: If any of the identity values are invalid
+        """
+        # Get sensor ID - handle both old and new formats
+        self.id = new_identity.get("sensor_id") or new_identity.get("id")
+        if not self.id:
+            raise ValueError("Sensor ID is required in identity configuration")
+
+        # Extract device info based on format
+        device_info = new_identity.get("device_info", {})
+        
+        # Update firmware version
+        firmware_val = device_info.get("firmware_version") or new_identity.get("firmware_version")
+        try:
+            self.firmware_version = FirmwareVersion(firmware_val)
+        except ValueError:
+            valid_versions = [v.value for v in FirmwareVersion]
+            raise ValueError(
+                f"Invalid firmware version: {firmware_val}. "
+                f"Valid versions are: {valid_versions}"
+            )
+
+        # Update model
+        model_val = device_info.get("model") or new_identity.get("model")
+        try:
+            self.model = Model(model_val)
+        except ValueError:
+            valid_models = [m.value for m in Model]
+            raise ValueError(
+                f"Invalid model: {model_val}. "
+                f"Valid models are: {valid_models}"
+            )
+
+        # Update manufacturer
+        manufacturer_val = device_info.get("manufacturer") or new_identity.get("manufacturer")
+        if manufacturer_val:
+            self.manufacturer = manufacturer_val
+            raise ValueError(
+                f"Invalid manufacturer: {manufacturer_val}. "
+                f"Valid manufacturers are: {valid_manufacturers}"
+            )
+
+        # Update location data based on format
+        location_data = new_identity.get("location")
+        if isinstance(location_data, dict):
+            # New nested format
+            self.location = location_data.get("city") or location_data.get("address")
+            coords = location_data.get("coordinates", {})
+            self.latitude = coords.get("latitude", new_identity.get("latitude"))
+            self.longitude = coords.get("longitude", new_identity.get("longitude"))
+        else:
+            # Legacy flat format
+            self.location = location_data
+            self.latitude = new_identity.get("latitude")
+            self.longitude = new_identity.get("longitude")
+            
+        if not self.location:
+            raise ValueError("Location is required in identity configuration")
+        
+        logger.info(f"Updated anomaly generator identity for sensor: {self.id}")

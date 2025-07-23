@@ -98,3 +98,5 @@ sample-sensor/*
 # SpecStory explanation file
 .specstory/.what-is-this.md
 *config.yaml
+
+credentials/*

@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -14,7 +15,6 @@ from pydantic import ValidationError
 from .anomaly import AnomalyGenerator
 from .config import ConfigManager
 from .database import SensorDatabase, SensorReadingSchema
-from .enums import FirmwareVersion, Manufacturer, Model
 from .monitor import MonitoringServer
 
 # Set up global logger
@@ -31,15 +31,27 @@ class SensorSimulator:
         self.config_manager = config_manager
         self.identity = self.config_manager.get_identity()  # Get initial identity
 
-        self.sensor_id = self.identity.get("id")
+        # Handle both old and new identity formats
+        self.sensor_id = self.identity.get("sensor_id") or self.identity.get("id")
         # Manufacturer, model, and firmware_version will be set by _validate_sensor_config
         self.running = False
 
         # Initialize location properties including timezone
-        self.city_name = self.identity.get("location")
-        self.latitude = self.identity.get("latitude")
-        self.longitude = self.identity.get("longitude")
-        self.timezone = self.identity.get("timezone", "UTC")
+        # Extract location data based on format (nested or flat)
+        location_data = self.identity.get("location")
+        if isinstance(location_data, dict):
+            # New nested format
+            self.city_name = location_data.get("city") or location_data.get("address")
+            coords = location_data.get("coordinates", {})
+            self.latitude = coords.get("latitude", self.identity.get("latitude"))
+            self.longitude = coords.get("longitude", self.identity.get("longitude"))
+            self.timezone = location_data.get("timezone", self.identity.get("timezone", "UTC"))
+        else:
+            # Legacy flat format
+            self.city_name = location_data
+            self.latitude = self.identity.get("latitude")
+            self.longitude = self.identity.get("longitude")
+            self.timezone = self.identity.get("timezone", "UTC")
         try:
             # Validate IANA timezone and get offset string upon initialization
             self.timezone_offset_str = self._get_offset_str(time.time(), self.timezone)
@@ -133,9 +145,15 @@ class SensorSimulator:
             }
 
             # Initialize monitoring server if enabled
-            monitoring_cfg = self.config_manager.config.get("monitoring", {})
-            self.monitoring_enabled = monitoring_cfg.get("enabled", False)
-            self.monitoring_server = None
+            try:
+                monitoring_cfg = self.config_manager.config.get("monitoring") or {}
+                self.monitoring_enabled = monitoring_cfg.get("enabled", False) if monitoring_cfg else False
+                self.monitoring_server = None
+            except Exception as e:
+                logger.warning(f"Failed to get monitoring config: {e}. Disabling monitoring.")
+                monitoring_cfg = {}
+                self.monitoring_enabled = False
+                self.monitoring_server = None
 
             if self.monitoring_enabled:
                 host = monitoring_cfg.get("host", "0.0.0.0")
@@ -150,48 +168,56 @@ class SensorSimulator:
     def _validate_sensor_config(self):
         """Validate the sensor configuration using self.identity and assign enum attributes."""
         current_identity = self.identity
+        
+        # Check if location exists (handle both formats)
         location = current_identity.get("location")
         if not location:
             raise ValueError("Location is required in identity configuration")
-
-        # Manufacturer
-        manufacturer_val = current_identity.get("manufacturer")
+        
+        # Extract device info based on format
+        device_info = current_identity.get("device_info", {})
+        
+        # Manufacturer - check nested first, then flat
+        manufacturer_val = device_info.get("manufacturer") or current_identity.get("manufacturer")
         if manufacturer_val is None:
             raise ValueError("Manufacturer is required in identity configuration")
-        try:
-            self.manufacturer = Manufacturer(manufacturer_val)
-        except ValueError:  # Catches Enum's own ValueError for invalid string
-            valid_manufacturers = [m.value for m in Manufacturer]
-            raise ValueError(
-                f"Invalid or missing manufacturer: {manufacturer_val}. "
-                f"Valid manufacturers are: {valid_manufacturers}"
-            )
+        # Accept any string as manufacturer
+        self.manufacturer = manufacturer_val
 
-        # Model
-        model_val = current_identity.get("model")
+        # Model - check nested first, then flat
+        model_val = device_info.get("model") or current_identity.get("model")
         if model_val is None:
             raise ValueError("Model is required in identity configuration")
-        try:
-            self.model = Model(model_val)
-        except ValueError:
-            valid_models = [m.value for m in Model]
-            raise ValueError(
-                f"Invalid or missing model: {model_val}. "
-                f"Valid models are: {valid_models}"
-            )
+        # Accept any string as model
+        self.model = model_val
 
-        # Firmware Version
-        firmware_val = current_identity.get("firmware_version")
+        # Firmware Version - check nested first, then flat
+        firmware_val = device_info.get("firmware_version") or current_identity.get("firmware_version")
         if firmware_val is None:
             raise ValueError("Firmware version is required in identity configuration")
-        try:
-            self.firmware_version = FirmwareVersion(firmware_val)
-        except ValueError:
-            valid_versions = [v.value for v in FirmwareVersion]
+        # Validate SemVer format
+        if not self._is_valid_semver(firmware_val):
             raise ValueError(
-                f"Invalid or missing firmware version: {firmware_val}. "
-                f"Valid versions are: {valid_versions}"
+                f"Invalid firmware version '{firmware_val}'. "
+                f"Must be a valid semantic version (e.g., 1.0.0, 2.1.3-beta, 1.0.0+build123)"
             )
+        self.firmware_version = firmware_val
+        
+        # Store additional device info if available
+        self.serial_number = device_info.get("serial_number") if device_info else None
+        self.manufacture_date = device_info.get("manufacture_date") if device_info else None
+        
+        # Store deployment info if available
+        deployment = current_identity.get("deployment") or {}
+        self.deployment_type = deployment.get("deployment_type") if deployment else None
+        self.installation_date = deployment.get("installation_date") if deployment else None
+        self.height_meters = deployment.get("height_meters") if deployment else None
+        self.orientation_degrees = deployment.get("orientation_degrees") if deployment else None
+        
+        # Store metadata if available
+        metadata = current_identity.get("metadata") or {}
+        self.instance_id = metadata.get("instance_id") if metadata else None
+        self.sensor_type = metadata.get("sensor_type") if metadata else None
 
     def generate_normal_reading(self):
         """Generate a normal sensor reading based on configured parameters.
@@ -388,12 +414,23 @@ class SensorSimulator:
                 old_iana_timezone = self.timezone
                 self.identity = new_identity
                 # Re-fetch identity-dependent attributes
-                self.sensor_id = self.identity.get("id")
-                # manufacturer, model, and firmware_version will be set by _validate_sensor_config
-                self.city_name = self.identity.get("location")
-                self.latitude = self.identity.get("latitude")
-                self.longitude = self.identity.get("longitude")
-                self.timezone = self.identity.get("timezone", "UTC")  # Update IANA name
+                self.sensor_id = self.identity.get("sensor_id") or self.identity.get("id")
+                
+                # Extract location data based on format
+                location_data = self.identity.get("location")
+                if isinstance(location_data, dict):
+                    # New nested format
+                    self.city_name = location_data.get("city") or location_data.get("address")
+                    coords = location_data.get("coordinates", {})
+                    self.latitude = coords.get("latitude", self.identity.get("latitude"))
+                    self.longitude = coords.get("longitude", self.identity.get("longitude"))
+                    self.timezone = location_data.get("timezone", self.identity.get("timezone", "UTC"))
+                else:
+                    # Legacy flat format
+                    self.city_name = location_data
+                    self.latitude = self.identity.get("latitude")
+                    self.longitude = self.identity.get("longitude")
+                    self.timezone = self.identity.get("timezone", "UTC")
 
                 try:
                     # Update timezone_offset_str based on new IANA timezone
@@ -449,6 +486,9 @@ class SensorSimulator:
                 current_timestamp_unix, tz=timezone.utc
             ).isoformat(timespec="milliseconds")
 
+            # Extract device info and other metadata based on identity format
+            device_info = self.identity.get("device_info", {})
+            
             # Prepare data for Pydantic model
             reading_data_for_schema = {
                 "timestamp": iso_timestamp,
@@ -461,14 +501,23 @@ class SensorSimulator:
                 "status_code": reading.get("status_code", 0 if not anomaly_flag else 1),
                 "anomaly_flag": anomaly_flag,
                 "anomaly_type": anomaly_type,
-                "firmware_version": self.identity.get("firmware_version"),
-                "model": self.identity.get("model"),
-                "manufacturer": self.identity.get("manufacturer"),
+                "firmware_version": device_info.get("firmware_version") or self.identity.get("firmware_version"),
+                "model": device_info.get("model") or self.identity.get("model"),
+                "manufacturer": device_info.get("manufacturer") or self.identity.get("manufacturer"),
                 "location": self.city_name,  # Pass city name
                 "latitude": self.latitude,
                 "longitude": self.longitude,
                 "original_timezone": self.timezone_offset_str,  # Pass the stored offset string
                 "synced": False,  # Default value for new readings
+                # New fields from enhanced identity
+                "serial_number": getattr(self, 'serial_number', None),
+                "manufacture_date": getattr(self, 'manufacture_date', None),
+                "deployment_type": getattr(self, 'deployment_type', None),
+                "installation_date": getattr(self, 'installation_date', None),
+                "height_meters": getattr(self, 'height_meters', None),
+                "orientation_degrees": getattr(self, 'orientation_degrees', None),
+                "instance_id": getattr(self, 'instance_id', None),
+                "sensor_type": getattr(self, 'sensor_type', None),
             }
 
             # Create and validate the reading with Pydantic model
@@ -717,11 +766,19 @@ class SensorSimulator:
         # This method now primarily validates and logs the location from self.identity.
         current_identity_data = self.identity
 
-        # Re-assign to ensure these are set from the validated identity data if needed,
-        # though __init__ already does this. This is more for validation and logging.
-        self.city_name = current_identity_data.get("location")
-        self.latitude = current_identity_data.get("latitude")
-        self.longitude = current_identity_data.get("longitude")
+        # Extract location data based on format (already done in __init__, but re-validate here)
+        location_data = current_identity_data.get("location")
+        if isinstance(location_data, dict):
+            # New nested format
+            self.city_name = location_data.get("city") or location_data.get("address")
+            coords = location_data.get("coordinates", {})
+            self.latitude = coords.get("latitude", current_identity_data.get("latitude"))
+            self.longitude = coords.get("longitude", current_identity_data.get("longitude"))
+        else:
+            # Legacy flat format
+            self.city_name = location_data
+            self.latitude = current_identity_data.get("latitude")
+            self.longitude = current_identity_data.get("longitude")
         # self.timezone is already set in __init__ from self.identity
 
         if not (
@@ -759,6 +816,20 @@ class SensorSimulator:
             Location string (just the city name)
         """
         return self.city_name
+
+    def _is_valid_semver(self, version: str) -> bool:
+        """Validate if a string is a valid semantic version.
+        
+        Args:
+            version: Version string to validate
+            
+        Returns:
+            True if valid SemVer, False otherwise
+        """
+        # SemVer regex pattern
+        # Matches: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+        semver_pattern = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+        return bool(re.match(semver_pattern, version))
 
     def _get_offset_str(self, unix_timestamp: float, iana_timezone_name: str) -> str:
         """
