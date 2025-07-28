@@ -1,0 +1,87 @@
+# Sensor Simulator Configuration for Bacalhau Demo
+# Optimized for spot instances with realistic demo data
+
+simulation:
+  readings_per_second: 2  # Moderate rate for demo purposes
+  run_time_seconds: 86400  # 24 hours for demo, can be restarted
+  start_delay_seconds: 5  # Short delay after service start
+
+normal_parameters:
+  temperature:
+    mean: 22.0          # Room temperature in Celsius
+    std_dev: 1.5        # Realistic variation
+    min: 18.0           # Minimum reasonable temperature
+    max: 26.0           # Maximum reasonable temperature
+    daily_pattern: true  # Simulate daily temperature cycles
+  pressure:
+    mean: 101.3         # Standard atmospheric pressure in kPa
+    std_dev: 0.5        # Weather variation
+    min: 99.0           # Low pressure system
+    max: 103.0          # High pressure system
+  humidity:
+    mean: 50.0          # Comfortable humidity percentage
+    std_dev: 10.0       # Normal variation
+    min: 20.0           # Dry conditions
+    max: 80.0           # Humid conditions
+  vibration:
+    mean: 1.2           # Light vibration for city environment
+    std_dev: 0.3        # Normal variation
+    min: 0.5            # Minimum detectable vibration
+    max: 3.0            # Maximum from city traffic/buildings
+  voltage:
+    mean: 24.0          # Standard sensor power supply
+    std_dev: 0.2        # Normal power variation
+    min: 23.0           # Minimum operating voltage
+    max: 25.0           # Maximum safe voltage
+
+anomalies:
+  enabled: true         # Enable anomalies for realistic demo
+  probability: 0.08     # 8% chance of anomalies
+  types:
+    spike:
+      enabled: true
+      weight: 0.4
+    trend:
+      enabled: true
+      weight: 0.2
+      duration_seconds: 300
+    pattern:
+      enabled: true
+      weight: 0.1
+      duration_seconds: 600
+    missing_data:
+      enabled: true
+      weight: 0.1
+      duration_seconds: 30
+    noise:
+      enabled: true
+      weight: 0.2
+      duration_seconds: 180
+
+database:
+  path: "/app/data/sensor_data.db"
+  backup_enabled: false  # Disabled for demo to avoid disk space issues
+  max_size_mb: 500       # Limit database size for demo
+
+random_location:
+  enabled: true  # Use random locations from node identity
+
+logging:
+  level: "INFO"
+  file: "/app/logs/sensor_simulator.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console_output: true
+  max_file_size_mb: 50
+  backup_count: 3
+
+# Configuration for monitoring server
+monitoring:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  metrics_interval_seconds: 60
+
+# Dynamic reloading settings
+dynamic_reloading:
+  enabled: false  # Disabled for container environment
+  check_interval_seconds: 5

@@ -1,0 +1,32 @@
+{
+  "sensor_id": "SENSOR_CO_DEN_8548",
+  "location": {
+    "city": "Denver",
+    "state": "CO",
+    "coordinates": {
+      "latitude": 39.733741,
+      "longitude": -104.990653
+    },
+    "timezone": "America/Denver",
+    "address": "Denver, CO, USA"
+  },
+  "device_info": {
+    "manufacturer": "DataLogger",
+    "model": "AirData-Plus",
+    "firmware_version": "DLG_v3.15.21",
+    "serial_number": "DataLogger-578463",
+    "manufacture_date": "2025-03-24"
+  },
+  "deployment": {
+    "deployment_type": "mobile_unit",
+    "installation_date": "2025-03-24",
+    "height_meters": 8.3,
+    "orientation_degrees": 183
+  },
+  "metadata": {
+    "instance_id": "i-04d485582534851c9",
+    "identity_generation_timestamp": "2025-07-15T15:42:09.444892",
+    "generation_seed": 200030087626269561895877314454571578463,
+    "sensor_type": "environmental_monitoring"
+  }
+}

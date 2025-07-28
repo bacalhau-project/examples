@@ -1,0 +1,56 @@
+# Sensor Log Generator Configuration - Version 1 (Legacy)
+# This is a minimal configuration file that works with older versions
+# The monitoring and dynamic_reloading sections will use defaults
+
+# Database configuration (REQUIRED)
+database:
+  path: "data/sensor_data.db"
+  preserve_existing_db: false
+
+# Logging configuration (REQUIRED)
+logging:
+  level: "INFO"
+  file: "logs/sensor_simulator.log"
+  console_output: true
+
+# Random location settings (REQUIRED)
+random_location:
+  enabled: false
+
+# Normal sensor parameters (OPTIONAL - will use defaults if not specified)
+normal_parameters:
+  temperature:
+    mean: 25.0
+    std_dev: 2.0
+    min: -10.0
+    max: 45.0
+  humidity:
+    mean: 50.0
+    std_dev: 10.0
+    min: 0.0
+    max: 100.0
+  pressure:
+    mean: 101325.0
+    std_dev: 1000.0
+    min: 95000.0
+    max: 105000.0
+  vibration:
+    mean: 2.5
+    std_dev: 0.5
+    min: 0.0
+    max: 10.0
+  voltage:
+    mean: 12.0
+    std_dev: 0.5
+    min: 10.0
+    max: 14.0
+
+# Simulation parameters (OPTIONAL)
+simulation:
+  readings_per_second: 3
+  run_time_seconds: 3600
+
+# Anomaly settings (OPTIONAL)
+anomalies:
+  enabled: false
+  probability: 0.05

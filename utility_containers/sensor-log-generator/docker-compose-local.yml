@@ -1,0 +1,11 @@
+services:
+  sensor-simulator:
+    build: .
+    restart: unless-stopped
+    environment:
+      - CONFIG_FILE=/config/config.yaml
+      - IDENTITY_FILE=/config/node-identity-new.json
+    volumes:
+      - ./config:/config
+      - ./data:/app/data
+      - ./logs:/app/logs

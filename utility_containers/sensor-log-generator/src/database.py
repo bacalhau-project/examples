@@ -1,6 +1,8 @@
+import fcntl
 import logging
 import os
 import platform
+import random
 import sqlite3
 import subprocess
 import threading
@@ -55,12 +57,13 @@ class SensorReadingSchema(BaseModel):
     #     return v
 
 
-def retry_on_error(max_retries=3, retry_delay=1.0):
-    """Decorator to retry a function on error.
+def retry_on_error(max_retries=5, retry_delay=0.1, backoff_factor=2.0):
+    """Decorator to retry a function on database errors with exponential backoff.
 
     Args:
         max_retries: Maximum number of retry attempts
-        retry_delay: Delay between retries in seconds
+        retry_delay: Initial delay between retries in seconds
+        backoff_factor: Factor to multiply delay by after each retry
 
     Returns:
         Decorated function that will retry on error
@@ -82,17 +85,34 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
                     return func(*args, **kwargs)
                 except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
                     last_exception = e
-                    if attempt < max_retries:
+                    error_msg = str(e).lower()
+                    
+                    # Check if it's a locking/busy error that should be retried
+                    is_retryable = any(msg in error_msg for msg in [
+                        'database is locked',
+                        'database table is locked', 
+                        'cannot commit',
+                        'cannot start a transaction',
+                        'disk i/o error',
+                        'database disk image is malformed'
+                    ])
+                    
+                    if attempt < max_retries and is_retryable:
+                        # Calculate delay with exponential backoff and jitter
+                        current_delay = retry_delay * (backoff_factor ** attempt)
+                        jitter = random.uniform(0, current_delay * 0.1)
+                        total_delay = current_delay + jitter
+                        
                         # Log the error and retry
                         logging.warning(
                             f"Database operation failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
-                            f"Retrying in {retry_delay} seconds..."
+                            f"Retrying in {total_delay:.2f} seconds..."
                         )
                         if debug_mode:
                             logging.getLogger("SensorDatabase").debug(
                                 f"Error type: {type(e).__name__}, Error details: {str(e)}"
                             )
-                        time.sleep(retry_delay)
+                        time.sleep(total_delay)
                     else:
                         # Log the final failure
                         logging.error(
@@ -125,14 +145,16 @@ class DatabaseConnectionManager:
         self.logger = logging.getLogger("DatabaseConnectionManager")
         self._local = threading.local()
 
-        # Standard SQLite pragmas for container environments
+        # Enhanced SQLite pragmas for multi-process safety
         self.pragmas = [
-            "PRAGMA journal_mode=WAL;",
-            "PRAGMA busy_timeout=30000;",
-            "PRAGMA synchronous=NORMAL;",
-            "PRAGMA temp_store=MEMORY;",
-            "PRAGMA mmap_size=268435456;",
-            "PRAGMA cache_size=-64000;",
+            "PRAGMA journal_mode=WAL;",  # Write-Ahead Logging for better concurrency
+            "PRAGMA busy_timeout=60000;",  # 60 second timeout for locked database
+            "PRAGMA synchronous=FULL;",    # FULL sync for better durability in multi-process
+            "PRAGMA temp_store=MEMORY;",   # Keep temp tables in memory
+            "PRAGMA mmap_size=268435456;", # 256MB memory map size
+            "PRAGMA cache_size=-64000;",   # 64MB cache
+            "PRAGMA wal_autocheckpoint=100;",  # Checkpoint every 100 pages
+            "PRAGMA locking_mode=NORMAL;",     # Normal locking for multi-process
         ]
 
     def _get_thread_connection(self) -> sqlite3.Connection:
@@ -148,18 +170,33 @@ class DatabaseConnectionManager:
                 )
 
             try:
-                self._local.conn = sqlite3.connect(self.db_path, timeout=30.0)
+                # Use check_same_thread=False for multi-process safety
+                # and isolation_level=None for autocommit mode to reduce lock time
+                self._local.conn = sqlite3.connect(
+                    self.db_path, 
+                    timeout=60.0,
+                    check_same_thread=False,
+                    isolation_level='DEFERRED'  # Use deferred transactions
+                )
 
                 # Apply all pragmas
                 for pragma in self.pragmas:
                     self._local.conn.execute(pragma)
-
-                if self.debug_mode:
-                    cursor = self._local.conn.cursor()
-                    cursor.execute("PRAGMA journal_mode;")
+                
+                # Ensure WAL mode is properly set and visible
+                cursor = self._local.conn.cursor()
+                cursor.execute("PRAGMA journal_mode;")
+                mode = cursor.fetchone()[0]
+                if mode != "wal":
+                    self.logger.warning(f"Expected WAL mode but got: {mode}")
+                    # Try setting it again
+                    cursor.execute("PRAGMA journal_mode=WAL;")
                     mode = cursor.fetchone()[0]
+                    
+                if self.debug_mode:
                     self.logger.debug(f"Connection journal mode set to: {mode}")
-                    cursor.close()
+                    
+                cursor.close()
 
             except Exception as e:
                 if self.debug_mode:
@@ -267,16 +304,20 @@ class DatabaseConnectionManager:
 
 
 class SensorDatabase:
-    def __init__(self, db_path: str, preserve_existing_db: bool = False):
+    def __init__(self, db_path: str, preserve_existing_db: bool = True, truncate_on_start: bool = True):
         """Initialize the sensor database.
 
         Args:
             db_path: Path to the SQLite database file
             preserve_existing_db: If True, an existing database file will not be deleted.
-                                  If False (default), an existing database file will be
+                                  If False, an existing database file will be
                                   deleted and recreated.
+            truncate_on_start: If True, truncate the sensor_readings table on startup.
+                              Set to False for multi-process scenarios where processes
+                              should append to existing data.
         """
         self.db_path = db_path
+        self.truncate_on_start = truncate_on_start
         self.logger = logging.getLogger(
             "SensorDatabase"
         )  # Get logger early for potential deletion message
@@ -287,25 +328,28 @@ class SensorDatabase:
         if self.debug_mode:
             self._log_debug_environment_info()
 
-        # Handle deletion of existing database if not preserving
+        # Handle existing database
         if self.db_path != ":memory:" and os.path.exists(self.db_path):
             if not preserve_existing_db:
                 self.logger.info(
                     f"Existing database found at '{self.db_path}' and "
                     f"'preserve_existing_db' is False. Deleting old database file."
                 )
-                try:
-                    os.remove(self.db_path)
-                except OSError as e:
-                    self.logger.error(
-                        f"Failed to delete existing database '{self.db_path}': {e}"
-                    )
-                    raise  # Re-raise the error as this is critical
+                self._delete_database_files()
             else:
+                # Check if existing database is healthy
                 self.logger.info(
                     f"Existing database found at '{self.db_path}' and "
-                    f"'preserve_existing_db' is True. Preserving."
+                    f"'preserve_existing_db' is True. Checking database health..."
                 )
+                if not self._verify_database_health():
+                    self.logger.warning(
+                        f"Existing database at '{self.db_path}' is corrupted or invalid. "
+                        f"Deleting and recreating..."
+                    )
+                    self._delete_database_files()
+                else:
+                    self.logger.info("Existing database is healthy. Preserving.")
 
         abs_db_path = os.path.abspath(
             self.db_path
@@ -338,14 +382,137 @@ class SensorDatabase:
 
         # Initialize database schema
         self._init_db()
+        
+        # Initialize checkpoint settings - more frequent for multi-process
+        self.checkpoint_interval = 60  # Force checkpoint every minute
+        self.last_checkpoint_time = time.time()
+        self.checkpoint_on_close = True
+        
+        # Multi-process lock file for coordination
+        self.lock_file_path = f"{self.db_path}.lock"
+        self._ensure_lock_file_exists()
 
         if self.debug_mode:
             self._log_database_debug_info()
+            
+    def _ensure_lock_file_exists(self):
+        """Ensure the lock file exists for process coordination."""
+        try:
+            # Skip file locking on Windows or if we can't import fcntl
+            try:
+                import fcntl
+            except ImportError:
+                self.logger.debug("File locking not available on this platform")
+                return
+                
+            # Create lock file if it doesn't exist
+            if not os.path.exists(self.lock_file_path):
+                with open(self.lock_file_path, 'w') as f:
+                    f.write(f"Database lock file created at {datetime.now(timezone.utc).isoformat()}\n")
+        except Exception as e:
+            self.logger.warning(f"Could not create lock file: {e}")
+            
+    @contextmanager
+    def _process_lock(self, timeout=5.0):
+        """Context manager for process-level locking using file locks.
+        
+        Args:
+            timeout: Maximum time to wait for lock in seconds
+            
+        Yields:
+            None when lock is acquired
+            
+        Raises:
+            TimeoutError: If lock cannot be acquired within timeout
+        """
+        lock_acquired = False
+        start_time = time.time()
+        
+        try:
+            with open(self.lock_file_path, 'a') as lock_file:
+                while True:
+                    try:
+                        # Try to acquire exclusive lock (non-blocking)
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        lock_acquired = True
+                        
+                        if self.debug_mode:
+                            self.logger.debug(f"Process {os.getpid()} acquired database lock")
+                        
+                        yield
+                        break
+                        
+                    except IOError:
+                        # Lock is held by another process
+                        if time.time() - start_time > timeout:
+                            raise TimeoutError(
+                                f"Could not acquire database lock within {timeout} seconds"
+                            )
+                        # Brief sleep before retry
+                        time.sleep(0.01)
+                        
+        finally:
+            if lock_acquired:
+                try:
+                    # Release the lock
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                    if self.debug_mode:
+                        self.logger.debug(f"Process {os.getpid()} released database lock")
+                except (OSError, ValueError) as e:
+                    # File might be closed already, which is OK
+                    if self.debug_mode:
+                        self.logger.debug(f"Lock file already closed: {e}")
 
     def _init_db(self):
         """Initialize the database schema based on SensorReadingSchema."""
         try:
             with self.conn_manager.get_cursor() as cursor:
+                # Check if sensor_readings table exists
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name='sensor_readings'
+                """)
+                table_exists = cursor.fetchone() is not None
+                
+                if table_exists:
+                    self.logger.info("Table 'sensor_readings' exists. Checking table integrity...")
+                    
+                    # Verify table structure
+                    cursor.execute("PRAGMA table_info(sensor_readings)")
+                    columns = {row[1] for row in cursor.fetchall()}
+                    required_columns = {'id', 'timestamp', 'sensor_id'}
+                    
+                    # Also check for pipeline_config table
+                    cursor.execute("""
+                        SELECT name FROM sqlite_master 
+                        WHERE type='table' AND name='pipeline_config'
+                    """)
+                    pipeline_config_exists = cursor.fetchone() is not None
+                    
+                    if required_columns.issubset(columns) and pipeline_config_exists:
+                        # Table structure is good
+                        if self.truncate_on_start:
+                            self.logger.info("Table structure is valid. Truncating existing data...")
+                            cursor.execute("DELETE FROM sensor_readings")
+                            cursor.execute("DELETE FROM sqlite_sequence WHERE name='sensor_readings'")
+                            self.logger.info("Table truncated successfully")
+                        else:
+                            self.logger.info("Table structure is valid. Keeping existing data (truncate_on_start=False)")
+                        
+                        # No need to create table or indexes, they already exist
+                        return
+                    else:
+                        # Table structure is invalid, drop and recreate
+                        missing = required_columns - columns
+                        self.logger.warning(
+                            f"Table structure invalid. Missing columns: {missing}. "
+                            f"Dropping and recreating table..."
+                        )
+                        cursor.execute("DROP TABLE sensor_readings")
+                
+                # If we get here, we need to create the table
+                self.logger.info("Creating new sensor_readings table...")
+                
                 # Dynamically create the table based on the Pydantic model
                 # Base columns
                 columns = ["id INTEGER PRIMARY KEY AUTOINCREMENT"]
@@ -404,7 +571,7 @@ class SensorDatabase:
                         columns.append(f"{field_name} {sqlite_type}")
 
                 create_table_sql = (
-                    f"CREATE TABLE IF NOT EXISTS sensor_readings ({', '.join(columns)})"
+                    f"CREATE TABLE sensor_readings ({', '.join(columns)})"
                 )
                 if self.debug_mode:
                     self.logger.debug(
@@ -422,6 +589,32 @@ class SensorDatabase:
                     self.logger.warning(
                         "Field 'timestamp' not found in SensorReadingSchema, skipping index creation."
                     )
+                    
+                # Create pipeline_config table for compatibility with uploader
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pipeline_config (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        pipeline_type TEXT NOT NULL CHECK(pipeline_type IN ('raw', 'schematized', 'aggregated', 'emergency', 'regional')),
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_by TEXT,
+                        metadata TEXT
+                    )
+                """)
+                
+                # Create index for pipeline_config
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_pipeline_config_updated_at 
+                    ON pipeline_config(updated_at)
+                """)
+                
+                # Insert default pipeline config if table is empty
+                cursor.execute("SELECT COUNT(*) FROM pipeline_config")
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute("""
+                        INSERT INTO pipeline_config (pipeline_type, updated_by, metadata)
+                        VALUES ('raw', 'sensor-log-generator', '{"source": "sensor", "version": "1.0"}')
+                    """)
+                    self.logger.info("Created default pipeline configuration (type: raw)")
 
                 if self.debug_mode:
                     # Log the pragma settings
@@ -439,10 +632,111 @@ class SensorDatabase:
                         self.logger.debug(f"PRAGMA {pragma} = {value}")
 
             self.logger.info("Database initialized successfully")
+            
+            # CRITICAL: Force checkpoint AFTER committing table creation
+            # This must be done in a separate transaction to avoid locking issues
+            try:
+                with self.conn_manager.get_cursor() as cursor:
+                    cursor.execute("PRAGMA wal_checkpoint(RESTART);")
+                    checkpoint_result = cursor.fetchone()
+                    if checkpoint_result:
+                        busy, checkpointed, total = checkpoint_result
+                        self.logger.info(
+                            f"Post-creation checkpoint: busy={busy}, "
+                            f"checkpointed={checkpointed}, total={total}"
+                        )
+                    
+                    # Verify tables are visible
+                    cursor.execute("""
+                        SELECT name FROM sqlite_master 
+                        WHERE type='table' 
+                        ORDER BY name
+                    """)
+                    created_tables = [row[0] for row in cursor.fetchall()]
+                    self.logger.info(f"Tables created and visible: {created_tables}")
+            except sqlite3.OperationalError as e:
+                # Log but don't fail - checkpoint will happen during normal operation
+                self.logger.warning(f"Could not checkpoint after table creation: {e}")
+                
         except Exception as e:
             self.logger.error(f"Error initializing database: {e}")
             raise
+            
+    def _handle_corruption(self):
+        """Handle database corruption by attempting recovery or recreation.
+        
+        This method is called when corruption is detected. It will:
+        1. Log the corruption event
+        2. Attempt to backup corrupted files
+        3. Recreate the database
+        """
+        self.logger.error("Database corruption detected - attempting recovery")
+        
+        # Backup corrupted files
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        backup_dir = os.path.join(os.path.dirname(self.db_path), "corrupted_backups")
+        
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Import shutil for file operations
+            import shutil
+            
+            # Backup all database files
+            for suffix in ['', '-wal', '-shm', '-journal']:
+                src_file = f"{self.db_path}{suffix}"
+                if os.path.exists(src_file):
+                    dst_file = os.path.join(backup_dir, f"{os.path.basename(self.db_path)}.{timestamp}{suffix}")
+                    try:
+                        shutil.copy2(src_file, dst_file)
+                        self.logger.info(f"Backed up corrupted file: {dst_file}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to backup {src_file}: {e}")
+                        
+        except Exception as e:
+            self.logger.error(f"Failed to create backup directory: {e}")
+            
+        # Delete corrupted database files
+        self._delete_database_files()
+        
+        # Recreate database
+        self.logger.info("Recreating database after corruption...")
+        self._init_db()
+        
+    def execute_with_corruption_recovery(self, func, *args, **kwargs):
+        """Execute a database operation with automatic corruption recovery.
+        
+        Args:
+            func: Function to execute
+            *args: Positional arguments for func
+            **kwargs: Keyword arguments for func
+            
+        Returns:
+            Result of func execution
+            
+        Raises:
+            Exception: If operation fails after corruption recovery
+        """
+        try:
+            return func(*args, **kwargs)
+        except sqlite3.DatabaseError as e:
+            error_msg = str(e).lower()
+            if 'malformed' in error_msg or 'corrupt' in error_msg:
+                self.logger.warning(f"Corruption detected: {e}")
+                
+                # Attempt recovery
+                self._handle_corruption()
+                
+                # Retry operation once after recovery
+                try:
+                    return func(*args, **kwargs)
+                except Exception as retry_error:
+                    self.logger.error(f"Operation failed after corruption recovery: {retry_error}")
+                    raise
+            else:
+                raise
 
+    @retry_on_error(max_retries=10, retry_delay=0.1, backoff_factor=1.5)
     def store_reading(
         self,
         reading_data: SensorReadingSchema,  # Accept Pydantic model instance
@@ -706,10 +1000,14 @@ class SensorDatabase:
 
         if len(self.batch_buffer) >= self.batch_size or batch_age >= self.batch_timeout:
             return self.commit_batch()
+            
+        # Check if we need to force a checkpoint
+        if current_time - self.last_checkpoint_time >= self.checkpoint_interval:
+            self._force_checkpoint()
 
         return None
 
-    @retry_on_error()
+    @retry_on_error(max_retries=10, retry_delay=0.2, backoff_factor=1.5)
     def commit_batch(self):
         """Commit the current batch of readings to the database.
 
@@ -723,42 +1021,49 @@ class SensorDatabase:
             return 0
 
         start_time = time.time()
+        
+        # Use process lock for critical batch operations
         try:
-            query = """
-                INSERT INTO sensor_readings 
-                (timestamp, sensor_id, temperature, vibration, voltage, 
-                status_code, anomaly_flag, anomaly_type, firmware_version,
-                model, manufacturer, location, original_timezone, synced)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
+            with self._process_lock(timeout=10.0):
+                query = """
+                    INSERT INTO sensor_readings 
+                    (timestamp, sensor_id, temperature, vibration, voltage, 
+                    status_code, anomaly_flag, anomaly_type, firmware_version,
+                    model, manufacturer, location, original_timezone, synced)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
 
-            self.conn_manager.execute_many(query, self.batch_buffer)
+                self.conn_manager.execute_many(query, self.batch_buffer)
 
-            batch_size = len(self.batch_buffer)
-            self.batch_insert_count += 1
-            self.insert_count += batch_size
+                batch_size = len(self.batch_buffer)
+                self.batch_insert_count += 1
+                self.insert_count += batch_size
 
-            # Update performance metrics
-            batch_time = time.time() - start_time
-            self.total_batch_time += batch_time
-            self.total_insert_time += batch_time
+                # Update performance metrics
+                batch_time = time.time() - start_time
+                self.total_batch_time += batch_time
+                self.total_insert_time += batch_time
 
-            # Log batch insert performance
-            if self.batch_insert_count % 10 == 0:
-                avg_time_per_reading = (
-                    (self.total_batch_time / self.insert_count) * 1000
-                    if self.insert_count > 0
-                    else 0
-                )
-                logging.info(
-                    f"Batch insert performance: {batch_size} readings in {batch_time:.3f}s ({avg_time_per_reading:.2f}ms/reading)"
-                )
+                # Log batch insert performance
+                if self.batch_insert_count % 10 == 0:
+                    avg_time_per_reading = (
+                        (self.total_batch_time / self.insert_count) * 1000
+                        if self.insert_count > 0
+                        else 0
+                    )
+                    logging.info(
+                        f"Batch insert performance: {batch_size} readings in {batch_time:.3f}s ({avg_time_per_reading:.2f}ms/reading)"
+                    )
 
-            # Reset batch buffer and timer
-            self.batch_buffer = []
-            self.last_batch_time = time.time()
+                # Reset batch buffer and timer
+                self.batch_buffer = []
+                self.last_batch_time = time.time()
 
-            return batch_size
+                return batch_size
+        except TimeoutError as e:
+            logging.error(f"Failed to acquire process lock for batch commit: {e}")
+            # Keep the batch buffer for next attempt
+            raise
         except sqlite3.Error as e:
             logging.error(f"Error committing batch: {e}")
             raise
@@ -803,6 +1108,10 @@ class SensorDatabase:
             # Commit any pending batch
             if self.batch_buffer:
                 self.commit_batch()
+                
+            # Force final checkpoint on close
+            if self.checkpoint_on_close:
+                self._force_checkpoint()
 
             # Close the connection manager's thread connection
             self.conn_manager.close_thread_connection()
@@ -1002,6 +1311,224 @@ class SensorDatabase:
         except Exception as e:
             logging.error(f"Database health check failed: {e}")
             return False
+            
+    def force_sync(self):
+        """Force all pending data to be written to disk.
+        
+        This is critical for multi-process visibility. It:
+        1. Commits any pending transactions
+        2. Forces a WAL checkpoint
+        3. Syncs the database file to disk
+        """
+        try:
+            # Commit any pending batch
+            if self.batch_buffer:
+                self.commit_batch()
+                
+            # Force a RESTART checkpoint to ensure all WAL data is written
+            with self.conn_manager.get_cursor() as cursor:
+                cursor.execute("PRAGMA wal_checkpoint(RESTART);")
+                result = cursor.fetchone()
+                if result:
+                    busy, checkpointed, total = result
+                    if self.debug_mode:
+                        self.logger.debug(
+                            f"Force sync checkpoint: busy={busy}, "
+                            f"checkpointed={checkpointed}, total={total}"
+                        )
+                        
+                # Also sync the database file
+                cursor.execute("PRAGMA synchronous=FULL;")
+                cursor.execute("SELECT 1;")  # Force sync
+                
+            self.logger.info("Database force sync completed")
+            
+        except Exception as e:
+            self.logger.error(f"Error during force sync: {e}")
+            
+    @retry_on_error(max_retries=3, retry_delay=0.5)
+    def _force_checkpoint(self):
+        """Force a WAL checkpoint to ensure data is persisted to main database file.
+        
+        This method forces SQLite to merge the WAL file into the main database file,
+        ensuring data durability. It's called periodically and on database close.
+        """
+        try:
+            if self.db_path == ":memory:":
+                # No checkpoint needed for in-memory databases
+                return
+                
+            # Use process lock for checkpoint operations
+            with self._process_lock(timeout=30.0):
+                with self.conn_manager.get_cursor() as cursor:
+                    # First try PASSIVE checkpoint (doesn't block readers)
+                    cursor.execute("PRAGMA wal_checkpoint(PASSIVE);")
+                    result = cursor.fetchone()
+                    
+                    if result:
+                        busy, checkpointed, total = result
+                        
+                        # If not all pages were checkpointed, try RESTART
+                        if checkpointed < total:
+                            cursor.execute("PRAGMA wal_checkpoint(RESTART);")
+                            result = cursor.fetchone()
+                            if result:
+                                busy, checkpointed, total = result
+                        
+                        if self.debug_mode:
+                            self.logger.debug(
+                                f"WAL checkpoint completed: busy={busy}, "
+                                f"checkpointed={checkpointed}, total={total}"
+                            )
+                    
+                    # Verify database integrity periodically
+                    if random.random() < 0.1:  # 10% chance
+                        cursor.execute("PRAGMA quick_check;")
+                        check_result = cursor.fetchone()
+                        if check_result and check_result[0] != "ok":
+                            self.logger.error(f"Database integrity check failed: {check_result}")
+                            
+            self.last_checkpoint_time = time.time()
+            
+            if self.debug_mode:
+                self.logger.debug("Forced WAL checkpoint completed")
+                
+        except TimeoutError:
+            self.logger.warning("Could not acquire lock for checkpoint - will retry later")
+        except Exception as e:
+            self.logger.error(f"Error forcing checkpoint: {e}")
+            # Don't raise - checkpoint failure shouldn't break the application
+            
+    def graceful_shutdown(self):
+        """Perform graceful shutdown with full data persistence.
+        
+        This method ensures all pending data is written to disk before shutdown.
+        It should be called from signal handlers for SIGTERM/SIGINT.
+        """
+        try:
+            self.logger.info("Starting graceful database shutdown...")
+            
+            # 1. Commit any pending batch
+            if self.batch_buffer:
+                pending_count = len(self.batch_buffer)
+                self.commit_batch()
+                self.logger.info(f"Committed {pending_count} pending readings")
+                
+            # 2. Force a final checkpoint
+            self._force_checkpoint()
+            
+            # 3. Get final stats for logging
+            try:
+                stats = self.get_database_stats()
+                self.logger.info(
+                    f"Database shutdown complete. Total readings: {stats['total_readings']}, "
+                    f"Total batches: {stats['performance_metrics']['total_batches']}"
+                )
+            except Exception:
+                # Stats are nice to have but not critical
+                pass
+                
+            # 4. Close connections
+            self.close()
+            
+        except Exception as e:
+            self.logger.error(f"Error during graceful shutdown: {e}")
+            # Still try to close
+            try:
+                self.close()
+            except Exception:
+                pass
+                
+    def _verify_database_health(self) -> bool:
+        """Verify that an existing database is healthy and usable.
+        
+        Returns:
+            True if database is healthy, False if corrupted or unusable
+        """
+        try:
+            # Try to connect to the database
+            test_conn = sqlite3.connect(self.db_path, timeout=5.0)
+            
+            try:
+                cursor = test_conn.cursor()
+                
+                # Check if we can execute basic queries
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                if result[0] != 1:
+                    return False
+                    
+                # Check if required tables exist
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name IN ('sensor_readings', 'pipeline_config')
+                    ORDER BY name
+                """)
+                tables = {row[0] for row in cursor.fetchall()}
+                required_tables = {'sensor_readings', 'pipeline_config'}
+                
+                if not required_tables.issubset(tables):
+                    missing = required_tables - tables
+                    self.logger.warning(f"Missing required tables: {missing}")
+                    return False
+                    
+                # Verify table structure by checking key columns
+                cursor.execute("PRAGMA table_info(sensor_readings)")
+                columns = {row[1] for row in cursor.fetchall()}
+                required_columns = {'id', 'timestamp', 'sensor_id', 'temperature', 
+                                  'vibration', 'voltage', 'status_code'}
+                
+                if not required_columns.issubset(columns):
+                    missing = required_columns - columns
+                    self.logger.warning(f"Missing required columns: {missing}")
+                    return False
+                    
+                # Try to read a row (even if empty)
+                cursor.execute("SELECT COUNT(*) FROM sensor_readings")
+                count = cursor.fetchone()[0]
+                self.logger.info(f"Existing database has {count} readings")
+                
+                # Check database integrity
+                cursor.execute("PRAGMA integrity_check")
+                integrity_result = cursor.fetchone()[0]
+                if integrity_result != "ok":
+                    self.logger.warning(f"Database integrity check failed: {integrity_result}")
+                    return False
+                    
+                # Check if we can write (create a test table and drop it)
+                cursor.execute("CREATE TABLE test_health_check (id INTEGER)")
+                cursor.execute("DROP TABLE test_health_check")
+                test_conn.commit()
+                
+                return True
+                
+            finally:
+                test_conn.close()
+                
+        except sqlite3.Error as e:
+            self.logger.error(f"Database health check failed with SQLite error: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Database health check failed with unexpected error: {e}")
+            return False
+            
+    def _delete_database_files(self):
+        """Delete database file and associated WAL/SHM files."""
+        files_to_delete = [
+            self.db_path,
+            f"{self.db_path}-wal",
+            f"{self.db_path}-shm",
+            f"{self.db_path}-journal"
+        ]
+        
+        for file_path in files_to_delete:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    self.logger.info(f"Deleted: {file_path}")
+                except OSError as e:
+                    self.logger.error(f"Failed to delete '{file_path}': {e}")
+                    # Continue trying to delete other files
 
     # Keep existing utility methods unchanged
     def _log_debug_environment_info(self):

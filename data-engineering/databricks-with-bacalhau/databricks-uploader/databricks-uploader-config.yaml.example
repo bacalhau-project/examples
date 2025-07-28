@@ -11,18 +11,21 @@
 # Pipeline type determines which table your data will be routed to:
 #   - raw: {databricks_table}_0_raw
 #   - schematized: {databricks_table}_1_schematized  
-#   - filtered: {databricks_table}_2_filtered (replaces sanitized)
-#   - emergency: {databricks_table}_4_emergency (replaces aggregated)
+#   - aggregated: {databricks_table}_2_aggregated
+#   - emergency: {databricks_table}_4_emergency
 #
-# To manage pipeline types, use the pipeline_manager.py tool:
-#   View current pipeline:
-#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db get
+# To manage pipeline types, use the pipeline controller in the pipeline-manager container:
 #   
-#   Change pipeline type:
-#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db set filtered --by "your_name"
+#   Local usage:
+#     cd ../pipeline-manager
+#     uv run -s pipeline_controller.py --db /path/to/sensor_data.db get
+#     uv run -s pipeline_controller.py --db /path/to/sensor_data.db set aggregated --by "your_name"
+#     uv run -s pipeline_controller.py --db /path/to/sensor_data.db history --limit 20
 #   
-#   View execution history:
-#     uv run -s pipeline_manager.py --db /path/to/sensor_data.db history --limit 20
+#   Docker usage:
+#     cd ../pipeline-manager
+#     docker-compose run --rm pipeline-manager python pipeline_controller.py --db /data/sensor_data.db get
+#     docker-compose run --rm pipeline-manager python pipeline_controller.py --db /data/sensor_data.db set aggregated --by "ops_team"
 
 # --- SQLite Source Configuration ---
 # Path to your SQLite database file.
@@ -68,10 +71,10 @@ databricks_database: "your_database_name" # Or set DATABRICKS_DATABASE env var
 # Base table name in Databricks. REQUIRED.
 # This will be prefixed based on processing scenario:
 # - Raw data (no processing): raw_<table_name>
-# - Filtered data: filtered_<table_name>
+# - Aggregated data: aggregated_<table_name>
 # - Sanitized/secure data: secure_<table_name>
 # - Aggregated data: aggregated_<table_name>
-# Example: "sensor_readings" will become "raw_sensor_readings", "filtered_sensor_readings", etc.
+# Example: "sensor_readings" will become "raw_sensor_readings", "aggregated_sensor_readings", etc.
 databricks_table: "sensor_readings" # Or set DATABRICKS_TABLE env var
 
 
@@ -88,8 +91,8 @@ sanitize_config:
   # replace_values:
   #   status: {"error": "unknown", "": "unknown"}
 
-# Enable data filtering (routes to filtered_* tables)  
-enable_filter: false
+# Enable data aggregation (routes to aggregated_* tables)  
+enable_aggregate: false
 filter_config:
   # Example: Filter by temperature range
   # temperature:
