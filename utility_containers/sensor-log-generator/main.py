@@ -21,7 +21,6 @@ import logging
 import math
 import os
 import random
-import signal
 import string
 import sys
 import threading
@@ -769,34 +768,6 @@ def file_watcher_thread(
 
 def main():
     """Main function to run the sensor simulator."""
-    
-    # Global variables for signal handling
-    global simulator, stop_watcher_event
-    simulator = None
-    stop_watcher_event = None
-    
-    def signal_handler(signum, frame):
-        """Handle SIGTERM and SIGINT for graceful shutdown."""
-        signal_name = "SIGTERM" if signum == signal.SIGTERM else "SIGINT"
-        logging.info(f"Received {signal_name}. Starting graceful shutdown...")
-        
-        # Stop file watchers
-        if stop_watcher_event:
-            stop_watcher_event.set()
-            
-        # Stop simulator and ensure database checkpoint
-        if simulator and hasattr(simulator, 'database'):
-            try:
-                simulator.database.graceful_shutdown()
-            except Exception as e:
-                logging.error(f"Error during database graceful shutdown: {e}")
-        
-        # Exit gracefully
-        sys.exit(0)
-    
-    # Register signal handlers
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
 
     # Argument parsing
     parser = argparse.ArgumentParser(description="Sensor Log Generator")

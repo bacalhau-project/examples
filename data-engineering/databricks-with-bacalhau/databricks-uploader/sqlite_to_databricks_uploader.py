@@ -24,7 +24,6 @@ import os
 import re
 import sqlite3
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -33,7 +32,8 @@ import pandas as pd
 import yaml
 
 # deltalake imports removed
-# Pipeline configuration is now read directly from the database
+# Import PipelineManager for database-driven pipeline selection
+from pipeline_manager import PipelineManager
 
 # Suppress verbose HTTP logging from Databricks connector
 logging.getLogger("databricks").setLevel(logging.WARNING)

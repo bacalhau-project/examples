@@ -22,7 +22,7 @@ s3_configuration:
   buckets:
     raw: "your-company-databricks-raw-us-east-1"
     schematized: "your-company-databricks-schematized-us-east-1"
-    aggregated: "your-company-databricks-aggregated-us-east-1"
+    filtered: "your-company-databricks-filtered-us-east-1"
     emergency: "your-company-databricks-emergency-us-east-1"
   
   # S3 upload settings
@@ -45,22 +45,13 @@ s3_configuration:
 # Pipeline type determines both table and S3 bucket routing:
 #   - raw: routes to raw_* table and raw S3 bucket
 #   - schematized: routes to schematized_* table and schematized S3 bucket
-#   - aggregated: routes to aggregated_* table and aggregated S3 bucket
+#   - filtered: routes to filtered_* table and filtered S3 bucket
 #   - emergency: routes to emergency_* table and emergency S3 bucket
 #
-# To manage pipeline types, use the pipeline controller in the pipeline-manager container:
-#   
-#   Local usage:
-#     cd ../pipeline-manager
-#     View current: uv run -s pipeline_controller.py --db ../sample-sensor/data/sensor_data.db get
-#     Change type: uv run -s pipeline_controller.py --db ../sample-sensor/data/sensor_data.db set aggregated --by "your_name"
-#     View history: uv run -s pipeline_controller.py --db ../sample-sensor/data/sensor_data.db history --limit 20
-#     Monitor: uv run -s pipeline_controller.py --db ../sample-sensor/data/sensor_data.db monitor
-#   
-#   Docker usage:
-#     cd ../pipeline-manager
-#     docker-compose run --rm pipeline-manager python pipeline_controller.py --db /data/sensor_data.db get
-#     docker-compose run --rm pipeline-manager python pipeline_controller.py --db /data/sensor_data.db set emergency --by "ops_team"
+# To manage pipeline types, use the pipeline_manager.py tool:
+#   View current: uv run -s pipeline_manager.py --db /path/to/sensor_data.db get
+#   Change type: uv run -s pipeline_manager.py --db /path/to/sensor_data.db set filtered --by "your_name"
+#   View history: uv run -s pipeline_manager.py --db /path/to/sensor_data.db history --limit 20
 
 # Sanitization Configuration (applies to schematized pipeline)
 sanitize_config:
@@ -72,7 +63,7 @@ sanitize_config:
   remove_pii: true
   hash_fields: ["device_id", "location_id"]
 
-# Filter Configuration (applies to aggregated pipeline)
+# Filter Configuration (applies to filtered pipeline)
 filter_config:
   # Only include records matching these criteria
   temperature:

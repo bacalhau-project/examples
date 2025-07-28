@@ -17,11 +17,6 @@ chown -R "$(id -u):$(id -g)" "$CACHE_DIR" "$DATA_DIR"
 #    - sample-sensor → /app/config (read-only config)
 #    - cache dir     → /cache      (writable cache)
 #    - data dir      → /root       (writable persistent data)
-CONTAINER_IMAGE="ghcr.io/bacalhau-project/sensor-log-generator"
-CONTAINER_VERSION="latest"
-
-docker pull "$CONTAINER_IMAGE:$CONTAINER_VERSION"
-
 docker run --rm \
   -v "$CONFIG_DIR":/app/config:ro \
   -v "$CACHE_DIR":/cache \
@@ -30,4 +25,4 @@ docker run --rm \
   -e IDENTITY_FILE=/app/config/node-identity.json \
   -e XDG_CACHE_HOME=/cache \
   -p 8080:8080 \
-  "$CONTAINER_IMAGE:$CONTAINER_VERSION"
+  ghcr.io/bacalhau-project/sensor-log-generator:latest
