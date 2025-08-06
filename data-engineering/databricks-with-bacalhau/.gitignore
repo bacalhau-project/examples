@@ -94,9 +94,32 @@ sample-sensor/*
 .databrickscfg
 *cosmos-with-bacalhau
 
-.specstory/
-# SpecStory explanation file
-.specstory/.what-is-this.md
 *config.yaml
 
+# Security: Exclude all credential and sensitive files
 credentials/*
+*.pem
+*.key
+*.p12
+*.pfx
+*-credentials
+*-production.env
+*-production-config.json
+*-production.docker.env
+aws-credentials
+.aws/credentials
+*secret*
+*token*
+*.env.production
+*.env.local
+*.env.staging
+-e 
+
+.aws_cache
+*.db
+*.db-shm
+*.db-wal
+
+state/*
+# Credentials - NEVER COMMIT
+additional-commands.sh

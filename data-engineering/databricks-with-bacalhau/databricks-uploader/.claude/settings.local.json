@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(./gps_precision_reducer_simple.py --smoke-test)",
+      "Bash(python:*)",
+      "Bash(./create_test_db_for_gps_demo.py)",
+      "Bash(./demo_pipeline_with_gps_reduction.py --db-path gps_demo_test.db --output-dir gps_demo_output)",
+      "Bash(./sqlite_to_json_transformer_pydantic.py --db-path gps_demo_test.db --output test_validated.json --job-id test-123)",
+      "Bash(sqlite3:*)",
+      "Bash(./sqlite_to_json_transformer_pydantic.py --db-path gps_demo_test.db --output test_validated.json --job-id test-123 --table sensor_data)",
+      "Bash(cat:*)",
+      "Bash(./sqlite_to_json_transformer.py --db-path gps_demo_test.db --output test_validated.json --job-id test-123 --table sensor_data)",
+      "Bash(rm:*)",
+      "Bash(./test_gps_reduction_simple.py)",
+      "Bash(./gps_precision_reducer_simple.py --input sample_validated_data.json --output gps_reduced.json --job-id gps-demo-001)",
+      "Bash(./test_in_memory_validation.py)",
+      "Bash(./simple_in_memory_demo.py)",
+      "Bash(./gps_precision_reducer_simple.py --input sample_validated_data.json --output gps_reduced_updated.json --job-id gps-demo-002)",
+      "Bash(./gps_precision_reducer_simple.py --input sample_validated_data.json --output gps_reduced_auto.json)",
+      "Bash(BACALHAU_JOB_ID=real-bacalhau-job-123 ./gps_precision_reducer_simple.py --input sample_validated_data.json --output gps_reduced_env.json)",
+      "Bash(./bacalhau_context.py)",
+      "Bash(BACALHAU_JOB_ID=bac-job-456 BACALHAU_PARTITION_INDEX=2 BACALHAU_PARTITION_COUNT=5 ./gps_precision_reducer_simple.py --input sample_validated_data.json --output gps_reduced_partitioned.json)",
+      "Bash(./monitoring_dashboard.py --smoke-test)",
+      "Bash(./databricks_query_service.py)",
+      "Bash(./data_aggregation_service.py)",
+      "Bash(./pipeline_logging.py)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sensor Data Schema",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "sensor_id",
+    "readings",
+    "status",
+    "device_info",
+    "location_info",
+    "transformation_metadata"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the reading"
+    },
+    "sensor_id": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}_[0-9]{6}$",
+      "description": "Sensor identifier (e.g., CHI_123456)"
+    },
+    "readings": {
+      "type": "object",
+      "required": ["temperature", "humidity", "pressure", "voltage"],
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": -50,
+          "maximum": 150,
+          "description": "Temperature in Celsius"
+        },
+        "humidity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Humidity percentage"
+        },
+        "pressure": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Pressure in bar"
+        },
+        "vibration": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Vibration reading"
+        },
+        "voltage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24,
+          "description": "Supply voltage"
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": ["status_code", "anomaly_flag"],
+      "properties": {
+        "status_code": {
+          "type": "integer",
+          "enum": [0, 1],
+          "description": "0=normal, 1=anomaly"
+        },
+        "anomaly_flag": {
+          "type": "boolean"
+        },
+        "anomaly_type": {
+          "type": ["string", "null"],
+          "enum": ["spike", "trend", "pattern", "missing_data", "noise", null]
+        },
+        "synced": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "device_info": {
+      "type": "object",
+      "required": ["manufacturer", "model", "firmware_version"],
+      "properties": {
+        "manufacturer": {
+          "type": "string",
+          "enum": ["SensorTech", "DataLogger", "DataSense", "MonitorPro"]
+        },
+        "model": {
+          "type": "string"
+        },
+        "firmware_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?(-[a-z]+)?$"
+        },
+        "serial_number": {
+          "type": ["string", "null"]
+        },
+        "manufacture_date": {
+          "type": ["string", "null"],
+          "format": "date"
+        }
+      }
+    },
+    "location_info": {
+      "type": "object",
+      "required": ["location", "latitude", "longitude"],
+      "properties": {
+        "location": {
+          "type": "string",
+          "minLength": 1
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "original_timezone": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "deployment_info": {
+      "type": "object",
+      "properties": {
+        "deployment_type": {
+          "type": ["string", "null"]
+        },
+        "installation_date": {
+          "type": ["string", "null"],
+          "format": "date"
+        },
+        "height_meters": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "orientation_degrees": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 360
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "instance_id": {
+          "type": ["string", "null"]
+        },
+        "sensor_type": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "transformation_metadata": {
+      "type": "object",
+      "required": ["bacalhau_job_id", "transformation_timestamp", "node_identity_hash", "transformation_version"],
+      "properties": {
+        "bacalhau_job_id": {
+          "type": "string",
+          "description": "Unique Bacalhau job ID that performed the transformation"
+        },
+        "transformation_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the transformation was performed"
+        },
+        "node_identity_hash": {
+          "type": "string",
+          "description": "Hash of the node identity that performed the transformation"
+        },
+        "transformation_version": {
+          "type": "string",
+          "description": "Version of the transformation logic"
+        },
+        "original_record_id": {
+          "type": ["integer", "null"],
+          "description": "ID from the original SQLite record"
+        }
+      }
+    }
+  }
+}

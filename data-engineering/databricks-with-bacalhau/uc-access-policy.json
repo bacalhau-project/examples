@@ -2,25 +2,55 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "AllowS3AccessForAutoloader",
       "Effect": "Allow",
       "Action": [
         "s3:GetObject",
+        "s3:GetObjectVersion",
         "s3:PutObject",
         "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
         "s3:ListBucket",
-        "s3:GetBucketLocation"
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning"
       ],
       "Resource": [
-        "arn:aws:s3:::<your-bucket-name>",
-        "arn:aws:s3:::<your-bucket-name>/*"
+        "arn:aws:s3:::expanso-databricks-raw-us-west-2",
+        "arn:aws:s3:::expanso-databricks-raw-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-schematized-us-west-2",
+        "arn:aws:s3:::expanso-databricks-schematized-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-filtered-us-west-2",
+        "arn:aws:s3:::expanso-databricks-filtered-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-emergency-us-west-2",
+        "arn:aws:s3:::expanso-databricks-emergency-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-checkpoints-us-west-2",
+        "arn:aws:s3:::expanso-databricks-checkpoints-us-west-2/*"
       ]
     },
     {
+      "Sid": "AllowAssumeRoleForUnityCatalog",
       "Effect": "Allow",
       "Action": [
         "sts:AssumeRole"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "AllowKMSForEncryption",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:GenerateDataKey",
+        "kms:ReEncrypt*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.us-west-2.amazonaws.com"
+        }
+      }
     }
   ]
 }

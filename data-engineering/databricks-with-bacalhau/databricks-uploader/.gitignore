@@ -1,2 +1,35 @@
 # SpecStory explanation file
 .specstory/.what-is-this.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# State and logs
+state/
+logs/
+*.log
+pipeline_config.db
+orchestrator_state.json
+
+# Databricks configs (generated)
+databricks_autoloader_configs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

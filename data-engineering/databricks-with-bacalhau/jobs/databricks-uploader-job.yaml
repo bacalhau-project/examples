@@ -1,0 +1,55 @@
+apiVersion: batch.run/v1alpha1
+kind: Job
+metadata:
+  name: databricks-uploader
+spec:
+  type: batch
+  count: 1
+  compute:
+    - name: databricks-uploader-node
+  tasks:
+    - name: upload-to-s3
+      engine:
+        type: docker
+        params:
+          image: ghcr.io/bacalhau-project/databricks-uploader:latest
+          entrypoint:
+            - /app/run-uploader.sh
+          parameters:
+            - --config
+            - /app/databricks-s3-uploader-config.yaml
+            - --once
+          environmentVariables:
+            # These will be overridden by the sourced credentials file
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            - AWS_REGION=${AWS_REGION}
+      inputSources:
+        # Mount the SQLite database
+        - source:
+            type: localDirectory
+            params:
+              sourcePath: /bacalhau_data/sensor_data
+              readWrite: false
+          target: /data/sensor_data
+        # Mount the credentials directory
+        - source:
+            type: localDirectory
+            params:
+              sourcePath: /bacalhau_node
+              readWrite: false
+          target: /bacalhau_node
+        # Alternative: mount from bacalhau_data
+        - source:
+            type: localDirectory
+            params:
+              sourcePath: /bacalhau_data/credentials
+              readWrite: false
+          target: /bacalhau_data/credentials
+      resultPaths:
+        - name: logs
+          path: /app/logs
+        - name: state
+          path: /app/state
+  timeouts:
+    executionTimeout: 3600s  # 1 hour

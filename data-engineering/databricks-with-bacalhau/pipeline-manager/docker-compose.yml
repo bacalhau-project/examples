@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  pipeline-manager:
+    build: .
+    image: pipeline-manager:latest
+    volumes:
+      # Mount the sensor database - adjust path as needed
+      - ../sample-sensor/data:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Override command to show current pipeline
+    command: ["python", "pipeline_controller.py", "--db", "/data/sensor_data.db", "get"]

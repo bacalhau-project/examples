@@ -1,368 +1,193 @@
-#!/usr/bin/env python3
+#!/usr/bin/env uv run -s
 # /// script
 # requires-python = ">=3.11"
-# dependencies = [
-#     "pydantic",
-# ]
+# dependencies = []
 # ///
-
 """
-Pipeline configuration manager using SQLite for atomic, concurrent pipeline selection.
+Minimal Pipeline Manager for Autoloader - handles pipeline configuration and tracking.
 """
 
 import sqlite3
 import json
-from datetime import datetime
-from typing import Optional, Dict, Any, Literal
-from pathlib import Path
-from contextlib import contextmanager
-import logging
-from enum import Enum
-
-from pydantic import BaseModel, Field, field_validator
-
-
-class PipelineType(str, Enum):
-    """Valid pipeline types."""
-    RAW = "raw"
-    SCHEMATIZED = "schematized"
-    FILTERED = "filtered"
-    EMERGENCY = "emergency"
-
-
-class PipelineConfig(BaseModel):
-    """Pipeline configuration model."""
-    pipeline_type: PipelineType
-    updated_at: datetime = Field(default_factory=datetime.now)
-    updated_by: Optional[str] = None
-    config_json: Optional[Dict[str, Any]] = None
-    is_active: bool = True
-
-    @field_validator('config_json', mode='before')
-    def parse_json_string(cls, v):
-        if isinstance(v, str):
-            return json.loads(v)
-        return v
-
-
-class PipelineExecution(BaseModel):
-    """Pipeline execution record."""
-    id: Optional[int] = None
-    pipeline_type: PipelineType
-    started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
-    records_processed: int = 0
-    status: Literal["running", "completed", "failed"] = "running"
-    error_message: Optional[str] = None
-
+import os
+from datetime import datetime, timezone
+from typing import Dict, Any, List, Optional
 
 class PipelineManager:
-    """Manages pipeline configuration and execution tracking in SQLite."""
+    """Minimal pipeline manager for Autoloader integration."""
     
-    def __init__(self, db_path: str, logger: Optional[logging.Logger] = None):
-        """Initialize the pipeline manager.
-        
-        Args:
-            db_path: Path to SQLite database
-            logger: Optional logger instance
-        """
+    def __init__(self, db_path: str = "pipeline_config.db"):
+        """Initialize pipeline manager."""
         self.db_path = db_path
-        self.logger = logger or logging.getLogger(__name__)
         self._init_database()
     
     def _init_database(self):
-        """Initialize database schema."""
-        with self._get_connection() as conn:
-            # Enable WAL mode for better concurrency
-            conn.execute("PRAGMA journal_mode=WAL")
-            
-            # Create pipeline configuration table
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS pipeline_config (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    pipeline_type TEXT NOT NULL CHECK (pipeline_type IN ('raw', 'schematized', 'filtered', 'emergency')),
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_by TEXT,
-                    config_json TEXT,
-                    is_active BOOLEAN DEFAULT 1
-                )
-            """)
-            
-            # Create pipeline execution history table
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS pipeline_executions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    pipeline_type TEXT NOT NULL,
-                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    completed_at TIMESTAMP,
-                    records_processed INTEGER DEFAULT 0,
-                    status TEXT CHECK (status IN ('running', 'completed', 'failed')),
-                    error_message TEXT
-                )
-            """)
-            
-            # Create index for faster queries
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_pipeline_executions_started_at 
-                ON pipeline_executions(started_at)
-            """)
-            
-            # Insert default config if not exists
-            conn.execute("""
-                INSERT OR IGNORE INTO pipeline_config (id, pipeline_type) 
-                VALUES (1, 'raw')
-            """)
-            
-            conn.commit()
-    
-    @contextmanager
-    def _get_connection(self):
-        """Get a database connection with proper settings."""
+        """Initialize the pipeline database."""
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 5000")  # 5 second timeout
-        try:
-            yield conn
-        finally:
-            conn.close()
-    
-    def get_current_pipeline(self) -> PipelineConfig:
-        """Get the current pipeline configuration.
+        cursor = conn.cursor()
         
-        Returns:
-            Current pipeline configuration
-        """
-        with self._get_connection() as conn:
-            row = conn.execute(
-                "SELECT * FROM pipeline_config WHERE id = 1 AND is_active = 1"
-            ).fetchone()
-            
-            if not row:
-                raise ValueError("No active pipeline configuration found")
-            
-            return PipelineConfig(
-                pipeline_type=row['pipeline_type'],
-                updated_at=datetime.fromisoformat(row['updated_at']),
-                updated_by=row['updated_by'],
-                config_json=json.loads(row['config_json']) if row['config_json'] else None,
-                is_active=bool(row['is_active'])
+        # Create tables if they don't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_config (
+                id INTEGER PRIMARY KEY,
+                pipeline_type TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                created_by TEXT,
+                is_active INTEGER DEFAULT 1
             )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_executions (
+                id INTEGER PRIMARY KEY,
+                pipeline_type TEXT NOT NULL,
+                records_processed INTEGER,
+                s3_locations TEXT,
+                job_id TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        
+        conn.commit()
+        conn.close()
     
-    def set_pipeline(self, 
-                    pipeline_type: PipelineType,
-                    updated_by: Optional[str] = None,
-                    config_json: Optional[Dict[str, Any]] = None) -> PipelineConfig:
-        """Atomically set the pipeline type.
+    def get_current_config(self) -> Dict[str, Any]:
+        """Get current pipeline configuration from database."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        Args:
-            pipeline_type: New pipeline type
-            updated_by: Who is making this change
-            config_json: Optional configuration data
-            
-        Returns:
-            Updated pipeline configuration
-        """
-        with self._get_connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            try:
-                # Update the configuration
-                conn.execute("""
-                    UPDATE pipeline_config 
-                    SET pipeline_type = ?, 
-                        updated_at = ?, 
-                        updated_by = ?,
-                        config_json = ?
-                    WHERE id = 1
-                """, (
-                    pipeline_type.value,
-                    datetime.now().isoformat(),
-                    updated_by,
-                    json.dumps(config_json) if config_json else None
-                ))
-                
-                conn.commit()
-                self.logger.info(f"Pipeline type updated to: {pipeline_type.value}")
-                
-                return self.get_current_pipeline()
-                
-            except Exception as e:
-                conn.rollback()
-                self.logger.error(f"Failed to update pipeline: {e}")
-                raise
-    
-    def start_execution(self, pipeline_type: Optional[PipelineType] = None) -> int:
-        """Record the start of a pipeline execution.
+        # Get the most recent active configuration
+        cursor.execute("""
+            SELECT pipeline_type, created_at, created_by 
+            FROM pipeline_config 
+            WHERE is_active = 1
+            ORDER BY id DESC 
+            LIMIT 1
+        """)
         
-        Args:
-            pipeline_type: Pipeline type (uses current if not specified)
-            
-        Returns:
-            Execution ID
-        """
-        if pipeline_type is None:
-            pipeline_type = self.get_current_pipeline().pipeline_type
+        result = cursor.fetchone()
+        conn.close()
         
-        # Handle both string and PipelineType enum
-        if isinstance(pipeline_type, str):
-            pipeline_value = pipeline_type
+        if result:
+            return {
+                'type': result[0],
+                'created_at': result[1],
+                'source': result[2] or 'database'
+            }
         else:
-            pipeline_value = pipeline_type.value
-            
-        with self._get_connection() as conn:
-            cursor = conn.execute("""
-                INSERT INTO pipeline_executions (pipeline_type, status)
-                VALUES (?, 'running')
-            """, (pipeline_value,))
-            
-            conn.commit()
-            return cursor.lastrowid
+            # Fallback to environment or default
+            pipeline_type = os.getenv('PIPELINE_TYPE', 'raw')
+            return {
+                'type': pipeline_type,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'source': 'environment' if os.getenv('PIPELINE_TYPE') else 'default'
+            }
     
-    def complete_execution(self, 
-                          execution_id: int, 
-                          records_processed: int,
-                          error_message: Optional[str] = None):
-        """Mark a pipeline execution as complete.
+    def record_execution(
+        self, 
+        pipeline_type: str, 
+        records_processed: int, 
+        s3_locations: List[str], 
+        job_id: str = None
+    ):
+        """Record a pipeline execution."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        Args:
-            execution_id: ID from start_execution
-            records_processed: Number of records processed
-            error_message: Error message if failed
-        """
-        status = "failed" if error_message else "completed"
+        cursor.execute("""
+            INSERT INTO pipeline_executions 
+            (pipeline_type, records_processed, s3_locations, job_id, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            pipeline_type,
+            records_processed,
+            json.dumps(s3_locations),
+            job_id,
+            datetime.now(timezone.utc).isoformat()
+        ))
         
-        with self._get_connection() as conn:
-            conn.execute("""
-                UPDATE pipeline_executions
-                SET completed_at = ?,
-                    records_processed = ?,
-                    status = ?,
-                    error_message = ?
-                WHERE id = ?
-            """, (
-                datetime.now().isoformat(),
-                records_processed,
-                status,
-                error_message,
-                execution_id
-            ))
-            
-            conn.commit()
-            self.logger.info(f"Execution {execution_id} {status} with {records_processed} records")
+        conn.commit()
+        conn.close()
     
-    def get_execution_history(self, limit: int = 10) -> list[PipelineExecution]:
-        """Get recent execution history.
+    def set_pipeline_type(self, pipeline_type: str, created_by: str = "autoloader_main"):
+        """Set the active pipeline type."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        Args:
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of recent pipeline executions
-        """
-        with self._get_connection() as conn:
-            rows = conn.execute("""
-                SELECT * FROM pipeline_executions
-                ORDER BY started_at DESC
-                LIMIT ?
-            """, (limit,)).fetchall()
-            
-            return [
-                PipelineExecution(
-                    id=row['id'],
-                    pipeline_type=row['pipeline_type'],
-                    started_at=datetime.fromisoformat(row['started_at']),
-                    completed_at=datetime.fromisoformat(row['completed_at']) if row['completed_at'] else None,
-                    records_processed=row['records_processed'],
-                    status=row['status'],
-                    error_message=row['error_message']
-                )
-                for row in rows
-            ]
+        # Deactivate all existing configs
+        cursor.execute("UPDATE pipeline_config SET is_active = 0")
+        
+        # Add new active config
+        cursor.execute("""
+            INSERT INTO pipeline_config (pipeline_type, created_at, created_by, is_active)
+            VALUES (?, ?, ?, 1)
+        """, (
+            pipeline_type,
+            datetime.now(timezone.utc).isoformat(),
+            created_by
+        ))
+        
+        conn.commit()
+        conn.close()
     
-    def migrate_from_config(self, config: Dict[str, Any]):
-        """Migrate pipeline settings from config file to database.
+    def get_execution_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get recent execution history."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        Args:
-            config: Configuration dictionary
-        """
-        # Determine pipeline type from config flags
-        if config.get('enable_aggregate'):
-            pipeline_type = PipelineType.EMERGENCY
-        elif config.get('enable_filter'):
-            pipeline_type = PipelineType.FILTERED
-        elif config.get('enable_sanitize'):
-            pipeline_type = PipelineType.SCHEMATIZED
-        else:
-            pipeline_type = PipelineType.RAW
+        cursor.execute("""
+            SELECT pipeline_type, records_processed, s3_locations, job_id, created_at
+            FROM pipeline_executions
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (limit,))
         
-        # Extract relevant config for the pipeline
-        config_json = {}
-        if pipeline_type == PipelineType.SCHEMATIZED:
-            config_json = config.get('sanitize_config', {})
-        elif pipeline_type == PipelineType.FILTERED:
-            config_json = config.get('filter_config', {})
-        elif pipeline_type == PipelineType.EMERGENCY:
-            config_json = config.get('aggregate_config', {})
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                'pipeline_type': row[0],
+                'records_processed': row[1],
+                's3_locations': json.loads(row[2]) if row[2] else [],
+                'job_id': row[3],
+                'created_at': row[4]
+            })
         
-        self.set_pipeline(
-            pipeline_type=pipeline_type,
-            updated_by="config_migration",
-            config_json=config_json
-        )
-        
-        self.logger.info(f"Migrated config to database: {pipeline_type.value}")
+        conn.close()
+        return results
 
-
-# CLI interface for managing pipelines
-if __name__ == "__main__":
+def main():
+    """CLI interface for pipeline manager."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Manage pipeline configuration")
-    parser.add_argument("--db", required=True, help="Path to SQLite database")
-    
-    subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
-    # Get current pipeline
-    subparsers.add_parser("get", help="Get current pipeline configuration")
-    
-    # Set pipeline
-    set_parser = subparsers.add_parser("set", help="Set pipeline type")
-    set_parser.add_argument("type", choices=["raw", "schematized", "filtered", "emergency"])
-    set_parser.add_argument("--by", help="Who is making this change")
-    
-    # History
-    history_parser = subparsers.add_parser("history", help="Show execution history")
-    history_parser.add_argument("--limit", type=int, default=10, help="Number of records")
+    parser = argparse.ArgumentParser(description="Pipeline Manager")
+    parser.add_argument("--db", default="pipeline_config.db", help="Database path")
+    parser.add_argument("action", choices=["get", "set", "history"], help="Action to perform")
+    parser.add_argument("--type", help="Pipeline type to set")
+    parser.add_argument("--by", default="cli", help="Created by")
     
     args = parser.parse_args()
     
-    # Setup logging
-    logging.basicConfig(level=logging.INFO)
-    
-    # Create manager
     manager = PipelineManager(args.db)
     
-    if args.command == "get":
-        config = manager.get_current_pipeline()
-        print(f"Current pipeline: {config.pipeline_type.value}")
-        print(f"Updated at: {config.updated_at}")
-        print(f"Updated by: {config.updated_by or 'N/A'}")
-        if config.config_json:
-            print(f"Config: {json.dumps(config.config_json, indent=2)}")
+    if args.action == "get":
+        config = manager.get_current_config()
+        print(f"Current pipeline type: {config['type']}")
+        print(f"Source: {config['source']}")
     
-    elif args.command == "set":
-        config = manager.set_pipeline(
-            pipeline_type=PipelineType(args.type),
-            updated_by=args.by
-        )
-        print(f"Pipeline updated to: {config.pipeline_type.value}")
+    elif args.action == "set":
+        if not args.type:
+            print("Error: --type required for set action")
+            return 1
+        manager.set_pipeline_type(args.type, args.by)
+        print(f"Pipeline type set to: {args.type}")
     
-    elif args.command == "history":
-        history = manager.get_execution_history(limit=args.limit)
-        for exec in history:
-            print(f"\n[{exec.id}] {exec.pipeline_type.value} - {exec.status}")
-            print(f"  Started: {exec.started_at}")
-            if exec.completed_at:
-                print(f"  Completed: {exec.completed_at}")
-            print(f"  Records: {exec.records_processed}")
-            if exec.error_message:
-                print(f"  Error: {exec.error_message}")
+    elif args.action == "history":
+        history = manager.get_execution_history()
+        print(f"Recent executions ({len(history)}):")
+        for exec in history[:10]:
+            print(f"  {exec['created_at']}: {exec['pipeline_type']} - {exec['records_processed']} records")
+    
+    return 0
+
+if __name__ == "__main__":
+    exit(main())

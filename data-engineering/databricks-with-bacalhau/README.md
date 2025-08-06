@@ -1,614 +1,384 @@
-<!-- markdownlint-disable MD041 MD013 MD024 -->
-# Bacalhau to Databricks Lakehouse Pipeline
+# Databricks with Bacalhau - Wind Turbine Data Pipeline
 
-This repository implements a continuous data pipeline that extracts data from local SQLite databases and uploads it directly to Databricks tables. It's designed for edge computing scenarios or integration with Bacalhau compute nodes.
+A production-ready data pipeline that collects sensor data from distributed wind turbines, processes it through multiple stages, and stores it in Databricks Unity Catalog for analytics.
 
 ## Overview
 
-The pipeline:
-1. Reads sensor data from local SQLite databases (e.g., on edge nodes or Bacalhau compute nodes)
-2. Incrementally extracts new records using a Python uploader
-3. Performs optional local data processing (sanitization, filtering, aggregation)
-4. Routes data to different Databricks tables based on processing scenario
-5. Enables scalable data analysis and processing on the Databricks Lakehouse Platform
+This project simulates a global wind turbine fleet generating sensor data (temperature, humidity, pressure, voltage) that flows through a multi-stage pipeline:
 
-## Key Features
+1. **Edge Collection**: SQLite databases on each turbine collect sensor readings
+2. **S3 Staging**: Data is uploaded to S3 buckets for different processing stages
+3. **Databricks Processing**: Auto Loader ingests data into Unity Catalog tables
+4. **Analytics**: Processed data is available for querying and analysis
 
-- **Direct Databricks Upload**: Connects directly to Databricks SQL warehouses or clusters without intermediate storage
-- **Incremental Processing**: Tracks last uploaded timestamp to process only new records
-- **Auto-Detection**: Automatically detects SQLite tables and timestamp columns when not specified
-- **Scenario-Based Routing**: Routes data to different tables based on processing type:
-  - Raw data → `raw_*` tables
-  - Filtered data → `filtered_*` tables  
-  - Sanitized/secure data → `secure_*` tables
-  - Aggregated data → `aggregated_*` tables
-- **Local Data Processing**: Supports optional data sanitization, filtering, and aggregation before upload
-- **Flexible Configuration**: Configure via YAML, environment variables, or command-line arguments
-- **Query Mode**: Built-in debugging capability to query and inspect Databricks tables
-- **Multi-Architecture Support**: Docker images support both AMD64 and ARM64 architectures
+### Architecture
+
+```
+Wind Turbines → SQLite → S3 Buckets → Databricks Auto Loader → Unity Catalog
+                          ↓
+                    (raw, validated, enriched, aggregated)
+```
 
 ## Prerequisites
 
-- Docker Engine (19.03+)
-- Python 3.11 with `uv` CLI (for local development)
-- Databricks workspace with:
-  - SQL warehouse or All-Purpose Cluster
-  - Target database and tables configured for each scenario
-  - Personal Access Token (PAT) for authentication
-
-## Directory Layout
-
-```text
-./
-├── databricks-uploader/
-│   ├── sqlite_to_databricks_uploader.py  # UV-run script for incremental export
-│   ├── Dockerfile                         # Multi-stage UV-based image
-│   ├── build.sh                          # Build script for Docker image
-│   ├── databricks-uploader-config.yaml.example  # Example configuration
-│   ├── simple_test.py                    # Testing utilities
-│   └── README.md                         # Detailed uploader documentation
-├── demo-network/                         # Demo Bacalhau network setup
-├── docs/                                 # Additional guides
-├── start-databricks-uploader.sh          # Launcher script
-├── REARCHITECTURE.md                     # Architecture notes (outdated)
-└── README.md                             # This file
-```
+- Python 3.11+
+- Docker
+- AWS Account with S3 access
+- Databricks Workspace with Unity Catalog enabled
+- `uv` package manager (`pip install uv`)
 
 ## Quick Start
 
-### 1. Configuration
-
-Copy the example configuration file:
+### 1. Clone and Setup Environment
 
 ```bash
-cp databricks-uploader/databricks-uploader-config.yaml.example databricks-uploader-config.yaml
+git clone https://github.com/bacalhau-project/bacalhau-examples.git
+cd bacalhau-examples/data-engineering/databricks-with-bacalhau
+
+# Create .env file with this exact content:
+cat > .env << 'EOF'
+# Databricks Configuration
+DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
+DATABRICKS_TOKEN=your-databricks-token-here
+DATABRICKS_WAREHOUSE_ID=your-warehouse-id-here
+DATABRICKS_CATALOG=expanso_databricks_workspace
+DATABRICKS_SCHEMA=sensor_data
+
+# AWS Configuration
+AWS_REGION=us-west-2
+AWS_ACCESS_KEY_ID=your-aws-access-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+S3_BUCKET_PREFIX=expanso
+
+# Pipeline Configuration
+UPLOAD_INTERVAL=60
+BATCH_SIZE=500
+STATE_DIR=./state
+SQLITE_PATH=./databricks-uploader/sensor_data.db
+TIMESTAMP_COL=timestamp
+
+# Sensor Configuration
+SENSOR_ID=TURBINE_001
+SENSOR_LOCATION=US-East Wind Farm
+SENSOR_INTERVAL=5
+EOF
 ```
 
-Edit the configuration with your specific settings:
+### 2. Create Storage Credential (One-time UI Setup)
 
-```yaml
-# SQLite Source
-sqlite: "/path/to/sensor_data.db"
-sqlite_table_name: "sensor_logs"  # Optional - auto-detected if not specified
-timestamp_col: "timestamp"        # Optional - auto-detected if not specified
+This is the ONLY step that requires the Databricks UI:
 
-# Databricks Target - Table will be determined by processing scenario
-databricks_host: "your-workspace.cloud.databricks.com"
-databricks_http_path: "/sql/1.0/warehouses/your_warehouse_id"
-databricks_token: "dapi..."  # Better to use DATABRICKS_TOKEN env var
-databricks_database: "your_database"
-databricks_table: "sensor_readings"  # Base name - will be prefixed based on scenario
+1. Go to your Databricks workspace: https://dbc-ae5355ab-8b4e.cloud.databricks.com
+2. Navigate to **Catalog** → **External Data** → **Storage Credentials**
+3. Click **Create credential**
+4. Fill in:
+   - **Name**: `expanso-databricks-s3-credential-us-west-2`
+   - **Type**: AWS IAM Role
+   - **IAM Role ARN**: `arn:aws:iam::767397752906:role/databricks-unity-catalog-expanso-role`
+5. Click **Create**
 
-# Processing Configuration (determines table routing)
-enable_sanitize: false
-enable_filter: false
-enable_aggregate: false
-
-# Operational Settings
-state_dir: "./state"
-interval: 300  # seconds between upload cycles
-```
-
-### 2. Build the Docker Image
+### 3. Verify Infrastructure
 
 ```bash
-cd databricks-uploader
-./build.sh
+# Check all infrastructure is ready
+uv run -s databricks-setup.py verify
 ```
 
-### 3. Run the Uploader
-
-For local testing:
+### 4. Setup Databricks Resources
 
 ```bash
-# Run directly with uv
-cd databricks-uploader
-uv run -s sqlite_to_databricks_uploader.py --config ../databricks-uploader-config.yaml
+# Create catalog, schemas, and tables
+uv run -s databricks-setup.py setup
+
+# Upload and run Auto Loader notebook
+uv run -s databricks-setup.py upload \
+  --notebook databricks-notebooks/01-setup-autoloader-demo.py
 ```
 
-For production deployment:
+### 5. Start Data Pipeline
 
 ```bash
-# Run as Docker container
-./start-databricks-uploader.sh databricks-uploader-config.yaml
+# Start sensor data generation (local testing)
+./start-sensor-local.sh
+
+# Start uploader to Databricks
+./start-uploader.sh
+```
+
+### 6. Query Data
+
+```bash
+# Run sample queries
+uv run -s databricks-setup.py query
+
+# Or use SQL directly
+uv run -s databricks-setup.py query \
+  --sql "SELECT * FROM expanso_databricks_workspace.sensor_data.raw_sensor_readings LIMIT 10"
+
+# Check pipeline status
+uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db history
+```
+
+### 7. Teardown
+
+```bash
+# Remove all data and resources
+uv run -s databricks-setup.py teardown
+```
+
+## Development
+
+### Local Development
+
+1. **Sensor Simulator**
+   ```bash
+   cd databricks-uploader
+   uv run -s create_test_sensor_data.py
+   ```
+
+2. **Test Upload Pipeline**
+   ```bash
+   uv run -s test-upload.py
+   ```
+
+3. **Run Tests**
+   ```bash
+   # Lint code
+   ruff check . && ruff format .
+   
+   # Run unit tests
+   python -m pytest databricks-uploader/
+   ```
+
+### Container Development
+
+1. **Build Container**
+   ```bash
+   ./build.sh
+   ```
+
+2. **Run in Container**
+   ```bash
+   docker run -v $(pwd)/state:/app/state \
+              -v $(pwd)/.env:/app/.env \
+              ghcr.io/bacalhau-project/databricks-uploader:latest
+   ```
+
+3. **Deploy to AWS Spot**
+   ```bash
+   cd spot
+   # Assumes you have AWS SSO configured
+   ../../bigquery-with-bacalhau/spot-sso.sh deploy \
+     --instance-type t3.medium \
+     --region us-west-2
+   ```
+
+## Project Structure
+
+```
+.
+├── databricks-setup.py          # Main CLI tool for all operations
+├── databricks-notebooks/        # Databricks notebooks
+│   ├── 01-setup-autoloader-demo.py
+│   └── 02-teardown-all.py
+├── databricks-uploader/         # Core pipeline code
+│   ├── sqlite_to_databricks_uploader.py
+│   ├── pipeline_manager.py
+│   └── create_test_sensor_data.py
+├── scripts/                     # Infrastructure setup scripts
+├── spot/                        # AWS Spot instance configs
+└── state/                       # Pipeline state tracking
+
 ```
 
 ## Configuration
 
-The uploader uses a flexible configuration system with multiple options for setting parameters.
-
-### Table Routing Based on Processing Scenario
-
-The uploader automatically routes data to different tables based on which processing options are enabled:
-
-- **Raw Data** (no processing enabled): Data goes to `raw_<table_name>`
-- **Filtered Data** (`enable_filter: true`): Data goes to `filtered_<table_name>`
-- **Sanitized/Secure Data** (`enable_sanitize: true`): Data goes to `secure_<table_name>`
-- **Aggregated Data** (`enable_aggregate: true`): Data goes to `aggregated_<table_name>`
-
-For example, if your base table name is `sensor_readings`:
-- Raw data → `raw_sensor_readings`
-- Filtered data → `filtered_sensor_readings`
-- Sanitized data → `secure_sensor_readings`
-- Aggregated data → `aggregated_sensor_readings`
-
-### Configuration Precedence
-
-1. **Command-line arguments** (highest priority)
-2. **Environment variables**
-3. **YAML configuration file**
-4. **Default values** (lowest priority)
-
 ### Environment Variables
 
-Environment variables are particularly useful for sensitive information (like tokens) and for settings that differ across deployment environments (dev, staging, prod). They can be set in your shell or, more commonly for local development, placed in a `.env` file at the root of the project. While this script doesn't automatically load `.env` files, your execution environment (like `uv run` with specific configurations) or a manual `source .env` command can make these variables available.
+Key variables in `.env`:
+- `DATABRICKS_HOST`: Your Databricks workspace URL
+- `DATABRICKS_TOKEN`: Personal access token
+- `DATABRICKS_WAREHOUSE_ID`: SQL warehouse ID
+- `DATABRICKS_CATALOG`: Unity Catalog name (default: expanso_databricks_workspace)
+- `AWS_REGION`: AWS region for S3 buckets
+- `S3_BUCKET_PREFIX`: Prefix for bucket names
 
-**Do not commit `.env` files containing sensitive credentials to version control.** Always add `.env` to your `.gitignore` file.
+### Pipeline Configuration
 
-Below is a comprehensive list of environment variables recognized by the uploader:
+Edit `databricks-uploader-config.yaml` to configure:
+- Upload intervals
+- Batch sizes
+- Table mappings
+- Processing modes
 
-#### Databricks Connection Parameters (Generally Required)
+## Pipeline Stages
 
-These are essential for the script to connect to your Databricks workspace and target table.
+1. **Raw**: Unprocessed sensor data → `raw_sensor_readings` table
+2. **Validated**: Schema-validated data → `validated_sensor_readings` table  
+3. **Enriched**: Data with added metadata → `enriched_sensor_readings` table
+4. **Aggregated**: Summarized metrics → `aggregated_sensor_metrics` table
 
--   **`DATABRICKS_HOST`**:
-    *   **Purpose**: The server hostname of your Databricks workspace.
-    *   **Example**: `adb-1234567890123456.7.azuredatabricks.net`
-    *   **Finding it**: Look at your Databricks workspace URL; it's the part after `https://`.
-
--   **`DATABRICKS_HTTP_PATH`**:
-    *   **Purpose**: The HTTP Path for your Databricks SQL Warehouse or All-Purpose Cluster. This directs the script to the correct compute resource.
-    *   **Example**: `/sql/1.0/warehouses/abcdef1234567890`
-    *   **Finding it**: In Databricks, navigate to your SQL Warehouse, go to the "Connection details" tab. The HTTP path is listed there.
-
--   **`DATABRICKS_TOKEN`**:
-    *   **Purpose**: A Databricks Personal Access Token (PAT) or a token for a Service Principal. This is critical for authenticating API calls to Databricks.
-    *   **Example**: `dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` (This is a dummy example; your token will be different).
-    *   **Finding it**: PATs can be generated from your User Settings within the Databricks workspace. For Service Principals, tokens are obtained through specific OAuth or token generation processes.
-    *   **Security**: **This token is highly sensitive and should be treated like a password.** Using this environment variable is the recommended way to provide the token, rather than hardcoding it in the YAML file or CLI arguments. In production, use secrets management tools (like Azure Key Vault, HashiCorp Vault, AWS Secrets Manager) to store and inject this token securely.
-
--   **`DATABRICKS_DATABASE`**:
-    *   **Purpose**: Specifies the target database (often referred to as a schema) in Databricks where your table is located.
-    *   **Example**: `bronze_layer`, `default`, `main.sensordata`
-    *   **Note**: If you are using Unity Catalog, you might need to use a three-level namespace like `your_catalog.your_schema` (e.g., `dev_catalog.bronze_data`). Alternatively, ensure your SQL Warehouse's default catalog is set appropriately if you only provide `your_schema`.
-
--   **`DATABRICKS_TABLE`**:
-    *   **Purpose**: The name of the target table within the specified `DATABRICKS_DATABASE` where data will be uploaded.
-    *   **Example**: `raw_iot_feed`, `sensor_metrics`
-
-#### SQLite Source and Script Behavior Variables
-
-These variables configure how the script interacts with your local SQLite database and control its operational behavior.
-
--   **`SQLITE_PATH`**:
-    *   **Purpose**: The file path to your source SQLite database. This is required for the uploader's main functionality.
-    *   **Example**: `/data/sensor_readings.db` (in a container) or `C:\data\local_metrics.sqlite` (on Windows).
-
--   **`SQLITE_TABLE_NAME`** (Optional):
-    *   **Purpose**: The name of the specific table within the SQLite database from which to read data.
-    *   **Example**: `environment_sensors`, `machine_logs`
-    *   **Note**: If this is not provided, the script will attempt to auto-detect the table. This is generally successful if your SQLite database contains only one user-defined table. If multiple tables exist, specifying the name is recommended.
-
--   **`TIMESTAMP_COL`** (Optional):
-    *   **Purpose**: The name of the timestamp column within your SQLite table. This column is crucial for incremental data loading, as the script uses it to fetch only records newer than the last successful upload.
-    *   **Example**: `event_timestamp`, `created_at`, `MeasurementTime`
-    *   **Note**: If not specified, the script tries to auto-detect a suitable timestamp column by looking for common names (e.g., 'timestamp', 'date', 'created_at').
-
--   **`STATE_DIR`** (Optional):
-    *   **Purpose**: The directory where the script stores its state file (`last_upload.json`). This JSON file contains the timestamp of the last record successfully uploaded, enabling incremental processing.
-    *   **Default**: `/state` (commonly used in containerized environments). If `/state` is not writable or does not exist, it may fall back to the current working directory or a script-local path; check script logs for confirmation.
-    *   **Example**: `/app/state_files` or `data/uploader_status`
-
--   **`UPLOAD_INTERVAL`** (Optional):
-    *   **Purpose**: The time interval, in seconds, between consecutive upload cycles when the script is running in continuous mode (i.e., without the `--once` flag).
-    *   **Default**: `300` (which is 5 minutes).
-    *   **Example**: `60` (for 1-minute intervals), `3600` (for 1-hour intervals).
-
--   **`ONCE`** (Optional):
-    *   **Purpose**: If set to `true` (case-insensitive comparison) or `1`, the script will perform a single upload cycle and then exit. This is useful for batch processing or scheduled task scenarios. It is equivalent to using the `--once` command-line flag.
-    *   **Example**: `ONCE=true`
-
-#### Local Data Processing Variables (Optional)
-
-These variables enable and configure optional data processing steps (sanitization, filtering, aggregation) that occur *before* data is uploaded to Databricks.
-
--   **`ENABLE_SANITIZE`**: Set to `true` or `1` to enable data sanitization. Defaults to `false`.
--   **`SANITIZE_CONFIG`**: A JSON string that defines the rules for sanitization.
-    *   **Example**: `'{"column_to_clean": "pattern_to_remove", "another_column": {"replace_value": "X", "with_value": "Y"}}'`
-
--   **`ENABLE_FILTER`**: Set to `true` or `1` to enable data filtering. Defaults to `false`.
--   **`FILTER_CONFIG`**: A JSON string that defines the criteria for filtering rows.
-    *   **Example**: `'{"numeric_column": {">": 100, "<=": 200}, "string_column_equals": "active_value"}'`
-
--   **`ENABLE_AGGREGATE`**: Set to `true` or `1` to enable data aggregation. Defaults to `false`.
--   **`AGGREGATE_CONFIG`**: A JSON string that defines how data should be grouped and aggregated.
-    *   **Example**: `'{"group_by": ["device_id", "hour_of_day"], "aggregations": {"temperature": "avg", "humidity": "max", "records": "count"}}'`
-
-    **Important Note on `*_CONFIG` variables**: When providing these configuration structures (for `SANITIZE_CONFIG`, `FILTER_CONFIG`, `AGGREGATE_CONFIG`) as environment variables, they **must be valid JSON strings**. If you are using the YAML configuration file (`uploader-config.yaml`), you can and should use native YAML structures for these, as it's generally more readable and easier to manage complex nested structures. Refer to `uploader-config.yaml.example` for YAML structure examples.
-
-### Example `.env` File
-
-Create a `.env` file for managing environment variables:
-
-You can create a `.env` file in the project's root directory to manage your environment variables for local development. Remember to add `.env` to your `.gitignore` file to prevent committing sensitive information.
-
-```env
-# --- Databricks Connection (Required) ---
-DATABRICKS_HOST="adb-xxxxxxxxxxxxxxxx.x.azuredatabricks.net"
-DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/xxxxxxxxxxxxxxxx"
-DATABRICKS_TOKEN="dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Store securely!
-DATABRICKS_DATABASE="sensor_data" # Or "your_catalog.sensor_data"
-DATABRICKS_TABLE="raw_readings"
-
-# --- SQLite Source Configuration ---
-SQLITE_PATH="data/local_sensor_data.db"
-# SQLITE_TABLE_NAME="my_sensor_table" # Optional: auto-detected if single table exists
-# TIMESTAMP_COL="event_timestamp"     # Optional: auto-detected if common names exist
-
-# --- Script Behavior ---
-# STATE_DIR="./state"                 # Optional: Directory for state file
-# UPLOAD_INTERVAL=300                 # Optional: Upload interval in seconds
-# ONCE=true                           # Optional: Run once and exit
-
-# --- Data Processing (determines target table) ---
-# Only enable ONE processing type at a time:
-# ENABLE_SANITIZE=true     # Routes to secure_* tables
-# ENABLE_FILTER=true       # Routes to filtered_* tables  
-# ENABLE_AGGREGATE=true    # Routes to aggregated_* tables
-# (If none enabled, routes to raw_* tables)
-```
-
-### YAML Configuration File
-
-For more complex configurations, especially for the data processing rules (`sanitize_config`, `filter_config`, `aggregate_config`), using a YAML file is recommended due to its support for native nested structures, which are more readable than JSON strings.
-
-Copy the `uploader-config.yaml.example` file to `uploader-config.yaml` and customize it according to your needs. The example file provides a template for all available settings.
-
-```yaml
-# Example snippet from uploader-config.yaml.example:
-# --- Databricks Connection Parameters ---
-databricks_host: "your-workspace.azuredatabricks.net"
-databricks_http_path: "/sql/1.0/warehouses/your_sql_warehouse_http_path"
-# databricks_token: "dapixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # Prefer DATABRICKS_TOKEN env var
-databricks_database: "your_database"
-databricks_table: "your_table"
-
-# --- SQLite Source Parameters ---
-sqlite_path: "/data/sensor.db"
-sqlite_table_name: "sensor_data" # Or auto-detected if commented out
-
-# ... (other parameters like state_dir, interval, processing configs are also in uploader-config.yaml.example) ...
-```
-
-### Command-Line Arguments
-
-Command-line arguments offer the highest level of precedence and are useful for overriding specific settings for a single execution or for scripting. To see a full list of available arguments and their descriptions, run:
+## Monitoring
 
 ```bash
-python sqlite_to_databricks_uploader.py --help
+# Check pipeline status
+uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db history
+
+# View current pipeline mode
+uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db get
+
+# Monitor upload progress
+watch -n 5 'cat state/s3-uploader/upload_state.json | jq .'
+
+# Check Databricks table row counts
+uv run -s databricks-setup.py query \
+  --sql "SELECT 'raw' as table, COUNT(*) as count FROM expanso_databricks_workspace.sensor_data.raw_sensor_readings
+         UNION ALL
+         SELECT 'validated', COUNT(*) FROM expanso_databricks_workspace.sensor_data.validated_sensor_readings"
 ```
 
-For instance, to specify a different SQLite database file and run the uploader only once, you could use:
-```bash
-python sqlite_to_databricks_uploader.py --config uploader-config.yaml --sqlite /path/to/another/sensor.db --once
-```
-This command uses the settings from `uploader-config.yaml` but overrides the SQLite path and ensures the script runs only one cycle.
+### Databricks UI Monitoring
+- **Workflows**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/#/jobs
+- **SQL Warehouses**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/sql/warehouses
+- **Unity Catalog**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/data
 
----
+## Building a Bacalhau Cluster
 
-## Data Processing Features
+### Deploy Bacalhau Cluster with AWS Spot Instances
 
-The uploader includes optional data processing capabilities that determine which table receives the data:
+1. **Prepare Credentials**:
+   ```bash
+   # Generate additional-commands.sh with embedded credentials
+   uv run -s generate-additional-commands.py
+   ```
 
-### Sanitization (Routes to `secure_*` tables)
-Clean or transform data before upload:
-```yaml
-enable_sanitize: true
-sanitize_config:
-  remove_nulls: ["temperature", "humidity"]
-  replace_values:
-    status: {"error": "unknown", "": "unknown"}
-```
+2. **Deploy the Cluster**:
+   ```bash
+   # Use the spot-sso.sh wrapper for AWS authentication
+   ../bigquery-with-bacalhau/spot-sso.sh deploy \
+     --target aws \
+     --region us-west-2 \
+     --instance-type t3.medium \
+     --nodes 3 \
+     --spot \
+     --additional-commands ./additional-commands.sh
+   ```
 
-### Filtering (Routes to `filtered_*` tables)
-Select specific rows based on criteria:
-```yaml
-enable_filter: true
-filter_config:
-  temperature:
-    ">": -50
-    "<": 150
-  device_status: "active"
-```
+3. **Verify Deployment**:
+   ```bash
+   # Check cluster status
+   ../bigquery-with-bacalhau/spot-sso.sh status
+   
+   # SSH into a node to verify credentials
+   ../bigquery-with-bacalhau/spot-sso.sh ssh node-1
+   ls -la /bacalhau_data/credentials/
+   ```
 
-### Aggregation (Routes to `aggregated_*` tables)
-Perform aggregations before upload:
-```yaml
-enable_aggregate: true
-aggregate_config:
-  group_by: ["device_id", "hour"]
-  aggregations:
-    temperature: "avg"
-    humidity: "max"
-    readings: "count"
-```
+4. **Submit Jobs to Cluster**:
+   ```bash
+   # Submit databricks uploader job
+   bacalhau job run jobs/databricks-uploader-job.yaml
+   
+   # Check job status
+   bacalhau job list
+   bacalhau job describe <job-id>
+   ```
 
-## Databricks Table Setup
+### Cluster Configuration
 
-Before running the uploader, ensure your target tables exist in Databricks for each scenario:
-
-```sql
--- Create database if it doesn't exist
-CREATE DATABASE IF NOT EXISTS sensor_data;
-
--- Create raw data table
-CREATE TABLE IF NOT EXISTS sensor_data.raw_sensor_readings (
-    id BIGINT,
-    device_id STRING,
-    timestamp TIMESTAMP,
-    temperature DOUBLE,
-    humidity DOUBLE,
-    status STRING
-);
-
--- Create filtered data table (same schema)
-CREATE TABLE IF NOT EXISTS sensor_data.filtered_sensor_readings 
-AS SELECT * FROM sensor_data.raw_sensor_readings WHERE 1=0;
-
--- Create secure/sanitized data table
-CREATE TABLE IF NOT EXISTS sensor_data.secure_sensor_readings 
-AS SELECT * FROM sensor_data.raw_sensor_readings WHERE 1=0;
-
--- Create aggregated data table (different schema)
-CREATE TABLE IF NOT EXISTS sensor_data.aggregated_sensor_readings (
-    device_id STRING,
-    hour TIMESTAMP,
-    avg_temperature DOUBLE,
-    max_humidity DOUBLE,
-    reading_count BIGINT
-);
-```
-
-## Debugging and Monitoring
-
-### Query Mode
-
-The uploader includes a `--run-query` CLI flag for debugging and inspection:
-
-**1. Get Table Information:**
-
-To get general information about your Databricks table and database, use `"INFO"` as the query string:
-
-```bash
-python sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "INFO"
-```
-
-This will display:
-- **Tables in Database**: A list of tables in the configured `databricks_database`.
-- **Description for Table**: Detailed schema and metadata for the configured `databricks_table`.
-- **Row Count for Table**: The total number of rows in the `databricks_table`.
-
-**2. Query Table Data (General SQL):**
-
-You can execute SQL queries directly against your Databricks table. Ensure your query uses fully qualified table names (e.g., `your_database.your_table`) or that the default database context is correctly set via `databricks_database`.
-
-Example:
-```bash
-python sqlite_to_databricks_uploader.py --config uploader-config.yaml --run-query "SELECT * FROM your_database.your_table LIMIT 10"
-```
-This will display the first 10 rows of `your_database.your_table`.
-
-For more complex querying or data manipulation, use dedicated analytics tools like Databricks SQL Editor or Spark notebooks.
-
-## Databricks Table Setup
-
-Before running the uploader, you need to ensure the target database and table exist in your Databricks workspace and that the table schema is compatible with the data from your SQLite source. The uploader script will attempt to insert data based on matching column names.
-
-**1. Create Database (if it doesn't exist):**
-Use the Databricks SQL Editor or a notebook:
-```sql
-CREATE DATABASE IF NOT EXISTS your_database_name;
-```
-
-**2. Create Table (Example):**
-The table schema should match the columns in your SQLite database that you intend to upload. Data type mapping will be handled by the Databricks SQL connector, but ensure they are compatible (e.g., SQLite `TEXT` to Databricks `STRING`, SQLite `REAL` to Databricks `DOUBLE` or `FLOAT`, SQLite `INTEGER` to Databricks `INT` or `BIGINT`).
-
-Example DDL for a table (execute in Databricks SQL Editor or notebook):
-```sql
-CREATE TABLE IF NOT EXISTS your_database_name.your_table_name (
-    id BIGINT,
-    device_id STRING,
-    timestamp TIMESTAMP,
-    temperature DOUBLE,
-    humidity DOUBLE,
-    -- Add other columns as per your SQLite schema
-    PRIMARY KEY (id) -- Optional: Define primary keys if applicable
-);
-```
-**Note:** The uploader script itself does not create the table or schema. You are responsible for defining the target table structure in Databricks.
-
-## Managing Tables via Databricks CLI (Docker)
-
-The Databricks CLI can be used for various workspace management tasks. Ensure it is configured with your workspace host and token.
-
-These commands mount your local `.databrickscfg` file into the container. This file is the standard configuration file for the Databricks CLI and should contain your Databricks workspace host URL and a personal access token (PAT) to authenticate the CLI calls. It typically looks like this:
-
-```ini
-[DEFAULT]
-host  = https://<your-databricks-workspace-url>
-token = <your-databricks-personal-access-token>
-```
-
-Make sure this file exists in your home directory (`~`) and contains valid credentials for the workspace you want to interact with. **Treat the token like a password and keep it secure.**
-
-Note: Table creation itself is not supported directly via the CLI flags used here. You should create the table using SQL commands in a Databricks notebook or SQL editor as shown in the [Delta Lake Table Setup on Databricks](#delta-lake-table-setup-on-databricks) section, or by using other tools like the Databricks Terraform provider or SDKs.
-
-```bash
-# List tables in the schema
-docker run --rm \
-  -v $(pwd)/.databrickscfg:/root/.databrickscfg:ro \
-  ghcr.io/databricks/cli:latest \
-  schemas list bacalhau_sensor_readings_workspace
-
-# Inspect the storage path where the table data resides
-❯ docker run --rm \
-  -v $(pwd)/.databrickscfg:/root/.databrickscfg:ro \
-  ghcr.io/databricks/cli:latest \
-  tables list bacalhau_sensor_readings_workspace default
-```
-
-### Querying the Table with Spark
-
-Once data is populated in your Databricks table by the uploader, you can query it using Spark in your Databricks environment (e.g., in a Databricks notebook).
-
-Here's a basic PySpark example:
-
-```python
-# Example: Querying the Delta table in a Databricks notebook
-
-# Make sure your Spark session has access to the catalog where the table resides.
-# Replace <CATALOG_NAME> with your actual catalog name (e.g., 'main', 'hive_metastore', 'dev').
-catalog_name = "<CATALOG_NAME>" 
-spark.sql(f"USE CATALOG {catalog_name}")
-
-# Define the schema and table name 
-# (assuming it was created as per previous SQL examples, e.g., in 'bacalhau_results' schema)
-schema_name = "bacalhau_results"
-table_name_short = "sensor_readings"
-full_table_name = f"{schema_name}.{table_name_short}" # or f"{catalog_name}.{schema_name}.{table_name_short}" if not using USE CATALOG
-
-# Read the Delta table into a Spark DataFrame
-print(f"Attempting to read Delta table: {full_table_name}")
-df = spark.read.table(full_table_name)
-
-# Display some data
-print(f"Displaying top 10 rows from {full_table_name}:")
-df.show(10)
-
-# Perform a count
-record_count = df.count()
-print(f"Total records in '{full_table_name}': {record_count}")
-
-# Example query: Find average temperature (assuming a 'temperature' column exists)
-# You might need to cast the column if it's not already a numeric type
-if 'temperature' in df.columns:
-    from pyspark.sql.functions import avg
-    print(f"Calculating average temperature from {full_table_name}:")
-    avg_temp_df = df.agg(avg("temperature"))
-    avg_temp_df.show()
-else:
-    print(f"Column 'temperature' not found in {full_table_name}. Skipping average temperature calculation.")
-
-# Example query: Find the latest timestamp (assuming a 'timestamp' column exists)
-if 'timestamp' in df.columns:
-    from pyspark.sql.functions import max
-    print(f"Finding the latest timestamp in {full_table_name}:")
-    latest_timestamp_df = df.agg(max("timestamp"))
-    latest_timestamp_df.show()
-else:
-    print(f"Column 'timestamp' not found in {full_table_name}. Skipping latest timestamp calculation.")
-```
-
-Replace `<CATALOG_NAME>` with the actual catalog you are using. This script demonstrates reading the table, showing sample data, counting records, and performing simple aggregations. You can adapt these queries for more complex analysis and visualization within your Databricks notebooks.
-
----
-
-## Integration with Bacalhau
-
-This uploader is designed to work seamlessly with Bacalhau compute jobs. Example Bacalhau job specification:
-
-```yaml
-name: databricks-upload-job
-type: batch
-compute:
-  image: ghcr.io/your-org/databricks-uploader:latest
-inputs:
-  - source:
-      type: localDirectory
-      path: /data/sqlite
-    target: /data
-  - source:
-      type: localFile
-      path: ./config.yaml
-    target: /config.yaml
-env:
-  DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
-command:
-  - "--config"
-  - "/config.yaml"
-  - "--once"
-```
-
-## Docker Deployment
-
-### Building the Image
-
-The included `build.sh` script supports multi-architecture builds:
-
-```bash
-# Build for multiple platforms
-cd databricks-uploader
-export PLATFORMS="linux/amd64,linux/arm64"
-./build.sh --tag v1.0.0 --push
-
-# Build for local testing only
-./build.sh --tag dev --registry local
-```
-
-### Running in Production
-
-Example docker-compose.yml:
-
-```yaml
-version: '3.8'
-services:
-  databricks-uploader:
-    image: ghcr.io/your-org/databricks-uploader:latest
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-      - /data/sqlite:/data:ro
-      - ./state:/state
-    environment:
-      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
-    command: ["--config", "/config.yaml"]
-    restart: unless-stopped
-```
+The cluster will:
+- Use AWS Spot instances for cost savings
+- Deploy credentials to `/bacalhau_data/credentials/` on each node
+- Source credentials from `/opt/databricks-credentials.sh`
+- Run the Databricks uploader as a Bacalhau job
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Authentication Errors**
-   - Verify your Databricks PAT is valid
-   - Ensure the token has necessary permissions for all target tables
+1. **"Warehouse does not exist"**
+   - Create a SQL warehouse in Databricks
+   - Update `DATABRICKS_WAREHOUSE_ID` in `.env`
 
-2. **Table Not Found**
-   - Verify all scenario tables exist (raw_*, filtered_*, secure_*, aggregated_*)
-   - Check database and table names are correct
+2. **"Access denied to S3"**
+   - Verify AWS credentials: `aws sts get-caller-identity`
+   - Check IAM role has access to `expanso-databricks-*` buckets
+   - Run `uv run -s databricks-setup.py verify`
 
-3. **No New Records**
-   - Check the state file to see the last uploaded timestamp
-   - Verify your SQLite data has records newer than this timestamp
+3. **"Table not found"**
+   - Run setup: `uv run -s databricks-setup.py setup`
+   - Check catalog name matches in `.env`
 
-4. **Wrong Table Used**
-   - Ensure only one processing option is enabled at a time
-   - Check logs to confirm which table prefix is being used
+### Debug Commands
 
-## Security Considerations
+```bash
+# Test Databricks connection
+uv run -s test-databricks-connection.py
 
-- **Never commit tokens**: Always use environment variables for sensitive credentials
-- **Use read-only mounts**: Mount SQLite databases as read-only in containers
-- **Rotate tokens regularly**: Update Databricks PATs periodically
-- **Limit token scope**: Use tokens with minimal required permissions
-- **Separate tables by sensitivity**: Use the secure_* tables for sanitized sensitive data
+# Check AWS credentials and S3 access
+aws sts get-caller-identity
+aws s3 ls s3://expanso-databricks-ingestion-us-west-2/
 
-## License
+# View pipeline state
+cat state/s3-uploader/upload_state.json
 
-This project is part of the Bacalhau examples repository. See the main repository for license information.
+# Check sensor data generation
+sqlite3 databricks-uploader/sensor_data.db "SELECT COUNT(*) FROM sensor_data;"
 
-## Further Reading
+# View recent sensor readings
+sqlite3 databricks-uploader/sensor_data.db \
+  "SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 5;"
+```
 
-- [databricks-uploader/README.md](databricks-uploader/README.md): Detailed uploader documentation
-- [REARCHITECTURE.md](REARCHITECTURE.md): Original architecture notes (outdated)
-- `databricks-uploader/databricks-uploader-config.yaml.example`: Full configuration example
-- `docs/`: Additional guides and documentation
+## Contributing
+
+1. Follow code style: `ruff check . && ruff format .`
+2. Add tests for new features
+3. Update documentation
+4. Use `uv run -s` for all Python scripts
+
+## Full Environment Configuration
+
+Here's the complete `.env` configuration with all available options:
+
+```bash
+# Databricks Configuration
+DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
+DATABRICKS_TOKEN=dapi1234567890abcdef  # Get from User Settings > Access Tokens
+DATABRICKS_WAREHOUSE_ID=abcd1234efgh5678  # Get from SQL Warehouses page
+DATABRICKS_CATALOG=expanso_databricks_workspace
+DATABRICKS_SCHEMA=sensor_data
+DATABRICKS_DATABASE=expanso_databricks_workspace.sensor_data
+
+# AWS Configuration  
+AWS_REGION=us-west-2
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+S3_BUCKET_PREFIX=expanso
+S3_BUCKET_RAW=expanso-databricks-ingestion-us-west-2
+S3_BUCKET_VALIDATED=expanso-databricks-validated-us-west-2
+S3_BUCKET_ENRICHED=expanso-databricks-enriched-us-west-2
+S3_BUCKET_AGGREGATED=expanso-databricks-aggregated-us-west-2
+
+# Pipeline Configuration
+UPLOAD_INTERVAL=60  # seconds between uploads
+BATCH_SIZE=500  # records per batch
+STATE_DIR=./state
+SQLITE_PATH=./databricks-uploader/sensor_data.db
+SQLITE_TABLE_NAME=sensor_data
+TIMESTAMP_COL=timestamp
+ONCE=false  # set to true for single run
+
+# Sensor Simulator Configuration
+SENSOR_ID=TURBINE_001
+SENSOR_LOCATION=US-East Wind Farm
+SENSOR_MANUFACTURER=Expanso Systems
+SENSOR_MODEL=WT-5000
+SENSOR_FIRMWARE_VERSION=3.2.1
+SENSOR_INTERVAL=5  # seconds between readings
+ANOMALY_PROBABILITY=0.05  # 5% chance of anomalies
+
+# Processing Modes (managed by pipeline_manager.py)
+# PROCESSING_MODE options: raw, schematized, filtered, emergency
+# Use: uv run -s pipeline_manager.py --db sensor_data.db set <mode>
+```
