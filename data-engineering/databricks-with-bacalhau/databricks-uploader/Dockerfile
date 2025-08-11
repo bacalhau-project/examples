@@ -1,17 +1,30 @@
-### Builder stage: install dependencies using uv-run
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
-WORKDIR /app
-COPY upload_sqlite_to_s3.py ./
-# Pre-cache dependencies (UV-run will install required packages)
-RUN uv run -s upload_sqlite_to_s3.py --help || true
+FROM python:3.11-slim
 
-### Runtime stage: lightweight image with pre-installed dependencies
-FROM alpine AS runtime
-WORKDIR /app
-# Copy installed Python packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-# Copy the uploader script
-COPY upload_sqlite_to_s3.py ./
+# Install uv for Python package management
+RUN pip install --no-cache-dir uv
 
-# Entrypoint
-ENTRYPOINT ["uv", "run", "-s", "upload_sqlite_to_s3.py"]
+# Set working directory
+WORKDIR /app
+
+# Copy all Python scripts
+COPY *.py ./
+
+# Install Python dependencies using uv
+RUN uv pip install --system \
+    databricks-sql-connector>=3.0.0 \
+    python-dotenv>=1.0.0 \
+    boto3>=1.26.0 \
+    pyyaml>=6.0 \
+    watchdog>=3.0.0
+
+# Create directories for runtime
+RUN mkdir -p /app/state /bacalhau_data/credentials
+
+# Default entrypoint
+ENV PYTHONUNBUFFERED=1
+
+# Default entrypoint
+ENTRYPOINT ["python", "-u", "sqlite_to_databricks_uploader.py"]
+
+# Default command (can be overridden)
+CMD ["--config", "/app/config.yaml"]

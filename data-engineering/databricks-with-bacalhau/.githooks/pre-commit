@@ -1,0 +1,31 @@
+#!/bin/bash
+# Pre-commit hook to validate Python code
+
+set -e
+
+# Check if we have any Python changes
+if git diff --cached --name-only | grep -q "\.py$"; then
+    echo "Running validation on Python files..."
+    
+    # Run comprehensive validation
+    if command -v uv &> /dev/null; then
+        uv run -s scripts/validate-all.py check
+        
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "❌ Validation failed!"
+            echo "Fix the issues above before committing."
+            echo ""
+            echo "To auto-fix some issues, run:"
+            echo "  uv run -s scripts/validate-all.py fix"
+            exit 1
+        fi
+    else
+        echo "⚠️  uv not found. Install it with:"
+        echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+        exit 1
+    fi
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0

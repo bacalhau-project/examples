@@ -18,9 +18,11 @@ import json
 import os
 import sys
 import time
+import socket
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import boto3
 import yaml
@@ -59,6 +61,11 @@ class SQLiteToS3Uploader:
             "emergency": "aggregated",
             "aggregated": "aggregated",
         }
+        
+        # Load node identity for lineage tracking
+        self.node_id = self._load_node_identity()
+        self.uploader_version = "0.8.1"  # Version with metadata support
+        self.container_id = os.getenv("HOSTNAME", socket.gethostname())
 
         # Print startup information
         print("\n" + "=" * 60)
@@ -165,7 +172,174 @@ class SQLiteToS3Uploader:
             aws_access_key_id=aws_access_key,
             aws_secret_access_key=aws_secret_key,
         )
+        
+        # Note: Schema sample files are created by Databricks notebooks
+        # This maintains separation of concerns - uploader only uploads real data
 
+    # DEPRECATED: Schema initialization moved to Databricks notebooks for separation of concerns
+    # Databricks notebooks now handle all bucket operations including schema samples
+    def _initialize_all_buckets_deprecated(self):
+        """[DEPRECATED] Upload sample data to all buckets for schema inference."""
+        print("\n🎯 Initializing buckets with sample data for Databricks Auto Loader schema inference...")
+        print("   This helps Auto Loader understand the data structure before real data arrives.")
+        
+        # Create sample record with all possible fields
+        sample_timestamp = datetime.now(timezone.utc)
+        sample_record = {
+            "id": 1,
+            "timestamp": sample_timestamp.isoformat(),
+            "sensor_id": "INIT-SENSOR",
+            "temperature": 20.0,
+            "humidity": 50.0,
+            "pressure": 1013.25,
+            "vibration": 0.5,
+            "voltage": 12.0,
+            "status_code": 0,
+            "anomaly_flag": 0,
+            "anomaly_type": None,
+            "firmware_version": "1.0.0",
+            "model": "InitModel",
+            "manufacturer": "SchemaInit",
+            "location": "Schema Initialization",
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "original_timezone": "+00:00",
+            "synced": 0,
+            "serial_number": "INIT-001",
+            "manufacture_date": "2025-01-01",
+            "deployment_type": "initialization",
+            "installation_date": "2025-01-01",
+            "height_meters": 0.0,
+            "orientation_degrees": 0.0,
+            "instance_id": "init-instance",
+            "sensor_type": "initialization",
+            # Add aggregation fields for aggregated pipeline
+            "window_start": sample_timestamp.isoformat(),
+            "window_end": sample_timestamp.isoformat(),
+            "record_count": 1,
+            "avg_temperature": 20.0,
+            "min_temperature": 20.0,
+            "max_temperature": 20.0,
+            "avg_humidity": 50.0,
+            "avg_pressure": 1013.25,
+            "avg_voltage": 12.0,
+            "avg_vibration": 0.5,
+            "max_vibration": 0.5,
+            "critical_alerts": 0,
+            "warning_alerts": 0,
+            "anomaly_count": 0,
+            "unhealthy_readings": 0,
+            "avg_quality_score": 1.0,
+            # Add enrichment fields
+            "data_quality_score": 1.0,
+            "alert_level": "normal",
+            "sensor_health": "healthy",
+            "day_of_week": sample_timestamp.isoweekday(),
+            "hour_of_day": sample_timestamp.hour,
+            "minute_of_hour": sample_timestamp.minute,
+            # Add validation fields
+            "is_valid": True,
+            "validation_errors": None,
+            "source_format": "initialization"
+        }
+        
+        # Get S3 configuration
+        s3_config = self.config.get("s3_configuration", {})
+        bucket_prefix = s3_config.get("prefix", "expanso")
+        region = s3_config.get("region", "us-west-2")
+        
+        # Define all pipeline types and their corresponding buckets
+        pipeline_buckets = {
+            "raw": f"{bucket_prefix}-databricks-ingestion-{region}",
+            "validated": f"{bucket_prefix}-databricks-validated-{region}",
+            "enriched": f"{bucket_prefix}-databricks-enriched-{region}",
+            "aggregated": f"{bucket_prefix}-databricks-aggregated-{region}"
+        }
+        
+        # Upload sample to each bucket
+        for pipeline_type, bucket in pipeline_buckets.items():
+            try:
+                # Check if bucket already has actual data files (not just .keep files)
+                # Using flat structure - check at bucket root
+                response = self.s3_client.list_objects_v2(
+                    Bucket=bucket,
+                    MaxKeys=10
+                )
+                
+                has_schema_sample = False
+                has_real_data = False
+                
+                if "Contents" in response:
+                    # Check if there are any .json files
+                    for obj in response["Contents"]:
+                        if obj["Key"].endswith(".json") and obj["Size"] > 0:
+                            if "schema_sample" in obj["Key"]:
+                                has_schema_sample = True
+                            else:
+                                has_real_data = True
+                
+                if has_real_data:
+                    print(f"   ✓ {pipeline_type:12} bucket already has real data, skipping sample")
+                    continue
+                elif has_schema_sample:
+                    print(f"   ✓ {pipeline_type:12} bucket already has schema sample, skipping")
+                    continue
+                
+                # Upload sample data - flat structure at bucket root
+                timestamp_str = sample_timestamp.strftime("%Y%m%d_%H%M%S")
+                # Use "schema_sample" prefix to clearly distinguish initialization data
+                s3_key = f"schema_sample_{timestamp_str}_{pipeline_type}.json"
+                
+                # Create job ID for tracking
+                job_id = f"init-{pipeline_type}-{sample_timestamp.strftime('%Y%m%d-%H%M%S')}"
+                
+                # Upload sample data with metadata in S3 object metadata
+                self.s3_client.put_object(
+                    Bucket=bucket,
+                    Key=s3_key,
+                    Body=json.dumps([sample_record]),  # Array format for Auto Loader
+                    ContentType="application/json",
+                    Metadata={
+                        'job-id': job_id,
+                        'node-id': self.node_id,
+                        'pipeline-type': pipeline_type,
+                        'purpose': 'schema-inference',
+                        'uploader-version': self.uploader_version
+                    }
+                )
+                
+                print(f"   ✅ {pipeline_type:12} initialized: s3://{bucket}/{s3_key}")
+                
+            except Exception as e:
+                print(f"   ⚠️  {pipeline_type:12} initialization failed: {e}")
+        
+        print("🎯 Bucket initialization complete\n")
+    
+    def _load_node_identity(self) -> str:
+        """Load node identity from file or environment."""
+        # Try to load from mounted node-identity.json
+        identity_paths = [
+            "/app/config/node-identity.json",
+            "sample-sensor/node-identity.json",
+            "/bacalhau_data/node-identity.json"
+        ]
+        
+        for path in identity_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r') as f:
+                        identity = json.load(f)
+                        node_id = identity.get('node_id', identity.get('id', 'unknown'))
+                        print(f"📍 Loaded node identity from {path}: {node_id}")
+                        return node_id
+                except Exception as e:
+                    print(f"⚠️  Failed to load node identity from {path}: {e}")
+        
+        # Fall back to environment variable or generate one
+        node_id = os.getenv('NODE_ID', f"node-{uuid.uuid4().hex[:8]}")
+        print(f"📍 Using node identity: {node_id}")
+        return node_id
+    
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file."""
         with open(config_path, "r") as f:
@@ -257,44 +431,65 @@ class SQLiteToS3Uploader:
         conn.close()
         return rows
 
-    def _upload_to_s3(self, data: list, bucket: str, dry_run: bool = False) -> bool:
-        """Upload data to S3 bucket."""
+    def _upload_to_s3(self, data: list, bucket: str, dry_run: bool = False) -> Dict[str, Any]:
+        """Upload data to S3 bucket with metadata for lineage tracking."""
         if not data:
-            return True
+            return {"success": True, "key": None}
 
-        # Generate S3 key with timestamp
-        timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d/%H%M%S")
-        key = f"ingestion/{timestamp}/data.json"
-
-        # Prepare data
-        upload_data = {
-            "metadata": {
-                "source": self.config["sqlite"],
-                "table": self.config["sqlite_table"],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "record_count": len(data),
-            },
-            "records": data,
-        }
+        # Generate unique job ID and timestamp
+        upload_timestamp = datetime.now(timezone.utc)
+        # Use flat structure with timestamp in filename
+        timestamp_str = upload_timestamp.strftime("%Y%m%d_%H%M%S")
+        unique_id = uuid.uuid4().hex[:8]
+        job_id = f"uploader-{timestamp_str}-{unique_id}"
+        
+        # S3 path - single file at top level
+        # Format: 20250808_143025_abc123.json (no prefix needed, bucket identifies content type)
+        s3_key = f"{timestamp_str}_{unique_id}.json"
 
         if dry_run:
-            print(f"[DRY RUN] Would upload {len(data)} records to s3://{bucket}/{key}")
-            return True
+            print(f"[DRY RUN] Would upload {len(data)} records to s3://{bucket}/{data_key}")
+            return {"success": True, "key": data_key, "job_id": job_id}
 
         try:
-            # Upload to S3
+            # Get data time range
+            timestamp_col = self.config.get("timestamp_col", "timestamp")
+            data_start = data[0].get(timestamp_col) if data else None
+            data_end = data[-1].get(timestamp_col) if data else None
+            
+            # Upload just the data array - metadata goes in S3 object metadata
+            # Note: S3 object metadata is included in the object headers and doesn't require extra permissions
             self.s3_client.put_object(
                 Bucket=bucket,
-                Key=key,
-                Body=json.dumps(upload_data),
+                Key=s3_key,
+                Body=json.dumps(data),  # Just the data array
                 ContentType="application/json",
+                Metadata={
+                    'job-id': job_id,
+                    'node-id': self.node_id,
+                    'pipeline-type': self.current_pipeline_type,
+                    'record-count': str(len(data)),
+                    'upload-timestamp': upload_timestamp.isoformat(),
+                    'data-start-time': str(data_start),
+                    'data-end-time': str(data_end),
+                    'uploader-version': self.uploader_version
+                }
             )
-            print(f"✅ Uploaded {len(data)} records to s3://{bucket}/{key}")
-            return True
+            
+            # No separate metadata file needed - all metadata is in S3 object metadata
+            
+            print(f"✅ Uploaded {len(data)} records to s3://{bucket}/{s3_key}")
+            print(f"🏷️  Job ID: {job_id} | Node ID: {self.node_id}")
+            
+            return {
+                "success": True, 
+                "key": s3_key, 
+                "job_id": job_id
+            }
 
         except Exception as e:
             print(f"❌ Failed to upload to S3: {e}")
-            return False
+            return {"success": False, "error": str(e)}
 
     def run_once(self, dry_run: bool = False):
         """Run one upload cycle."""
@@ -353,37 +548,37 @@ class SQLiteToS3Uploader:
         )
         print("-" * 60)
 
-        success = self._upload_to_s3(data, bucket, dry_run)
+        result = self._upload_to_s3(data, bucket, dry_run)
 
-        if success and not dry_run:
+        if result["success"] and not dry_run:
             # Update state with last timestamp
             timestamp_col = self.config["timestamp_col"]
             last_record = data[-1]
             new_timestamp = last_record.get(timestamp_col)
 
             state["last_timestamp"] = new_timestamp
-            state["last_upload"] = datetime.now(timezone.utc).isoformat()
+            state["last_upload"] = new_timestamp  # Use actual data timestamp, not current time
             state["records_uploaded"] = state.get("records_uploaded", 0) + len(data)
             state["last_pipeline_type"] = self.current_pipeline_type
+            state["last_job_id"] = result["job_id"]
 
             self._save_state(state)
 
-            # Record execution in pipeline manager
-            s3_location = f"s3://{bucket}/{self.current_pipeline_type}/"
-            job_id = f"uploader-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+            # Record execution in pipeline manager with metadata
             self.pipeline_manager.record_execution(
                 pipeline_type=self.current_pipeline_type,
                 records_processed=len(data),
-                s3_locations=[s3_location],
-                job_id=job_id,
+                s3_locations=[f"s3://{bucket}/{result['key']}"],
+                job_id=result["job_id"],
             )
 
             # Print upload summary
             print("\n✅ UPLOAD COMPLETED SUCCESSFULLY")
             print(f"   Pipeline Version: {self.current_pipeline_type}")
             print(f"   Records Uploaded: {len(data)}")
-            print(f"   Destination: {s3_location}")
-            print(f"   Job ID: {job_id}")
+            print(f"   Destination: s3://{bucket}/{result['key']}")
+            print(f"   Job ID: {result['job_id']}")
+            print(f"   Node ID: {self.node_id}")
             print(f"   Last Timestamp: {new_timestamp}")
             print(f"   Total Records (all-time): {state['records_uploaded']}")
             print("-" * 60 + "\n")

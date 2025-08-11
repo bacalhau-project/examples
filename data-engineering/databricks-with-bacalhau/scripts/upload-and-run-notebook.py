@@ -108,14 +108,26 @@ def create_and_run_job(
     """Create and run a job for the notebook."""
     try:
         # Define the task
-        task = jobs.Task(
-            task_key="run_notebook",
-            notebook_task=jobs.NotebookTask(
-                notebook_path=notebook_path,
-                base_parameters=parameters or {}
-            ),
-            description=f"Run {notebook_path}"
-        )
+        if cluster_id:
+            # Use existing cluster
+            task = jobs.Task(
+                task_key="run_notebook",
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=notebook_path,
+                    base_parameters=parameters or {}
+                ),
+                existing_cluster_id=cluster_id,
+                description=f"Run {notebook_path}"
+            )
+        else:
+            task = jobs.Task(
+                task_key="run_notebook",
+                notebook_task=jobs.NotebookTask(
+                    notebook_path=notebook_path,
+                    base_parameters=parameters or {}
+                ),
+                description=f"Run {notebook_path}"
+            )
         
         # Create job configuration
         if cluster_id:
@@ -123,8 +135,7 @@ def create_and_run_job(
             job_config = jobs.JobSettings(
                 name=job_name,
                 tasks=[task],
-                max_concurrent_runs=1,
-                existing_cluster_id=cluster_id
+                max_concurrent_runs=1
             )
         elif warehouse_id:
             # For SQL notebooks, we'd need different configuration
@@ -159,7 +170,12 @@ def create_and_run_job(
             task.job_cluster_key = "auto_cluster"
         
         # Create the job
-        job = client.jobs.create(**job_config.as_dict())
+        job = client.jobs.create(
+            name=job_config.name,
+            tasks=job_config.tasks,
+            max_concurrent_runs=job_config.max_concurrent_runs,
+            job_clusters=job_config.job_clusters if hasattr(job_config, 'job_clusters') and job_config.job_clusters else None
+        )
         
         # Run the job
         run = client.jobs.run_now(job_id=job.job_id)

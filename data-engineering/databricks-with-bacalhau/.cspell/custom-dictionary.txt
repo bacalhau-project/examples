@@ -37,6 +37,7 @@ nofile
 psql
 psycopg
 pyspark
+PYTHONUNBUFFERED
 pyyaml
 readwrite
 REARCHITECTURE

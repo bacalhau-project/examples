@@ -42,7 +42,7 @@ DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
 DATABRICKS_TOKEN=your-databricks-token-here
 DATABRICKS_WAREHOUSE_ID=your-warehouse-id-here
 DATABRICKS_CATALOG=expanso_databricks_workspace
-DATABRICKS_SCHEMA=sensor_data
+DATABRICKS_SCHEMA=sensor_readings
 
 # AWS Configuration
 AWS_REGION=us-west-2
@@ -54,7 +54,7 @@ S3_BUCKET_PREFIX=expanso
 UPLOAD_INTERVAL=60
 BATCH_SIZE=500
 STATE_DIR=./state
-SQLITE_PATH=./databricks-uploader/sensor_data.db
+SQLITE_PATH=./sample-sensor/data/sensor_data.db
 TIMESTAMP_COL=timestamp
 
 # Sensor Configuration
@@ -113,10 +113,10 @@ uv run -s databricks-setup.py query
 
 # Or use SQL directly
 uv run -s databricks-setup.py query \
-  --sql "SELECT * FROM expanso_databricks_workspace.sensor_data.raw_sensor_readings LIMIT 10"
+  --sql "SELECT * FROM expanso_databricks_workspace.sensor_readings.raw_sensor_readings LIMIT 10"
 
 # Check pipeline status
-uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db history
+uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db history
 ```
 
 ### 7. Teardown
@@ -222,10 +222,10 @@ Edit `databricks-uploader-config.yaml` to configure:
 
 ```bash
 # Check pipeline status
-uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db history
+uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db history
 
 # View current pipeline mode
-uv run -s pipeline_manager.py --db databricks-uploader/sensor_data.db get
+uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db get
 
 # Monitor upload progress
 watch -n 5 'cat state/s3-uploader/upload_state.json | jq .'
@@ -323,11 +323,11 @@ aws s3 ls s3://expanso-databricks-ingestion-us-west-2/
 cat state/s3-uploader/upload_state.json
 
 # Check sensor data generation
-sqlite3 databricks-uploader/sensor_data.db "SELECT COUNT(*) FROM sensor_data;"
+sqlite3 sample-sensor/data/sensor_data.db "SELECT COUNT(*) FROM sensor_readings;"
 
 # View recent sensor readings
-sqlite3 databricks-uploader/sensor_data.db \
-  "SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 sample-sensor/data/sensor_data.db \
+  "SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ## Contributing
@@ -347,7 +347,7 @@ DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
 DATABRICKS_TOKEN=dapi1234567890abcdef  # Get from User Settings > Access Tokens
 DATABRICKS_WAREHOUSE_ID=abcd1234efgh5678  # Get from SQL Warehouses page
 DATABRICKS_CATALOG=expanso_databricks_workspace
-DATABRICKS_SCHEMA=sensor_data
+DATABRICKS_SCHEMA=sensor_readings
 DATABRICKS_DATABASE=expanso_databricks_workspace.sensor_data
 
 # AWS Configuration  
@@ -364,8 +364,8 @@ S3_BUCKET_AGGREGATED=expanso-databricks-aggregated-us-west-2
 UPLOAD_INTERVAL=60  # seconds between uploads
 BATCH_SIZE=500  # records per batch
 STATE_DIR=./state
-SQLITE_PATH=./databricks-uploader/sensor_data.db
-SQLITE_TABLE_NAME=sensor_data
+SQLITE_PATH=./sample-sensor/data/sensor_data.db
+SQLITE_TABLE_NAME=sensor_readings
 TIMESTAMP_COL=timestamp
 ONCE=false  # set to true for single run
 

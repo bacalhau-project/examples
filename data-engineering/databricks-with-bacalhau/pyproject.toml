@@ -1,7 +1,7 @@
 [project]
-name = "sensor_manager"
+name = "databricks-with-bacalhau"
 version = "0.1.0"
-description = "Sensor manager for Bacalhau examples"
+description = "Databricks integration with Bacalhau for data engineering"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0.0",
@@ -9,4 +9,80 @@ dependencies = [
     "jinja2>=3.0.0",
     "docker>=6.0.0",
     "rich>=10.0.0",
+    "boto3>=1.26.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pylint>=3.0.0",
+    "black>=23.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+    "PL",     # pylint
+    "PTH",    # flake8-use-pathlib
+]
+
+ignore = [
+    "F403",   # Star imports (common in Databricks)
+    "F405",   # May be undefined from star imports
+    "E722",   # Do not use bare except
+    "E402",   # Module level import not at top of file
+    "F821",   # Undefined name (for Databricks runtime objects)
+]
+
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["dbutils", "spark", "display", "displayHTML"]
+
+[tool.ruff.lint.pylint]
+max-args = 10
+max-branches = 20
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+files = ["databricks-uploader/*.py", "scripts/*.py"]
+exclude = ["databricks-notebooks/"]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+    "W0212",  # protected-access
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.ruff_cache
+  | databricks-notebooks
+)/
+'''

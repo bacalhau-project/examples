@@ -299,7 +299,7 @@ Examples:
     process_parser = subparsers.add_parser("process", help="Process data")
     process_parser.add_argument("--db-path", default="sensor_data.db",
                                help="SQLite database path")
-    process_parser.add_argument("--table", default="sensor_data",
+    process_parser.add_argument("--table", default="sensor_readings",
                                help="Table name")
     process_parser.add_argument("--batch-size", type=int, default=1000,
                                help="Batch size")

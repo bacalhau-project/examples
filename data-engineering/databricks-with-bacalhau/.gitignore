@@ -121,5 +121,25 @@ aws-credentials
 *.db-wal
 
 state/*
+uploader-state/*
 # Credentials - NEVER COMMIT
 additional-commands.sh
+
+# Generated and temporary files
+latest-tag
+.latest-*
+pipeline_config.db
+set-environment.sh
+test-*.yaml
+test-*.py
+test-*.sh
+debug-*.py
+diagnose-*.py
+fix-*.py
+simple-cleanup.py
+show-upload-status.py
+quick-*.sh
+
+# Old directories
+output/
+sample-sensor/
