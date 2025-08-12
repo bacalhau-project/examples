@@ -16,17 +16,16 @@ Reads data from SQLite and uploads to S3 buckets for Databricks Auto Loader inge
 import argparse
 import json
 import os
+import socket
 import sys
 import time
-import socket
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any
 
 import boto3
 import yaml
-from dotenv import load_dotenv
 
 # Import pipeline manager for atomic pipeline type management
 sys.path.append(str(Path(__file__).parent))
@@ -58,10 +57,9 @@ class SQLiteToS3Uploader:
             "validated": "validated",
             "filtered": "enriched",
             "enriched": "enriched",
-            "emergency": "aggregated",
             "aggregated": "aggregated",
         }
-        
+
         # Load node identity for lineage tracking
         self.node_id = self._load_node_identity()
         self.uploader_version = "0.8.1"  # Version with metadata support
@@ -87,9 +85,7 @@ class SQLiteToS3Uploader:
         print(f"📦 Batch size: {self.config.get('batch_size', 500)} records")
         print(f"🔄 Run once: {self.config.get('once', False)}")
         print("\n📝 To change pipeline type (atomic operation):")
-        print(
-            f"   uv run -s pipeline_manager.py --db {pipeline_db_path} set --type <type>"
-        )
+        print(f"   uv run -s pipeline_manager.py --db {pipeline_db_path} set --type <type>")
         print("   Available types: raw, validated, enriched, aggregated")
         print("=" * 60 + "\n")
 
@@ -114,16 +110,12 @@ class SQLiteToS3Uploader:
                 if env_file.exists():
                     print(f"📁 Found credentials file: {env_file}")
                     # Parse the shell script for credentials
-                    with open(env_file, "r") as f:
+                    with open(env_file) as f:
                         for line in f:
                             if line.startswith("export AWS_ACCESS_KEY_ID="):
-                                aws_access_key = (
-                                    line.split("=", 1)[1].strip().strip("'\"")
-                                )
+                                aws_access_key = line.split("=", 1)[1].strip().strip("'\"")
                             elif line.startswith("export AWS_SECRET_ACCESS_KEY="):
-                                aws_secret_key = (
-                                    line.split("=", 1)[1].strip().strip("'\"")
-                                )
+                                aws_secret_key = line.split("=", 1)[1].strip().strip("'\"")
                             elif line.startswith("export AWS_DEFAULT_REGION="):
                                 aws_region = line.split("=", 1)[1].strip().strip("'\"")
                     if aws_access_key and aws_secret_key:
@@ -149,18 +141,12 @@ class SQLiteToS3Uploader:
             print("\n" + "❌" * 30)
             print("ERROR: AWS credentials are REQUIRED")
             print("Please provide credentials via one of these methods:")
-            print(
-                "1. Credential file: credentials/expanso-s3-env.sh (for local testing)"
-            )
-            print(
-                "2. Credential file: /bacalhau_data/credentials/expanso-s3-env.sh (for Docker)"
-            )
+            print("1. Credential file: credentials/expanso-s3-env.sh (for local testing)")
+            print("2. Credential file: /bacalhau_data/credentials/expanso-s3-env.sh (for Docker)")
             print(
                 "3. Config file: s3_configuration.access_key_id and s3_configuration.secret_access_key"
             )
-            print(
-                "4. Environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-            )
+            print("4. Environment variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
             print("\nThis uploader does NOT support AWS SSO login.")
             print("❌" * 30 + "\n")
             sys.exit(1)
@@ -172,7 +158,7 @@ class SQLiteToS3Uploader:
             aws_access_key_id=aws_access_key,
             aws_secret_access_key=aws_secret_key,
         )
-        
+
         # Note: Schema sample files are created by Databricks notebooks
         # This maintains separation of concerns - uploader only uploads real data
 
@@ -180,11 +166,13 @@ class SQLiteToS3Uploader:
     # Databricks notebooks now handle all bucket operations including schema samples
     def _initialize_all_buckets_deprecated(self):
         """[DEPRECATED] Upload sample data to all buckets for schema inference."""
-        print("\n🎯 Initializing buckets with sample data for Databricks Auto Loader schema inference...")
+        print(
+            "\n🎯 Initializing buckets with sample data for Databricks Auto Loader schema inference..."
+        )
         print("   This helps Auto Loader understand the data structure before real data arrives.")
-        
+
         # Create sample record with all possible fields
-        sample_timestamp = datetime.now(timezone.utc)
+        sample_timestamp = datetime.now(UTC)
         sample_record = {
             "id": 1,
             "timestamp": sample_timestamp.isoformat(),
@@ -240,35 +228,32 @@ class SQLiteToS3Uploader:
             # Add validation fields
             "is_valid": True,
             "validation_errors": None,
-            "source_format": "initialization"
+            "source_format": "initialization",
         }
-        
+
         # Get S3 configuration
         s3_config = self.config.get("s3_configuration", {})
         bucket_prefix = s3_config.get("prefix", "expanso")
         region = s3_config.get("region", "us-west-2")
-        
+
         # Define all pipeline types and their corresponding buckets
         pipeline_buckets = {
             "raw": f"{bucket_prefix}-databricks-ingestion-{region}",
             "validated": f"{bucket_prefix}-databricks-validated-{region}",
             "enriched": f"{bucket_prefix}-databricks-enriched-{region}",
-            "aggregated": f"{bucket_prefix}-databricks-aggregated-{region}"
+            "aggregated": f"{bucket_prefix}-databricks-aggregated-{region}",
         }
-        
+
         # Upload sample to each bucket
         for pipeline_type, bucket in pipeline_buckets.items():
             try:
                 # Check if bucket already has actual data files (not just .keep files)
                 # Using flat structure - check at bucket root
-                response = self.s3_client.list_objects_v2(
-                    Bucket=bucket,
-                    MaxKeys=10
-                )
-                
+                response = self.s3_client.list_objects_v2(Bucket=bucket, MaxKeys=10)
+
                 has_schema_sample = False
                 has_real_data = False
-                
+
                 if "Contents" in response:
                     # Check if there are any .json files
                     for obj in response["Contents"]:
@@ -277,22 +262,22 @@ class SQLiteToS3Uploader:
                                 has_schema_sample = True
                             else:
                                 has_real_data = True
-                
+
                 if has_real_data:
                     print(f"   ✓ {pipeline_type:12} bucket already has real data, skipping sample")
                     continue
                 elif has_schema_sample:
                     print(f"   ✓ {pipeline_type:12} bucket already has schema sample, skipping")
                     continue
-                
+
                 # Upload sample data - flat structure at bucket root
                 timestamp_str = sample_timestamp.strftime("%Y%m%d_%H%M%S")
                 # Use "schema_sample" prefix to clearly distinguish initialization data
                 s3_key = f"schema_sample_{timestamp_str}_{pipeline_type}.json"
-                
+
                 # Create job ID for tracking
                 job_id = f"init-{pipeline_type}-{sample_timestamp.strftime('%Y%m%d-%H%M%S')}"
-                
+
                 # Upload sample data with metadata in S3 object metadata
                 self.s3_client.put_object(
                     Bucket=bucket,
@@ -300,49 +285,49 @@ class SQLiteToS3Uploader:
                     Body=json.dumps([sample_record]),  # Array format for Auto Loader
                     ContentType="application/json",
                     Metadata={
-                        'job-id': job_id,
-                        'node-id': self.node_id,
-                        'pipeline-type': pipeline_type,
-                        'purpose': 'schema-inference',
-                        'uploader-version': self.uploader_version
-                    }
+                        "job-id": job_id,
+                        "node-id": self.node_id,
+                        "pipeline-type": pipeline_type,
+                        "purpose": "schema-inference",
+                        "uploader-version": self.uploader_version,
+                    },
                 )
-                
+
                 print(f"   ✅ {pipeline_type:12} initialized: s3://{bucket}/{s3_key}")
-                
+
             except Exception as e:
                 print(f"   ⚠️  {pipeline_type:12} initialization failed: {e}")
-        
+
         print("🎯 Bucket initialization complete\n")
-    
+
     def _load_node_identity(self) -> str:
         """Load node identity from file or environment."""
         # Try to load from mounted node-identity.json
         identity_paths = [
             "/app/config/node-identity.json",
             "sample-sensor/node-identity.json",
-            "/bacalhau_data/node-identity.json"
+            "/bacalhau_data/node-identity.json",
         ]
-        
+
         for path in identity_paths:
             if os.path.exists(path):
                 try:
-                    with open(path, 'r') as f:
+                    with open(path) as f:
                         identity = json.load(f)
-                        node_id = identity.get('node_id', identity.get('id', 'unknown'))
+                        node_id = identity.get("node_id", identity.get("id", "unknown"))
                         print(f"📍 Loaded node identity from {path}: {node_id}")
                         return node_id
                 except Exception as e:
                     print(f"⚠️  Failed to load node identity from {path}: {e}")
-        
+
         # Fall back to environment variable or generate one
-        node_id = os.getenv('NODE_ID', f"node-{uuid.uuid4().hex[:8]}")
+        node_id = os.getenv("NODE_ID", f"node-{uuid.uuid4().hex[:8]}")
         print(f"📍 Using node identity: {node_id}")
         return node_id
-    
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
+
+    def _load_config(self, config_path: str) -> dict[str, Any]:
         """Load configuration from YAML file."""
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         print(f"📋 Loaded config from {config_path}")
@@ -351,33 +336,29 @@ class SQLiteToS3Uploader:
 
         # Override with environment variables if present
         if os.getenv("SQLITE_PATH"):
-            print(
-                f"   ⚠️  Overriding SQLite path with env var: {os.getenv('SQLITE_PATH')}"
-            )
+            print(f"   ⚠️  Overriding SQLite path with env var: {os.getenv('SQLITE_PATH')}")
             config["sqlite"] = os.getenv("SQLITE_PATH")
         if os.getenv("SQLITE_TABLE"):
-            print(
-                f"   ⚠️  Overriding SQLite table with env var: {os.getenv('SQLITE_TABLE')}"
-            )
+            print(f"   ⚠️  Overriding SQLite table with env var: {os.getenv('SQLITE_TABLE')}")
             config["sqlite_table"] = os.getenv("SQLITE_TABLE")
         if os.getenv("AWS_REGION"):
             config["s3_configuration"]["region"] = os.getenv("AWS_REGION")
 
         return config
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> dict[str, Any]:
         """Load last upload state."""
         if self.state_file.exists():
-            with open(self.state_file, "r") as f:
+            with open(self.state_file) as f:
                 return json.load(f)
         return {}
 
-    def _save_state(self, state: Dict[str, Any]):
+    def _save_state(self, state: dict[str, Any]):
         """Save upload state."""
         with open(self.state_file, "w") as f:
             json.dump(state, f, indent=2)
 
-    def _get_new_data(self, last_timestamp: Optional[str] = None) -> list:
+    def _get_new_data(self, last_timestamp: str | None = None) -> list:
         """Get new data from SQLite since last timestamp."""
         import sqlite3
 
@@ -385,9 +366,7 @@ class SQLiteToS3Uploader:
         db_path = Path(self.config["sqlite"])
 
         if not db_path.exists():
-            raise FileNotFoundError(
-                f"Database not found: {db_path} (looking in {Path.cwd()})"
-            )
+            raise FileNotFoundError(f"Database not found: {db_path} (looking in {Path.cwd()})")
 
         table = self.config["sqlite_table"]
         timestamp_col = self.config["timestamp_col"]
@@ -421,9 +400,7 @@ class SQLiteToS3Uploader:
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                 tables = [row[0] for row in cursor.fetchall()]
                 conn.close()
-                raise ValueError(
-                    f"Table '{table}' not found. Available tables: {tables}"
-                )
+                raise ValueError(f"Table '{table}' not found. Available tables: {tables}")
             else:
                 conn.close()
                 raise
@@ -431,18 +408,18 @@ class SQLiteToS3Uploader:
         conn.close()
         return rows
 
-    def _upload_to_s3(self, data: list, bucket: str, dry_run: bool = False) -> Dict[str, Any]:
+    def _upload_to_s3(self, data: list, bucket: str, dry_run: bool = False) -> dict[str, Any]:
         """Upload data to S3 bucket with metadata for lineage tracking."""
         if not data:
             return {"success": True, "key": None}
 
         # Generate unique job ID and timestamp
-        upload_timestamp = datetime.now(timezone.utc)
+        upload_timestamp = datetime.now(UTC)
         # Use flat structure with timestamp in filename
         timestamp_str = upload_timestamp.strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:8]
         job_id = f"uploader-{timestamp_str}-{unique_id}"
-        
+
         # S3 path - single file at top level
         # Format: 20250808_143025_abc123.json (no prefix needed, bucket identifies content type)
         s3_key = f"{timestamp_str}_{unique_id}.json"
@@ -456,7 +433,7 @@ class SQLiteToS3Uploader:
             timestamp_col = self.config.get("timestamp_col", "timestamp")
             data_start = data[0].get(timestamp_col) if data else None
             data_end = data[-1].get(timestamp_col) if data else None
-            
+
             # Upload just the data array - metadata goes in S3 object metadata
             # Note: S3 object metadata is included in the object headers and doesn't require extra permissions
             self.s3_client.put_object(
@@ -465,27 +442,23 @@ class SQLiteToS3Uploader:
                 Body=json.dumps(data),  # Just the data array
                 ContentType="application/json",
                 Metadata={
-                    'job-id': job_id,
-                    'node-id': self.node_id,
-                    'pipeline-type': self.current_pipeline_type,
-                    'record-count': str(len(data)),
-                    'upload-timestamp': upload_timestamp.isoformat(),
-                    'data-start-time': str(data_start),
-                    'data-end-time': str(data_end),
-                    'uploader-version': self.uploader_version
-                }
+                    "job-id": job_id,
+                    "node-id": self.node_id,
+                    "pipeline-type": self.current_pipeline_type,
+                    "record-count": str(len(data)),
+                    "upload-timestamp": upload_timestamp.isoformat(),
+                    "data-start-time": str(data_start),
+                    "data-end-time": str(data_end),
+                    "uploader-version": self.uploader_version,
+                },
             )
-            
+
             # No separate metadata file needed - all metadata is in S3 object metadata
-            
+
             print(f"✅ Uploaded {len(data)} records to s3://{bucket}/{s3_key}")
             print(f"🏷️  Job ID: {job_id} | Node ID: {self.node_id}")
-            
-            return {
-                "success": True, 
-                "key": s3_key, 
-                "job_id": job_id
-            }
+
+            return {"success": True, "key": s3_key, "job_id": job_id}
 
         except Exception as e:
             print(f"❌ Failed to upload to S3: {e}")
@@ -502,7 +475,7 @@ class SQLiteToS3Uploader:
             new_bucket = self.pipeline_bucket_map.get(new_type, "unknown")
 
             print("\n" + "🔄" * 30)
-            print(f"🚨 PIPELINE STATE CHANGE DETECTED!")
+            print("🚨 PIPELINE STATE CHANGE DETECTED!")
             print(f"   Previous: {old_type} → {old_bucket} bucket")
             print(f"   Current:  {new_type} → {new_bucket} bucket")
             print(f"   Changed at: {pipeline_config['created_at']}")
@@ -526,20 +499,16 @@ class SQLiteToS3Uploader:
         print(f"📊 Found {len(data)} new records")
 
         # Get bucket based on current pipeline type
-        bucket_key = self.pipeline_bucket_map.get(
-            self.current_pipeline_type, "ingestion"
-        )
+        bucket_key = self.pipeline_bucket_map.get(self.current_pipeline_type, "ingestion")
         bucket = self.config["s3_configuration"]["buckets"].get(bucket_key)
 
         if not bucket:
-            print(
-                f"❌ No bucket configured for pipeline type: {self.current_pipeline_type}"
-            )
+            print(f"❌ No bucket configured for pipeline type: {self.current_pipeline_type}")
             return
 
         # Print detailed upload information
         print("\n" + "-" * 60)
-        print(f"📤 UPLOAD OPERATION")
+        print("📤 UPLOAD OPERATION")
         print(f"   Pipeline Type: {self.current_pipeline_type}")
         print(f"   Target Bucket: {bucket_key} → {bucket}")
         print(f"   Records Count: {len(data)}")
@@ -599,12 +568,8 @@ class SQLiteToS3Uploader:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Upload SQLite data to S3 for Databricks"
-    )
-    parser.add_argument(
-        "--config", required=True, help="Path to configuration YAML file"
-    )
+    parser = argparse.ArgumentParser(description="Upload SQLite data to S3 for Databricks")
+    parser.add_argument("--config", required=True, help="Path to configuration YAML file")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
     parser.add_argument(
         "--dry-run",

@@ -14,7 +14,6 @@
     │            │                         │                      │
     │            │ SQLite ──► S3          │ SQLite ──► S3        │
     │            ▼                         ▼                      │
-    │   🪣 us-east-1 bucket      🪣 us-west-2 bucket            │
     │                                                              │
     │   🌬️ Wind Farm EU           🌬️ Wind Farm Asia             │
     │   ┌─────────────────┐      ┌─────────────────┐            │
@@ -24,7 +23,16 @@
     │            │                         │                      │
     │            │ SQLite ──► S3          │ SQLite ──► S3        │
     │            ▼                         ▼                      │
-    │   🪣 eu-west-1 bucket      🪣 ap-southeast-1 bucket       │
+    │                                                              │
+    └──────────────────────────────────────────────────────────────┘
+                                   │
+                                   │ 4-Stage Pipeline
+                                   ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │                    S3 DATA PIPELINE STAGES                   │
+    │                                                              │
+    │   📦 Ingestion ──► 📦 Validated ──► 📦 Enriched ──► 📦 Aggregated │
+    │   (Raw data)     (Quality checks)  (Metadata)    (Analytics) │
     │                                                              │
     └──────────────────────────────────────────────────────────────┘
                                    │
@@ -40,7 +48,7 @@
     │   │ • Production    │      │ • Anomalies     │            │
     │   └─────────────────┘      └─────────────────┘            │
     │                                                              │
-    │              🌐 Unified View Across All Regions              │
+    │              🌐 Unified View Across All Turbines             │
     └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,15 +70,15 @@ Each Wind Turbine
 (Runs data pipeline)
 ```
 
-### 2️⃣ Smart Data Routing
+### 2️⃣ Progressive Data Processing
 ```
-Pipeline Manager decides:
+Pipeline stages process data:
     ↓
 ┌─────────────────────────────┐
-│ 🟢 Normal → "raw" bucket    │
-│ 🟡 Filtered → "filtered"    │
-│ 🔴 Emergency → "emergency"  │
-│ 🌍 Regional → region bucket │
+│ 1. Ingestion: Raw data      │
+│ 2. Validated: Quality checks│
+│ 3. Enriched: Add metadata   │
+│ 4. Aggregated: Analytics    │
 └─────────────────────────────┘
     ↓
 📤 Upload to S3
@@ -79,7 +87,7 @@ Pipeline Manager decides:
 
 ### 3️⃣ Unified Analytics
 ```
-S3 Buckets (distributed globally)
+S3 Buckets (4 pipeline stages)
     ↓
 🔄 Databricks Auto Loader
 (Continuous streaming ingestion)
@@ -87,8 +95,8 @@ S3 Buckets (distributed globally)
 📊 Unity Catalog Tables
     ↓
 ┌─────────────────────────────┐
-│ SELECT region, AVG(power)   │
-│ FROM turbine_global_view    │
+│ SELECT turbine_id, AVG(power)│
+│ FROM wind_turbine_aggregated │
 │ WHERE date = today()        │
 └─────────────────────────────┘
 ```
@@ -99,15 +107,24 @@ S3 Buckets (distributed globally)
 |-----------|-------|---------|
 | 🌬️ Wind Turbines | 1,425 | Across 8 wind farms |
 | 🌍 Regions | 4 | US-East, US-West, EU, Asia |
-| 🪣 S3 Buckets | 8 | 4 regional + 4 scenario-based |
+| 🪣 S3 Buckets | 6 | 4 pipeline stages + 2 support |
 | 📊 Data Points | ~20M/day | Per turbine: 14 metrics/min |
 | ⚡ Latency | <5 min | From sensor to dashboard |
+
+## Pipeline Stages Explained
+
+| Stage | Purpose | Processing |
+|-------|---------|------------|
+| **Ingestion** | Raw sensor data | Direct upload from edge |
+| **Validated** | Quality assurance | Schema validation, range checks |
+| **Enriched** | Enhanced data | Add Bacalhau metadata, privacy filters |
+| **Aggregated** | Analytics-ready | Time windows, anomaly scores |
 
 ## Benefits
 
 ✅ **Local First**: Data stays close to source  
-✅ **Resilient**: Works offline, syncs when connected  
+✅ **Progressive Enhancement**: Data quality improves through pipeline  
 ✅ **Scalable**: Add turbines without central bottleneck  
-✅ **Cost Effective**: Regional storage reduces transfer costs  
-✅ **Compliant**: Data sovereignty by region  
-✅ **Real-time**: Streaming analytics with Auto Loader
+✅ **Cost Effective**: Single region storage with lifecycle policies  
+✅ **Real-time**: Streaming analytics with Auto Loader  
+✅ **Simple**: Clean 4-stage pipeline without complexity

@@ -279,7 +279,7 @@ build_image() {
             echo "  $full_name:$build_version \\"
             echo "  --db /state/pipeline_config.db get"
             echo ""
-            echo -e "${GREEN}# Set pipeline type (raw/schematized/aggregated/emergency/regional):${NC}"
+            echo -e "${GREEN}# Set pipeline type (raw/schematized/filtered/aggregated):${NC}"
             echo "docker run --rm \\"
             echo "  -v \$(pwd)/databricks-uploader/state:/state \\"
             echo "  $full_name:$build_version \\"

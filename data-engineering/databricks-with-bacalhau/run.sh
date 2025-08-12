@@ -259,7 +259,7 @@ run_pipeline_manager_local() {
     echo "  Monitor:      cd pipeline-manager && uv run -s pipeline_controller.py \\"
     echo "                --db ../$DB_PATH monitor"
     echo ""
-    echo "Pipeline types: raw, schematized, aggregated, emergency, regional"
+    echo "Pipeline types: raw, schematized, filtered, aggregated"
 }
 
 # Function to run pipeline manager in Docker
@@ -293,7 +293,7 @@ run_pipeline_manager_docker() {
     echo "  ghcr.io/bacalhau-project/pipeline-manager:latest \\"
     echo "  --db /state/pipeline_config.db set <type>"
     echo ""
-    echo "Available types: raw, schematized, aggregated, emergency, regional"
+    echo "Available types: raw, schematized, filtered, aggregated"
 }
 
 # Function to run sensor simulator

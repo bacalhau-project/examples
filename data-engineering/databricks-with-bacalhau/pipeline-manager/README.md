@@ -53,7 +53,7 @@ docker-compose run --rm pipeline-manager python pipeline_controller.py --db /dat
 ```bash
 # One-time pipeline change job
 kubectl create job pipeline-change --image=pipeline-manager:latest -- \
-  python pipeline_controller.py --db /data/sensor_data.db set emergency --by "k8s_admin" --reason "Critical sensor alert"
+  python pipeline_controller.py --db /data/sensor_data.db set aggregated --by "k8s_admin" --reason "Enable aggregation pipeline"
 
 # View current configuration
 kubectl run pipeline-check --image=pipeline-manager:latest --rm -it -- \
@@ -62,11 +62,10 @@ kubectl run pipeline-check --image=pipeline-manager:latest --rm -it -- \
 
 ## Pipeline Types
 
-- `raw`: No processing, all data uploaded
-- `schematized`: Schema validation and enrichment
-- `filtered`: Business rule filtering (e.g., anomalies only)
-- `emergency`: High-priority alerts only
-- `regional`: Geographic routing based on node location
+- `raw`: No processing, all data uploaded (maps to ingestion bucket)
+- `schematized`: Schema validation and enrichment (maps to validated bucket)
+- `filtered`: Business rule filtering (maps to enriched bucket)
+- `aggregated`: Time-window aggregation with anomaly detection (maps to aggregated bucket)
 
 ## Database Schema
 
@@ -75,7 +74,7 @@ The pipeline configuration is stored in the `pipeline_config` table:
 ```sql
 CREATE TABLE pipeline_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pipeline_type TEXT NOT NULL CHECK(pipeline_type IN ('raw', 'schematized', 'filtered', 'emergency', 'regional')),
+    pipeline_type TEXT NOT NULL CHECK(pipeline_type IN ('raw', 'schematized', 'filtered', 'aggregated')),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by TEXT,
     metadata TEXT  -- JSON field for additional information

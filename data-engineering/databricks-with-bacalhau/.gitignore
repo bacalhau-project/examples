@@ -120,6 +120,8 @@ aws-credentials
 *.db-shm
 *.db-wal
 
+*__pycache__*
+
 state/*
 uploader-state/*
 # Credentials - NEVER COMMIT

@@ -23,10 +23,7 @@
 │  └────────┬────────┘                       └────────┬────────┘                    │
 │           │                                          │                             │
 │           ▼                                          ▼                             │
-│  ┌─────────────────┐                       ┌─────────────────┐                    │
-│  │ Regional Bucket │                       │ Regional Bucket │                    │
-│  │   S3: us-east-1 │                       │   S3: us-west-2 │                    │
-│  └─────────────────┘                       └─────────────────┘                    │
+│     SQLite → S3                               SQLite → S3                          │
 │                                                                                     │
 │  EU-WEST-1 Region                          AP-SOUTHEAST-1 Region                   │
 │  ┌─────────────────┐                       ┌─────────────────┐                    │
@@ -44,10 +41,7 @@
 │  └────────┬────────┘                       └────────┬────────┘                    │
 │           │                                          │                             │
 │           ▼                                          ▼                             │
-│  ┌─────────────────┐                       ┌─────────────────┐                    │
-│  │ Regional Bucket │                       │ Regional Bucket │                    │
-│  │   S3: eu-west-1 │                       │ S3: ap-southeast-1│                   │
-│  └─────────────────┘                       └─────────────────┘                    │
+│     SQLite → S3                               SQLite → S3                          │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
                                           ▼
@@ -55,26 +49,27 @@
 │                           S3 DATA LAKE ARCHITECTURE                                 │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
-│  Scenario-Based Buckets (Global)           Regional Buckets (Per Region)           │
+│  Pipeline Stage Buckets (us-west-2)                                                │
 │  ┌─────────────────────────────┐          ┌─────────────────────────────┐         │
-│  │ 📦 expanso-databricks-raw    │          │ 📦 expanso-databricks-       │         │
-│  │    └── raw/                 │          │    regional-us-east-1      │         │
-│  │        └── year=2024/       │          │    └── regional/          │         │
-│  │            └── month=01/    │          │        └── year=2024/     │         │
+│  │ 📦 expanso-databricks-       │          │ 📦 expanso-databricks-       │         │
+│  │    ingestion                │          │    validated               │         │
+│  │    └── ingestion/           │          │    └── validated/         │         │
+│  │        └── year=2024/       │          │        └── year=2024/     │         │
+│  │            └── month=01/    │          │            └── month=01/  │         │
 │  └─────────────────────────────┘          └─────────────────────────────┘         │
 │                                                                                     │
 │  ┌─────────────────────────────┐          ┌─────────────────────────────┐         │
 │  │ 📦 expanso-databricks-       │          │ 📦 expanso-databricks-       │         │
-│  │    filtered                 │          │    regional-us-west-2      │         │
-│  │    └── filtered/            │          │    └── regional/          │         │
+│  │    enriched                 │          │    aggregated              │         │
+│  │    └── enriched/            │          │    └── aggregated/        │         │
 │  │        └── year=2024/       │          │        └── year=2024/     │         │
 │  └─────────────────────────────┘          └─────────────────────────────┘         │
 │                                                                                     │
+│  Support Buckets                                                                   │
 │  ┌─────────────────────────────┐          ┌─────────────────────────────┐         │
 │  │ 📦 expanso-databricks-       │          │ 📦 expanso-databricks-       │         │
-│  │    emergency                │          │    regional-eu-west-1      │         │
-│  │    └── emergency/           │          │    └── regional/          │         │
-│  │        └── alerts/          │          │        └── year=2024/     │         │
+│  │    checkpoints              │          │    metadata                │         │
+│  │    └── checkpoints/         │          │    └── metadata/          │         │
 │  └─────────────────────────────┘          └─────────────────────────────┘         │
 └─────────────────────────────────────────────────────────────────────────────────────┘
                                           │
@@ -87,13 +82,12 @@
 │  │                    External Locations & Tables                   │              │
 │  ├─────────────────────────────────────────────────────────────────┤              │
 │  │                                                                 │              │
-│  │  📍 expanso_raw           → s3://expanso-databricks-raw/        │              │
-│  │  📍 expanso_filtered      → s3://expanso-databricks-filtered/   │              │
-│  │  📍 expanso_emergency     → s3://expanso-databricks-emergency/  │              │
-│  │  📍 expanso_regional_us_east_1  → s3://expanso-.../us-east-1/  │              │
-│  │  📍 expanso_regional_us_west_2  → s3://expanso-.../us-west-2/  │              │
-│  │  📍 expanso_regional_eu_west_1  → s3://expanso-.../eu-west-1/  │              │
-│  │  📍 expanso_regional_ap_southeast_1 → s3://expanso-.../ap-se-1/ │              │
+│  │  📍 expanso_ingestion     → s3://expanso-databricks-ingestion/  │              │
+│  │  📍 expanso_validated     → s3://expanso-databricks-validated/  │              │
+│  │  📍 expanso_enriched      → s3://expanso-databricks-enriched/   │              │
+│  │  📍 expanso_aggregated    → s3://expanso-databricks-aggregated/ │              │
+│  │  📍 expanso_checkpoints   → s3://expanso-databricks-checkpoints/│              │
+│  │  📍 expanso_metadata      → s3://expanso-databricks-metadata/   │              │
 │  │                                                                 │              │
 │  └─────────────────────────────────────────────────────────────────┘              │
 │                                                                                     │
@@ -101,28 +95,25 @@
 │  │                      Auto Loader Tables                         │              │
 │  ├─────────────────────────────────────────────────────────────────┤              │
 │  │                                                                 │              │
-│  │  📊 wind_turbine_raw      (streaming from raw bucket)          │              │
-│  │  📊 wind_turbine_filtered (streaming from filtered bucket)     │              │
-│  │  📊 wind_turbine_alerts   (streaming from emergency bucket)    │              │
-│  │  📊 wind_turbine_us_east  (streaming from regional bucket)     │              │
-│  │  📊 wind_turbine_us_west  (streaming from regional bucket)     │              │
-│  │  📊 wind_turbine_eu       (streaming from regional bucket)     │              │
-│  │  📊 wind_turbine_asia     (streaming from regional bucket)     │              │
+│  │  📊 wind_turbine_raw       (streaming from ingestion bucket)   │              │
+│  │  📊 wind_turbine_validated (streaming from validated bucket)   │              │
+│  │  📊 wind_turbine_enriched  (streaming from enriched bucket)    │              │
+│  │  📊 wind_turbine_aggregated (streaming from aggregated bucket) │              │
 │  │                                                                 │              │
 │  └─────────────────────────────────────────────────────────────────┘              │
 │                                                                                     │
 │  ┌─────────────────────────────────────────────────────────────────┐              │
-│  │                    Cross-Region Analytics Views                 │              │
+│  │                    Analytics Views & Dashboards                 │              │
 │  ├─────────────────────────────────────────────────────────────────┤              │
 │  │                                                                 │              │
-│  │  🔍 wind_turbine_global_view                                   │              │
-│  │     UNION ALL data from all regional tables                    │              │
+│  │  🔍 wind_turbine_performance_view                              │              │
+│  │     Real-time performance metrics across all turbines          │              │
 │  │                                                                 │              │
-│  │  🔍 wind_turbine_performance_dashboard                         │              │
-│  │     Aggregated metrics across all regions and scenarios        │              │
+│  │  🔍 wind_turbine_anomaly_detection                             │              │
+│  │     Aggregated anomaly detection and alerts                    │              │
 │  │                                                                 │              │
-│  │  🔍 wind_turbine_maintenance_alerts                            │              │
-│  │     Real-time alerts from emergency buckets                    │              │
+│  │  🔍 wind_turbine_maintenance_dashboard                         │              │
+│  │     Predictive maintenance insights from enriched data         │              │
 │  │                                                                 │              │
 │  └─────────────────────────────────────────────────────────────────┘              │
 └─────────────────────────────────────────────────────────────────────────────────────┘
@@ -136,14 +127,12 @@
 - Collects sensor data: RPM, power output, temperature, vibration, wind speed
 - Data stored locally in SQLite with automatic timestamp tracking
 
-### 2. Pipeline Processing
-Each Expanso node runs the S3 uploader that:
-- Detects its AWS region automatically
-- Routes data based on configured pipeline type:
-  - **raw**: Unprocessed sensor readings
-  - **filtered**: Anomaly detection (high vibration, temperature)
-  - **emergency**: Critical alerts requiring immediate action
-  - **regional**: Region-specific routing for compliance/latency
+### 2. Pipeline Processing Stages
+Each Expanso node processes data through four stages:
+- **ingestion**: Raw unprocessed sensor readings
+- **validated**: Schema-validated data with quality checks
+- **enriched**: Data enriched with Bacalhau metadata and privacy protection
+- **aggregated**: Time-window aggregated data with anomaly detection
 
 ### 3. S3 Data Lake
 Data is organized with:
@@ -156,50 +145,52 @@ Data is organized with:
 Provides unified access through:
 - **External Locations** mapping to S3 buckets
 - **Auto Loader tables** for streaming ingestion
-- **Cross-region views** for global analytics
+- **Analytics views** for performance monitoring and maintenance
 
 ## Example Queries
 
 ```sql
--- Global turbine performance
+-- Turbine performance metrics
 SELECT 
-  region,
-  COUNT(DISTINCT turbine_id) as turbine_count,
-  AVG(power_output) as avg_power_mw,
-  AVG(efficiency) as avg_efficiency
-FROM wind_turbine_global_view
-WHERE date = current_date()
-GROUP BY region;
-
--- Maintenance alerts by region
-SELECT 
-  region,
   turbine_id,
-  alert_type,
-  severity,
-  timestamp
-FROM wind_turbine_maintenance_alerts
-WHERE severity = 'CRITICAL'
+  AVG(power_output) as avg_power_mw,
+  AVG(efficiency) as avg_efficiency,
+  MAX(temperature) as max_temp
+FROM wind_turbine_aggregated
+WHERE date = current_date()
+GROUP BY turbine_id;
+
+-- Anomaly detection
+SELECT 
+  turbine_id,
+  timestamp,
+  vibration_level,
+  temperature,
+  'High vibration detected' as alert_type
+FROM wind_turbine_enriched
+WHERE vibration_level > threshold_value
   AND timestamp > current_timestamp() - INTERVAL 1 HOUR
 ORDER BY timestamp DESC;
 
--- Regional compliance reporting
+-- Maintenance planning
 SELECT 
-  date_trunc('day', timestamp) as day,
-  COUNT(*) as reading_count,
-  SUM(power_output) as total_power_mwh
-FROM wind_turbine_eu
-WHERE country_code IN ('DE', 'FR', 'ES')
-GROUP BY 1
-ORDER BY 1;
+  turbine_id,
+  COUNT(*) as anomaly_count,
+  AVG(vibration_level) as avg_vibration,
+  MAX(temperature) as max_temperature
+FROM wind_turbine_validated
+WHERE timestamp > current_timestamp() - INTERVAL 7 DAYS
+GROUP BY turbine_id
+HAVING anomaly_count > 10
+ORDER BY anomaly_count DESC;
 ```
 
 ## Benefits of This Architecture
 
 1. **Scalability**: Handles thousands of turbines across multiple regions
 2. **Reliability**: S3 provides 99.999999999% durability
-3. **Cost Efficiency**: Regional buckets minimize data transfer costs
+3. **Cost Efficiency**: Single region storage with lifecycle policies
 4. **Real-time Analytics**: Auto Loader enables near real-time insights
-5. **Compliance**: Regional data isolation for regulatory requirements
-6. **Flexibility**: Multiple pipeline types for different use cases
+5. **Data Quality**: Progressive validation and enrichment through pipeline stages
+6. **Flexibility**: Four distinct pipeline stages for different processing needs
 7. **Unified View**: Unity Catalog provides single pane of glass

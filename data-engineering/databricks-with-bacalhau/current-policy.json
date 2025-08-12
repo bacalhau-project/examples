@@ -1,0 +1,38 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetLifecycleConfiguration",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::expanso-databricks-raw-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-raw-us-west-2",
+        "arn:aws:s3:::expanso-databricks-schematized-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-schematized-us-west-2",
+        "arn:aws:s3:::expanso-databricks-filtered-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-filtered-us-west-2",
+        "arn:aws:s3:::expanso-databricks-emergency-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-emergency-us-west-2",
+        "arn:aws:s3:::expanso-databricks-checkpoints-us-west-2/*",
+        "arn:aws:s3:::expanso-databricks-checkpoints-us-west-2"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sts:AssumeRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::767397752906:role/expanso-databricks-unity-catalog-role"
+      ]
+    }
+  ]
+}
