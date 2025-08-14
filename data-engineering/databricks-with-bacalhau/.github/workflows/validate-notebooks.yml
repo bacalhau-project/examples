@@ -1,0 +1,53 @@
+name: Validate Databricks Notebooks
+
+on:
+  push:
+    paths:
+      - 'databricks-notebooks/**/*.py'
+      - 'scripts/validate-databricks-notebook.py'
+  pull_request:
+    paths:
+      - 'databricks-notebooks/**/*.py'
+      - 'scripts/validate-databricks-notebook.py'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Find Databricks notebooks
+      id: find-notebooks
+      run: |
+        notebooks=$(find databricks-notebooks -name "*.py" -type f | tr '\n' ' ')
+        echo "notebooks=$notebooks" >> $GITHUB_OUTPUT
+        echo "Found notebooks: $notebooks"
+    
+    - name: Validate notebooks
+      if: steps.find-notebooks.outputs.notebooks != ''
+      run: |
+        for notebook in ${{ steps.find-notebooks.outputs.notebooks }}; do
+          echo "Validating $notebook..."
+          uv run -s scripts/validate-databricks-notebook.py "$notebook" \
+            --show-context || exit 1
+        done
+    
+    - name: Run strict validation
+      if: github.event_name == 'pull_request'
+      run: |
+        for notebook in ${{ steps.find-notebooks.outputs.notebooks }}; do
+          echo "Running strict validation on $notebook..."
+          uv run -s scripts/validate-databricks-notebook.py "$notebook" \
+            --strict --show-context || exit 1
+        done

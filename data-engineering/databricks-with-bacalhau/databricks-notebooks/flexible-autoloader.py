@@ -30,6 +30,7 @@ VALIDATED_BUCKET = "s3://expanso-databricks-validated-us-west-2/"
 ENRICHED_BUCKET = "s3://expanso-databricks-enriched-us-west-2/"
 AGGREGATED_BUCKET = "s3://expanso-databricks-aggregated-us-west-2/"
 CHECKPOINT_BUCKET = "s3://expanso-databricks-checkpoints-us-west-2/"
+SCHEMA_BASE = "s3://expanso-databricks-metadata-us-west-2/schemas"  # CRITICAL: Required for Auto Loader!
 
 # ALL FOUR TABLES
 INGESTION_TABLE = f"{CATALOG}.{SCHEMA}.sensor_readings_ingestion"
@@ -98,16 +99,16 @@ if DEBUG_MODE:
         # List the bucket root (no /raw/ - we use flat structure now)
         files = dbutils.fs.ls("s3://expanso-databricks-ingestion-us-west-2/")
         print(f"   ✅ Found {len(files)} items in bucket root")
-        
+
         # Show first few files
-        json_files = [f for f in files if f.name.endswith('.json')]
+        json_files = [f for f in files if f.name.endswith(".json")]
         print(f"   ✅ Found {len(json_files)} JSON files")
         for f in json_files[:3]:
             print(f"      - {f.name}")
-            
+
     except Exception as e:
         print(f"   ❌ Error with dbutils: {str(e)[:200]}")
-    
+
     # Test 2: Read JSON files directly
     print("\n2. Testing direct JSON read:")
     try:
@@ -116,14 +117,14 @@ if DEBUG_MODE:
         df = spark.read.option("multiLine", "true").json(test_path)
         count = df.count()
         print(f"   ✅ Read {count} records from {test_path}")
-        
+
         # Show schema
         print("   Schema:")
         df.printSchema()
-        
+
     except Exception as e:
         print(f"   ❌ Error reading JSON: {str(e)[:200]}")
-    
+
     # Test 3: Try with different path formats
     print("\n3. Testing path variations:")
     paths_to_try = [
@@ -166,7 +167,9 @@ if DEBUG_MODE:
             # Method 2: Try reading with glob pattern
             try:
                 # Try to read JSON files with glob (flat structure - no subdirs)
-                test_df = spark.read.option("multiLine", "true").json(bucket_path + "*.json")
+                test_df = spark.read.option("multiLine", "true").json(
+                    bucket_path + "*.json"
+                )
                 test_count = test_df.count()
                 print(f"  ✅ Can read {test_count} records from JSON files")
 
@@ -225,7 +228,7 @@ if DEBUG_MODE:
         direct_df = spark.read.option("multiLine", "true").json(test_path)
         count = direct_df.count()
         print(f"  ✅ Read {count} records from flat files at bucket root")
-        
+
         # Show sample file names
         files_df = spark.read.format("binaryFile").load(test_path)
         print("  Sample files:")
@@ -304,12 +307,7 @@ print("=" * 80)
 print("\n📊 Dropping ALL sensor-related tables from Unity Catalog...")
 
 # Drop tables from our target schema
-tables_to_drop = [
-    INGESTION_TABLE,
-    VALIDATED_TABLE,
-    ENRICHED_TABLE,
-    AGGREGATED_TABLE
-]
+tables_to_drop = [INGESTION_TABLE, VALIDATED_TABLE, ENRICHED_TABLE, AGGREGATED_TABLE]
 
 for table in tables_to_drop:
     try:
@@ -323,7 +321,7 @@ for table in tables_to_drop:
 other_tables_to_drop = [
     # Wrong schema name (sensor_data instead of sensor_readings)
     f"{CATALOG}.sensor_data.sensor_data_ingestion",
-    f"{CATALOG}.sensor_data.sensor_data_validated", 
+    f"{CATALOG}.sensor_data.sensor_data_validated",
     f"{CATALOG}.sensor_data.sensor_data_enriched",
     f"{CATALOG}.sensor_data.sensor_data_aggregated",
     f"{CATALOG}.sensor_data.sensor_readings_ingestion",
@@ -343,12 +341,12 @@ for table in other_tables_to_drop:
 try:
     schemas = spark.sql(f"SHOW SCHEMAS IN {CATALOG}").collect()
     for schema_row in schemas:
-        schema_name = schema_row['databaseName']
+        schema_name = schema_row["databaseName"]
         try:
             tables = spark.sql(f"SHOW TABLES IN {CATALOG}.{schema_name}").collect()
             for table_row in tables:
-                table_name = table_row['tableName']
-                if 'sensor' in table_name.lower() or 'reading' in table_name.lower():
+                table_name = table_row["tableName"]
+                if "sensor" in table_name.lower() or "reading" in table_name.lower():
                     full_name = f"{CATALOG}.{schema_name}.{table_name}"
                     try:
                         spark.sql(f"DROP TABLE IF EXISTS {full_name}")
@@ -441,7 +439,6 @@ sample_record = {
     "status_code": 0,
     "anomaly_flag": 0,
     "anomaly_type": None,
-    
     # Metadata fields
     "firmware_version": "1.0.0",
     "model": "SchemaModel",
@@ -459,12 +456,10 @@ sample_record = {
     "orientation_degrees": 0.0,
     "instance_id": "schema-instance",
     "sensor_type": "initialization",
-    
     # Validation fields (for validated pipeline)
     "is_valid": True,
     "validation_errors": None,
     "source_format": "initialization",
-    
     # Enrichment fields (for enriched pipeline)
     "data_quality_score": 1.0,
     "alert_level": "normal",
@@ -472,7 +467,6 @@ sample_record = {
     "day_of_week": sample_timestamp.isoweekday(),
     "hour_of_day": sample_timestamp.hour,
     "minute_of_hour": sample_timestamp.minute,
-    
     # Aggregation fields (for aggregated pipeline)
     "window_start": sample_timestamp.isoformat(),
     "window_end": sample_timestamp.isoformat(),
@@ -489,7 +483,7 @@ sample_record = {
     "warning_alerts": 0,
     "anomaly_count": 0,
     "unhealthy_readings": 0,
-    "avg_quality_score": 1.0
+    "avg_quality_score": 1.0,
 }
 
 # Upload sample to each bucket
@@ -497,7 +491,7 @@ buckets_to_init = [
     (INGESTION_BUCKET, "ingestion"),
     (VALIDATED_BUCKET, "validated"),
     (ENRICHED_BUCKET, "enriched"),
-    (AGGREGATED_BUCKET, "aggregated")
+    (AGGREGATED_BUCKET, "aggregated"),
 ]
 
 timestamp_str = sample_timestamp.strftime("%Y%m%d_%H%M%S")
@@ -507,16 +501,12 @@ for bucket_path, pipeline_type in buckets_to_init:
         # Create sample file name
         sample_key = f"schema_sample_{timestamp_str}_{pipeline_type}.json"
         full_path = bucket_path + sample_key
-        
+
         # Write sample file as JSON array (Auto Loader expects arrays)
-        dbutils.fs.put(
-            full_path,
-            json.dumps([sample_record]),
-            overwrite=True
-        )
-        
+        dbutils.fs.put(full_path, json.dumps([sample_record]), overwrite=True)
+
         print(f"   ✅ {pipeline_type:12} sample created: {sample_key}")
-        
+
     except Exception as e:
         print(f"   ⚠️  {pipeline_type:12} sample creation failed: {str(e)[:100]}")
 
@@ -608,13 +598,14 @@ def create_ingestion_pipeline():
         print(f"  📁 Source: {INGESTION_BUCKET}")
         print(f"  📊 Target: {INGESTION_TABLE}")
         print(f"  🔖 Checkpoint: {CHECKPOINT_BUCKET}ingestion/checkpoint")
+        print(f"  📝 Schema Location: {SCHEMA_BASE}/ingestion")  # CRITICAL for Auto Loader
         print(f"  🔍 Filter: *.json (all JSON files at root level)")
 
-    # Read JSON with schema evolution - only data.json files, not metadata.json
+    # Read JSON with schema evolution
     stream_reader = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", CHECKPOINT_BUCKET + "ingestion/schema")
+        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/ingestion")  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option(
@@ -625,7 +616,6 @@ def create_ingestion_pipeline():
         .option("cloudFiles.allowOverwrites", "true")
         .option("pathGlobFilter", "*.json")  # Match all JSON files at top level
         .option("cloudFiles.useNotifications", "false")  # Don't use SQS
-    )
 
     if DEBUG_MODE:
         stream_reader = stream_reader.option("cloudFiles.maxBytesPerTrigger", "10MB")
@@ -645,7 +635,7 @@ def create_ingestion_pipeline():
 
     # Always use availableNow trigger - processingTime not supported on serverless
     writer = writer.trigger(availableNow=True)
-    
+
     if DEBUG_MODE:
         writer = writer.queryName("debug_ingestion")
 
@@ -667,11 +657,11 @@ def create_validation_pipeline():
 
     print("🚀 Starting VALIDATION pipeline...")
 
-    # Read pre-validated JSON - only data.json files
+    # Read pre-validated JSON
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", CHECKPOINT_BUCKET + "validated/schema")
+        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/validated")  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
@@ -711,11 +701,11 @@ def create_enrichment_pipeline():
 
     print("🚀 Starting ENRICHMENT pipeline...")
 
-    # Read pre-enriched JSON - only data.json files
+    # Read pre-enriched JSON
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", CHECKPOINT_BUCKET + "enriched/schema")
+        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/enriched")  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
@@ -755,11 +745,11 @@ def create_aggregation_pipeline():
 
     print("🚀 Starting AGGREGATION pipeline...")
 
-    # Read pre-aggregated JSON - only data.json or sample.json files
+    # Read pre-aggregated JSON
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", CHECKPOINT_BUCKET + "aggregated/schema")
+        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/aggregated")  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
@@ -789,9 +779,16 @@ def create_aggregation_pipeline():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Start ALL FOUR Pipelines
+# MAGIC ## Start ALL FOUR Pipelines with Complete Setup
 
 # COMMAND ----------
+
+import time
+from datetime import datetime
+
+# Configuration
+DEBUG_MODE = True  # Set to False to reduce output
+SCHEMA_BASE = "s3://expanso-databricks-metadata-us-west-2/schemas"  # CRITICAL: Schema location for Auto Loader
 
 # Stop any existing streaming queries first
 print("🛑 STOPPING ANY EXISTING PIPELINES")
@@ -802,14 +799,81 @@ for query in spark.streams.active:
     query.awaitTermination(10)
 print("✅ All existing pipelines stopped\n")
 
-if DEBUG_MODE:
-    print("🔍 DEBUG: Waiting 5 seconds to ensure clean shutdown...")
-    time.sleep(5)
+# Clear checkpoints AND schemas to force reprocessing from beginning
+print("🧹 CLEARING CHECKPOINTS AND SCHEMAS FOR FRESH START")
+print("=" * 60)
+checkpoint_base = "s3://expanso-databricks-checkpoints-us-west-2"
+checkpoints_cleared = []
+schemas_cleared = []
 
-print("🚀 STARTING ALL FOUR PIPELINES")
+for pipeline in ["ingestion", "validated", "enriched", "aggregated"]:
+    # Clear checkpoints
+    checkpoint_path = f"{checkpoint_base}/{pipeline}/checkpoint/"
+    try:
+        if dbutils.fs.ls(checkpoint_path):
+            dbutils.fs.rm(checkpoint_path, recurse=True)
+            print(f"  ✅ Cleared {pipeline} checkpoint")
+            checkpoints_cleared.append(pipeline)
+    except:
+        print(f"  ⚠️  No checkpoint found for {pipeline} (this is normal for first run)")
+
+    # Clear schema locations (IMPORTANT for Auto Loader)
+    schema_path = f"{SCHEMA_BASE}/{pipeline}/"
+    try:
+        if dbutils.fs.ls(schema_path):
+            dbutils.fs.rm(schema_path, recurse=True)
+            print(f"  ✅ Cleared {pipeline} schema")
+            schemas_cleared.append(pipeline)
+    except:
+        print(f"  ⚠️  No schema found for {pipeline} (this is normal for first run)")
+
+if checkpoints_cleared or schemas_cleared:
+    print(
+        f"\n✅ Cleared {len(checkpoints_cleared)} checkpoint(s) and {len(schemas_cleared)} schema(s)"
+    )
+else:
+    print("\n✅ No existing checkpoints or schemas found - starting fresh")
+
+if DEBUG_MODE:
+    print("\n🔍 DEBUG: Waiting 5 seconds to ensure clean state...")
+    time.sleep(5)
+else:
+    time.sleep(2)  # Brief pause even in non-debug mode
+
+print("\n🚀 STARTING ALL FOUR PIPELINES")
 print("=" * 60)
 
-# Start all pipelines with error handling
+# Verify S3 access before starting pipelines
+print("🔍 Verifying S3 access...")
+try:
+    test_files = dbutils.fs.ls("s3://expanso-databricks-ingestion-us-west-2/")
+    json_files = [f for f in test_files if f.name.endswith(".json")]
+    print(f"  ✅ Found {len(json_files)} JSON files ready to process")
+
+    # Show latest files
+    if json_files and DEBUG_MODE:
+        recent_files = sorted(json_files, key=lambda x: x.modificationTime)[-5:]
+        print("  📁 Recent files:")
+        for f in recent_files:
+            mod_time = datetime.fromtimestamp(f.modificationTime / 1000).strftime(
+                "%H:%M:%S"
+            )
+            print(f"     - {f.name} ({f.size} bytes, modified {mod_time})")
+
+except Exception as e:
+    print(f"  ⚠️  Warning: Could not list S3 files: {str(e)[:100]}")
+
+print()
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Start Pipelines with Complete Setup
+
+# COMMAND ----------
+
+# Start all pipelines with proper error handling
 pipelines_started = {}
 
 try:
@@ -833,8 +897,13 @@ try:
             progress = ingestion_query.lastProgress
             print(f"  📊 Initial batch: {progress.get('batchId', 'N/A')}")
             print(f"  📊 Input rows: {progress.get('numInputRows', 0)}")
+            
+            # Show source details
+            if "sources" in progress and progress["sources"]:
+                source = progress["sources"][0]
+                print(f"  📊 Files in batch: {source.get('numFiles', 0)}")
         else:
-            print("  ⏸️ No progress yet (still initializing)")
+            print("  ⏸️  No progress yet (still initializing)")
 
         # Check for exceptions
         if ingestion_query.exception():
@@ -844,9 +913,7 @@ except Exception as e:
     print(f"❌ Ingestion pipeline failed: {e}")
     if DEBUG_MODE:
         import traceback
-
         traceback.print_exc()
-    raise
 
 try:
     validation_query = create_validation_pipeline()
@@ -871,6 +938,430 @@ except Exception as e:
 
 print("=" * 60)
 print(f"✅ {len(pipelines_started)} PIPELINES RUNNING")
+
+# Show summary
+if pipelines_started:
+    print("\n📊 PIPELINE SUMMARY:")
+    for name, query in pipelines_started.items():
+        status = "🟢 Active" if query.isActive else "🔴 Stopped"
+        print(f"  {name}: {status} (ID: {query.id[:8]}...)")
+
+print("\n💡 NEXT STEPS:")
+print("  1. Run the monitoring cell to track progress")
+print("  2. Run the diagnostic cell if pipelines appear stuck")
+print("  3. Check the Streaming tab in Databricks for detailed status")
+
+# COMMAND ----------
+
+# CELL: Diagnose Pipeline Issues
+# Run this cell to see what's actually happening with the pipelines
+
+import time
+from datetime import datetime
+
+print("🔍 PIPELINE DIAGNOSTICS")
+print("=" * 60)
+
+# 1. Check active streaming queries
+print("\n📊 ACTIVE STREAMING QUERIES:")
+print("-" * 40)
+active_queries = spark.streams.active
+if active_queries:
+    for query in active_queries:
+        print(f"\n Query ID: {query.id}")
+        print(f" Name: {query.name if query.name else 'Unnamed'}")
+        print(f" Active: {query.isActive}")
+        print(f" Status: {query.status}")
+
+        # Check for exceptions
+        if query.exception():
+            print(f" ❌ EXCEPTION: {query.exception()}")
+
+        # Check last progress
+        if query.lastProgress:
+            progress = query.lastProgress
+            print(f" Batch ID: {progress.get('batchId', 'N/A')}")
+            print(f" Input Rows: {progress.get('numInputRows', 0)}")
+            print(f" Processed Rows: {progress.get('processedRowsPerSecond', 0)}")
+
+            # Check sources
+            if "sources" in progress and progress["sources"]:
+                for source in progress["sources"]:
+                    print(f" Source: {source.get('description', 'Unknown')}")
+                    print(f"   - Files: {source.get('numFiles', 0)}")
+                    print(
+                        f"   - Latest Offset: {str(source.get('latestOffset', 'None'))[:100]}"
+                    )
+        else:
+            print(" ⚠️ No progress information available yet")
+else:
+    print("❌ No active streaming queries found!")
+
+# 2. Check if tables exist and have recent data
+print("\n\n📊 TABLE STATUS:")
+print("-" * 40)
+
+tables = [
+    "expanso_databricks_workspace.sensor_readings.sensor_readings_ingestion",
+    "expanso_databricks_workspace.sensor_readings.sensor_readings_validated",
+    "expanso_databricks_workspace.sensor_readings.sensor_readings_enriched",
+    "expanso_databricks_workspace.sensor_readings.sensor_readings_aggregated",
+]
+
+for table in tables:
+    try:
+        # Count records
+        count = spark.sql(f"SELECT COUNT(*) as cnt FROM {table}").collect()[0]["cnt"]
+
+        # Get latest timestamp
+        latest = spark.sql(f"SELECT MAX(timestamp) as latest FROM {table}").collect()[
+            0
+        ]["latest"]
+
+        # Check if data is recent (within last 5 minutes)
+        if latest:
+            latest_dt = datetime.fromisoformat(str(latest).replace("+00:00", ""))
+            now = datetime.now()
+            minutes_ago = (now - latest_dt).total_seconds() / 60
+
+            status = (
+                "🟢 CURRENT"
+                if minutes_ago < 5
+                else f"🔴 STALE ({int(minutes_ago)} min old)"
+            )
+        else:
+            status = "🔴 NO DATA"
+
+        print(f"\n{table.split('.')[-1]}:")
+        print(f"  Records: {count}")
+        print(f"  Latest: {latest}")
+        print(f"  Status: {status}")
+
+    except Exception as e:
+        print(f"\n{table.split('.')[-1]}:")
+        print(f"  ❌ Error: {str(e)[:100]}")
+
+# 3. Check S3 for new files
+print("\n\n📁 S3 FILE CHECK:")
+print("-" * 40)
+
+try:
+    # Check ingestion bucket
+    s3_path = "s3://expanso-databricks-ingestion-us-west-2/"
+    files = dbutils.fs.ls(s3_path)
+    json_files = [f for f in files if f.name.endswith(".json")]
+
+    print(f"Total JSON files: {len(json_files)}")
+
+    # Check for recent files (last 5 minutes)
+    now_ms = datetime.now().timestamp() * 1000
+    recent_files = [
+        f for f in json_files if (now_ms - f.modificationTime) < 300000
+    ]  # 5 minutes
+
+    print(f"Files added in last 5 min: {len(recent_files)}")
+
+    if recent_files:
+        print("\nRecent files:")
+        for f in recent_files[:5]:
+            mod_time = datetime.fromtimestamp(f.modificationTime / 1000).strftime(
+                "%H:%M:%S"
+            )
+            print(f"  - {f.name} (modified {mod_time})")
+
+    # Try to read a recent file to check format
+    if json_files:
+        latest_file = sorted(json_files, key=lambda x: x.modificationTime)[-1]
+        print(f"\n🔍 Checking latest file: {latest_file.name}")
+
+        try:
+            # Read the file
+            df = spark.read.option("multiLine", "true").json(latest_file.path)
+            print(f"  ✅ File is valid JSON")
+            print(f"  Records: {df.count()}")
+            print(f"  Schema fields: {', '.join(df.columns[:10])}")
+
+            # Show sample record
+            if df.count() > 0:
+                sample = df.first()
+                print(
+                    f"  Sample sensor_id: {sample.sensor_id if 'sensor_id' in df.columns else 'N/A'}"
+                )
+
+        except Exception as e:
+            print(f"  ❌ Error reading file: {str(e)[:200]}")
+
+            # Try to show raw content
+            try:
+                raw_df = spark.read.text(latest_file.path)
+                first_line = raw_df.first()[0]
+                print(f"  Raw content (first 200 chars): {first_line[:200]}")
+            except:
+                pass
+
+except Exception as e:
+    print(f"❌ Error checking S3: {str(e)[:200]}")
+
+# 4. Check checkpoint locations
+print("\n\n🔖 CHECKPOINT STATUS:")
+print("-" * 40)
+
+checkpoint_base = "s3://expanso-databricks-checkpoints-us-west-2"
+for pipeline in ["ingestion", "validated", "enriched", "aggregated"]:
+    checkpoint_path = f"{checkpoint_base}/{pipeline}/checkpoint/"
+    try:
+        files = dbutils.fs.ls(checkpoint_path)
+        if files:
+            # Look for offsets directory
+            offset_files = [f for f in files if "offsets" in f.path]
+            commit_files = [f for f in files if "commits" in f.path]
+
+            print(f"\n{pipeline}:")
+            print(f"  Checkpoint exists: ✅")
+            print(f"  Offset files: {len(offset_files)}")
+            print(f"  Commit files: {len(commit_files)}")
+
+            # Check latest offset
+            if offset_files:
+                try:
+                    offset_dir = offset_files[0].path
+                    offset_contents = dbutils.fs.ls(offset_dir)
+                    if offset_contents:
+                        latest_offset = sorted(offset_contents, key=lambda x: x.name)[
+                            -1
+                        ]
+                        print(f"  Latest offset: {latest_offset.name}")
+                except:
+                    pass
+        else:
+            print(f"\n{pipeline}:")
+            print(f"  Checkpoint exists: ❌ (Empty)")
+
+    except:
+        print(f"\n{pipeline}:")
+        print(f"  Checkpoint exists: ❌ (Not found)")
+
+# 5. Recommendations
+print("\n\n💡 RECOMMENDATIONS:")
+print("-" * 40)
+
+issues = []
+
+# Check for common problems
+if not active_queries:
+    issues.append("No active streaming queries - pipelines are not running")
+    issues.append("ACTION: Re-run the 'Start All Pipelines' cell")
+
+if len(json_files) > 100:
+    issues.append(f"Large backlog of {len(json_files)} files in S3")
+    issues.append("ACTION: Files are accumulating but not being processed")
+
+# Check if ingestion is stuck
+ingestion_queries = [q for q in active_queries if "ingestion" in str(q.status).lower()]
+if ingestion_queries and ingestion_queries[0].lastProgress:
+    if ingestion_queries[0].lastProgress.get("numInputRows", 0) == 0:
+        issues.append("Ingestion pipeline is running but not processing files")
+        issues.append("ACTION: Check file format or permissions")
+
+if not issues:
+    print("✅ Pipelines appear to be configured correctly")
+    print("   If data is not flowing, check the Databricks Streaming tab for errors")
+else:
+    for issue in issues:
+        if issue.startswith("ACTION:"):
+            print(f"  → {issue}")
+        else:
+            print(f"❌ {issue}")
+
+print("\n" + "=" * 60)
+print("Diagnostics complete. Check the Streaming tab for more details.")
+
+
+# COMMAND ----------
+
+# CELL: Complete Reset and Restart
+# This cell does a complete reset - use when pipelines are stuck
+
+import time
+from pyspark.sql.functions import col, current_timestamp
+
+print("🔄 COMPLETE PIPELINE RESET")
+print("=" * 60)
+
+# 1. Force stop all streams
+print("\n1️⃣ FORCE STOPPING ALL STREAMS...")
+for query in spark.streams.active:
+    print(f"   Stopping: {query.id}")
+    query.stop()
+
+# Wait for cleanup
+time.sleep(5)
+
+# 2. Clear ALL checkpoints
+print("\n2️⃣ CLEARING ALL CHECKPOINTS...")
+checkpoint_base = "s3://expanso-databricks-checkpoints-us-west-2"
+
+for pipeline in ["ingestion", "validated", "enriched", "aggregated"]:
+    checkpoint_path = f"{checkpoint_base}/{pipeline}/"
+    try:
+        dbutils.fs.rm(checkpoint_path, recurse=True)
+        print(f"   ✅ Cleared {pipeline}")
+    except:
+        print(f"   ⚠️  {pipeline} already clear")
+
+# 3. Verify S3 access
+print("\n3️⃣ VERIFYING S3 ACCESS...")
+try:
+    s3_path = "s3://expanso-databricks-ingestion-us-west-2/"
+    files = dbutils.fs.ls(s3_path)
+    json_files = [f for f in files if f.name.endswith(".json")]
+    print(f"   ✅ Found {len(json_files)} JSON files in S3")
+
+    # Test read one file
+    if json_files:
+        test_file = json_files[-1]
+        test_df = spark.read.option("multiLine", "true").json(test_file.path)
+        print(f"   ✅ Successfully read test file: {test_file.name}")
+        print(f"   ✅ Records in file: {test_df.count()}")
+except Exception as e:
+    print(f"   ❌ S3 Error: {e}")
+    raise
+
+# 4. Start ONLY the ingestion pipeline first
+print("\n4️⃣ STARTING INGESTION PIPELINE ONLY...")
+print("   (We'll start others after confirming ingestion works)")
+
+try:
+    # Simple ingestion with minimal options
+    ingestion_df = (
+        spark.readStream.format("cloudFiles")
+        .option("cloudFiles.format", "json")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .option("cloudFiles.maxFilesPerTrigger", 10)  # Start small
+        .option("multiLine", "true")
+        .load(s3_path)
+    )
+
+    # Add timestamp
+    processed_df = ingestion_df.withColumn("processing_time", current_timestamp())
+
+    # Write to table
+    ingestion_query = (
+        processed_df.writeStream.outputMode("append")
+        .format("delta")
+        .option("checkpointLocation", f"{checkpoint_base}/ingestion/checkpoint")
+        .option("mergeSchema", "true")
+        .trigger(processingTime="10 seconds")  # Fast trigger for testing
+        .table("expanso_databricks_workspace.sensor_readings.sensor_readings_ingestion")
+    )
+
+    print(f"   ✅ Ingestion started: {ingestion_query.id}")
+
+    # Wait for first batch
+    print("\n   ⏳ Waiting 15 seconds for first batch...")
+    time.sleep(15)
+
+    # Check status
+    if ingestion_query.isActive:
+        print(f"   ✅ Pipeline is active")
+
+        if ingestion_query.lastProgress:
+            progress = ingestion_query.lastProgress
+            print(f"   📊 Batch: {progress.get('batchId', 'N/A')}")
+            print(f"   📊 Rows processed: {progress.get('numInputRows', 0)}")
+
+            # Check for files
+            if "sources" in progress and progress["sources"]:
+                source = progress["sources"][0]
+                print(f"   📊 Files in batch: {source.get('numFiles', 0)}")
+
+                if progress.get("numInputRows", 0) > 0:
+                    print("\n   🎉 SUCCESS! Ingestion is working!")
+                    print("\n5️⃣ STARTING REMAINING PIPELINES...")
+
+                    # Start validation pipeline
+                    validation_df = spark.readStream.format("delta").table(
+                        "expanso_databricks_workspace.sensor_readings.sensor_readings_ingestion"
+                    )
+
+                    validation_query = (
+                        validation_df.writeStream.outputMode("append")
+                        .format("delta")
+                        .option(
+                            "checkpointLocation",
+                            f"{checkpoint_base}/validated/checkpoint",
+                        )
+                        .trigger(processingTime="10 seconds")
+                        .table(
+                            "expanso_databricks_workspace.sensor_readings.sensor_readings_validated"
+                        )
+                    )
+                    print(f"   ✅ Validation started")
+
+                    # Start enrichment pipeline
+                    enrichment_df = spark.readStream.format("delta").table(
+                        "expanso_databricks_workspace.sensor_readings.sensor_readings_validated"
+                    )
+
+                    enrichment_query = (
+                        enrichment_df.writeStream.outputMode("append")
+                        .format("delta")
+                        .option(
+                            "checkpointLocation",
+                            f"{checkpoint_base}/enriched/checkpoint",
+                        )
+                        .trigger(processingTime="10 seconds")
+                        .table(
+                            "expanso_databricks_workspace.sensor_readings.sensor_readings_enriched"
+                        )
+                    )
+                    print(f"   ✅ Enrichment started")
+
+                    # Start aggregation pipeline
+                    aggregation_df = spark.readStream.format("delta").table(
+                        "expanso_databricks_workspace.sensor_readings.sensor_readings_enriched"
+                    )
+
+                    aggregation_query = (
+                        aggregation_df.writeStream.outputMode("append")
+                        .format("delta")
+                        .option(
+                            "checkpointLocation",
+                            f"{checkpoint_base}/aggregated/checkpoint",
+                        )
+                        .trigger(processingTime="10 seconds")
+                        .table(
+                            "expanso_databricks_workspace.sensor_readings.sensor_readings_aggregated"
+                        )
+                    )
+                    print(f"   ✅ Aggregation started")
+
+                    print("\n" + "=" * 60)
+                    print("✅ ALL 4 PIPELINES RUNNING!")
+                    print("\nMonitor with: SELECT COUNT(*) FROM each table")
+
+                else:
+                    print("\n   ⚠️  Pipeline is active but no rows processed yet")
+                    print("   This might mean:")
+                    print("   - Files are being scanned but not processed")
+                    print("   - There's a schema mismatch")
+                    print("   - Check the Streaming tab for errors")
+        else:
+            print("   ⚠️  No progress yet - still initializing")
+    else:
+        print(f"   ❌ Pipeline stopped immediately")
+        if ingestion_query.exception():
+            print(f"   Error: {ingestion_query.exception()}")
+
+except Exception as e:
+    print(f"\n❌ Failed to start ingestion: {e}")
+    import traceback
+
+    traceback.print_exc()
+
+print("\n" + "=" * 60)
+print("Reset complete. Check the Streaming tab for pipeline status.")
+
 
 # COMMAND ----------
 
@@ -1144,28 +1635,28 @@ if True:  # Always enabled for manual cleanup
     print("=" * 80)
     print("CLEANING ALL BUCKETS FOR FRESH DEMO")
     print("=" * 80)
-    
+
     buckets_to_clean = [
         ("s3://expanso-databricks-ingestion-us-west-2/", "INGESTION"),
         ("s3://expanso-databricks-validated-us-west-2/", "VALIDATED"),
         ("s3://expanso-databricks-enriched-us-west-2/", "ENRICHED"),
         ("s3://expanso-databricks-aggregated-us-west-2/", "AGGREGATED"),
-        ("s3://expanso-databricks-checkpoints-us-west-2/", "CHECKPOINTS")
+        ("s3://expanso-databricks-checkpoints-us-west-2/", "CHECKPOINTS"),
     ]
-    
+
     for bucket_path, name in buckets_to_clean:
         print(f"\n🧹 Cleaning {name} bucket: {bucket_path}")
         try:
             # List all files
             files = dbutils.fs.ls(bucket_path)
             file_count = len(files)
-            
+
             if file_count == 0:
                 print(f"   ✅ Already empty")
                 continue
-            
+
             print(f"   Found {file_count} items to remove")
-            
+
             # Remove everything recursively
             for item in files:
                 try:
@@ -1179,21 +1670,21 @@ if True:  # Always enabled for manual cleanup
                         print(f"   📄 Removed file: {item.name}")
                 except Exception as e:
                     print(f"   ⚠️ Could not remove {item.name}: {str(e)[:100]}")
-            
+
             print(f"   ✅ {name} bucket cleaned")
-            
+
         except Exception as e:
             print(f"   ❌ Error cleaning {name}: {str(e)[:200]}")
-    
+
     # Also clean Delta tables
     print("\n🧹 Cleaning Delta tables...")
     tables_to_clean = [
         INGESTION_TABLE,
         VALIDATED_TABLE,
         ENRICHED_TABLE,
-        AGGREGATED_TABLE
+        AGGREGATED_TABLE,
     ]
-    
+
     for table in tables_to_clean:
         try:
             spark.sql(f"TRUNCATE TABLE {table}")
@@ -1204,7 +1695,7 @@ if True:  # Always enabled for manual cleanup
                 print(f"   ✅ Dropped {table}")
             except Exception as e:
                 print(f"   ⚠️ Could not clean {table}: {str(e)[:100]}")
-    
+
     print("\n" + "=" * 80)
     print("✅ ALL BUCKETS AND TABLES CLEANED - READY FOR FRESH DEMO")
     print("=" * 80)

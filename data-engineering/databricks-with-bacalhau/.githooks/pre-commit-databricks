@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Pre-commit hook to validate Databricks notebooks before committing
+# Install by running: ln -sf ../../.githooks/pre-commit-databricks .git/hooks/pre-commit
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Running Databricks notebook validation...${NC}"
+
+# Find all changed .py files in databricks-notebooks directory
+NOTEBOOKS=$(git diff --cached --name-only --diff-filter=ACM | \
+            grep -E '^databricks-notebooks/.*\.py$' || true)
+
+if [ -z "$NOTEBOOKS" ]; then
+    echo -e "${GREEN}No Databricks notebooks to validate${NC}"
+    exit 0
+fi
+
+# Check if validation script exists
+VALIDATOR="scripts/validate-databricks-notebook.py"
+if [ ! -f "$VALIDATOR" ]; then
+    echo -e "${YELLOW}Warning: Validator script not found at $VALIDATOR${NC}"
+    echo -e "${YELLOW}Skipping notebook validation${NC}"
+    exit 0
+fi
+
+# Validate each notebook
+FAILED=0
+for notebook in $NOTEBOOKS; do
+    echo -n "Validating $notebook... "
+    
+    if uv run -s "$VALIDATOR" "$notebook" --quiet; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        echo -e "${RED}Validation failed for $notebook${NC}"
+        echo "Run the following command for details:"
+        echo "  uv run -s $VALIDATOR $notebook --show-context"
+        FAILED=1
+    fi
+done
+
+if [ $FAILED -eq 1 ]; then
+    echo -e "${RED}Commit aborted due to validation errors${NC}"
+    echo "Fix the errors or use 'git commit --no-verify' to skip validation"
+    exit 1
+fi
+
+echo -e "${GREEN}All notebooks validated successfully${NC}"
+exit 0
