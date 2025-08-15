@@ -341,6 +341,81 @@ This runs validation automatically and prevents committing broken code.
 - Self-documenting with proper help text
 - Type hints and modern Python features
 
+## 📓 DATABRICKS NOTEBOOK RULES
+
+### CRITICAL: Never Include These in Databricks Notebooks
+
+1. **NEVER import PySpark** - It's pre-imported in Databricks
+   - ❌ `from pyspark.sql.functions import *`
+   - ❌ `from pyspark.sql.types import *`
+   - ❌ `from pyspark.sql import SparkSession`
+   - ✅ Just use the functions directly, they're already available
+
+2. **NEVER use processingTime or continuous triggers** - Not supported in serverless
+   - ❌ `.trigger(processingTime="10 seconds")`
+   - ❌ `.trigger(continuous="1 second")`
+   - ✅ `.trigger(availableNow=True)`
+   - ✅ `.trigger(once=True)`
+
+3. **ALWAYS validate notebooks before uploading**
+   - Run the validator to catch these issues
+   - Fix all errors and warnings
+   - Test in Databricks after uploading
+
+## 📁 FILE MANAGEMENT RULES
+
+### 38. NEVER Create New Files Unless Explicitly Asked
+
+**CRITICAL**: This is a common anti-pattern that must be avoided:
+
+1. **ALWAYS edit existing files in place** - Use the Edit tool to modify existing files
+2. **Do NOT create copies or backups** unless explicitly requested by the user
+3. **Do NOT create temporary files** in /tmp or elsewhere unless absolutely necessary
+4. **Do NOT use `cp` to create new versions** - edit the original file directly
+5. **Do NOT create documentation files** (README.md, GUIDE.md, etc.) unless explicitly requested
+6. **Do NOT create "improved" or "better" versions** of existing files
+
+### 39. When Editing Files
+
+1. **Use direct file editing** - Use the Edit tool to modify files in place
+2. **Make changes directly to the target file** - Don't create intermediate files
+3. **Transform content in memory** - If you need to process content, do it in memory
+4. **Preserve file structure** - Don't reorganize or restructure unless asked
+
+### 40. File Operation Examples
+
+#### ❌ BAD - Creates unnecessary files:
+```bash
+# Don't do this - creates unnecessary copies
+cp original.py backup.py
+cp flexible-autoloader.py setup-and-run-autoloader.py  # NO!
+cat > /tmp/header.txt << EOF
+# Header content
+EOF
+cat /tmp/header.txt original.py > new.py
+mv new.py original.py
+```
+
+#### ✅ GOOD - Edits in place:
+```python
+# Do this - edit file directly using the Edit tool
+# Read the existing file
+content = read_file('original.py')
+# Modify in memory
+new_content = add_header(content)
+# Write back to the SAME file
+edit_file('original.py', old_content, new_content)
+```
+
+### 41. Exception Cases for Creating Files
+
+Only create new files when:
+1. User explicitly says "create a new file" or "create a new script"
+2. User explicitly says "make a copy" or "backup"
+3. Creating a genuinely new script/document that doesn't exist yet
+4. Creating required config files that don't exist (.env, config.yaml, etc.)
+5. User asks for a new feature that requires a new file
+
 ## ⚠️ NEVER DO THIS
 
 1. **NEVER** reference `databricks-uploader/sensor_data.db`

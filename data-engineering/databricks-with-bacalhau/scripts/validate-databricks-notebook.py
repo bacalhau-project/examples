@@ -158,6 +158,26 @@ class NotebookValidator:
                     (line_num, "Warning: Environment variables should be set via cluster config")
                 )
 
+            # Check for unsupported triggers - THESE ARE ERRORS!
+            # Skip if it's a comment line
+            stripped = line.strip()
+            if not stripped.startswith("#") and not stripped.startswith("//"):
+                if "processingTime" in line and "trigger" in line:
+                    warnings.append(
+                        (
+                            line_num,
+                            "ERROR: processingTime trigger not supported in Databricks serverless",
+                        )
+                    )
+
+                if "continuous" in line and "trigger" in line:
+                    warnings.append(
+                        (
+                            line_num,
+                            "ERROR: continuous trigger not supported in Databricks serverless",
+                        )
+                    )
+
         return warnings
 
     def validate_cell(

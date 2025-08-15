@@ -59,6 +59,50 @@ def upload_notebook(client: WorkspaceClient, local_path: Path, workspace_path: s
         # Read the notebook content
         content = local_path.read_text()
 
+        # Update upload metadata timestamp if present
+        from datetime import datetime
+
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user_email = os.getenv("DATABRICKS_USER_EMAIL", "unknown")
+
+        # Look for existing metadata block and update it
+        lines = content.splitlines()
+        for i, line in enumerate(lines):
+            if "**Uploaded:**" in line:
+                # Update the timestamp in markdown format
+                lines[i] = f"# MAGIC - **Uploaded:** {current_time}"
+            elif "Uploaded:" in line and "MAGIC" in lines[max(0, i - 1)]:
+                # Update timestamp in MAGIC markdown
+                lines[i] = f"# MAGIC - **Uploaded:** {current_time}"
+
+        # If no metadata found, add it after "# Databricks notebook source"
+        if (
+            "**Uploaded:**" not in content
+            and lines
+            and lines[0].strip() == "# Databricks notebook source"
+        ):
+            metadata_block = [
+                "# MAGIC %md",
+                "# MAGIC ## Upload Metadata",
+                f"# MAGIC - **Uploaded:** {current_time}",
+                f"# MAGIC - **Validated:** ✓ (syntax check passed)",
+                f"# MAGIC - **User:** {user_email}",
+                f"# MAGIC - **Source:** {local_path.name}",
+                "# MAGIC",
+                "# MAGIC ---",
+                "",
+            ]
+            # Find where to insert (after first MAGIC %md or at position 1)
+            insert_pos = 1
+            for idx, line in enumerate(lines[1:], 1):
+                if "# MAGIC %md" in line:
+                    # Insert before the first markdown cell
+                    insert_pos = idx
+                    break
+            lines = lines[:insert_pos] + metadata_block + lines[insert_pos:]
+
+        content = "\n".join(lines)
+
         # Encode content as base64
         content_b64 = base64.b64encode(content.encode()).decode()
 

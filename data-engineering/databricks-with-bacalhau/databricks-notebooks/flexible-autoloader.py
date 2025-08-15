@@ -598,24 +598,31 @@ def create_ingestion_pipeline():
         print(f"  📁 Source: {INGESTION_BUCKET}")
         print(f"  📊 Target: {INGESTION_TABLE}")
         print(f"  🔖 Checkpoint: {CHECKPOINT_BUCKET}ingestion/checkpoint")
-        print(f"  📝 Schema Location: {SCHEMA_BASE}/ingestion")  # CRITICAL for Auto Loader
+        print(
+            f"  📝 Schema Location: {SCHEMA_BASE}/ingestion"
+        )  # CRITICAL for Auto Loader
         print(f"  🔍 Filter: *.json (all JSON files at root level)")
 
     # Read JSON with schema evolution
     stream_reader = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/ingestion")  # REQUIRED for Auto Loader!
+        .option(
+            "cloudFiles.schemaLocation", f"{SCHEMA_BASE}/ingestion"
+        )  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option(
             "cloudFiles.maxFilesPerTrigger", 10 if DEBUG_MODE else 100
         )  # Smaller batches in debug
         .option("multiLine", "true")
-        .option("recursiveFileLookup", "false")  # No need for recursion with flat structure
+        .option(
+            "recursiveFileLookup", "false"
+        )  # No need for recursion with flat structure
         .option("cloudFiles.allowOverwrites", "true")
         .option("pathGlobFilter", "*.json")  # Match all JSON files at top level
         .option("cloudFiles.useNotifications", "false")  # Don't use SQS
+    )
 
     if DEBUG_MODE:
         stream_reader = stream_reader.option("cloudFiles.maxBytesPerTrigger", "10MB")
@@ -661,12 +668,16 @@ def create_validation_pipeline():
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/validated")  # REQUIRED for Auto Loader!
+        .option(
+            "cloudFiles.schemaLocation", f"{SCHEMA_BASE}/validated"
+        )  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
         .option("multiLine", "true")
-        .option("recursiveFileLookup", "false")  # No need for recursion with flat structure
+        .option(
+            "recursiveFileLookup", "false"
+        )  # No need for recursion with flat structure
         .option("cloudFiles.allowOverwrites", "true")
         .option("pathGlobFilter", "*.json")  # Match all JSON files at top level
         .load(VALIDATED_BUCKET)
@@ -705,12 +716,16 @@ def create_enrichment_pipeline():
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/enriched")  # REQUIRED for Auto Loader!
+        .option(
+            "cloudFiles.schemaLocation", f"{SCHEMA_BASE}/enriched"
+        )  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
         .option("multiLine", "true")
-        .option("recursiveFileLookup", "false")  # No need for recursion with flat structure
+        .option(
+            "recursiveFileLookup", "false"
+        )  # No need for recursion with flat structure
         .option("cloudFiles.allowOverwrites", "true")
         .option("pathGlobFilter", "*.json")  # Match all JSON files at top level
         .load(ENRICHED_BUCKET)
@@ -749,12 +764,16 @@ def create_aggregation_pipeline():
     df = (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
-        .option("cloudFiles.schemaLocation", f"{SCHEMA_BASE}/aggregated")  # REQUIRED for Auto Loader!
+        .option(
+            "cloudFiles.schemaLocation", f"{SCHEMA_BASE}/aggregated"
+        )  # REQUIRED for Auto Loader!
         .option("cloudFiles.inferColumnTypes", "true")
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
         .option("cloudFiles.maxFilesPerTrigger", 100)
         .option("multiLine", "true")
-        .option("recursiveFileLookup", "false")  # No need for recursion with flat structure
+        .option(
+            "recursiveFileLookup", "false"
+        )  # No need for recursion with flat structure
         .option("cloudFiles.allowOverwrites", "true")
         .option("pathGlobFilter", "*.json")  # Match all JSON files at top level
         .load(AGGREGATED_BUCKET)
@@ -897,7 +916,7 @@ try:
             progress = ingestion_query.lastProgress
             print(f"  📊 Initial batch: {progress.get('batchId', 'N/A')}")
             print(f"  📊 Input rows: {progress.get('numInputRows', 0)}")
-            
+
             # Show source details
             if "sources" in progress and progress["sources"]:
                 source = progress["sources"][0]
@@ -913,6 +932,7 @@ except Exception as e:
     print(f"❌ Ingestion pipeline failed: {e}")
     if DEBUG_MODE:
         import traceback
+
         traceback.print_exc()
 
 try:
