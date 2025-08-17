@@ -595,7 +595,9 @@ class SensorSimulator:
             self.monitoring_server.start()
 
         try:
+            iteration_count = 0
             while self.running:
+                iteration_count += 1
                 # Check if we've reached the end of the simulation
                 elapsed = time.time() - self.start_time
                 if elapsed >= self.run_time_seconds:
@@ -621,11 +623,19 @@ class SensorSimulator:
 
                 # Sleep to maintain the configured rate
                 sleep_time = 1.0 / self.readings_per_second
-                try:
-                    time.sleep(sleep_time)
-                except KeyboardInterrupt:
-                    logger.info("Sleep interrupted by user")
-                    raise  # Re-raise to be caught by outer handler
+                # Use shorter sleep intervals to be more responsive to shutdown
+                sleep_intervals = 10  # Check running flag 10 times during sleep
+                interval_time = sleep_time / sleep_intervals
+                for _ in range(sleep_intervals):
+                    if not self.running:
+                        logger.debug("Detected shutdown during sleep")
+                        break
+                    try:
+                        time.sleep(interval_time)
+                    except KeyboardInterrupt:
+                        logger.info("Sleep interrupted by user")
+                        self.running = False
+                        break
 
         except KeyboardInterrupt:
             logger.info("Simulation stopped by user (Ctrl+C)")
@@ -772,7 +782,9 @@ class SensorSimulator:
         }
 
         # Check for anomalies (AnomalyGenerator uses current config and identity)
-        if self.anomaly_generator.should_generate_anomaly():
+        should_gen = self.anomaly_generator.should_generate_anomaly()
+        if should_gen:
+            logger.debug(f"Generating anomaly for reading")
             anomaly_type = self.anomaly_generator.select_anomaly_type()
             if anomaly_type:
                 self.anomaly_generator.start_anomaly(anomaly_type)
@@ -788,23 +800,42 @@ class SensorSimulator:
         return reading
 
     def _generate_normal_value(self, params: Dict) -> float:
-        """Generate a value from a normal distribution with bounds.
+        """Generate a sensor value with realistic variations based on normal distribution.
 
         Args:
-            params: Dictionary containing mean, std_dev, min, and max
+            params: Dictionary containing min, max, and optionally mean, std_dev
 
         Returns:
-            Generated value
+            Generated value based on normal distribution
         """
-        mean = params.get("mean", 0)
-        std_dev = params.get("std_dev", 1)
-        min_val = params.get("min", float("-inf"))
-        max_val = params.get("max", float("inf"))
-
-        while True:
-            value = random.gauss(mean, std_dev)
-            if min_val <= value <= max_val:
-                return value
+        min_val = params.get("min", 0)
+        max_val = params.get("max", 100)
+        
+        # Use mean if provided, otherwise use midpoint of range
+        if "mean" in params:
+            mean = params["mean"]
+        else:
+            mean = (min_val + max_val) / 2
+        
+        # Use std_dev if provided, otherwise derive from range
+        # Default to range/6 so that ±3 std devs covers most of the range
+        if "std_dev" in params:
+            std_dev = params["std_dev"]
+        else:
+            # Avoid division by zero if min_val == max_val
+            range_size = max_val - min_val
+            if range_size > 0:
+                std_dev = range_size / 6
+            else:
+                std_dev = 1.0  # Default standard deviation for zero range
+        
+        # Generate value using normal distribution
+        # random.gauss generates values from a normal distribution
+        value = random.gauss(mean, std_dev)
+        
+        # Ensure value stays within bounds
+        # This might slightly skew the distribution at the edges, but ensures valid values
+        return max(min_val, min(value, max_val))
 
     def _get_initial_location(self) -> None:
         """Get and validate the initial location for the sensor from self.identity.

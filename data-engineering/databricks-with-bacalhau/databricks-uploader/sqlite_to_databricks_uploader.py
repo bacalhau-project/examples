@@ -44,10 +44,18 @@ from sensor_data_models import WindTurbineSensorData, validate_sensor_data
 
 
 class SQLiteToS3Uploader:
-    def __init__(self, config_path: str):
-        """Initialize uploader with configuration."""
+    """Upload SQLite sensor data to S3 for Databricks, tracking state."""
+
+    def __init__(self, config_path: str, verbose: bool = False):
+        """Initialize the uploader with configuration."""
         self.config_path = config_path
-        self.config = self._load_config(config_path)
+        self.verbose = verbose
+
+        # Load configuration
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+
+        # Setup state management directory
         self.state_dir = Path(self.config.get("state_dir", "state"))
         self.state_file = self.state_dir / "s3-uploader" / "upload_state.json"
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
@@ -401,7 +409,7 @@ class SQLiteToS3Uploader:
             json.dump(state, f, indent=2)
 
     def _get_new_data(self, last_timestamp: str | None = None) -> list:
-        """Get new data from SQLite since last timestamp."""
+        """Get new data from SQLite since last timestamp using safe read-only access."""
         import sqlite3
 
         # Path is relative to current working directory
@@ -416,39 +424,97 @@ class SQLiteToS3Uploader:
         print(f"📂 Using database: {db_path.absolute()}")
         print(f"📊 Reading from table: {table}")
 
-        # Connect to SQLite
-        conn = sqlite3.connect(str(db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
         # Build query
-        query = f"SELECT * FROM {table}"
-        params = []
-
         if last_timestamp:
-            query += f" WHERE {timestamp_col} > ?"
-            params.append(last_timestamp)
+            query = (
+                f"SELECT * FROM {table} WHERE {timestamp_col} > ? ORDER BY {timestamp_col} LIMIT ?"
+            )
+            params = [last_timestamp, self.config.get("max_batch_size", 500)]
+        else:
+            query = f"SELECT * FROM {table} ORDER BY {timestamp_col} LIMIT ?"
+            params = [self.config.get("max_batch_size", 500)]
 
-        query += f" ORDER BY {timestamp_col} LIMIT ?"
-        params.append(self.config.get("max_batch_size", 500))
+        # Execute query with retry logic for database malformed errors
+        max_retries = 10
+        retry_delay = 1  # seconds
 
-        # Execute query
-        try:
-            cursor.execute(query, params)
-            rows = [dict(row) for row in cursor.fetchall()]
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                # List available tables
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                tables = [row[0] for row in cursor.fetchall()]
+        for attempt in range(max_retries):
+            conn = None
+            try:
+                # Open in read-only mode to prevent lock conflicts (following reader_example.py)
+                conn = sqlite3.connect(
+                    f"file:{db_path}?mode=ro",
+                    uri=True,
+                    timeout=30.0,  # Wait up to 30 seconds if database is busy
+                )
+                conn.row_factory = sqlite3.Row
+
+                # Set to query-only mode for extra safety
+                conn.execute("PRAGMA query_only=1;")
+
+                # Use WAL mode for better concurrency (reader settings)
+                conn.execute("PRAGMA journal_mode=WAL;")
+
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                rows = [dict(row) for row in cursor.fetchall()]
                 conn.close()
-                raise ValueError(f"Table '{table}' not found. Available tables: {tables}")
-            else:
-                conn.close()
+                return rows
+
+            except sqlite3.DatabaseError as e:
+                if conn:
+                    conn.close()
+
+                if "malformed" in str(e).lower() or "disk i/o error" in str(e).lower():
+                    if attempt < max_retries - 1:
+                        print(
+                            f"⚠️  Database temporarily unavailable (attempt {attempt + 1}/{max_retries}): {e}"
+                        )
+                        print(f"   Retrying in {retry_delay} second...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"❌ Database error persisted after {max_retries} attempts")
+                        raise
+                else:
+                    raise
+
+            except sqlite3.OperationalError as e:
+                if conn:
+                    conn.close()
+
+                if "database is locked" in str(e):
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  Database is busy (attempt {attempt + 1}/{max_retries}): {e}")
+                        print(f"   Retrying in {retry_delay} second...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"❌ Database remained locked after {max_retries} attempts")
+                        raise
+                elif "no such table" in str(e):
+                    # Try to list available tables with a new connection
+                    try:
+                        info_conn = sqlite3.connect(
+                            f"file:{db_path}?mode=ro", uri=True, timeout=5.0
+                        )
+                        info_conn.execute("PRAGMA query_only=1;")
+                        cursor = info_conn.cursor()
+                        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                        tables = [row[0] for row in cursor.fetchall()]
+                        info_conn.close()
+                        raise ValueError(f"Table '{table}' not found. Available tables: {tables}")
+                    except:
+                        raise ValueError(f"Table '{table}' not found and couldn't list tables")
+                else:
+                    raise
+
+            except Exception as e:
+                if conn:
+                    conn.close()
+                if self.verbose:
+                    print(f"❌ Unexpected error: {e}")
                 raise
 
-        conn.close()
-        return rows
+        return []
 
     def _validate_and_split_data(
         self, data: List[Dict[str, Any]]
@@ -792,6 +858,12 @@ def main():
         action="store_true",
         help="Show what would be uploaded without uploading",
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show detailed error messages and stack traces",
+    )
 
     args = parser.parse_args()
 
@@ -801,7 +873,7 @@ def main():
         sys.exit(1)
 
     # Create uploader
-    uploader = SQLiteToS3Uploader(args.config)
+    uploader = SQLiteToS3Uploader(args.config, verbose=args.verbose)
 
     # Run
     if args.once or args.dry_run:

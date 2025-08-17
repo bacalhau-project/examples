@@ -241,6 +241,26 @@ main() {
     log "You can now pull and run the image with:"
     log "docker pull $REGISTRY/$IMAGE_NAME:$VERSION_TAG"
     log "docker pull $REGISTRY/$IMAGE_NAME:latest"
+    
+    echo ""
+    success "Ready to run! Copy and paste this command:"
+    echo ""
+    echo -e "${GREEN}# Run the sensor locally:${NC}"
+    echo "docker run --rm \\"
+    echo "  --name sensor-log-generator \\"
+    echo "  -v \"\$(pwd)/data\":/app/data \\"
+    echo "  -v \"\$(pwd)/config\":/app/config \\"
+    echo "  -e CONFIG_FILE=/app/config/config.yaml \\"
+    echo "  -e IDENTITY_FILE=/app/config/identity.json \\"
+    echo "  $REGISTRY/$IMAGE_NAME:latest"
+    echo ""
+    echo -e "${GREEN}# Or with custom sensor ID and location:${NC}"
+    echo "docker run --rm \\"
+    echo "  --name sensor-log-generator \\"
+    echo "  -v \"\$(pwd)/data\":/app/data \\"
+    echo "  -e SENSOR_ID=CUSTOM001 \\"
+    echo "  -e SENSOR_LOCATION=\"Custom Location\" \\"
+    echo "  $REGISTRY/$IMAGE_NAME:latest"
 }
 
 # Execute main function

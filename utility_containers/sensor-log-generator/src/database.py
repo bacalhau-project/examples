@@ -77,13 +77,30 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
             last_exception = None
             for attempt in range(max_retries + 1):
                 try:
+                    # Check circuit breaker if this is a SensorDatabase method
+                    if hasattr(args[0], '_check_circuit_breaker'):
+                        if not args[0]._check_circuit_breaker():
+                            raise sqlite3.OperationalError("Circuit breaker is open, database operations suspended")
+                    
                     if debug_mode and attempt > 0:
                         logging.getLogger("SensorDatabase").debug(
                             f"Retry attempt {attempt + 1}/{max_retries + 1} for {func.__name__}"
                         )
-                    return func(*args, **kwargs)
+                    
+                    result = func(*args, **kwargs)
+                    
+                    # Record success for circuit breaker
+                    if hasattr(args[0], '_record_circuit_success'):
+                        args[0]._record_circuit_success()
+                    
+                    return result
                 except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
                     last_exception = e
+                    
+                    # Record failure for circuit breaker
+                    if hasattr(args[0], '_record_circuit_failure'):
+                        args[0]._record_circuit_failure()
+                    
                     if attempt < max_retries:
                         # Log the error and retry
                         logging.warning(
@@ -375,6 +392,24 @@ class SensorDatabase:
         self.insert_count = 0
         self.total_insert_time = 0.0
         self.total_batch_time = 0.0
+        
+        # Circuit breaker pattern for database reliability
+        self.circuit_breaker_enabled = True
+        self.circuit_breaker_failure_threshold = 5  # Open circuit after 5 consecutive failures
+        self.circuit_breaker_success_threshold = 2  # Close circuit after 2 consecutive successes
+        self.circuit_breaker_timeout = 30.0  # Try to recover after 30 seconds
+        self.circuit_breaker_state = "closed"  # closed, open, half_open
+        self.circuit_breaker_failures = 0
+        self.circuit_breaker_successes = 0
+        self.circuit_breaker_last_failure_time = 0
+        self.circuit_breaker_lock = threading.Lock()
+        
+        # Resource limits
+        self.max_batch_size = 1000  # Maximum batch size to prevent memory issues
+        self.max_database_size_mb = 1000  # Maximum database size in MB (configurable)
+        self.max_memory_usage_mb = 100  # Maximum memory usage for buffers
+        self.resource_check_interval = 60  # Check resources every 60 seconds
+        self.last_resource_check = 0
 
         # Create database directory if it doesn't exist
         if self.db_path != ":memory:":
@@ -398,6 +433,94 @@ class SensorDatabase:
         if self.debug_mode:
             self._log_database_debug_info()
     
+    def _check_resources(self):
+        """Check resource usage and enforce limits."""
+        current_time = time.time()
+        if current_time - self.last_resource_check < self.resource_check_interval:
+            return True  # Skip check if too recent
+        
+        self.last_resource_check = current_time
+        
+        try:
+            # Check database size
+            if self.db_path != ":memory:" and os.path.exists(self.db_path):
+                db_size_mb = os.path.getsize(self.db_path) / (1024 * 1024)
+                if db_size_mb > self.max_database_size_mb:
+                    self.logger.error(f"Database size ({db_size_mb:.2f}MB) exceeds limit ({self.max_database_size_mb}MB)")
+                    return False
+                elif db_size_mb > self.max_database_size_mb * 0.9:
+                    self.logger.warning(f"Database size ({db_size_mb:.2f}MB) approaching limit ({self.max_database_size_mb}MB)")
+            
+            # Check memory usage (approximate)
+            import sys
+            batch_memory_mb = sys.getsizeof(self.batch_buffer) / (1024 * 1024)
+            if batch_memory_mb > self.max_memory_usage_mb:
+                self.logger.error(f"Batch buffer memory ({batch_memory_mb:.2f}MB) exceeds limit ({self.max_memory_usage_mb}MB)")
+                return False
+                
+            # Enforce max batch size
+            if len(self.batch_buffer) > self.max_batch_size:
+                self.logger.warning(f"Batch buffer size ({len(self.batch_buffer)}) exceeds max ({self.max_batch_size}), forcing commit")
+                self.commit_batch()
+                
+        except Exception as e:
+            self.logger.warning(f"Resource check failed: {e}")
+            # Don't block operations if resource check fails
+            
+        return True
+    
+    def _check_circuit_breaker(self):
+        """Check if circuit breaker allows operation."""
+        if not self.circuit_breaker_enabled:
+            return True
+            
+        with self.circuit_breaker_lock:
+            if self.circuit_breaker_state == "closed":
+                return True
+            elif self.circuit_breaker_state == "open":
+                # Check if enough time has passed to try recovery
+                if time.time() - self.circuit_breaker_last_failure_time > self.circuit_breaker_timeout:
+                    self.circuit_breaker_state = "half_open"
+                    self.logger.info("Circuit breaker entering half-open state, attempting recovery")
+                    return True
+                else:
+                    return False
+            elif self.circuit_breaker_state == "half_open":
+                return True
+        return False
+    
+    def _record_circuit_success(self):
+        """Record a successful operation for circuit breaker."""
+        if not self.circuit_breaker_enabled:
+            return
+            
+        with self.circuit_breaker_lock:
+            self.circuit_breaker_failures = 0
+            if self.circuit_breaker_state == "half_open":
+                self.circuit_breaker_successes += 1
+                if self.circuit_breaker_successes >= self.circuit_breaker_success_threshold:
+                    self.circuit_breaker_state = "closed"
+                    self.circuit_breaker_successes = 0
+                    self.logger.info("Circuit breaker closed, service recovered")
+    
+    def _record_circuit_failure(self):
+        """Record a failed operation for circuit breaker."""
+        if not self.circuit_breaker_enabled:
+            return
+            
+        with self.circuit_breaker_lock:
+            self.circuit_breaker_failures += 1
+            self.circuit_breaker_successes = 0
+            self.circuit_breaker_last_failure_time = time.time()
+            
+            if self.circuit_breaker_state == "half_open":
+                self.circuit_breaker_state = "open"
+                self.logger.warning("Circuit breaker opened again, recovery failed")
+            elif self.circuit_breaker_failures >= self.circuit_breaker_failure_threshold:
+                if self.circuit_breaker_state != "open":
+                    self.circuit_breaker_state = "open"
+                    self.logger.error(f"Circuit breaker opened after {self.circuit_breaker_failures} failures")
+    
     def _register_shutdown_handlers(self):
         """Register handlers for graceful shutdown with data commit."""
         
@@ -415,16 +538,9 @@ class SensorDatabase:
         atexit.register(shutdown_handler)
         
         # Also handle SIGTERM for docker stop
-        def signal_handler(signum, frame):
-            """Handle SIGTERM signal from docker stop."""
-            self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
-            shutdown_handler()
-        
-        try:
-            signal.signal(signal.SIGTERM, signal_handler)
-            self.logger.debug("SIGTERM handler registered for graceful shutdown")
-        except Exception as e:
-            self.logger.warning(f"Could not register SIGTERM handler: {e}")
+        # Signal handler removed - main.py handles signals
+        # The database will be properly closed when simulator.stop() is called
+        pass
     
     def _start_background_commit_thread(self):
         """Start a background thread that commits data periodically for external readers."""
@@ -811,8 +927,12 @@ class SensorDatabase:
         # Use UTC for ISO format timestamps
         timestamp = datetime.now(timezone.utc).isoformat()
 
+        # Check resources before adding to batch
+        if not self._check_resources():
+            raise sqlite3.OperationalError("Resource limits exceeded")
+        
         # Use lock for thread-safe batch operations
-        with getattr(self, '_commit_lock', threading.Lock()):
+        with self._commit_lock:
             # Add to batch buffer
             self.batch_buffer.append(
                 (
@@ -853,7 +973,7 @@ class SensorDatabase:
             sqlite3.Error: If the database operation fails after retries
         """
         # Use lock for thread-safe batch operations
-        with getattr(self, '_commit_lock', threading.Lock()):
+        with self._commit_lock:
             if not self.batch_buffer:
                 return 0
 

@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.database import DatabaseConnectionManager, SensorDatabase, retry_on_error
+from src.database import DatabaseConnectionManager, SensorDatabase, SensorReadingSchema, retry_on_error
 
 
 class TestRetryOnError:
@@ -198,12 +198,9 @@ class TestSensorDatabase:
         """Test that existing database is preserved when preserve_existing_db=True."""
         # Create initial database with data
         db1 = SensorDatabase(self.db_path)
-        db1.store_reading(
-            timestamp=time.time(),
+        db1.insert_reading(
             sensor_id="TEST001",
             temperature=25.0,
-            humidity=50.0,
-            pressure=1013.0,
             vibration=0.1,
             voltage=12.0,
             status_code=0,
@@ -212,11 +209,9 @@ class TestSensorDatabase:
             firmware_version="1.0",
             model="TestModel",
             manufacturer="TestMfg",
-            location="Test Location",
-            latitude=40.0,
-            longitude=-74.0,
-            timezone_str="+00:00"
+            location="Test Location"
         )
+        db1.commit_batch()
         db1.close()
         
         # Create new database instance preserving existing
@@ -231,12 +226,9 @@ class TestSensorDatabase:
         """Test that existing database is deleted when preserve_existing_db=False."""
         # Create initial database with data
         db1 = SensorDatabase(self.db_path)
-        db1.store_reading(
-            timestamp=time.time(),
+        db1.insert_reading(
             sensor_id="TEST001",
             temperature=25.0,
-            humidity=50.0,
-            pressure=1013.0,
             vibration=0.1,
             voltage=12.0,
             status_code=0,
@@ -245,11 +237,9 @@ class TestSensorDatabase:
             firmware_version="1.0",
             model="TestModel",
             manufacturer="TestMfg",
-            location="Test Location",
-            latitude=40.0,
-            longitude=-74.0,
-            timezone_str="+00:00"
+            location="Test Location"
         )
+        db1.commit_batch()
         db1.close()
         
         # Create new database instance (default behavior)
@@ -264,9 +254,10 @@ class TestSensorDatabase:
         """Test storing a sensor reading."""
         db = SensorDatabase(self.db_path)
         
-        timestamp = time.time()
-        db.store_reading(
-            timestamp=timestamp,
+        from src.database import SensorReadingSchema
+        
+        reading = SensorReadingSchema(
+            timestamp=datetime.now(timezone.utc).isoformat(),
             sensor_id="TEST001",
             temperature=25.0,
             humidity=50.0,
@@ -275,15 +266,15 @@ class TestSensorDatabase:
             voltage=12.0,
             status_code=0,
             anomaly_flag=False,
-            anomaly_type=None,
             firmware_version="1.0",
             model="TestModel",
             manufacturer="TestMfg",
             location="Test Location",
             latitude=40.0,
             longitude=-74.0,
-            timezone_str="+00:00"
+            original_timezone="+00:00"
         )
+        db.store_reading(reading)
         
         # Verify reading was stored
         readings = db.get_readings(limit=1)
@@ -302,8 +293,8 @@ class TestSensorDatabase:
         
         # Store some readings
         for i in range(5):
-            db.store_reading(
-                timestamp=time.time(),
+            reading = SensorReadingSchema(
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 sensor_id=f"TEST{i:03d}",
                 temperature=25.0 + i,
                 humidity=50.0,
@@ -312,15 +303,15 @@ class TestSensorDatabase:
                 voltage=12.0,
                 status_code=0,
                 anomaly_flag=False,
-                anomaly_type=None,
                 firmware_version="1.0",
                 model="TestModel",
                 manufacturer="TestMfg",
                 location="Test Location",
                 latitude=40.0,
                 longitude=-74.0,
-                timezone_str="+00:00"
+                original_timezone="+00:00"
             )
+            db.store_reading(reading)
         
         # Get unsynced readings
         unsynced = db.get_unsynced_readings(limit=3)
@@ -334,8 +325,8 @@ class TestSensorDatabase:
         db = SensorDatabase(self.db_path)
         
         # Store a reading
-        db.store_reading(
-            timestamp=time.time(),
+        reading = SensorReadingSchema(
+            timestamp=datetime.now(timezone.utc).isoformat(),
             sensor_id="TEST001",
             temperature=25.0,
             humidity=50.0,
@@ -344,15 +335,15 @@ class TestSensorDatabase:
             voltage=12.0,
             status_code=0,
             anomaly_flag=False,
-            anomaly_type=None,
             firmware_version="1.0",
             model="TestModel",
             manufacturer="TestMfg",
             location="Test Location",
             latitude=40.0,
             longitude=-74.0,
-            timezone_str="+00:00"
+            original_timezone="+00:00"
         )
+        db.store_reading(reading)
         
         # Get the reading and mark as synced
         unsynced = db.get_unsynced_readings()
@@ -371,8 +362,8 @@ class TestSensorDatabase:
         db = SensorDatabase(self.db_path)
         
         # Store some readings with different characteristics
-        db.store_reading(
-            timestamp=time.time(),
+        reading1 = SensorReadingSchema(
+            timestamp=datetime.now(timezone.utc).isoformat(),
             sensor_id="SENSOR1",
             temperature=25.0,
             humidity=50.0,
@@ -388,11 +379,12 @@ class TestSensorDatabase:
             location="Location1",
             latitude=40.0,
             longitude=-74.0,
-            timezone_str="+00:00"
+            original_timezone="+00:00"
         )
+        db.store_reading(reading1)
         
-        db.store_reading(
-            timestamp=time.time(),
+        reading2 = SensorReadingSchema(
+            timestamp=datetime.now(timezone.utc).isoformat(),
             sensor_id="SENSOR2",
             temperature=26.0,
             humidity=55.0,
@@ -401,15 +393,15 @@ class TestSensorDatabase:
             voltage=12.5,
             status_code=0,
             anomaly_flag=False,
-            anomaly_type=None,
             firmware_version="1.0",
             model="TestModel",
             manufacturer="TestMfg",
             location="Location2",
             latitude=41.0,
             longitude=-75.0,
-            timezone_str="+00:00"
+            original_timezone="+00:00"
         )
+        db.store_reading(reading2)
         
         stats = db.get_reading_stats()
         
@@ -472,8 +464,8 @@ class TestSensorDatabase:
         db = SensorDatabase(":memory:")
         
         # Store a reading
-        db.store_reading(
-            timestamp=time.time(),
+        reading = SensorReadingSchema(
+            timestamp=datetime.now(timezone.utc).isoformat(),
             sensor_id="MEM001",
             temperature=25.0,
             humidity=50.0,
@@ -482,15 +474,15 @@ class TestSensorDatabase:
             voltage=12.0,
             status_code=0,
             anomaly_flag=False,
-            anomaly_type=None,
             firmware_version="1.0",
             model="MemModel",
             manufacturer="MemMfg",
             location="Memory Location",
             latitude=40.0,
             longitude=-74.0,
-            timezone_str="+00:00"
+            original_timezone="+00:00"
         )
+        db.store_reading(reading)
         
         # Verify reading exists
         readings = db.get_readings(limit=1)

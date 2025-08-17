@@ -44,8 +44,14 @@ class TestAnomalyGenerator:
         assert generator.enabled is True
         assert generator.probability == 0.1
         assert generator.id == "TEST001"
-        assert generator.firmware_version == "1.4.0"
-        assert generator.model == "EnvMonitor-3000"
+        # firmware_version could be enum or string depending on if it matches known values
+        from src.enums import FirmwareVersion
+        if isinstance(generator.firmware_version, FirmwareVersion):
+            assert generator.firmware_version.value == "1.4.0"
+        else:
+            assert generator.firmware_version == "1.4.0"
+        # model could be enum or string
+        assert str(generator.model) == "EnvMonitor-3000" or generator.model == "EnvMonitor-3000"
         assert generator.manufacturer == "SensorTech"
 
     def test_init_missing_sensor_id(self):

@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
+"""
+Data collector utility for aggregating sensor data from multiple databases.
+This is a separate tool for collecting and centralizing data from distributed sensors.
+Not required for basic sensor simulation - only needed for multi-sensor deployments.
+"""
 import argparse
 import glob
 import json
 import logging
 import os
+import signal
 import sqlite3
+import sys
+import threading
 import time
+from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import requests
 
@@ -86,9 +96,72 @@ def collect_from_database(db_path, central_url, batch_size=100):
             conn.close()
 
 
-def scan_and_collect(data_dir, central_url, interval=60):
-    """Scan for databases and collect data from each."""
+class HealthHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for health checks."""
+    
+    def do_GET(self):
+        """Handle GET requests for health status."""
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            
+            health_status = {
+                "status": "healthy",
+                "timestamp": datetime.utcnow().isoformat(),
+                "collector": {
+                    "running": hasattr(self.server, 'collector_running') and self.server.collector_running,
+                    "last_scan": getattr(self.server, 'last_scan_time', None),
+                    "total_synced": getattr(self.server, 'total_synced', 0)
+                }
+            }
+            self.wfile.write(json.dumps(health_status).encode())
+        else:
+            self.send_error(404, "Not Found")
+    
+    def log_message(self, format, *args):
+        """Suppress request logging."""
+        pass
+
+
+def start_health_server(port=8081):
+    """Start a simple health check HTTP server."""
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.collector_running = True
+    server.last_scan_time = None
+    server.total_synced = 0
+    
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    
+    logging.info(f"Health endpoint started on http://0.0.0.0:{port}/health")
+    return server
+
+
+def scan_and_collect(data_dir, central_url, interval=60, max_runtime=None, stop_event=None):
+    """Scan for databases and collect data from each.
+    
+    Args:
+        data_dir: Directory to scan for databases
+        central_url: URL of central collection API
+        interval: Sleep interval between scans
+        max_runtime: Maximum runtime in seconds (None for unlimited)
+        stop_event: Threading event to signal shutdown
+    """
+    start_time = time.time()
+    cycles = 0
+    
     while True:
+        # Check for shutdown signal
+        if stop_event and stop_event.is_set():
+            logging.info("Collector received shutdown signal")
+            break
+            
+        # Check max runtime
+        if max_runtime and (time.time() - start_time) > max_runtime:
+            logging.info(f"Collector reached max runtime of {max_runtime} seconds")
+            break
+            
         try:
             # Find all SQLite databases
             db_files = glob.glob(f"{data_dir}/**/*.db", recursive=True)
@@ -101,18 +174,28 @@ def scan_and_collect(data_dir, central_url, interval=60):
                 # Process each database
                 total_synced = 0
                 for db_path in db_files:
+                    # Check for shutdown during processing
+                    if stop_event and stop_event.is_set():
+                        break
                     synced = collect_from_database(db_path, central_url)
                     total_synced += synced
 
                 logging.info(
                     f"Sync cycle complete. Total records synced: {total_synced}"
                 )
+            
+            cycles += 1
 
         except Exception as e:
             logging.error(f"Error in collection cycle: {e}")
 
-        # Wait for next cycle
-        time.sleep(interval)
+        # Wait for next cycle with interruptible sleep
+        for _ in range(interval):
+            if stop_event and stop_event.is_set():
+                break
+            time.sleep(1)
+    
+    logging.info(f"Collector stopped after {cycles} cycles")
 
 
 def main():
@@ -129,14 +212,57 @@ def main():
     parser.add_argument(
         "--interval", type=int, default=60, help="Collection interval in seconds"
     )
+    parser.add_argument(
+        "--max-runtime", type=int, default=None, help="Maximum runtime in seconds"
+    )
+    parser.add_argument(
+        "--health-port", type=int, default=8081, help="Port for health endpoint"
+    )
     args = parser.parse_args()
 
     setup_logging()
     logging.info(
-        f"Starting collector. Scanning {args.data_dir} every {args.interval} seconds"
+        f"Starting collector: data_dir={args.data_dir}, "
+        f"central_url={args.central_url}, interval={args.interval}s"
     )
-
-    scan_and_collect(args.data_dir, args.central_url, args.interval)
+    
+    # Set up shutdown handling
+    stop_event = threading.Event()
+    
+    def signal_handler(signum, frame):
+        """Handle shutdown signals gracefully."""
+        sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else signum
+        logging.info(f"Received {sig_name} signal, shutting down gracefully...")
+        stop_event.set()
+    
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    # Start health endpoint
+    health_server = None
+    try:
+        health_server = start_health_server(args.health_port)
+    except Exception as e:
+        logging.warning(f"Could not start health server: {e}")
+    
+    # Run collector
+    try:
+        scan_and_collect(
+            args.data_dir, 
+            args.central_url, 
+            args.interval,
+            max_runtime=args.max_runtime,
+            stop_event=stop_event
+        )
+    except KeyboardInterrupt:
+        logging.info("Collector interrupted by user")
+    except Exception as e:
+        logging.error(f"Collector error: {e}", exc_info=True)
+    finally:
+        if health_server:
+            health_server.shutdown()
+        logging.info("Collector shutdown complete")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ import string
 import sys
 import threading
 import time
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 from datetime import datetime
 
 import yaml
@@ -26,103 +26,217 @@ from src.llm_docs import print_llm_documentation, save_llm_documentation
 # Pydantic Models for Configuration (config.yaml)
 
 
+# === Configuration Models (Simplified and Organized) ===
+
+class ParameterRange(BaseModel):
+    """Reusable model for parameter ranges."""
+    min_val: Union[int, float] = Field(alias="min")
+    max_val: Union[int, float] = Field(alias="max")
+
+
 class DatabaseConfig(BaseModel):
+    """Database configuration settings."""
     path: str
+    backup_enabled: bool
+    backup_interval_seconds: Union[int, float]
+    max_backup_size_mb: Union[int, float]
+    compression_enabled: bool
+    
+    @field_validator('backup_interval_seconds')
+    def validate_backup_interval(cls, v):
+        if v < 60:
+            raise ValueError("backup_interval_seconds must be at least 60")
+        return v
+    
+    @field_validator('max_backup_size_mb')
+    def validate_max_backup_size(cls, v):
+        if v <= 0:
+            raise ValueError("max_backup_size_mb must be positive")
+        return v
 
 
-class LoggingConfig(BaseModel):
-    level: str
-    format: str
-    file: Optional[str] = None
-    console_output: bool
+class SimulationSettings(BaseModel):
+    """Simulation and runtime settings."""
+    interval_seconds: Union[int, float]
+    replicas_count: Optional[int] = 1
+    
+    # Location randomization
+    random_location_enabled: bool = False
+    latitude_range: Optional[List[Union[int, float]]] = None
+    longitude_range: Optional[List[Union[int, float]]] = None
+    location_update_interval: Optional[Union[int, float]] = None
+    
+    # Dynamic reloading
+    dynamic_reload_enabled: bool = False
+    reload_check_interval: Union[int, float] = 5
+    
+    @field_validator('interval_seconds')
+    def validate_interval(cls, v):
+        if v <= 0:
+            raise ValueError("interval_seconds must be positive")
+        return v
+    
+    @field_validator('replicas_count')
+    def validate_replicas(cls, v):
+        if v is not None and v < 1:
+            raise ValueError("replicas_count must be at least 1")
+        return v
+    
+    @field_validator('latitude_range')
+    def validate_latitude(cls, v):
+        if v is not None:
+            if len(v) != 2:
+                raise ValueError("latitude_range must have exactly 2 values")
+            if not (-90 <= v[0] <= v[1] <= 90):
+                raise ValueError("latitude_range must be within [-90, 90]")
+        return v
+    
+    @field_validator('longitude_range')
+    def validate_longitude(cls, v):
+        if v is not None:
+            if len(v) != 2:
+                raise ValueError("longitude_range must have exactly 2 values")
+            if not (-180 <= v[0] <= v[1] <= 180):
+                raise ValueError("longitude_range must be within [-180, 180]")
+        return v
 
 
-class RandomLocationConfig(BaseModel):
-    enabled: bool = False
-    cities_file: Optional[str] = None
-    gps_variation: Optional[Union[int, float]] = None  # Added, in meters
-    number_of_cities: Optional[int] = None  # Added based on user example
-
-
-class SimulationConfig(BaseModel):
-    readings_per_second: Union[int, float]
-    run_time_seconds: Union[int, float]
-
-
-class ReplicasConfig(BaseModel):
-    count: int
-    prefix: str
-    start_index: int
-
-
-class ParameterDetail(BaseModel):
-    mean: Union[int, float]
-    std_dev: Union[int, float]
-    min_val: Union[int, float] = Field(alias="min")  # Allow 'min' in YAML
-    max_val: Union[int, float] = Field(alias="max")  # Allow 'max' in YAML
-
-
-class NormalParametersConfig(BaseModel):
-    temperature: ParameterDetail
-    vibration: ParameterDetail
-    humidity: ParameterDetail
-    pressure: ParameterDetail
-    voltage: ParameterDetail
-
-
-class AnomaliesConfig(BaseModel):
-    enabled: bool
-    probability: Union[int, float]
-    types: Optional[Dict[str, Any]] = None  # Keeping types flexible as before
-
-
-class MonitoringConfig(BaseModel):
-    enabled: bool
-    host: str
-    port: int
-
-
-class DynamicReloadingConfig(BaseModel):
-    enabled: bool
-    check_interval_seconds: Union[int, float]
+class SensorParameters(BaseModel):
+    """Sensor parameter configuration including normal ranges and anomalies."""
+    # Normal parameter ranges
+    temperature: ParameterRange
+    vibration: ParameterRange
+    humidity: ParameterRange
+    pressure: ParameterRange
+    voltage: ParameterRange
+    
+    # Anomaly settings
+    anomalies_enabled: bool = False
+    anomaly_probability: Union[int, float] = 0.1
+    anomaly_types: Optional[Dict[str, Any]] = None
 
 
 class AppConfig(BaseModel):
-    version: Optional[int] = 1  # Config version, defaults to 1 if not specified
+    """Main application configuration."""
+    version: Optional[int] = 1
+    
+    # Core configurations
     database: DatabaseConfig
-    logging: LoggingConfig
-    random_location: RandomLocationConfig
-    simulation: Optional[SimulationConfig] = None
-    replicas: Optional[ReplicasConfig] = None
-    sensor: Optional[Dict[str, Any]] = None  # Keeping sensor flexible
-    normal_parameters: Optional[NormalParametersConfig] = None
-    anomalies: Optional[AnomaliesConfig] = None
-    monitoring: Optional[MonitoringConfig] = None
-    dynamic_reloading: Optional[DynamicReloadingConfig] = None
-    # If 'valid_configurations' is a legitimate field, add it here.
-    # For now, assuming it's not, Pydantic will error if it's present.
-
-    model_config = {
-        "extra": "forbid"
-    }  # Forbid any extra fields not defined in the model
+    simulation: SimulationSettings
+    parameters: SensorParameters
+    
+    # Logging
+    log_level: str = "INFO"
+    log_file: str = "logs/sensor.log"
+    
+    # Monitoring
+    monitoring_enabled: bool = False
+    monitoring_host: str = "0.0.0.0"
+    monitoring_port: int = 8080
+    
+    # Legacy/flexible fields
+    sensor: Optional[Dict[str, Any]] = None
+    
+    model_config = {"extra": "forbid"}
+    
+    @field_validator('log_level')
+    def validate_log_level(cls, v):
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if v.upper() not in valid_levels:
+            raise ValueError(f"log level must be one of {valid_levels}")
+        return v.upper()
     
     @model_validator(mode='after')
     def validate_version_requirements(self):
-        """Validate that required fields are present based on config version."""
+        """Validate version-specific requirements."""
         if self.version >= 2:
-            # Version 2 and above requires monitoring section
-            if self.monitoring is None:
-                raise ValueError(
-                    f"Config version {self.version} requires 'monitoring' section. "
-                    "Please add a monitoring section or use version: 1 for backward compatibility."
-                )
-            # Version 2 and above requires dynamic_reloading section
-            if self.dynamic_reloading is None:
-                raise ValueError(
-                    f"Config version {self.version} requires 'dynamic_reloading' section. "
-                    "Please add a dynamic_reloading section or use version: 1 for backward compatibility."
-                )
+            if not self.monitoring_enabled:
+                logging.warning(f"Config version {self.version} expects monitoring to be enabled")
         return self
+
+
+# Helper function to convert old config format to new format
+def migrate_config_format(raw_config: Dict) -> Dict:
+    """Migrate old config format to simplified format."""
+    # Handle database config migration
+    db_config = raw_config.get("database", {})
+    if "backup_interval_hours" in db_config:
+        db_config["backup_interval_seconds"] = db_config.pop("backup_interval_hours", 24) * 3600
+    if "max_backup_size_mb" not in db_config:
+        db_config["max_backup_size_mb"] = 100  # Default 100MB
+    if "compression_enabled" not in db_config:
+        db_config["compression_enabled"] = False  # Default no compression
+        
+    migrated = {
+        "version": raw_config.get("version", 1),
+        "database": db_config,
+        "log_level": raw_config.get("logging", {}).get("level", "INFO"),
+        "log_file": raw_config.get("logging", {}).get("file", "logs/sensor.log"),
+    }
+    
+    # Migrate simulation settings
+    sim_settings = {}
+    if "simulation" in raw_config:
+        # Keep readings_per_second if present (don't convert to interval_seconds)
+        if "readings_per_second" in raw_config["simulation"]:
+            sim_settings["interval_seconds"] = 1.0 / raw_config["simulation"]["readings_per_second"]
+        else:
+            sim_settings["interval_seconds"] = raw_config["simulation"].get("interval_seconds", 1)
+    if "replicas" in raw_config:
+        sim_settings["replicas_count"] = raw_config["replicas"].get("count", 1)
+    
+    # Migrate random location
+    if "random_location" in raw_config:
+        rl = raw_config["random_location"]
+        sim_settings["random_location_enabled"] = rl.get("enabled", False)
+        sim_settings["latitude_range"] = rl.get("latitude_range")
+        sim_settings["longitude_range"] = rl.get("longitude_range")
+        sim_settings["location_update_interval"] = rl.get("update_interval_seconds")
+    
+    # Migrate dynamic reloading
+    if "dynamic_reloading" in raw_config:
+        dr = raw_config["dynamic_reloading"]
+        sim_settings["dynamic_reload_enabled"] = dr.get("enabled", False)
+        sim_settings["reload_check_interval"] = dr.get("check_interval_seconds", 5)
+    
+    migrated["simulation"] = sim_settings
+    
+    # Migrate parameters
+    params = {}
+    if "normal_parameters" in raw_config:
+        params.update(raw_config["normal_parameters"])
+    if "anomalies" in raw_config:
+        an = raw_config["anomalies"]
+        params["anomalies_enabled"] = an.get("enabled", False)
+        params["anomaly_probability"] = an.get("probability", 0.1)
+        params["anomaly_types"] = an.get("types")
+    
+    # Set default parameters if not provided
+    if "temperature" not in params:
+        params["temperature"] = {"min": 20, "max": 30}
+    if "humidity" not in params:
+        params["humidity"] = {"min": 30, "max": 70}
+    if "pressure" not in params:
+        params["pressure"] = {"min": 1000, "max": 1020}
+    if "vibration" not in params:
+        params["vibration"] = {"min": 0, "max": 10}
+    if "voltage" not in params:
+        params["voltage"] = {"min": 3.2, "max": 3.4}
+        
+    migrated["parameters"] = params
+    
+    # Migrate monitoring
+    if "monitoring" in raw_config:
+        mon = raw_config["monitoring"]
+        migrated["monitoring_enabled"] = mon.get("enabled", False)
+        migrated["monitoring_host"] = mon.get("host", "0.0.0.0")
+        migrated["monitoring_port"] = mon.get("port", 8080)
+    
+    # Keep sensor settings as-is
+    if "sensor" in raw_config:
+        migrated["sensor"] = raw_config["sensor"]
+    
+    return migrated
 
 
 # Pydantic Models for Identity (node_identity.json)
@@ -251,7 +365,7 @@ class IdentityData(BaseModel):
 
 
 def load_config(config_path: str) -> Dict:
-    """Load configuration from YAML file and validate its structure using Pydantic."""
+    """Load configuration from YAML file and validate its structure."""
     try:
         with open(config_path, "r") as f:
             raw_config_data = yaml.safe_load(f)
@@ -259,30 +373,81 @@ def load_config(config_path: str) -> Dict:
             logging.error(f"Config file {config_path} content must be a dictionary.")
             raise ValueError("Config file content must be a dictionary.")
 
-        # Log config version for debugging
-        config_version = raw_config_data.get("version", 1)
-        logging.info(f"Loading config file version: {config_version}")
+        # Check if this is old format that needs migration
+        needs_migration = any(key in raw_config_data for key in [
+            "logging", "random_location", "normal_parameters", 
+            "anomalies", "monitoring", "dynamic_reloading", "replicas"
+        ])
         
-        # If version 1 (or missing), ensure monitoring and dynamic_reloading have defaults
-        if config_version == 1:
-            if "monitoring" not in raw_config_data:
-                logging.info("Config version 1: Adding default monitoring section")
-                raw_config_data["monitoring"] = {
-                    "enabled": False,
-                    "host": "0.0.0.0",
-                    "port": 8080,
-                    "metrics_interval_seconds": 60
-                }
-            if "dynamic_reloading" not in raw_config_data:
-                logging.info("Config version 1: Adding default dynamic_reloading section")
-                raw_config_data["dynamic_reloading"] = {
-                    "enabled": False,
-                    "check_interval_seconds": 5
-                }
+        if needs_migration:
+            logging.info("Migrating old config format to new simplified format")
+            
+            # Store original simulation for later use
+            original_simulation = raw_config_data.get("simulation", {})
+            
+            config_data = migrate_config_format(raw_config_data)
+            
+            # Add defaults for version 1 configs
+            if config_data.get("version", 1) == 1:
+                config_data.setdefault("monitoring_enabled", False)
+                config_data.setdefault("monitoring_host", "0.0.0.0")
+                config_data.setdefault("monitoring_port", 8080)
+        else:
+            config_data = raw_config_data
+            original_simulation = raw_config_data.get("simulation", {})
 
-        # Validate and parse using Pydantic model
-        app_config = AppConfig(**raw_config_data)
-        return app_config.model_dump(by_alias=True)  # Convert Pydantic model to dict
+        # Validate using new Pydantic model
+        app_config = AppConfig(**config_data)
+        
+        # Convert back to dict format expected by rest of code
+        result = app_config.model_dump(by_alias=True)
+        
+        # Restructure to match old format for backward compatibility
+        # But keep original simulation settings
+        restructured = {
+            "version": result["version"],
+            "database": result["database"],
+            "logging": {
+                "level": result["log_level"],
+                "file": result["log_file"]
+            },
+            # Use original simulation config if available, otherwise reconstruct
+            "simulation": original_simulation if original_simulation else {
+                "interval_seconds": result["simulation"]["interval_seconds"]
+            },
+            "replicas": {
+                "count": result["simulation"].get("replicas_count", 1)
+            },
+            "random_location": {
+                "enabled": result["simulation"].get("random_location_enabled", False),
+                "latitude_range": result["simulation"].get("latitude_range", [-90, 90]),
+                "longitude_range": result["simulation"].get("longitude_range", [-180, 180]),
+                "update_interval_seconds": result["simulation"].get("location_update_interval", 60)
+            },
+            "normal_parameters": {
+                k: v for k, v in result["parameters"].items()
+                if k in ["temperature", "humidity", "pressure", "vibration", "voltage"]
+            },
+            "anomalies": {
+                "enabled": result["parameters"].get("anomalies_enabled", False),
+                "probability": result["parameters"].get("anomaly_probability", 0.1),
+                "types": result["parameters"].get("anomaly_types")
+            },
+            "monitoring": {
+                "enabled": result["monitoring_enabled"],
+                "host": result["monitoring_host"],
+                "port": result["monitoring_port"]
+            },
+            "dynamic_reloading": {
+                "enabled": result["simulation"].get("dynamic_reload_enabled", False),
+                "check_interval_seconds": result["simulation"].get("reload_check_interval", 5)
+            }
+        }
+        
+        if result.get("sensor"):
+            restructured["sensor"] = result["sensor"]
+            
+        return restructured
 
     except FileNotFoundError:
         logging.error(f"Configuration file not found: {config_path}")
@@ -291,11 +456,8 @@ def load_config(config_path: str) -> Dict:
         logging.error(f"Error parsing YAML from configuration file {config_path}: {e}")
         raise
     except ValidationError as e:
-        # Pydantic's ValidationError provides detailed error messages
         logging.error(f"Invalid configuration in {config_path}:\n{e}")
-        raise ValueError(
-            f"Invalid configuration: {e}"
-        )  # Re-raise as ValueError to match previous behavior if needed
+        raise ValueError(f"Invalid configuration: {e}")
     except Exception as e:
         logging.error(f"Error loading configuration file {config_path}: {str(e)}")
         raise
@@ -750,33 +912,17 @@ def file_watcher_thread(
             logger.error(f"File watcher: Unexpected error for {file_path}: {e}")
             # Avoid tight loop on unexpected errors
 
-        stop_event.wait(check_interval)
+        # Use shorter intervals to be more responsive to shutdown
+        wait_intervals = 10
+        interval = check_interval / wait_intervals
+        for _ in range(wait_intervals):
+            if stop_event.wait(interval):
+                break  # Stop event was set
     logger.info(f"File watcher: Thread for {file_path} is stopping.")
 
 
-def signal_handler(signum, frame):
-    """Handle termination signals."""
-    sig_name = signal.Signals(signum).name if signum in signal.Signals._value2member_map_ else str(signum)
-    logging.critical(f"RECEIVED SIGNAL: {sig_name} ({signum})")
-    logging.critical("Process is being terminated by external signal")
-    if signum == signal.SIGTERM:
-        logging.critical("This is typically from 'docker stop' or container timeout")
-    elif signum == signal.SIGINT:
-        logging.critical("This is typically from Ctrl+C or user interruption")
-    elif signum == signal.SIGHUP:
-        logging.critical("Terminal disconnected or session ended")
-    sys.exit(128 + signum)  # Exit with standard signal exit code
-
 def main():
     """Main function to run the sensor simulator."""
-    
-    # Register signal handlers early
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-    try:
-        signal.signal(signal.SIGHUP, signal_handler)
-    except:
-        pass  # SIGHUP might not be available on all platforms
 
     # Argument parsing
     parser = argparse.ArgumentParser(description="Sensor Log Generator")
@@ -907,16 +1053,45 @@ def main():
     stop_watcher_event = None
     shutdown_requested = False
 
+    # Track signal count for forced exit
+    signal_count = 0
+    
     # Set up signal handler for graceful shutdown
     def signal_handler(signum, frame):
-        nonlocal shutdown_requested, simulator, stop_watcher_event
+        nonlocal shutdown_requested, simulator, stop_watcher_event, signal_count
+        
+        signal_count += 1
+        
+        # Force exit on third signal
+        if signal_count >= 3:
+            logging.critical("Received 3 signals, forcing immediate exit")
+            sys.exit(1)
+        
+        # Prevent multiple signal handling
+        if shutdown_requested:
+            logging.warning(f"Already shutting down (signal {signal_count}/3)")
+            return
+            
         sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else signum
         logging.info(f"Received {sig_name} signal, initiating graceful shutdown...")
         shutdown_requested = True
+        
+        # Stop components
         if simulator:
-            simulator.stop()
+            try:
+                simulator.stop()
+            except Exception as e:
+                logging.error(f"Error stopping simulator: {e}")
+        
         if stop_watcher_event:
-            stop_watcher_event.set()
+            try:
+                stop_watcher_event.set()
+            except Exception as e:
+                logging.error(f"Error stopping watchers: {e}")
+        
+        # Raise KeyboardInterrupt to break out of blocking calls
+        if signal_count == 1:
+            raise KeyboardInterrupt("Signal received")
     
     # Register signal handlers
     signal.signal(signal.SIGTERM, signal_handler)
@@ -1024,8 +1199,59 @@ def main():
         else:
             logging.info("Dynamic reloading is disabled.")
 
+        # Perform startup health checks
+        logging.info("Performing startup health checks...")
+        
+        # 1. Check database is writable
+        try:
+            test_reading_count = simulator.database.get_database_stats()["total_readings"]
+            logging.info(f"✓ Database is accessible (contains {test_reading_count} readings)")
+        except Exception as e:
+            logging.error(f"✗ Database health check failed: {e}")
+            raise RuntimeError(f"Database is not accessible: {e}")
+        
+        # 2. Check disk space availability
+        try:
+            import shutil
+            db_path = config_manager.get_database_config().get("path", "data/sensor_data.db")
+            db_dir = os.path.dirname(os.path.abspath(db_path))
+            stat = shutil.disk_usage(db_dir)
+            free_gb = stat.free / (1024**3)
+            min_required_gb = 0.1  # Require at least 100MB free
+            if free_gb < min_required_gb:
+                raise RuntimeError(f"Insufficient disk space: {free_gb:.2f}GB free, need {min_required_gb}GB")
+            logging.info(f"✓ Disk space available ({free_gb:.2f}GB free)")
+        except Exception as e:
+            if "Insufficient disk space" in str(e):
+                logging.error(f"✗ {e}")
+                raise
+            logging.warning(f"⚠ Could not check disk space: {e}")
+        
+        # 3. Validate monitoring connectivity (if enabled)
+        monitoring_config = config_manager.config.get("monitoring", {})
+        if monitoring_config.get("enabled", False):
+            try:
+                import socket
+                host = monitoring_config.get("host", "0.0.0.0")
+                port = monitoring_config.get("port", 8080)
+                # Just check if port is available (not in use)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                result = sock.connect_ex(("127.0.0.1" if host == "0.0.0.0" else host, port))
+                sock.close()
+                if result == 0:
+                    logging.warning(f"⚠ Monitoring port {port} is already in use")
+                else:
+                    logging.info(f"✓ Monitoring port {port} is available")
+            except Exception as e:
+                logging.warning(f"⚠ Could not verify monitoring port: {e}")
+        
+        logging.info("Health checks completed. Starting simulation...")
+        
         # Track start time for diagnostics
         start_time = time.time()
+        logging.info(f"ABOUT TO CALL simulator.run() - simulator exists: {simulator is not None}")
+        logging.info(f"Simulator config: run_time={simulator.run_time_seconds}, readings_per_second={simulator.readings_per_second}")
         simulator.run()
         
         # Check if simulator stopped early
@@ -1039,27 +1265,30 @@ def main():
                 logging.critical(f"Error rate: {simulator.error_count/max(simulator.readings_count, 1)*100:.2f}%")
 
     except (KeyboardInterrupt, SystemExit):
-        logging.info("Main: Simulation interrupted.")
+        logging.info("Main: Simulation interrupted by signal.")
+        shutdown_requested = True
         if simulator:
-            simulator.stop()  # Gracefully stop simulator if possible
+            simulator.stop()  # Gracefully stop simulator
+        if stop_watcher_event:
+            stop_watcher_event.set()  # Stop file watchers
     except Exception as e:
         logging.critical(f"Main: CRITICAL UNHANDLED EXCEPTION: {e}", exc_info=True)
         logging.critical("This should never happen - please report this issue!")
     finally:
         logging.info("Main: Beginning shutdown sequence...")
+        
+        # Stop file watchers
         if stop_watcher_event:
             logging.info("Main: Signaling watcher threads to stop...")
             stop_watcher_event.set()
+            
+            # Give threads a short time to finish
             for thread in watcher_threads:
                 if thread.is_alive():
-                    logging.info(
-                        f"Main: Waiting for watcher thread {thread.name} to join..."
-                    )
-                    thread.join(timeout=5)  # Wait for threads to finish
+                    logging.debug(f"Main: Waiting for watcher thread {thread.name}...")
+                    thread.join(timeout=1.0)  # Short timeout for responsive shutdown
                     if thread.is_alive():
-                        logging.warning(
-                            f"Main: Watcher thread {thread.name} did not join in time."
-                        )
+                        logging.debug(f"Main: Watcher thread {thread.name} still running, abandoning.")
 
         # Simulator's own cleanup (like DB close) happens in its run() finally block.
         logging.info("Main: Shutdown complete.")

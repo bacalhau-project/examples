@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .enums import AnomalyType, ParameterType
+from .enums import AnomalyType, FirmwareVersion, Model, ParameterType
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +43,20 @@ class AnomalyGenerator:
                 f"Invalid firmware version: {firmware_val}. "
                 f"Must be a valid semantic version (e.g., 1.0.0, 2.1.3-beta, 1.0.0+build123)"
             )
-        self.firmware_version = firmware_val
+        # Try to convert to enum if possible, otherwise keep as string
+        try:
+            self.firmware_version = FirmwareVersion(firmware_val)
+        except (ValueError, KeyError):
+            # Not a known enum value, keep as string for flexibility
+            self.firmware_version = firmware_val
 
         model_val = device_info.get("model") or identity.get("model")
-        # Accept any string as model
-        self.model = model_val
+        # Try to convert to enum if possible, otherwise keep as string
+        try:
+            self.model = Model(model_val)
+        except (ValueError, KeyError):
+            # Not a known enum value, keep as string for flexibility
+            self.model = model_val
 
         manufacturer_val = device_info.get("manufacturer") or identity.get("manufacturer")
         if not manufacturer_val:
@@ -104,12 +113,17 @@ class AnomalyGenerator:
         # Adjust probability based on firmware version
         adjusted_probability = self.probability
 
+        # Handle both enum and string firmware versions
+        fw_version = self.firmware_version
+        if hasattr(fw_version, 'value'):
+            fw_version = fw_version.value
+            
         # Firmware 1.4 has higher anomaly probability
-        if self.firmware_version == "1.4" or self.firmware_version == "1.4.0":
+        if fw_version in ["1.4", "1.4.0"]:
             adjusted_probability *= 1.5  # 50% more anomalies
 
         # Firmware 1.5 has lower anomaly probability
-        elif self.firmware_version == "1.5" or self.firmware_version == "1.5.0":
+        elif fw_version in ["1.5", "1.5.0"]:
             adjusted_probability *= 0.7  # 30% fewer anomalies
 
         # Adjust based on manufacturer
@@ -241,17 +255,45 @@ class AnomalyGenerator:
         # Create a copy of the reading
         modified = reading.copy()
 
-        # Apply a spike (multiply by a factor between 1.5 and 3)
-        # For firmware 1.3, spikes are more severe
-        if self.firmware_version == FirmwareVersion.V1_4:
-            spike_factor = random.uniform(1.8, 3.5)
+        # Apply a spike using standard deviations
+        # Get the normal parameters for this metric to calculate proper spike
+        normal_params = self.config.get("normal_parameters", {}).get(param.value, {})
+        current_value = reading[param.value]
+        
+        if "mean" in normal_params and "std_dev" in normal_params:
+            mean = normal_params["mean"]
+            std_dev = normal_params["std_dev"]
+            
+            # Generate spike 2-3 standard deviations away from mean
+            # For firmware 1.4, spikes are more severe
+            if self.firmware_version == FirmwareVersion.V1_4:
+                spike_magnitude = random.uniform(2.5, 3.5) * std_dev
+            else:
+                spike_magnitude = random.uniform(2.0, 3.0) * std_dev
+            
+            # 50% chance of positive or negative spike
+            if random.random() < 0.5:
+                spike_value = mean + spike_magnitude
+            else:
+                spike_value = mean - spike_magnitude
+                
+            # Ensure the spike stays within sensor physical limits if defined
+            min_val = normal_params.get("min", float("-inf"))
+            max_val = normal_params.get("max", float("inf"))
+            spike_value = max(min_val, min(spike_value, max_val))
         else:
-            spike_factor = random.uniform(1.5, 3.0)
-
-        if random.random() < 0.5:  # 50% chance of negative spike
-            spike_factor = 1 / spike_factor
-
-        modified[param.value] = reading[param.value] * spike_factor
+            # Fallback to multiplicative factor if std_dev not available
+            if self.firmware_version == FirmwareVersion.V1_4:
+                spike_factor = random.uniform(1.8, 3.5)
+            else:
+                spike_factor = random.uniform(1.5, 3.0)
+            
+            if random.random() < 0.5:  # 50% chance of negative spike
+                spike_factor = 1 / spike_factor
+                
+            spike_value = current_value * spike_factor
+        
+        modified[param.value] = spike_value
 
         return modified, True, AnomalyType.SPIKE
 
