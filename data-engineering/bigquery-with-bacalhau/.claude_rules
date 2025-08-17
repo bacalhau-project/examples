@@ -1,0 +1,50 @@
+# Claude Development Rules for this Directory
+
+## Virtual Environment Usage
+- **ALWAYS** use the virtual environment at `.venv/` for all Python operations
+- **NEVER** use `uv` or global Python installations for testing or running code
+- **ALWAYS** activate the virtual environment before running tests, scripts, or Python commands
+
+## Test Execution
+- Run tests using: `source .venv/bin/activate && python -m pytest tests/ -v`
+- For individual test files: `source .venv/bin/activate && python -m pytest tests/test_file.py -v`
+- For specific test classes: `source .venv/bin/activate && python -m pytest tests/test_file.py::TestClass -v`
+
+## Python Dependencies
+- Install new dependencies with: `source .venv/bin/activate && pip install package_name`
+- Update requirements with: `source .venv/bin/activate && pip freeze > requirements.txt`
+- Never install packages globally or with uv when working in this directory
+
+## Commands to Use
+```bash
+# Activate virtual environment (always do this first)
+source .venv/bin/activate
+
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test category
+python -m pytest tests/test_basic.py -v
+python -m pytest tests/test_integration.py -v -s  # -s for BigQuery output
+
+# Run the unified processor
+python bigquery-exporter/log_processor_unified.py
+
+# Install dependencies
+pip install package_name
+
+# Update requirements
+pip freeze > requirements.txt
+```
+
+## BigQuery Integration Tests
+- Integration tests are skipped by default (require credentials)
+- To run integration tests: ensure config.yaml has valid project_id and credentials_path
+- Use CREDENTIALS_FILE environment variable to override credentials path
+- Alternatively, set GOOGLE_APPLICATION_CREDENTIALS environment variable
+
+## File Organization
+- Tests in `tests/` directory
+- Main processor: `bigquery-exporter/log_processor_unified.py`
+- Configuration: `bigquery-exporter/config.yaml`
+- Utilities: `utility_scripts/` directory

@@ -1,23 +1,84 @@
-# Databricks with Bacalhau - Wind Turbine Data Pipeline
+# Environmental Sensor Data Pipeline with Databricks and Bacalhau
 
-A production-ready data pipeline that collects sensor data from distributed wind turbines, processes it through multiple stages, and stores it in Databricks Unity Catalog for analytics.
+A production-ready data pipeline for processing environmental sensor data (temperature, humidity, pressure, vibration, voltage) with real-time anomaly detection, multi-stage transformation, and Databricks Unity Catalog integration.
 
-## Overview
+## 🚀 Quick Start
 
-This project simulates a global wind turbine fleet generating sensor data (temperature, humidity, pressure, voltage) that flows through a multi-stage pipeline:
+**For complete setup and demo instructions, see: [`MASTER_SETUP_AND_DEMO.md`](MASTER_SETUP_AND_DEMO.md)**
 
-1. **Edge Collection**: SQLite databases on each turbine collect sensor readings
-2. **S3 Staging**: Data is uploaded to S3 buckets for different processing stages
-3. **Databricks Processing**: Auto Loader ingests data into Unity Catalog tables
-4. **Analytics**: Processed data is available for querying and analysis
+This is the single, authoritative guide that will take you from zero to a fully working demo.
 
-### Architecture
+## 📁 Project Structure
 
 ```
-Wind Turbines → SQLite → S3 Buckets → Databricks Auto Loader → Unity Catalog
-                          ↓
-                    (raw, validated, enriched, aggregated)
+.
+├── MASTER_SETUP_AND_DEMO.md    # ⭐ START HERE - Complete setup guide
+├── .env.example                 # Environment configuration template
+├── databricks-notebooks/        # Databricks AutoLoader notebooks
+│   └── setup-and-run-autoloader.py  # Main AutoLoader notebook
+├── databricks-uploader/         # Data validation and upload service
+│   ├── sqlite_to_databricks_uploader.py
+│   ├── environmental_sensor_models.py  # Pydantic models for sensor data
+│   ├── environmental_transformer.py    # Data transformation logic
+│   └── pipeline_manager.py
+├── scripts/                     # Automation and utility scripts
+│   ├── validate-env.sh         # Validate environment configuration
+│   ├── create-all-buckets.sh   # Create S3 buckets
+│   ├── seed-buckets-for-autoloader.py  # Seed buckets with sample data
+│   ├── fix-external-locations-individual.py  # Fix external location URLs
+│   ├── turbo-delete-buckets.py # Fast bucket deletion
+│   ├── clean-all-data.sh       # Clean bucket contents
+│   ├── start-environmental-sensor.sh  # Start environmental sensor
+│   └── run-anomaly-demo.sh     # Run complete demo
+├── docs/                        # Additional documentation
+│   ├── DEVELOPMENT_RULES.md
+│   ├── ENVIRONMENT_SETUP.md
+│   └── QUICK_START_CHECKLIST.md
+└── jobs/                        # Bacalhau job specifications
+    └── databricks-uploader-job.yaml
 ```
+
+## 🎯 Key Features
+
+- **Multi-Stage Pipeline**: Raw → Validated → Anomalies → Schematized → Aggregated data flow
+- **Anomaly Detection**: Physics-based validation for wind turbine data
+- **Real-Time Processing**: Streaming ingestion with Databricks AutoLoader
+- **Schema Evolution**: Automatic schema inference and validation
+- **Unity Catalog**: Enterprise governance and data management
+- **Containerized Services**: Docker-based sensors and uploaders
+
+## 🔧 Architecture
+
+```mermaid
+graph LR
+    A[Sensor] --> B[SQLite]
+    B --> C[Uploader]
+    C --> D{Validator}
+    D -->|Valid| E[Validated S3]
+    D -->|Invalid| F[Anomalies S3]
+    E --> G[AutoLoader]
+    F --> G
+    G --> H[Databricks]
+    H --> I[Unity Catalog]
+```
+
+## 📊 Pipeline Stages
+
+1. **Raw Data**: All sensor readings as received
+2. **Validated Data**: Readings that pass physics validation
+3. **Anomalies**: Readings that violate physics rules
+4. **Schematized Data**: Structured with enforced schema
+5. **Aggregated Data**: Analytics-ready summaries
+
+## 🚦 Anomaly Detection Rules
+
+The system detects anomalies in environmental sensor data:
+- **Temperature anomalies**: Values outside -20°C to 60°C range
+- **Humidity anomalies**: Values outside 5% to 95% range  
+- **Pressure anomalies**: Values outside 950-1050 hPa range
+- **Vibration anomalies**: Values exceeding 10 mm/s²
+- **Voltage anomalies**: Values outside 20-25V range
+- **Sensor-flagged anomalies**: Records with anomaly_flag = 1 from sensor
 
 ## Prerequisites
 
@@ -26,359 +87,239 @@ Wind Turbines → SQLite → S3 Buckets → Databricks Auto Loader → Unity Cat
 - AWS Account with S3 access
 - Databricks Workspace with Unity Catalog enabled
 - `uv` package manager (`pip install uv`)
+- Bacalhau CLI v1.5.0+
 
-## Quick Start
+## 🏃 Complete Setup Process
 
-### 1. Clone and Setup Environment
+### Phase 1: Environment Setup
+
+1. **Clone and Configure**:
+```bash
+# Clone the repository
+git clone <repo-url>
+cd databricks-with-bacalhau
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+2. **Validate Configuration**:
+```bash
+./scripts/validate-env.sh
+```
+
+### Phase 2: AWS Infrastructure
+
+1. **Create S3 Buckets**:
+```bash
+./scripts/create-all-buckets.sh
+```
+
+This creates all required buckets:
+- `expanso-raw-data-{region}`
+- `expanso-validated-data-{region}`
+- `expanso-anomalies-data-{region}`
+- `expanso-schematized-data-{region}`
+- `expanso-aggregated-data-{region}`
+- `expanso-checkpoints-{region}`
+- `expanso-metadata-{region}`
+
+2. **Setup IAM Role**:
+```bash
+./scripts/create-databricks-iam-role.sh
+./scripts/update-iam-role-for-new-buckets.sh
+```
+
+### Phase 3: Databricks Setup
+
+1. **Setup Unity Catalog**:
+```bash
+cd scripts
+uv run -s setup-unity-catalog-storage.py
+```
+
+2. **Fix External Locations** (Critical!):
+```bash
+# External locations may have wrong URLs - fix them
+uv run -s fix-external-locations-individual.py
+```
+
+3. **Seed Buckets with Sample Data**:
+```bash
+# AutoLoader needs sample files to infer schemas
+uv run -s seed-buckets-for-autoloader.py
+```
+
+4. **Upload and Run AutoLoader Notebook**:
+```bash
+uv run -s upload-and-run-notebook.py \
+  --notebook ../databricks-notebooks/setup-and-run-autoloader.py
+```
+
+### Phase 4: Run the Demo
+
+1. **Start Environmental Sensor**:
+```bash
+# Normal sensor (no anomalies)
+./scripts/start-environmental-sensor.sh 300
+
+# With anomalies (25% probability)
+./scripts/start-environmental-sensor.sh 300 --with-anomalies
+```
+
+2. **Monitor Processing**:
+   - Open Databricks workspace
+   - Navigate to the uploaded notebook
+   - Watch as data flows through all 5 pipeline stages
+   - View anomalies being detected and routed
+
+3. **Query Results**:
+```sql
+-- View ingested data
+SELECT * FROM expanso_catalog.sensor_data.sensor_readings_ingestion;
+
+-- View detected anomalies
+SELECT * FROM expanso_catalog.sensor_data.sensor_readings_anomalies;
+
+-- View aggregated metrics
+SELECT * FROM expanso_catalog.sensor_data.sensor_readings_aggregated;
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues and Solutions
+
+1. **AutoLoader Schema Inference Error**:
+   - **Cause**: Empty buckets
+   - **Solution**: Run `scripts/seed-buckets-for-autoloader.py`
+
+2. **UNAUTHORIZED_ACCESS Error**:
+   - **Cause**: External locations pointing to wrong bucket URLs
+   - **Solution**: Run `scripts/fix-external-locations-individual.py`
+
+3. **Permission Denied on External Locations**:
+   - **Cause**: IAM role not updated for new buckets
+   - **Solution**: Run `scripts/update-iam-role-for-new-buckets.sh`
+
+4. **No Data Flowing**:
+   - **Cause**: Checkpoints preventing reprocessing
+   - **Solution**: Clean checkpoints with `scripts/clean-all-data.sh`
+
+### Verification Scripts
 
 ```bash
-git clone https://github.com/bacalhau-project/bacalhau-examples.git
-cd bacalhau-examples/data-engineering/databricks-with-bacalhau
+# Check bucket structure
+./scripts/check-bucket-structure.sh
 
-# Create .env file with this exact content:
-cat > .env << 'EOF'
-# Databricks Configuration
-DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
-DATABRICKS_TOKEN=your-databricks-token-here
-DATABRICKS_WAREHOUSE_ID=your-warehouse-id-here
-DATABRICKS_CATALOG=expanso_databricks_workspace
-DATABRICKS_SCHEMA=sensor_readings
+# Verify Databricks setup
+cd scripts && uv run -s verify-databricks-setup.py
 
-# AWS Configuration
-AWS_REGION=us-west-2
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-S3_BUCKET_PREFIX=expanso
+# List external locations
+uv run --with databricks-sdk --with python-dotenv python3 -c "
+from databricks.sdk import WorkspaceClient
+from dotenv import load_dotenv
+import os
+from pathlib import Path
 
-# Pipeline Configuration
-UPLOAD_INTERVAL=60
-BATCH_SIZE=500
-STATE_DIR=./state
-SQLITE_PATH=./sample-sensor/data/sensor_data.db
-TIMESTAMP_COL=timestamp
+load_dotenv(Path('.').parent / '.env')
+w = WorkspaceClient(host=os.getenv('DATABRICKS_HOST'), token=os.getenv('DATABRICKS_TOKEN'))
 
-# Sensor Configuration
-SENSOR_ID=TURBINE_001
-SENSOR_LOCATION=US-East Wind Farm
-SENSOR_INTERVAL=5
-EOF
+print('External Locations:')
+for loc in w.external_locations.list():
+    if 'expanso' in loc.name.lower():
+        print(f'  {loc.name}: {loc.url}')
+"
 ```
 
-### 2. Create Storage Credential (One-time UI Setup)
+## 📈 Monitoring
 
-This is the ONLY step that requires the Databricks UI:
+### Key Metrics to Track
 
-1. Go to your Databricks workspace: https://dbc-ae5355ab-8b4e.cloud.databricks.com
-2. Navigate to **Catalog** → **External Data** → **Storage Credentials**
-3. Click **Create credential**
-4. Fill in:
-   - **Name**: `expanso-databricks-s3-credential-us-west-2`
-   - **Type**: AWS IAM Role
-   - **IAM Role ARN**: `arn:aws:iam::767397752906:role/databricks-unity-catalog-expanso-role`
-5. Click **Create**
+- **Ingestion Rate**: Files/second being processed
+- **Anomaly Rate**: Percentage of readings flagged
+- **Processing Latency**: Time from sensor to Unity Catalog
+- **Schema Evolution**: New columns being added
 
-### 3. Verify Infrastructure
+### Dashboard Queries
+
+```sql
+-- Anomaly detection rate
+SELECT 
+    DATE(processing_timestamp) as date,
+    COUNT(*) as anomaly_count,
+    AVG(wind_speed) as avg_wind_speed,
+    AVG(power_output) as avg_power
+FROM expanso_catalog.sensor_data.sensor_readings_anomalies
+GROUP BY DATE(processing_timestamp)
+ORDER BY date DESC;
+
+-- Pipeline throughput
+SELECT 
+    stage,
+    COUNT(*) as record_count,
+    MAX(processing_timestamp) as last_update
+FROM (
+    SELECT 'ingestion' as stage, processing_timestamp 
+    FROM expanso_catalog.sensor_data.sensor_readings_ingestion
+    UNION ALL
+    SELECT 'validated' as stage, processing_timestamp 
+    FROM expanso_catalog.sensor_data.sensor_readings_validated
+    UNION ALL
+    SELECT 'anomalies' as stage, processing_timestamp 
+    FROM expanso_catalog.sensor_data.sensor_readings_anomalies
+)
+GROUP BY stage;
+```
+
+## 🧹 Cleanup
+
+To completely clean up all resources:
 
 ```bash
-# Check all infrastructure is ready
-uv run -s databricks-setup.py verify
+# Delete all S3 buckets and contents
+./scripts/turbo-delete-buckets.py
+
+# Clean Unity Catalog objects
+cd scripts && uv run -s cleanup-unity-catalog.py
+
+# Remove local artifacts
+rm -rf .flox/run .env *.db *.log
 ```
 
-### 4. Setup Databricks Resources
+## 📚 Additional Resources
 
-```bash
-# Create catalog, schemas, and tables
-uv run -s databricks-setup.py setup
+- [Development Rules](docs/DEVELOPMENT_RULES.md) - Coding standards and best practices
+- [Environment Setup Guide](docs/ENVIRONMENT_SETUP.md) - Detailed environment configuration
+- [Quick Start Checklist](docs/QUICK_START_CHECKLIST.md) - Step-by-step verification
+- [Master Setup Guide](MASTER_SETUP_AND_DEMO.md) - Complete walkthrough
 
-# Upload and run Auto Loader notebook
-uv run -s databricks-setup.py upload \
-  --notebook databricks-notebooks/01-setup-autoloader-demo.py
-```
+## 🤝 Contributing
 
-### 5. Start Data Pipeline
+1. Follow the coding standards in `docs/DEVELOPMENT_RULES.md`
+2. Always use `uv` for Python scripts
+3. Test with both normal and anomaly data
+4. Update documentation for any new features
 
-```bash
-# Start sensor data generation (local testing)
-./start-sensor-local.sh
+## 📝 License
 
-# Start uploader to Databricks
-./start-uploader.sh
-```
+MIT License - See LICENSE file for details
 
-### 6. Query Data
+## 🆘 Support
 
-```bash
-# Run sample queries
-uv run -s databricks-setup.py query
+For issues or questions:
+1. Check the [Master Setup Guide](MASTER_SETUP_AND_DEMO.md)
+2. Review troubleshooting section above
+3. Open an issue with:
+   - Environment details (`.env` without secrets)
+   - Error messages and logs
+   - Steps to reproduce
 
-# Or use SQL directly
-uv run -s databricks-setup.py query \
-  --sql "SELECT * FROM expanso_databricks_workspace.sensor_readings.raw_sensor_readings LIMIT 10"
+## 🎉 Success Indicators
 
-# Check pipeline status
-uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db history
-```
-
-### 7. Teardown
-
-```bash
-# Remove all data and resources
-uv run -s databricks-setup.py teardown
-```
-
-## Development
-
-### Local Development
-
-1. **Sensor Simulator**
-   ```bash
-   cd databricks-uploader
-   uv run -s create_test_sensor_data.py
-   ```
-
-2. **Test Upload Pipeline**
-   ```bash
-   uv run -s test-upload.py
-   ```
-
-3. **Run Tests**
-   ```bash
-   # Lint code
-   ruff check . && ruff format .
-   
-   # Run unit tests
-   python -m pytest databricks-uploader/
-   ```
-
-### Container Development
-
-1. **Build Container**
-   ```bash
-   ./build.sh
-   ```
-
-2. **Run in Container**
-   ```bash
-   docker run -v $(pwd)/state:/app/state \
-              -v $(pwd)/.env:/app/.env \
-              ghcr.io/bacalhau-project/databricks-uploader:latest
-   ```
-
-3. **Deploy to AWS Spot**
-   ```bash
-   cd spot
-   # Assumes you have AWS SSO configured
-   ../../bigquery-with-bacalhau/spot-sso.sh deploy \
-     --instance-type t3.medium \
-     --region us-west-2
-   ```
-
-## Project Structure
-
-```
-.
-├── databricks-setup.py          # Main CLI tool for all operations
-├── databricks-notebooks/        # Databricks notebooks
-│   ├── 01-setup-autoloader-demo.py
-│   └── 02-teardown-all.py
-├── databricks-uploader/         # Core pipeline code
-│   ├── sqlite_to_databricks_uploader.py
-│   ├── pipeline_manager.py
-│   └── create_test_sensor_data.py
-├── scripts/                     # Infrastructure setup scripts
-├── spot/                        # AWS Spot instance configs
-└── state/                       # Pipeline state tracking
-
-```
-
-## Configuration
-
-### Environment Variables
-
-Key variables in `.env`:
-- `DATABRICKS_HOST`: Your Databricks workspace URL
-- `DATABRICKS_TOKEN`: Personal access token
-- `DATABRICKS_WAREHOUSE_ID`: SQL warehouse ID
-- `DATABRICKS_CATALOG`: Unity Catalog name (default: expanso_databricks_workspace)
-- `AWS_REGION`: AWS region for S3 buckets
-- `S3_BUCKET_PREFIX`: Prefix for bucket names
-
-### Pipeline Configuration
-
-Edit `databricks-uploader-config.yaml` to configure:
-- Upload intervals
-- Batch sizes
-- Table mappings
-- Processing modes
-
-## Pipeline Stages
-
-1. **Raw**: Unprocessed sensor data → `raw_sensor_readings` table
-2. **Validated**: Schema-validated data → `validated_sensor_readings` table  
-3. **Enriched**: Data with added metadata → `enriched_sensor_readings` table
-4. **Aggregated**: Summarized metrics → `aggregated_sensor_metrics` table
-
-## Monitoring
-
-```bash
-# Check pipeline status
-uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db history
-
-# View current pipeline mode
-uv run -s pipeline_manager.py --db sample-sensor/data/sensor_data.db get
-
-# Monitor upload progress
-watch -n 5 'cat state/s3-uploader/upload_state.json | jq .'
-
-# Check Databricks table row counts
-uv run -s databricks-setup.py query \
-  --sql "SELECT 'raw' as table, COUNT(*) as count FROM expanso_databricks_workspace.sensor_data.raw_sensor_readings
-         UNION ALL
-         SELECT 'validated', COUNT(*) FROM expanso_databricks_workspace.sensor_data.validated_sensor_readings"
-```
-
-### Databricks UI Monitoring
-- **Workflows**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/#/jobs
-- **SQL Warehouses**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/sql/warehouses
-- **Unity Catalog**: https://dbc-ae5355ab-8b4e.cloud.databricks.com/data
-
-## Building a Bacalhau Cluster
-
-### Deploy Bacalhau Cluster with AWS Spot Instances
-
-1. **Prepare Credentials**:
-   ```bash
-   # Generate additional-commands.sh with embedded credentials
-   uv run -s generate-additional-commands.py
-   ```
-
-2. **Deploy the Cluster**:
-   ```bash
-   # Use the spot-sso.sh wrapper for AWS authentication
-   ../bigquery-with-bacalhau/spot-sso.sh deploy \
-     --target aws \
-     --region us-west-2 \
-     --instance-type t3.medium \
-     --nodes 3 \
-     --spot \
-     --additional-commands ./additional-commands.sh
-   ```
-
-3. **Verify Deployment**:
-   ```bash
-   # Check cluster status
-   ../bigquery-with-bacalhau/spot-sso.sh status
-   
-   # SSH into a node to verify credentials
-   ../bigquery-with-bacalhau/spot-sso.sh ssh node-1
-   ls -la /bacalhau_data/credentials/
-   ```
-
-4. **Submit Jobs to Cluster**:
-   ```bash
-   # Submit databricks uploader job
-   bacalhau job run jobs/databricks-uploader-job.yaml
-   
-   # Check job status
-   bacalhau job list
-   bacalhau job describe <job-id>
-   ```
-
-### Cluster Configuration
-
-The cluster will:
-- Use AWS Spot instances for cost savings
-- Deploy credentials to `/bacalhau_data/credentials/` on each node
-- Source credentials from `/opt/databricks-credentials.sh`
-- Run the Databricks uploader as a Bacalhau job
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Warehouse does not exist"**
-   - Create a SQL warehouse in Databricks
-   - Update `DATABRICKS_WAREHOUSE_ID` in `.env`
-
-2. **"Access denied to S3"**
-   - Verify AWS credentials: `aws sts get-caller-identity`
-   - Check IAM role has access to `expanso-databricks-*` buckets
-   - Run `uv run -s databricks-setup.py verify`
-
-3. **"Table not found"**
-   - Run setup: `uv run -s databricks-setup.py setup`
-   - Check catalog name matches in `.env`
-
-### Debug Commands
-
-```bash
-# Test Databricks connection
-uv run -s test-databricks-connection.py
-
-# Check AWS credentials and S3 access
-aws sts get-caller-identity
-aws s3 ls s3://expanso-databricks-ingestion-us-west-2/
-
-# View pipeline state
-cat state/s3-uploader/upload_state.json
-
-# Check sensor data generation
-sqlite3 sample-sensor/data/sensor_data.db "SELECT COUNT(*) FROM sensor_readings;"
-
-# View recent sensor readings
-sqlite3 sample-sensor/data/sensor_data.db \
-  "SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 5;"
-```
-
-## Contributing
-
-1. Follow code style: `ruff check . && ruff format .`
-2. Add tests for new features
-3. Update documentation
-4. Use `uv run -s` for all Python scripts
-
-## Full Environment Configuration
-
-Here's the complete `.env` configuration with all available options:
-
-```bash
-# Databricks Configuration
-DATABRICKS_HOST=https://dbc-ae5355ab-8b4e.cloud.databricks.com
-DATABRICKS_TOKEN=dapi1234567890abcdef  # Get from User Settings > Access Tokens
-DATABRICKS_WAREHOUSE_ID=abcd1234efgh5678  # Get from SQL Warehouses page
-DATABRICKS_CATALOG=expanso_databricks_workspace
-DATABRICKS_SCHEMA=sensor_readings
-DATABRICKS_DATABASE=expanso_databricks_workspace.sensor_data
-
-# AWS Configuration  
-AWS_REGION=us-west-2
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-S3_BUCKET_PREFIX=expanso
-S3_BUCKET_RAW=expanso-databricks-ingestion-us-west-2
-S3_BUCKET_VALIDATED=expanso-databricks-validated-us-west-2
-S3_BUCKET_ENRICHED=expanso-databricks-enriched-us-west-2
-S3_BUCKET_AGGREGATED=expanso-databricks-aggregated-us-west-2
-
-# Pipeline Configuration
-UPLOAD_INTERVAL=60  # seconds between uploads
-BATCH_SIZE=500  # records per batch
-STATE_DIR=./state
-SQLITE_PATH=./sample-sensor/data/sensor_data.db
-SQLITE_TABLE_NAME=sensor_readings
-TIMESTAMP_COL=timestamp
-ONCE=false  # set to true for single run
-
-# Sensor Simulator Configuration
-SENSOR_ID=TURBINE_001
-SENSOR_LOCATION=US-East Wind Farm
-SENSOR_MANUFACTURER=Expanso Systems
-SENSOR_MODEL=WT-5000
-SENSOR_FIRMWARE_VERSION=3.2.1
-SENSOR_INTERVAL=5  # seconds between readings
-ANOMALY_PROBABILITY=0.05  # 5% chance of anomalies
-
-# Processing Modes (managed by pipeline_manager.py)
-# PROCESSING_MODE options: raw, schematized, filtered, emergency
-# Use: uv run -s pipeline_manager.py --db sensor_data.db set <mode>
-```
+You know the pipeline is working when:
+- ✅ All 5 S3 buckets have data flowing
+- ✅ Unity Catalog tables are populated
+- ✅ Anomalies are being detected and routed
+- ✅ AutoLoader is processing files continuously
+- ✅ No errors in Databricks notebook execution

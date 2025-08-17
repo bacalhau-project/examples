@@ -8,12 +8,19 @@ bq_reader_credentials.json
 **/MACHINES.json
 
 # Logs
+*.log
+*.log.*
+logs/
 aperitivo_logs.log.*
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
 *.so
 .Python
 env/

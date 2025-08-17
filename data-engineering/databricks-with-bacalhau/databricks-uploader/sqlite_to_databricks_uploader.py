@@ -1,16 +1,22 @@
-#!/usr/bin/env uv run -s
+#!/usr/bin/env -S uv run
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
 #     "boto3>=1.26.0",
 #     "pyyaml>=6.0",
 #     "python-dotenv>=1.0.0",
+#     "pydantic>=2.0.0",
+#     "jsonschema>=4.0.0",
+#     "requests>=2.31.0",
+#     "python-dateutil>=2.8",
 # ]
 # ///
 """
-SQLite to S3 Uploader for Databricks
+SQLite to S3 Uploader with Anomaly Detection
 
-Reads data from SQLite and uploads to S3 buckets for Databricks Auto Loader ingestion.
+Reads data from SQLite, validates against schema, and uploads to parallel S3 streams:
+- Valid records → validated bucket
+- Invalid records → anomalies bucket
 """
 
 import argparse
@@ -22,14 +28,19 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 import boto3
 import yaml
+from pydantic import ValidationError
 
-# Import pipeline manager for atomic pipeline type management
+# Import pipeline manager and validation modules
 sys.path.append(str(Path(__file__).parent))
 from pipeline_manager import PipelineManager
+from sqlite_to_json_transformer import SensorDataTransformer
+from sensor_data_models import WindTurbineSensorData, validate_sensor_data
 
 
 class SQLiteToS3Uploader:
@@ -55,6 +66,8 @@ class SQLiteToS3Uploader:
             "ingestion": "ingestion",
             "schematized": "validated",
             "validated": "validated",
+            "anomaly": "anomalies",
+            "anomalies": "anomalies",
             "filtered": "enriched",
             "enriched": "enriched",
             "aggregated": "aggregated",
@@ -62,6 +75,10 @@ class SQLiteToS3Uploader:
 
         # Load node identity for lineage tracking
         self.node_id = self._load_node_identity()
+
+        # Set up s3_buckets from config - copy ALL buckets
+        if "s3_configuration" in self.config and "buckets" in self.config["s3_configuration"]:
+            self.config["s3_buckets"] = self.config["s3_configuration"]["buckets"].copy()
         self.uploader_version = "0.8.1"  # Version with metadata support
         self.container_id = os.getenv("HOSTNAME", socket.gethostname())
 
@@ -238,10 +255,10 @@ class SQLiteToS3Uploader:
 
         # Define all pipeline types and their corresponding buckets
         pipeline_buckets = {
-            "raw": f"{bucket_prefix}-databricks-ingestion-{region}",
-            "validated": f"{bucket_prefix}-databricks-validated-{region}",
-            "enriched": f"{bucket_prefix}-databricks-enriched-{region}",
-            "aggregated": f"{bucket_prefix}-databricks-aggregated-{region}",
+            "raw": f"{bucket_prefix}-raw-data-{region}",
+            "validated": f"{bucket_prefix}-validated-data-{region}",
+            "enriched": f"{bucket_prefix}-schematized-data-{region}",
+            "aggregated": f"{bucket_prefix}-aggregated-data-{region}",
         }
 
         # Upload sample to each bucket
@@ -341,8 +358,33 @@ class SQLiteToS3Uploader:
         if os.getenv("SQLITE_TABLE"):
             print(f"   ⚠️  Overriding SQLite table with env var: {os.getenv('SQLITE_TABLE')}")
             config["sqlite_table"] = os.getenv("SQLITE_TABLE")
-        if os.getenv("AWS_REGION"):
-            config["s3_configuration"]["region"] = os.getenv("AWS_REGION")
+
+        # Build S3 configuration from environment variables
+        region = os.getenv("AWS_REGION", "us-west-2")
+        bucket_prefix = os.getenv("S3_BUCKET_PREFIX", "expanso")
+
+        # Dynamically build bucket names from prefix
+        if "s3_configuration" not in config:
+            config["s3_configuration"] = {}
+
+        config["s3_configuration"]["region"] = region
+        config["s3_configuration"]["prefix"] = bucket_prefix
+
+        # Build bucket names dynamically
+        config["s3_configuration"]["buckets"] = {
+            "ingestion": f"{bucket_prefix}-raw-data-{region}",
+            "raw": f"{bucket_prefix}-raw-data-{region}",
+            "validated": f"{bucket_prefix}-validated-data-{region}",
+            "anomalies": f"{bucket_prefix}-anomalies-{region}",
+            "enriched": f"{bucket_prefix}-schematized-data-{region}",
+            "schematized": f"{bucket_prefix}-schematized-data-{region}",
+            "aggregated": f"{bucket_prefix}-aggregated-data-{region}",
+            "checkpoints": f"{bucket_prefix}-checkpoints-{region}",
+            "metadata": f"{bucket_prefix}-metadata-{region}",
+        }
+
+        print(f"   🪣 Using bucket prefix: {bucket_prefix}")
+        print(f"   🌎 AWS Region: {region}")
 
         return config
 
@@ -408,10 +450,135 @@ class SQLiteToS3Uploader:
         conn.close()
         return rows
 
-    def _upload_to_s3(self, data: list, bucket: str, dry_run: bool = False) -> dict[str, Any]:
+    def _validate_and_split_data(
+        self, data: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Validate data and split into valid/invalid streams.
+
+        Returns:
+            Tuple of (valid_records, invalid_records)
+        """
+        valid_records = []
+        invalid_records = []
+
+        for record in data:
+            # Transform record for wind turbine format if needed
+            if self.current_pipeline_type == "schematized":
+                # Map SQLite fields to wind turbine schema
+                turbine_record = self._map_to_turbine_schema(record)
+                is_valid, error_msg = validate_sensor_data(turbine_record)
+
+                if is_valid:
+                    valid_records.append(turbine_record)
+                else:
+                    # Add error info to record
+                    turbine_record["validation_error"] = error_msg
+                    turbine_record["original_record"] = record
+                    invalid_records.append(turbine_record)
+            else:
+                # For non-schematized pipelines, all records are "valid"
+                valid_records.append(record)
+
+        return valid_records, invalid_records
+
+    def _map_to_turbine_schema(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Map SQLite sensor record to wind turbine schema format."""
+        # Extract sensor ID parts (e.g., SENSOR_TEX_001 -> 001)
+        sensor_id = record.get("sensor_id", "SENSOR_UNK_0000")
+        parts = sensor_id.split("_")
+        location = parts[1] if len(parts) > 1 else "UNK"
+        turbine_num = parts[2] if len(parts) > 2 else "0000"
+
+        # Convert sensor data to wind turbine metrics
+        # Map sensor vibration to wind speed (0-0.3 vibration -> 0-30 m/s wind)
+        vibration = float(record.get("vibration", 0))
+        wind_speed = min(vibration * 100, 30.0)  # Cap at 30 m/s
+
+        # Map voltage to power output (24V -> 2400W)
+        voltage = float(record.get("voltage", 24.0))
+        power_output = voltage * 100  # Simple scaling
+
+        # Convert pressure from Pa to hPa
+        pressure_pa = float(record.get("pressure", 101325))
+        pressure_hpa = pressure_pa / 100
+
+        return {
+            "timestamp": record.get("timestamp", datetime.now(UTC).isoformat()),
+            "turbine_id": f"WT-{turbine_num.zfill(4)}",
+            "site_id": f"SITE-{location[:3].upper()}",
+            "temperature": float(record.get("temperature", 20.0)),
+            "humidity": float(record.get("humidity", 50.0)),
+            "pressure": pressure_hpa,  # Now in hPa
+            "wind_speed": wind_speed,
+            "wind_direction": 180.0,  # Default direction
+            "rotation_speed": wind_speed * 3,  # Proportional to wind speed
+            "blade_pitch": 15.0,  # Default blade pitch
+            "generator_temp": float(record.get("temperature", 20.0)) + 20,  # Generator runs hotter
+            "power_output": power_output,
+            "vibration_x": vibration,  # Use same value for all axes
+            "vibration_y": vibration,
+            "vibration_z": vibration,
+        }
+
+    def _upload_parallel(
+        self,
+        valid_data: List[Dict[str, Any]],
+        invalid_data: List[Dict[str, Any]],
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Upload valid and invalid data to different buckets in parallel.
+
+        Returns:
+            Combined upload results
+        """
+        results = {}
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = []
+
+            # Upload valid data to validated bucket
+            if valid_data:
+                bucket = self.config["s3_buckets"]["validated"]
+                future = executor.submit(self._upload_to_s3, valid_data, bucket, dry_run, "valid")
+                futures.append(("valid", future))
+
+            # Upload invalid data to anomalies bucket
+            if invalid_data:
+                bucket = self.config["s3_buckets"]["anomalies"]
+                future = executor.submit(
+                    self._upload_to_s3, invalid_data, bucket, dry_run, "anomaly"
+                )
+                futures.append(("anomaly", future))
+
+            # Collect results
+            for data_type, future in futures:
+                try:
+                    result = future.result(timeout=60)
+                    results[data_type] = result
+
+                    if result.get("success"):
+                        count = result.get("record_count", 0)
+                        if count > 0:  # Only print if we actually uploaded something
+                            bucket = result.get("bucket", "unknown")
+                            key = result.get("key", "unknown")
+                            print(f"✅ Uploaded {count} {data_type} records to s3://{bucket}/{key}")
+                    else:
+                        print(f"❌ Failed to upload {data_type} records: {result.get('error')}")
+
+                except Exception as e:
+                    print(f"❌ Error uploading {data_type} data: {e}")
+                    results[data_type] = {"success": False, "error": str(e)}
+
+        return results
+
+    def _upload_to_s3(
+        self, data: list, bucket: str, dry_run: bool = False, record_type: str = "data"
+    ) -> dict[str, Any]:
         """Upload data to S3 bucket with metadata for lineage tracking."""
         if not data:
-            return {"success": True, "key": None}
+            return {"success": True, "key": None, "record_count": 0, "bucket": bucket}
 
         # Generate unique job ID and timestamp
         upload_timestamp = datetime.now(UTC)
@@ -425,8 +592,8 @@ class SQLiteToS3Uploader:
         s3_key = f"{timestamp_str}_{unique_id}.json"
 
         if dry_run:
-            print(f"[DRY RUN] Would upload {len(data)} records to s3://{bucket}/{data_key}")
-            return {"success": True, "key": data_key, "job_id": job_id}
+            print(f"[DRY RUN] Would upload {len(data)} records to s3://{bucket}/{s3_key}")
+            return {"success": True, "key": s3_key, "job_id": job_id}
 
         try:
             # Get data time range
@@ -465,7 +632,7 @@ class SQLiteToS3Uploader:
             return {"success": False, "error": str(e)}
 
     def run_once(self, dry_run: bool = False):
-        """Run one upload cycle."""
+        """Run one upload cycle with optional validation."""
         # Check for pipeline type changes
         pipeline_config = self.pipeline_manager.get_current_config()
         if pipeline_config["type"] != self.current_pipeline_type:
@@ -497,6 +664,50 @@ class SQLiteToS3Uploader:
             return
 
         print(f"📊 Found {len(data)} new records")
+
+        # Check if we're in schematized pipeline (triggers validation)
+        if self.current_pipeline_type == "schematized":
+            print(f"🔬 Running validation for schematized pipeline...")
+
+            # Validate and split data
+            valid_data, invalid_data = self._validate_and_split_data(data)
+
+            print(f"   ✅ Valid records: {len(valid_data)}")
+            print(f"   ⚠️  Invalid records: {len(invalid_data)}")
+
+            if valid_data or invalid_data:
+                # Upload both streams in parallel
+                results = self._upload_parallel(valid_data, invalid_data, dry_run)
+
+                # Update state if successful
+                if not dry_run and any(r.get("success") for r in results.values()):
+                    timestamp_col = self.config["timestamp_col"]
+                    last_record = data[-1]
+                    new_timestamp = last_record.get(timestamp_col)
+
+                    state["last_timestamp"] = new_timestamp
+                    state["last_upload"] = new_timestamp
+                    state["records_uploaded"] = state.get("records_uploaded", 0) + len(data)
+                    state["valid_records"] = state.get("valid_records", 0) + len(valid_data)
+                    state["invalid_records"] = state.get("invalid_records", 0) + len(invalid_data)
+                    state["last_pipeline_type"] = self.current_pipeline_type
+
+                    self._save_state(state)
+
+                    # Record execution in pipeline manager
+                    self.pipeline_manager.record_execution(
+                        pipeline_type=self.current_pipeline_type,
+                        records_processed=len(data),
+                        s3_locations=[
+                            f"s3://{r.get('bucket', 'unknown')}/{r['key']}"
+                            for r in results.values()
+                            if r.get("key") and r.get("bucket")
+                        ],
+                        job_id=results.get("valid", {}).get("job_id", "unknown"),
+                    )
+        else:
+            # Regular single-stream upload for non-schematized pipelines
+            print(f"📤 Standard upload for {self.current_pipeline_type} pipeline")
 
         # Get bucket based on current pipeline type
         bucket_key = self.pipeline_bucket_map.get(self.current_pipeline_type, "ingestion")
@@ -561,7 +772,12 @@ class SQLiteToS3Uploader:
             try:
                 self.run_once()
             except Exception as e:
+                import traceback
+
                 print(f"❌ Error in upload cycle: {e}")
+                print(f"   Error type: {type(e).__name__}")
+                if self.verbose:
+                    traceback.print_exc()
 
             print(f"💤 Sleeping for {interval} seconds...")
             time.sleep(interval)

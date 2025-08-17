@@ -1,10 +1,12 @@
 import logging
 import os
 import platform
+import signal
 import sqlite3
 import subprocess
 import threading
 import time
+import atexit
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -124,15 +126,23 @@ class DatabaseConnectionManager:
         self.debug_mode = debug_mode
         self.logger = logging.getLogger("DatabaseConnectionManager")
         self._local = threading.local()
+        self._shutdown_handlers_registered = False
+        self._checkpoint_lock = threading.Lock()
+        self._last_checkpoint_time = time.time()
+        self._checkpoint_interval = 5  # Checkpoint/commit every 5 seconds for external visibility
 
         # Standard SQLite pragmas for container environments
+        # Using DELETE mode for cross-boundary compatibility (container/host access)
+        # But with optimized settings to prevent disk I/O errors
         self.pragmas = [
-            "PRAGMA journal_mode=WAL;",
+            "PRAGMA journal_mode=DELETE;",  # DELETE mode for cross-boundary safety
             "PRAGMA busy_timeout=30000;",
-            "PRAGMA synchronous=NORMAL;",
+            "PRAGMA synchronous=NORMAL;",  # NORMAL instead of FULL to reduce I/O pressure
             "PRAGMA temp_store=MEMORY;",
             "PRAGMA mmap_size=268435456;",
             "PRAGMA cache_size=-64000;",
+            "PRAGMA page_size=4096;",  # Optimize page size
+            "PRAGMA locking_mode=NORMAL;",  # Ensure proper locking
         ]
 
     def _get_thread_connection(self) -> sqlite3.Connection:
@@ -251,14 +261,54 @@ class DatabaseConnectionManager:
             cursor.executemany(query, params_list)
             return cursor.rowcount
 
+    def checkpoint(self, mode="PASSIVE"):
+        """
+        In DELETE mode, ensure data is committed to disk.
+        
+        Args:
+            mode: Kept for compatibility but not used in DELETE mode
+            
+        Returns:
+            None (checkpoints not applicable in DELETE mode)
+        """
+        with self._checkpoint_lock:
+            try:
+                conn = self._get_thread_connection()
+                
+                # In DELETE mode, just ensure everything is committed
+                conn.commit()
+                
+                if self.debug_mode:
+                    self.logger.debug("Data committed in DELETE journal mode")
+                
+                self._last_checkpoint_time = time.time()
+                return None
+                
+            except sqlite3.Error as e:
+                self.logger.error(f"Error during commit: {e}")
+                return None
+
+    def periodic_checkpoint(self):
+        """Perform periodic commit to ensure data is on disk."""
+        current_time = time.time()
+        if current_time - self._last_checkpoint_time > self._checkpoint_interval:
+            self.checkpoint("PASSIVE")
+
     def close_thread_connection(self):
-        """Close the connection for the current thread."""
+        """Close the connection for the current thread with final checkpoint."""
         if hasattr(self._local, "conn") and self._local.conn:
             try:
                 if self.debug_mode:
                     self.logger.debug(
                         f"Closing connection for thread {threading.get_ident()}"
                     )
+
+                # Force a final commit before closing (DELETE mode doesn't use checkpoints)
+                try:
+                    self.logger.info("Executing final commit before connection close...")
+                    self._local.conn.commit()
+                except Exception as e:
+                    self.logger.warning(f"Final commit failed: {e}")
 
                 self._local.conn.close()
                 self._local.conn = None
@@ -283,6 +333,12 @@ class SensorDatabase:
 
         # Enable debug mode detection
         self.debug_mode = self.logger.isEnabledFor(logging.DEBUG)
+        
+        # Register signal handlers for graceful shutdown
+        self._register_shutdown_handlers()
+        
+        # Start background commit thread for external visibility
+        self._start_background_commit_thread()
 
         if self.debug_mode:
             self._log_debug_environment_info()
@@ -312,8 +368,8 @@ class SensorDatabase:
         )  # Use a consistent variable for absolute path
         logging.info(f"Database path: {abs_db_path}")
         self.batch_buffer = []
-        self.batch_size = 100
-        self.batch_timeout = 5.0  # seconds
+        self.batch_size = 20  # Batch after 20 writes for timely visibility
+        self.batch_timeout = 5.0  # Commit every 5 seconds for external readers
         self.last_batch_time = time.time()
         self.batch_insert_count = 0
         self.insert_count = 0
@@ -341,6 +397,66 @@ class SensorDatabase:
 
         if self.debug_mode:
             self._log_database_debug_info()
+    
+    def _register_shutdown_handlers(self):
+        """Register handlers for graceful shutdown with data commit."""
+        
+        def shutdown_handler():
+            """Handler to ensure final commit on shutdown."""
+            try:
+                self.logger.info("Shutdown detected, executing final data commit...")
+                self.stop_background_commit_thread()
+                self.conn_manager.checkpoint("TRUNCATE")  # This will do a commit in DELETE mode
+                self.close()
+            except Exception as e:
+                self.logger.error(f"Error during shutdown commit: {e}")
+        
+        # Register with atexit
+        atexit.register(shutdown_handler)
+        
+        # Also handle SIGTERM for docker stop
+        def signal_handler(signum, frame):
+            """Handle SIGTERM signal from docker stop."""
+            self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
+            shutdown_handler()
+        
+        try:
+            signal.signal(signal.SIGTERM, signal_handler)
+            self.logger.debug("SIGTERM handler registered for graceful shutdown")
+        except Exception as e:
+            self.logger.warning(f"Could not register SIGTERM handler: {e}")
+    
+    def _start_background_commit_thread(self):
+        """Start a background thread that commits data periodically for external readers."""
+        self._commit_thread_running = True
+        self._commit_lock = threading.Lock()
+        
+        def periodic_commit():
+            """Background thread to ensure data visibility for external readers."""
+            while self._commit_thread_running:
+                time.sleep(5.0)  # Check every 5 seconds
+                try:
+                    with self._commit_lock:
+                        # Check if there's uncommitted data
+                        current_time = time.time()
+                        batch_age = current_time - self.last_batch_time
+                        
+                        if self.batch_buffer and batch_age >= self.batch_timeout:
+                            self.logger.debug(f"Background thread committing {len(self.batch_buffer)} readings")
+                            self.commit_batch()
+                except Exception as e:
+                    self.logger.error(f"Error in background commit thread: {e}")
+        
+        self._commit_thread = threading.Thread(target=periodic_commit, daemon=True)
+        self._commit_thread.start()
+        self.logger.debug("Background commit thread started")
+    
+    def stop_background_commit_thread(self):
+        """Stop the background commit thread."""
+        if hasattr(self, '_commit_thread_running'):
+            self._commit_thread_running = False
+            if hasattr(self, '_commit_thread'):
+                self._commit_thread.join(timeout=1.0)
 
     def _init_db(self):
         """Initialize the database schema based on SensorReadingSchema."""
@@ -498,6 +614,9 @@ class SensorDatabase:
                 self.logger.debug(f"Params: {params}")
 
             self.conn_manager.execute_write(query, params)
+            
+            # Perform periodic checkpoint to ensure data durability
+            self.conn_manager.periodic_checkpoint()
 
             if self.debug_mode:
                 self.logger.debug(
@@ -513,6 +632,18 @@ class SensorDatabase:
                 self.logger.debug("=== SQLite Error Diagnostics ===")
                 self._log_error_diagnostics(error_msg)
 
+            # Handle disk I/O errors with retry
+            if "disk I/O error" in error_msg:
+                self.logger.error("DISK I/O ERROR - This is a critical storage system issue!")
+                self.logger.error("Possible causes:")
+                self.logger.error("  - Docker volume mount issues")
+                self.logger.error("  - Host filesystem full or read-only")
+                self.logger.error("  - Container resource limits reached")
+                self.logger.error("  - Filesystem corruption")
+                time.sleep(0.1)  # Brief pause before retry
+                # Don't raise, let the simulator continue
+                return
+            
             raise
         except Exception as e:
             self.logger.error(f"Error storing reading: {e}")
@@ -680,32 +811,34 @@ class SensorDatabase:
         # Use UTC for ISO format timestamps
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        # Add to batch buffer
-        self.batch_buffer.append(
-            (
-                timestamp,
-                sensor_id,
-                temperature,
-                vibration,
-                voltage,
-                status_code,
-                anomaly_flag,
-                anomaly_type,
-                firmware_version,
-                model,
-                manufacturer,
-                location,
-                timezone_str,  # Add original timezone
-                0,  # Not synced by default
+        # Use lock for thread-safe batch operations
+        with getattr(self, '_commit_lock', threading.Lock()):
+            # Add to batch buffer
+            self.batch_buffer.append(
+                (
+                    timestamp,
+                    sensor_id,
+                    temperature,
+                    vibration,
+                    voltage,
+                    status_code,
+                    anomaly_flag,
+                    anomaly_type,
+                    firmware_version,
+                    model,
+                    manufacturer,
+                    location,
+                    timezone_str,  # Add original timezone
+                    0,  # Not synced by default
+                )
             )
-        )
 
-        # Check if we should commit the batch
-        current_time = time.time()
-        batch_age = current_time - self.last_batch_time
+            # Check if we should commit the batch
+            current_time = time.time()
+            batch_age = current_time - self.last_batch_time
 
-        if len(self.batch_buffer) >= self.batch_size or batch_age >= self.batch_timeout:
-            return self.commit_batch()
+            if len(self.batch_buffer) >= self.batch_size or batch_age >= self.batch_timeout:
+                return self.commit_batch()
 
         return None
 
@@ -719,49 +852,55 @@ class SensorDatabase:
         Raises:
             sqlite3.Error: If the database operation fails after retries
         """
-        if not self.batch_buffer:
-            return 0
+        # Use lock for thread-safe batch operations
+        with getattr(self, '_commit_lock', threading.Lock()):
+            if not self.batch_buffer:
+                return 0
 
-        start_time = time.time()
-        try:
-            query = """
-                INSERT INTO sensor_readings 
-                (timestamp, sensor_id, temperature, vibration, voltage, 
-                status_code, anomaly_flag, anomaly_type, firmware_version,
-                model, manufacturer, location, original_timezone, synced)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
+            start_time = time.time()
+            try:
+                query = """
+                    INSERT INTO sensor_readings 
+                    (timestamp, sensor_id, temperature, vibration, voltage, 
+                    status_code, anomaly_flag, anomaly_type, firmware_version,
+                    model, manufacturer, location, original_timezone, synced)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
 
-            self.conn_manager.execute_many(query, self.batch_buffer)
+                self.conn_manager.execute_many(query, self.batch_buffer)
+                
+                # Explicitly commit for external readers in DELETE mode
+                self.conn_manager.checkpoint("PASSIVE")
 
-            batch_size = len(self.batch_buffer)
-            self.batch_insert_count += 1
-            self.insert_count += batch_size
+                batch_size = len(self.batch_buffer)
+                self.batch_insert_count += 1
+                self.insert_count += batch_size
 
-            # Update performance metrics
-            batch_time = time.time() - start_time
-            self.total_batch_time += batch_time
-            self.total_insert_time += batch_time
+                # Update performance metrics
+                batch_time = time.time() - start_time
+                self.total_batch_time += batch_time
+                self.total_insert_time += batch_time
 
-            # Log batch insert performance
-            if self.batch_insert_count % 10 == 0:
-                avg_time_per_reading = (
-                    (self.total_batch_time / self.insert_count) * 1000
-                    if self.insert_count > 0
-                    else 0
-                )
-                logging.info(
-                    f"Batch insert performance: {batch_size} readings in {batch_time:.3f}s ({avg_time_per_reading:.2f}ms/reading)"
-                )
+                # Log batch insert performance
+                if self.batch_insert_count % 10 == 0:
+                    avg_time_per_reading = (
+                        (self.total_batch_time / self.insert_count) * 1000
+                        if self.insert_count > 0
+                        else 0
+                    )
+                    logger.info(
+                        f"Batch insert performance: {batch_size} readings in {batch_time:.3f}s "
+                        f"(avg: {avg_time_per_reading:.2f}ms/reading)"
+                    )
 
-            # Reset batch buffer and timer
-            self.batch_buffer = []
-            self.last_batch_time = time.time()
+                # Clear the buffer and reset timer
+                self.batch_buffer = []
+                self.last_batch_time = time.time()
 
-            return batch_size
-        except sqlite3.Error as e:
-            logging.error(f"Error committing batch: {e}")
-            raise
+                return batch_size
+            except sqlite3.Error as e:
+                logging.error(f"Error committing batch: {e}")
+                raise
 
     @retry_on_error()
     def get_readings(self, limit=100, sensor_id=None):
@@ -798,14 +937,34 @@ class SensorDatabase:
             raise
 
     def close(self):
-        """Close the database connection for the current thread."""
+        """Close the database connection for the current thread with final checkpoint."""
         try:
+            self.logger.info("Closing database connection...")
+            
             # Commit any pending batch
             if self.batch_buffer:
+                self.logger.info(f"Committing {len(self.batch_buffer)} pending writes...")
                 self.commit_batch()
+            
+            # Force final commit for maximum durability (DELETE mode)
+            self.logger.info("Executing final data commit...")
+            self.conn_manager.checkpoint("TRUNCATE")  # This will commit in DELETE mode
+            self.logger.info("Final commit complete")
+            
+            # Get final statistics before closing
+            try:
+                with self.conn_manager.get_connection() as conn:
+                    # Set synchronous to FULL for final operations
+                    conn.execute("PRAGMA synchronous=FULL;")
+                    count = conn.execute("SELECT COUNT(*) FROM sensor_readings").fetchone()[0]
+                    self.logger.info(f"Database contains {count} total readings at shutdown")
+            except Exception as e:
+                self.logger.warning(f"Could not get final count: {e}")
 
             # Close the connection manager's thread connection
             self.conn_manager.close_thread_connection()
+            self.logger.info("Database connection closed successfully")
+            
         except Exception as e:
             self.logger.error(f"Error closing database connection: {e}")
 

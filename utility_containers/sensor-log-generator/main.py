@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "requests",
-#     "numpy",
-#     "pyyaml",
-#     "psutil",
-#     "pytz",
-#     "numpy",
-#     "psutil",
-#     "requests",
-#     "pydantic",
-#     "tenacity",
-# ]
-# ///
 
 import argparse
 import json
@@ -21,9 +6,11 @@ import logging
 import math
 import os
 import random
+import signal
 import string
 import sys
 import threading
+import time
 from typing import Any, Callable, Dict, Optional, Union
 from datetime import datetime
 
@@ -34,6 +21,7 @@ from src.config import ConfigManager
 from src.database import SensorReadingSchema
 from src.location import LocationGenerator
 from src.simulator import SensorSimulator
+from src.llm_docs import print_llm_documentation, save_llm_documentation
 
 # Pydantic Models for Configuration (config.yaml)
 
@@ -766,8 +754,29 @@ def file_watcher_thread(
     logger.info(f"File watcher: Thread for {file_path} is stopping.")
 
 
+def signal_handler(signum, frame):
+    """Handle termination signals."""
+    sig_name = signal.Signals(signum).name if signum in signal.Signals._value2member_map_ else str(signum)
+    logging.critical(f"RECEIVED SIGNAL: {sig_name} ({signum})")
+    logging.critical("Process is being terminated by external signal")
+    if signum == signal.SIGTERM:
+        logging.critical("This is typically from 'docker stop' or container timeout")
+    elif signum == signal.SIGINT:
+        logging.critical("This is typically from Ctrl+C or user interruption")
+    elif signum == signal.SIGHUP:
+        logging.critical("Terminal disconnected or session ended")
+    sys.exit(128 + signum)  # Exit with standard signal exit code
+
 def main():
     """Main function to run the sensor simulator."""
+    
+    # Register signal handlers early
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    try:
+        signal.signal(signal.SIGHUP, signal_handler)
+    except:
+        pass  # SIGHUP might not be available on all platforms
 
     # Argument parsing
     parser = argparse.ArgumentParser(description="Sensor Log Generator")
@@ -793,6 +802,11 @@ def main():
         action="store_true",
         help="Generate a new format identity template with placeholder values and exit.",
     )
+    parser.add_argument(
+        "--llm-docs",
+        action="store_true",
+        help="Output comprehensive LLM documentation and exit.",
+    )
 
     args = parser.parse_args()
 
@@ -801,6 +815,11 @@ def main():
         schema_dict = SensorReadingSchema.model_json_schema()
         schema_json = json.dumps(schema_dict, indent=2)
         print(schema_json)
+        sys.exit(0)
+    
+    if args.llm_docs:
+        # Output LLM documentation
+        print_llm_documentation()
         sys.exit(0)
     
     if args.generate_identity:
@@ -886,6 +905,22 @@ def main():
     simulator = None
     watcher_threads = []
     stop_watcher_event = None
+    shutdown_requested = False
+
+    # Set up signal handler for graceful shutdown
+    def signal_handler(signum, frame):
+        nonlocal shutdown_requested, simulator, stop_watcher_event
+        sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else signum
+        logging.info(f"Received {sig_name} signal, initiating graceful shutdown...")
+        shutdown_requested = True
+        if simulator:
+            simulator.stop()
+        if stop_watcher_event:
+            stop_watcher_event.set()
+    
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         # Load initial configuration
@@ -989,16 +1024,29 @@ def main():
         else:
             logging.info("Dynamic reloading is disabled.")
 
+        # Track start time for diagnostics
+        start_time = time.time()
         simulator.run()
+        
+        # Check if simulator stopped early
+        elapsed = time.time() - start_time
+        expected_runtime = simulator.run_time_seconds
+        if elapsed < expected_runtime * 0.9:  # Allow 10% tolerance
+            logging.critical(f"SIMULATOR STOPPED EARLY!")
+            logging.critical(f"Expected runtime: {expected_runtime}s, Actual: {elapsed:.1f}s")
+            logging.critical(f"Generated {simulator.readings_count} readings, {simulator.error_count} errors")
+            if simulator.error_count > 0:
+                logging.critical(f"Error rate: {simulator.error_count/max(simulator.readings_count, 1)*100:.2f}%")
 
-    except KeyboardInterrupt:
-        logging.info("Main: Simulation interrupted by user.")
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("Main: Simulation interrupted.")
         if simulator:
             simulator.stop()  # Gracefully stop simulator if possible
     except Exception as e:
-        logging.critical(f"Main: Unhandled exception: {e}", exc_info=True)
+        logging.critical(f"Main: CRITICAL UNHANDLED EXCEPTION: {e}", exc_info=True)
+        logging.critical("This should never happen - please report this issue!")
     finally:
-        logging.info("Main: Shutting down...")
+        logging.info("Main: Beginning shutdown sequence...")
         if stop_watcher_event:
             logging.info("Main: Signaling watcher threads to stop...")
             stop_watcher_event.set()

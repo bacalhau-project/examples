@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WindTurbineSensorData",
+  "description": "Schema for wind turbine sensor telemetry data",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "turbine_id",
+    "site_id",
+    "temperature",
+    "humidity",
+    "pressure",
+    "wind_speed",
+    "wind_direction",
+    "rotation_speed",
+    "blade_pitch",
+    "generator_temp",
+    "power_output",
+    "vibration_x",
+    "vibration_y",
+    "vibration_z"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the sensor reading"
+    },
+    "turbine_id": {
+      "type": "string",
+      "pattern": "^WT-[0-9]{4}$",
+      "description": "Unique turbine identifier (format: WT-XXXX)"
+    },
+    "site_id": {
+      "type": "string",
+      "pattern": "^SITE-[A-Z]{3}$",
+      "description": "Site location identifier (format: SITE-XXX)"
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 60,
+      "description": "Ambient temperature in Celsius"
+    },
+    "humidity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Relative humidity percentage"
+    },
+    "pressure": {
+      "type": "number",
+      "minimum": 900,
+      "maximum": 1100,
+      "description": "Atmospheric pressure in hPa"
+    },
+    "wind_speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 50,
+      "description": "Wind speed in meters per second"
+    },
+    "wind_direction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Wind direction in degrees (0-360)"
+    },
+    "rotation_speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 3600,
+      "description": "Rotor rotation speed in RPM"
+    },
+    "blade_pitch": {
+      "type": "number",
+      "minimum": -5,
+      "maximum": 95,
+      "description": "Blade pitch angle in degrees"
+    },
+    "generator_temp": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 120,
+      "description": "Generator temperature in Celsius"
+    },
+    "power_output": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5000,
+      "description": "Power output in kilowatts"
+    },
+    "vibration_x": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "X-axis vibration in mm/s"
+    },
+    "vibration_y": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Y-axis vibration in mm/s"
+    },
+    "vibration_z": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Z-axis vibration in mm/s"
+    },
+    "battery_level": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Battery charge percentage (optional)"
+    },
+    "signal_strength": {
+      "type": "number",
+      "minimum": -120,
+      "maximum": 0,
+      "description": "Signal strength in dBm (optional)"
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{4}$",
+      "description": "Error code if any (optional)"
+    },
+    "maintenance_required": {
+      "type": "boolean",
+      "description": "Maintenance flag (optional)"
+    }
+  },
+  "additionalProperties": false
+}

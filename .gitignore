@@ -74,3 +74,5 @@ model-inference/object-detection-yolo5/videos/video2.mp4
 queuing/agent-container/bacalhau_v1.3.2_linux_amd64.tar.gz
 data-engineering/postgres-with-bacalhau/postgres-uploader/logs/access.log
 todo/socat/input/sst.mnmean.nc
+
+data-engineering/bigquery-with-bacalhau/logs/access.log

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(mv:*)",
+      "Bash(python test:*)",
+      "Bash(python3:*)",
+      "Bash(uv run:*)",
+      "Bash(/Users/daaronch/.local/bin/uv run --no-project python test_basic.py)",
+      "Bash(/Users/daaronch/.local/bin/uv run --with PyYAML --with pandas --with duckdb --with google-cloud-bigquery --no-project python test_basic.py)",
+      "Bash(/Users/daaronch/.local/bin/uv run --with PyYAML --with pandas --with duckdb --with google-cloud-bigquery --no-project python test_smoke.py)",
+      "Bash(./test_basic.py)",
+      "Bash(/Users/daaronch/.local/bin/uv run -s test_basic.py)",
+      "Bash(source:*)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python -m pytest tests/ -v -s --tb=short)",
+      "Bash(python -m pytest tests/ -v -rs)",
+      "Bash(python -m pytest tests/test_integration.py -v -rs)",
+      "Bash(PYTHONPATH=bigquery-exporter:$PYTHONPATH python -m pytest tests/test_integration.py -v -rs)",
+      "Bash(PYTHONPATH=bigquery-exporter:$PYTHONPATH CONFIG_FILE=demo-network/files/config.yaml python -m pytest tests/ -v -rs)",
+      "Bash(CONFIG_FILE=demo-network/files/config.yaml python -m pytest tests/test_basic.py -v -rs)",
+      "Bash(find:*)",
+      "Bash(cp:*)",
+      "Bash(PYTHONPATH=bigquery-uploader:$PYTHONPATH CREDENTIALS_FILE=demo-network/files/config.yaml python -m pytest tests/test_basic.py -v -rs)",
+      "Bash(PYTHONPATH=bigquery-uploader:$PYTHONPATH CREDENTIALS_FILE=demo-network/files/config.yaml python -m pytest tests/test_basic.py::test_config_file_exists -v -rs)",
+      "Bash(ls:*)",
+      "Bash(bq show:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  bigquery-uploader:
+    image: bigquery-uploader:latest
+
+    # Environment variables for configuration
+    environment:
+      # Required: Path to configuration file
+      CONFIG_FILE: /app/config.yaml
+
+      # Required: Path to Google Cloud credentials
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account.json
+
+      # Optional: Override configuration values
+      # PROJECT_ID: your-gcp-project-id
+      # DATASET: log_analytics
+      # NODE_ID: node-001
+      # REGION: us-central1
+
+      # Optional: Override log file path
+      # LOG_FILE: /bacalhau_data/access.log
+
+      # Python settings
+      PYTHONUNBUFFERED: 1
+
+    # Volume mounts
+    volumes:
+      # Mount configuration file (read-only)
+      - ./config.yaml:/app/config.yaml:ro
+
+      # Mount Google Cloud credentials (read-only)
+      - ./credentials/service-account.json:/app/credentials/service-account.json:ro
+
+      # Mount log files directory (read-only)
+      - ./logs:/bacalhau_data:ro
+
+      # Optional: Mount timestamp tracking file for persistent state
+      - ./last_batch_timestamp.json:/app/last_batch_timestamp.json
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+  # Optional: Run multiple instances for different processing modes
+  bigquery-uploader-sanitized:
+    extends: bigquery-uploader
+    environment:
+      CONFIG_FILE: /app/config-sanitized.yaml
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account.json
+      NODE_ID: node-sanitized-001
+    volumes:
+      - ./config-sanitized.yaml:/app/config-sanitized.yaml:ro
+      - ./credentials/service-account.json:/app/credentials/service-account.json:ro
+      - ./logs:/bacalhau_data:ro
+      - ./last_batch_timestamp_sanitized.json:/app/last_batch_timestamp.json
+
+# Optional: External network for communication with other services
+networks:
+  default:
+    driver: bridge

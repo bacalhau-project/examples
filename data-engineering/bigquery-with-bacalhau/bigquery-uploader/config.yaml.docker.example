@@ -1,0 +1,138 @@
+# Example configuration file for BigQuery Uploader Docker container
+# Copy this file to config.yaml and modify for your environment
+
+# Google Cloud Project Configuration
+project_id: "your-gcp-project-id"
+dataset: "log_analytics"
+
+# Node identification
+node_id: "docker-node-001"
+
+# Input log files - these should be mounted at /bacalhau_data
+input_paths:
+  - "/bacalhau_data/access.log"
+  - "/bacalhau_data/error.log"
+  # Add more log files as needed
+
+# Pipeline configuration
+pipeline:
+  # Processing mode - choose one:
+  # - raw: Upload logs as-is without parsing
+  # - schematized: Parse logs into structured format
+  # - sanitized: Parse and anonymize sensitive data (IP addresses)
+  # - aggregated: Create hourly summaries and extract emergency events
+  mode: "sanitized"
+
+# Processing configuration
+processing:
+  # Number of rows to process in each chunk
+  chunk_size: 10000
+
+  # Maximum number of retry attempts for failed operations
+  max_retries: 20
+
+  # Initial retry delay in seconds
+  retry_delay: 1
+
+  # Maximum retry delay in seconds
+  max_retry_delay: 60
+
+  # Use categorical data types for memory efficiency
+  use_categorical: true
+
+  # Continue processing if individual chunks fail
+  continue_on_error: true
+
+# Table names for different processing modes
+tables:
+  raw: "raw_logs"
+  schematized: "log_results"
+  sanitized: "log_results_sanitized"
+  aggregated: "log_aggregates"
+  emergency: "emergency_events"
+
+# Optional metadata to include with uploads
+metadata:
+  region: "us-central1"
+  environment: "production"
+  source: "docker"
+
+# Timestamp tracking configuration
+timestamp_tracking:
+  # Enable tracking of last processed timestamp
+  enabled: true
+
+  # Path to timestamp file (inside container)
+  file_path: "/app/last_batch_timestamp.json"
+
+  # Timestamp field name in logs
+  timestamp_field: "timestamp"
+
+# BigQuery-specific configuration
+bigquery:
+  # Write disposition: WRITE_APPEND, WRITE_TRUNCATE, or WRITE_EMPTY
+  write_disposition: "WRITE_APPEND"
+
+  # Create tables if they don't exist
+  create_if_needed: true
+
+  # Table expiration in days (optional)
+  # table_expiration_days: 90
+
+  # Partition configuration (optional)
+  # partition:
+  #   field: "timestamp"
+  #   type: "DAY"
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+
+  # Include timestamps in log messages
+  include_timestamp: true
+
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Performance tuning (optional)
+performance:
+  # Memory limit warning threshold (MB)
+  memory_warning_threshold: 3072
+
+  # Enable memory profiling
+  profile_memory: false
+
+  # Number of parallel BigQuery uploads (if supported)
+  parallel_uploads: 1
+
+# Error handling
+error_handling:
+  # What to do on critical errors: "fail", "continue", "retry"
+  on_critical: "fail"
+
+  # Save failed chunks to disk for debugging
+  save_failed_chunks: false
+
+  # Path to save failed chunks (inside container)
+  failed_chunks_path: "/tmp/failed_chunks"
+
+# Feature flags (optional)
+features:
+  # Enable experimental features
+  enable_experimental: false
+
+  # Use streaming inserts instead of load jobs
+  use_streaming_inserts: false
+
+  # Enable detailed performance metrics
+  collect_metrics: true
+
+# Environment variable overrides
+# These environment variables will override the corresponding config values:
+# - PROJECT_ID: Overrides project_id
+# - DATASET: Overrides dataset
+# - NODE_ID: Overrides node_id
+# - REGION: Overrides metadata.region
+# - LOG_FILE: Overrides input_paths with a single file
+# - GOOGLE_APPLICATION_CREDENTIALS: Path to service account JSON

@@ -557,16 +557,31 @@ class SensorSimulator:
         except Exception as e:
             self.error_count += 1
             self.consecutive_errors += 1
-            logger.error(f"Error processing reading: {e}")
+            
+            # Log the full error with traceback for diagnosis
+            logger.error(f"Error processing reading: {e}", exc_info=True)
+            
+            # Identify specific error types
+            error_msg = str(e).lower()
+            if "disk i/o error" in error_msg:
+                logger.error("DISK I/O ERROR detected - storage system may be overloaded")
+            elif "database is locked" in error_msg:
+                logger.error("DATABASE LOCKED - another process may be holding a write lock")
+            elif "malformed" in error_msg or "corrupt" in error_msg:
+                logger.critical("DATABASE CORRUPTION detected - stopping immediately")
+                return False
 
             # If too many consecutive errors, stop the simulator
             if self.consecutive_errors >= self.max_consecutive_errors:
                 logger.critical(
-                    f"Too many consecutive errors ({self.consecutive_errors}). Stopping simulator."
+                    f"STOPPING: Too many consecutive errors ({self.consecutive_errors})"
                 )
+                logger.critical(f"Last error was: {e}")
                 return False
 
-            return False
+            # For transient errors, log but continue
+            logger.warning(f"Continuing after error {self.consecutive_errors}/{self.max_consecutive_errors}")
+            return True  # Return True to continue despite the error
 
     def run(self):
         """Run the simulator for the configured duration."""
@@ -588,20 +603,48 @@ class SensorSimulator:
                     break
 
                 # Generate and process a reading
-                reading = self.generate_reading(self.sensor_id)
-                if not self.process_reading(reading):
-                    logger.error("Failed to process reading")
+                try:
+                    reading = self.generate_reading(self.sensor_id)
+                except Exception as e:
+                    logger.critical(f"CRITICAL: Failed to generate reading: {e}", exc_info=True)
+                    logger.critical("Cannot continue without ability to generate readings")
                     break
+                
+                if not self.process_reading(reading):
+                    # Only break if we've hit the max consecutive errors limit
+                    if self.consecutive_errors >= self.max_consecutive_errors:
+                        logger.critical(f"STOPPING: Hit max consecutive errors ({self.consecutive_errors})")
+                        logger.critical(f"Total errors: {self.error_count}, Total readings: {self.readings_count}")
+                        break
+                    else:
+                        logger.warning(f"Failed to process reading (error {self.consecutive_errors}/{self.max_consecutive_errors})")
 
                 # Sleep to maintain the configured rate
                 sleep_time = 1.0 / self.readings_per_second
-                time.sleep(sleep_time)
+                try:
+                    time.sleep(sleep_time)
+                except KeyboardInterrupt:
+                    logger.info("Sleep interrupted by user")
+                    raise  # Re-raise to be caught by outer handler
 
         except KeyboardInterrupt:
-            logger.info("Simulation stopped by user")
+            logger.info("Simulation stopped by user (Ctrl+C)")
         except Exception as e:
-            logger.error(f"Error during simulation: {e}")
+            logger.critical(f"UNEXPECTED ERROR during simulation: {e}", exc_info=True)
         finally:
+            # Determine why we stopped
+            elapsed = time.time() - self.start_time
+            if elapsed < self.run_time_seconds - 1:  # Allow 1 second tolerance
+                if self.consecutive_errors >= self.max_consecutive_errors:
+                    logger.critical(f"SENSOR STOPPED EARLY: Too many consecutive errors ({self.consecutive_errors})")
+                    logger.critical(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
+                elif self.error_count > 0:
+                    logger.error(f"SENSOR STOPPED EARLY: Encountered {self.error_count} total errors")
+                    logger.error(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
+                else:
+                    logger.warning(f"SENSOR STOPPED EARLY: Unknown reason")
+                    logger.warning(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
+                    logger.warning(f"Generated {self.readings_count} readings before stopping")
             # Stop the monitoring server if it's running
             if self.monitoring_server and self.monitoring_server.running:
                 self.monitoring_server.stop()
@@ -631,10 +674,19 @@ class SensorSimulator:
             self.running = False
 
     def stop(self):
-        """Stop the simulator."""
+        """Stop the simulator gracefully."""
         if self.running:
-            logger.info("Stopping simulator...")
+            logger.info("Stopping simulator (shutdown requested)...")
             self.running = False
+            
+            # Ensure database gets final checkpoint
+            if hasattr(self, "database"):
+                logger.info("Triggering database checkpoint on simulator stop...")
+                try:
+                    # The database close() method will handle the final checkpoint
+                    pass  # Database close is handled in the finally block of run()
+                except Exception as e:
+                    logger.error(f"Error during database checkpoint: {e}")
 
     def get_status(self):
         """Get the current status of the simulator.

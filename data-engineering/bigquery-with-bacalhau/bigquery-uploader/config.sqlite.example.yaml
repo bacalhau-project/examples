@@ -1,0 +1,59 @@
+# Example configuration file for BigQuery Uploader with SQLite Database
+# Copy this file to config.yaml and modify for your environment
+
+# Google Cloud Project Configuration
+project_id: "your-gcp-project-id"
+dataset: "sensor_analytics"
+
+# Node identification
+node_id: "bacalhau-node-001"
+
+# SQLite database configuration
+database:
+  # Path to the SQLite database file
+  path: "/bacalhau_data/sensor_data.db"
+  
+  # Table name containing sensor readings
+  table: "sensor_readings"
+  
+  # Whether to update the 'synced' flag after successful upload
+  sync_enabled: true
+
+# Pipeline configuration
+pipeline_mode: "sanitized"  # Options: raw, schematized, sanitized, aggregated
+
+# Processing configuration
+chunk_size: 10000
+max_retries: 20
+base_retry_delay: 1
+max_retry_delay: 60
+check_interval: 30  # How often to check for config changes (seconds)
+
+# Table names for different processing modes
+tables:
+  raw: "raw_sensor_data"
+  schematized: "sensor_readings"
+  sanitized: "sensor_readings_sanitized"
+  aggregated: "sensor_aggregates"
+  anomalies: "sensor_anomalies"
+
+# Optional metadata to include with uploads
+metadata:
+  region: "us-central1"
+  provider: "gcp"
+  hostname: "bacalhau-cluster"
+
+# Credentials configuration
+# Path to Google Cloud service account JSON file
+credentials_path: "/bacalhau_secret/gcp-creds.json"
+
+# Environment variable overrides
+# These environment variables will override the corresponding config values:
+# - PROJECT_ID: Overrides project_id
+# - DATASET: Overrides dataset
+# - NODE_ID: Overrides node_id
+# - REGION: Overrides metadata.region
+# - PROVIDER: Overrides metadata.provider
+# - HOSTNAME: Overrides metadata.hostname
+# - DATABASE_PATH or DATABASE_FILE: Overrides database.path
+# - GOOGLE_APPLICATION_CREDENTIALS: Overrides credentials_path

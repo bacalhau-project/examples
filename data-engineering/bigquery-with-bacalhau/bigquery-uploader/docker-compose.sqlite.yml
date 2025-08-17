@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Example service for sensor data upload to BigQuery
+  bigquery-sensor-uploader:
+    image: bigquery-uploader-sqlite:latest
+    container_name: bigquery-sensor-uploader
+    build:
+      context: .
+      dockerfile: Dockerfile.sqlite
+    
+    # Environment variables
+    environment:
+      - CONFIG_FILE=/app/config.yaml
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+      - SQLITE_TMPDIR=/tmp
+      # Optional overrides
+      # - PROJECT_ID=your-gcp-project-id
+      # - DATABASE_PATH=/bacalhau_data/sensor_data.db
+      # - NODE_ID=docker-node-001
+    
+    # Volume mounts
+    volumes:
+      # Configuration file (read-only)
+      - ./config.yaml:/app/config.yaml:ro
+      
+      # Google Cloud credentials (read-only)
+      - ./credentials.json:/app/credentials.json:ro
+      
+      # SQLite database directory
+      - ./data:/bacalhau_data
+      
+      # Timestamp tracking state (persist between runs)
+      - ./state:/app/state
+      
+      # Temporary directory for SQLite
+      - ./tmp:/tmp
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only root filesystem for security
+    read_only: true
+    
+    # Writable directories
+    tmpfs:
+      - /tmp:size=100M
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Example service for running multiple processing modes
+  sensor-processor-raw:
+    extends:
+      service: bigquery-sensor-uploader
+    container_name: sensor-processor-raw
+    environment:
+      - CONFIG_FILE=/app/config-raw.yaml
+      - NODE_ID=processor-raw-001
+    volumes:
+      - ./config-raw.yaml:/app/config-raw.yaml:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./data:/bacalhau_data:ro
+      - ./state-raw:/app/state
+
+  sensor-processor-aggregated:
+    extends:
+      service: bigquery-sensor-uploader
+    container_name: sensor-processor-aggregated
+    environment:
+      - CONFIG_FILE=/app/config-aggregated.yaml
+      - NODE_ID=processor-aggregated-001
+    volumes:
+      - ./config-aggregated.yaml:/app/config-aggregated.yaml:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./data:/bacalhau_data:ro
+      - ./state-aggregated:/app/state
+
+# Networks
+networks:
+  default:
+    name: sensor-processing
+    driver: bridge
+
+# Volumes (optional - for named volumes)
+volumes:
+  sensor-data:
+    driver: local
+  state-data:
+    driver: local

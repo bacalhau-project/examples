@@ -1,27 +1,403 @@
-#!/usr/bin/env -S uv run -s
+#!/usr/bin/env -S uv run
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "pydantic>=2.0",
+#     "pydantic>=2.0.0",
 #     "python-dateutil>=2.8",
+#     "requests>=2.31.0",
 # ]
 # ///
 
 """
-Pydantic models for sensor data validation and transformation.
+Wind Turbine Sensor Data Models
 
-These models enforce strict typing and validation rules to prevent
-data quality issues that commonly break data pipelines.
+This module provides both JSON Schema and Pydantic models for validating
+wind turbine sensor data. It supports dynamic schema loading from URLs
+and implements physics-based validation rules for anomaly detection.
 """
 
 from datetime import datetime
+from typing import Optional, Dict, Any, Tuple, Literal
 from enum import Enum
-from typing import Literal
-
+import json
+import requests
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.types import confloat, conint
 
 
+# JSON Schema definition for wind turbine sensor data
+WIND_TURBINE_SENSOR_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "WindTurbineSensorData",
+    "description": "Schema for wind turbine sensor telemetry data",
+    "type": "object",
+    "required": [
+        "timestamp",
+        "turbine_id",
+        "site_id",
+        "temperature",
+        "humidity",
+        "pressure",
+        "wind_speed",
+        "wind_direction",
+        "rotation_speed",
+        "blade_pitch",
+        "generator_temp",
+        "power_output",
+        "vibration_x",
+        "vibration_y",
+        "vibration_z",
+    ],
+    "properties": {
+        "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the sensor reading",
+        },
+        "turbine_id": {
+            "type": "string",
+            "pattern": "^WT-[0-9]{4}$",
+            "description": "Unique turbine identifier (format: WT-XXXX)",
+        },
+        "site_id": {
+            "type": "string",
+            "pattern": "^SITE-[A-Z]{3}$",
+            "description": "Site location identifier (format: SITE-XXX)",
+        },
+        "temperature": {
+            "type": "number",
+            "minimum": -40,
+            "maximum": 60,
+            "description": "Ambient temperature in Celsius",
+        },
+        "humidity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Relative humidity percentage",
+        },
+        "pressure": {
+            "type": "number",
+            "minimum": 900,
+            "maximum": 1100,
+            "description": "Atmospheric pressure in hPa",
+        },
+        "wind_speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50,
+            "description": "Wind speed in meters per second",
+        },
+        "wind_direction": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360,
+            "description": "Wind direction in degrees (0-360)",
+        },
+        "rotation_speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600,
+            "description": "Rotor rotation speed in RPM",
+        },
+        "blade_pitch": {
+            "type": "number",
+            "minimum": -5,
+            "maximum": 95,
+            "description": "Blade pitch angle in degrees",
+        },
+        "generator_temp": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120,
+            "description": "Generator temperature in Celsius",
+        },
+        "power_output": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5000,
+            "description": "Power output in kilowatts",
+        },
+        "vibration_x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "X-axis vibration in mm/s",
+        },
+        "vibration_y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Y-axis vibration in mm/s",
+        },
+        "vibration_z": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Z-axis vibration in mm/s",
+        },
+        "battery_level": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Battery charge percentage (optional)",
+        },
+        "signal_strength": {
+            "type": "number",
+            "minimum": -120,
+            "maximum": 0,
+            "description": "Signal strength in dBm (optional)",
+        },
+        "error_code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{4}$",
+            "description": "Error code if any (optional)",
+        },
+        "maintenance_required": {"type": "boolean", "description": "Maintenance flag (optional)"},
+    },
+    "additionalProperties": False,
+}
+
+
+class WindTurbineSensorData(BaseModel):
+    """
+    Pydantic model for wind turbine sensor data validation.
+
+    This model enforces both structural and business logic validation rules
+    for wind turbine telemetry data.
+    """
+
+    # Timestamp and identifiers
+    timestamp: datetime = Field(..., description="ISO 8601 timestamp")
+    turbine_id: str = Field(..., pattern="^WT-[0-9]{4}$")
+    site_id: str = Field(..., pattern="^SITE-[A-Z]{3}$")
+
+    # Environmental sensors
+    temperature: float = Field(..., ge=-40, le=60)
+    humidity: float = Field(..., ge=0, le=100)
+    pressure: float = Field(..., ge=900, le=1100)
+    wind_speed: float = Field(..., ge=0, le=50)
+    wind_direction: float = Field(..., ge=0, le=360)
+
+    # Operational parameters
+    rotation_speed: float = Field(..., ge=0, le=3600)
+    blade_pitch: float = Field(..., ge=-5, le=95)
+    generator_temp: float = Field(..., ge=0, le=120)
+    power_output: float = Field(..., ge=0, le=5000)
+
+    # Vibration monitoring
+    vibration_x: float = Field(..., ge=0, le=100)
+    vibration_y: float = Field(..., ge=0, le=100)
+    vibration_z: float = Field(..., ge=0, le=100)
+
+    # Optional fields
+    battery_level: Optional[float] = Field(None, ge=0, le=100)
+    signal_strength: Optional[float] = Field(None, ge=-120, le=0)
+    error_code: Optional[str] = Field(None, pattern="^[A-Z0-9]{4}$")
+    maintenance_required: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_physics_constraints(self) -> "WindTurbineSensorData":
+        """Validate physical relationships between sensor readings."""
+
+        # Rule 1: No rotation without minimum wind speed (cut-in speed ~3 m/s)
+        if self.wind_speed < 3 and self.rotation_speed > 50:
+            raise ValueError(
+                f"Invalid: Rotation {self.rotation_speed} RPM with "
+                f"wind speed {self.wind_speed} m/s (below cut-in)"
+            )
+
+        # Rule 2: Safety cutoff at high wind speeds (>25 m/s)
+        if self.wind_speed > 25 and self.rotation_speed > 2000:
+            raise ValueError(
+                f"Safety violation: Rotation {self.rotation_speed} RPM "
+                f"at {self.wind_speed} m/s wind exceeds safety limit"
+            )
+
+        # Rule 3: Power output should correlate with rotation
+        if self.rotation_speed < 10 and self.power_output > 10:
+            raise ValueError(
+                f"Invalid: Power output {self.power_output} kW "
+                f"without rotation ({self.rotation_speed} RPM)"
+            )
+
+        # Rule 4: Minimum rotation for significant power
+        if self.rotation_speed > 1000 and self.power_output < 100:
+            raise ValueError(
+                f"Anomaly: Power output {self.power_output} kW "
+                f"too low for {self.rotation_speed} RPM"
+            )
+
+        # Rule 5: Generator temperature check
+        if self.power_output > 3000 and self.generator_temp < 30:
+            raise ValueError(
+                f"Anomaly: Generator temp {self.generator_temp}°C "
+                f"too low for {self.power_output} kW output"
+            )
+
+        # Rule 6: Critical vibration threshold
+        max_vibration = max(self.vibration_x, self.vibration_y, self.vibration_z)
+        if max_vibration > 50:
+            raise ValueError(
+                f"Critical: Vibration level {max_vibration} mm/s exceeds safety threshold"
+            )
+
+        # Rule 7: Blade pitch vs wind speed relationship
+        if self.wind_speed > 20 and self.blade_pitch < 10:
+            raise ValueError(
+                f"Warning: Blade pitch {self.blade_pitch}° may be "
+                f"too low for wind speed {self.wind_speed} m/s"
+            )
+
+        return self
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "timestamp": "2024-01-15T10:30:00Z",
+                "turbine_id": "WT-0042",
+                "site_id": "SITE-TEX",
+                "temperature": 15.5,
+                "humidity": 65.0,
+                "pressure": 1013.25,
+                "wind_speed": 12.5,
+                "wind_direction": 225.0,
+                "rotation_speed": 1200.0,
+                "blade_pitch": 15.0,
+                "generator_temp": 55.0,
+                "power_output": 2500.0,
+                "vibration_x": 2.5,
+                "vibration_y": 3.1,
+                "vibration_z": 1.8,
+                "battery_level": 95.0,
+                "signal_strength": -65.0,
+            }
+        }
+
+
+def get_schema_json() -> str:
+    """Return the JSON Schema as a formatted string."""
+    return json.dumps(WIND_TURBINE_SENSOR_SCHEMA, indent=2)
+
+
+def load_schema_from_url(url: str) -> Dict[str, Any]:
+    """
+    Load JSON Schema from a URL.
+
+    Args:
+        url: URL pointing to a JSON Schema definition
+
+    Returns:
+        Dictionary containing the JSON Schema
+    """
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to load schema from URL: {e}")
+
+
+def validate_sensor_data(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """
+    Validate sensor data against the model.
+
+    Args:
+        data: Dictionary containing sensor data
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    try:
+        WindTurbineSensorData(**data)
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def generate_anomaly_examples() -> list[Dict[str, Any]]:
+    """Generate examples of data that would trigger anomalies."""
+    base_data = {
+        "timestamp": "2024-01-15T10:30:00Z",
+        "turbine_id": "WT-0042",
+        "site_id": "SITE-TEX",
+        "temperature": 15.5,
+        "humidity": 65.0,
+        "pressure": 1013.25,
+        "wind_direction": 225.0,
+        "blade_pitch": 15.0,
+        "generator_temp": 55.0,
+        "vibration_x": 2.5,
+        "vibration_y": 3.1,
+        "vibration_z": 1.8,
+    }
+
+    anomalies = []
+
+    # Anomaly 1: Rotation without wind
+    anomalies.append(
+        {
+            **base_data,
+            "wind_speed": 2.0,  # Below cut-in
+            "rotation_speed": 500.0,  # Should be ~0
+            "power_output": 100.0,
+            "_anomaly": "Rotation without sufficient wind",
+        }
+    )
+
+    # Anomaly 2: Excessive vibration
+    anomalies.append(
+        {
+            **base_data,
+            "wind_speed": 15.0,
+            "rotation_speed": 1500.0,
+            "power_output": 3000.0,
+            "vibration_x": 65.0,  # Critical level
+            "vibration_y": 55.0,
+            "vibration_z": 45.0,
+            "_anomaly": "Critical vibration levels",
+        }
+    )
+
+    # Anomaly 3: Power without rotation
+    anomalies.append(
+        {
+            **base_data,
+            "wind_speed": 12.0,
+            "rotation_speed": 5.0,  # Nearly stopped
+            "power_output": 500.0,  # Should be ~0
+            "_anomaly": "Power generation without rotation",
+        }
+    )
+
+    # Anomaly 4: Invalid turbine ID
+    anomalies.append(
+        {
+            **base_data,
+            "turbine_id": "TURB-42",  # Wrong format
+            "wind_speed": 12.0,
+            "rotation_speed": 1200.0,
+            "power_output": 2500.0,
+            "_anomaly": "Invalid turbine ID format",
+        }
+    )
+
+    # Anomaly 5: Out of range temperature
+    anomalies.append(
+        {
+            **base_data,
+            "temperature": 75.0,  # > 60°C max
+            "wind_speed": 12.0,
+            "rotation_speed": 1200.0,
+            "power_output": 2500.0,
+            "_anomaly": "Temperature exceeds maximum range",
+        }
+    )
+
+    return anomalies
+
+
+# Keep the original classes for backward compatibility but mark as deprecated
 class ManufacturerEnum(str, Enum):
     """Valid sensor manufacturers."""
 
@@ -336,7 +712,6 @@ class SensorDataRecord(BaseModel):
 
 # Example usage and validation demonstration
 if __name__ == "__main__":
-
     # Valid record example
     valid_record = {
         "timestamp": "2024-01-15T10:30:00Z",

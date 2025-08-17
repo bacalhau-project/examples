@@ -43,6 +43,7 @@ class PipelineType(str, Enum):
 
     RAW = "raw"
     SCHEMATIZED = "schematized"
+    ANOMALY = "anomaly"
     AGGREGATED = "aggregated"
 
 

@@ -31,8 +31,8 @@ def setup_autoloader():
         if "/warehouses/" in http_path:
             warehouse_id = http_path.split("/warehouses/")[-1]
     
-    catalog = os.getenv("DATABRICKS_CATALOG", "expanso_databricks_workspace")
-    schema = os.getenv("DATABRICKS_DATABASE", "sensor_readings")
+    catalog = os.getenv("DATABRICKS_DATABASE")
+    schema = os.getenv("DATABRICKS_DATABASE")
     
     if not all([host, token, warehouse_id]):
         print("❌ Missing Databricks credentials")

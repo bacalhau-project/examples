@@ -153,27 +153,18 @@ run_uploader_local() {
         exit 1
     fi
     
-    print_info "Using config: databricks-s3-uploader-config.yaml"
+    print_info "Using config: databricks-s3-uploader-config-local.yaml"
     print_info "Using database: sample-sensor/data/sensor_data.db"
     print_info "State directory: databricks-uploader/state"
     print_info "AWS Region: ${AWS_REGION:-us-west-2}"
-    
-    # Create a temporary config file with local paths
-    print_info "Creating local config with correct paths..."
-    TEMP_CONFIG="/tmp/databricks-uploader-local-$$.yaml"
-    sed 's|/app/sensor_data.db|../sample-sensor/data/sensor_data.db|g' \
-        databricks-s3-uploader-config.yaml > "$TEMP_CONFIG"
     
     print_status "Starting uploader..."
     cd databricks-uploader
     AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
     AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
     AWS_REGION="${AWS_REGION:-us-west-2}" \
-    uv run -s sqlite_to_databricks_uploader.py \
-        --config "$TEMP_CONFIG"
-    
-    # Clean up temp config on exit
-    trap "rm -f $TEMP_CONFIG" EXIT
+    uv run sqlite_to_databricks_uploader.py \
+        --config ../databricks-s3-uploader-config-local.yaml
 }
 
 # Function to run uploader in Docker
@@ -307,18 +298,16 @@ run_sensor() {
         docker rm sensor-log-generator 2>/dev/null || true
     fi
     
-    if [ "$MODE" == "local" ]; then
-        ./scripts/start-sensor-local.sh
-    else
-        # Pull latest sensor image if enabled
-        if [ "$PULL_LATEST" == "true" ]; then
-            print_info "Pulling latest sensor-log-generator image..."
-            docker pull ghcr.io/bacalhau-project/sensor-log-generator:latest || {
-                print_warning "Could not pull sensor image from registry"
-            }
-        fi
-        ./scripts/start-sensor.sh
+    # Pull latest sensor image if enabled (for both local and docker modes)
+    if [ "$PULL_LATEST" == "true" ]; then
+        print_info "Pulling latest sensor-log-generator image..."
+        docker pull ghcr.io/bacalhau-project/sensor-log-generator:latest || {
+            print_warning "Could not pull sensor image from registry"
+        }
     fi
+    
+    # Both local and docker modes use the same script (it runs Docker)
+    ./scripts/start-sensor.sh
 }
 
 # Function to check dependencies
