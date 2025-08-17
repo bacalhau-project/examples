@@ -776,7 +776,7 @@ class SQLiteToS3Uploader:
 
                 print(f"❌ Error in upload cycle: {e}")
                 print(f"   Error type: {type(e).__name__}")
-                if self.verbose:
+                if hasattr(self, "verbose") and self.verbose:
                     traceback.print_exc()
 
             print(f"💤 Sleeping for {interval} seconds...")

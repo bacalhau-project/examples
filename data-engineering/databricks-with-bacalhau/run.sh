@@ -189,6 +189,21 @@ run_uploader_docker() {
     docker stop databricks-uploader 2>/dev/null || true
     docker rm databricks-uploader 2>/dev/null || true
     
+    print_info "Docker command to run uploader:"
+    echo ""
+    echo "docker run $DETACH \\"
+    echo "  --name databricks-uploader \\"
+    echo "  -v \"$(pwd)/databricks-s3-uploader-config.yaml:/app/config.yaml:ro\" \\"
+    echo "  -v \"$(pwd)/sample-sensor/data/sensor_data.db:/app/sensor_data.db:ro\" \\"
+    echo "  -v \"$(pwd)/credentials:/bacalhau_data/credentials:ro\" \\"
+    echo "  -v \"$(pwd)/databricks-uploader/state:/app/state\" \\"
+    echo "  -v \"$(pwd)/logs:/app/logs\" \\"
+    echo "  -e AWS_ACCESS_KEY_ID=\"\${AWS_ACCESS_KEY_ID}\" \\"
+    echo "  -e AWS_SECRET_ACCESS_KEY=\"\${AWS_SECRET_ACCESS_KEY}\" \\"
+    echo "  -e AWS_REGION=\"\${AWS_REGION:-us-west-2}\" \\"
+    echo "  ghcr.io/bacalhau-project/databricks-uploader:latest"
+    echo ""
+    
     print_status "Starting databricks-uploader container..."
     docker run $DETACH \
         --name databricks-uploader \
@@ -271,6 +286,14 @@ run_pipeline_manager_docker() {
         print_info "Using local pipeline-manager image (pull disabled)"
     fi
     
+    print_info "Docker command to get current configuration:"
+    echo ""
+    echo "docker run --rm \\"
+    echo "  -v \"$(pwd)/databricks-uploader/state:/state\" \\"
+    echo "  ghcr.io/bacalhau-project/pipeline-manager:latest \\"
+    echo "  --db /state/pipeline_config.db get"
+    echo ""
+    
     print_info "Showing current pipeline configuration:"
     docker run --rm \
         -v "$(pwd)/databricks-uploader/state:/state" \
@@ -305,6 +328,8 @@ run_sensor() {
             print_warning "Could not pull sensor image from registry"
         }
     fi
+    
+    print_info "This will run the sensor using the start-sensor.sh script"
     
     # Both local and docker modes use the same script (it runs Docker)
     ./scripts/start-sensor.sh
