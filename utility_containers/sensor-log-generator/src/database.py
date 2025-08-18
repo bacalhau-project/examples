@@ -7,6 +7,7 @@ import subprocess
 import threading
 import time
 import atexit
+import shutil
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -119,7 +120,7 @@ def retry_on_error(max_retries=3, retry_delay=1.0):
                         )
                         raise
 
-            # This should never be reached, but just in case
+            # Ensure we raise the last exception if we exit the loop
             if last_exception:
                 raise last_exception
             return None
@@ -347,9 +348,14 @@ class SensorDatabase:
         self.logger = logging.getLogger(
             "SensorDatabase"
         )  # Get logger early for potential deletion message
+        # Inherit parent logger's level
+        self.logger.setLevel(logging.getLogger().level)
 
         # Enable debug mode detection
-        self.debug_mode = self.logger.isEnabledFor(logging.DEBUG)
+        self.debug_mode = os.environ.get('DEBUG_MODE') == 'true' or self.logger.isEnabledFor(logging.DEBUG)
+        if self.debug_mode:
+            self.logger.setLevel(logging.DEBUG)
+            self.logger.debug(f"🔍 Database initialized in DEBUG mode at {self.db_path}")
         
         # Register signal handlers for graceful shutdown
         self._register_shutdown_handlers()
@@ -363,22 +369,44 @@ class SensorDatabase:
         # Handle deletion of existing database if not preserving
         if self.db_path != ":memory:" and os.path.exists(self.db_path):
             if not preserve_existing_db:
+                # Don't check integrity if we're deleting anyway - just delete it
                 self.logger.info(
                     f"Existing database found at '{self.db_path}' and "
                     f"'preserve_existing_db' is False. Deleting old database file."
                 )
+                
                 try:
-                    os.remove(self.db_path)
+                    # Also remove journal files if they exist
+                    self._cleanup_database_files(self.db_path)
                 except OSError as e:
                     self.logger.error(
                         f"Failed to delete existing database '{self.db_path}': {e}"
                     )
-                    raise  # Re-raise the error as this is critical
+                    # Try to continue anyway - maybe the file is locked but we can still create a new connection
+                    self.logger.warning("Will attempt to continue despite deletion failure")
             else:
-                self.logger.info(
-                    f"Existing database found at '{self.db_path}' and "
-                    f"'preserve_existing_db' is True. Preserving."
-                )
+                # Check integrity even when preserving
+                if not self._check_database_integrity(self.db_path):
+                    self.logger.error(
+                        f"Existing database at '{self.db_path}' is corrupted!"
+                    )
+                    self.logger.info("Attempting automatic recovery...")
+                    
+                    # Try to recover the database
+                    if not self._attempt_database_recovery(self.db_path):
+                        self.logger.error("Recovery failed. Creating backup and starting fresh.")
+                        backup_path = f"{self.db_path}.corrupted.{int(time.time())}"
+                        try:
+                            shutil.move(self.db_path, backup_path)
+                            self.logger.info(f"Corrupted database backed up to: {backup_path}")
+                            self._cleanup_database_files(self.db_path, skip_main=True)
+                        except Exception as e:
+                            self.logger.error(f"Failed to backup corrupted database: {e}")
+                            self._cleanup_database_files(self.db_path)
+                else:
+                    self.logger.info(
+                        f"Existing database at '{self.db_path}' passed integrity check."
+                    )
 
         abs_db_path = os.path.abspath(
             self.db_path
@@ -392,6 +420,16 @@ class SensorDatabase:
         self.insert_count = 0
         self.total_insert_time = 0.0
         self.total_batch_time = 0.0
+        
+        # In-memory failure buffer for resilient writes during disk I/O errors
+        self.failure_buffer = []
+        self.failure_buffer_max_size = 10000  # Keep up to 10k failed readings in memory
+        # Custom retry intervals: 1s, 3s, 5s, 9s, 12s, 15s, then stay at 15s
+        self.failure_buffer_retry_intervals = [1.0, 3.0, 5.0, 9.0, 12.0, 15.0]
+        self.failure_buffer_max_retry_interval = 15.0  # Max 15 seconds between retries
+        self.last_failure_retry_time = time.time()
+        self.failure_retry_count = 0
+        self.failure_buffer_lock = threading.Lock()
         
         # Circuit breaker pattern for database reliability
         self.circuit_breaker_enabled = True
@@ -542,6 +580,197 @@ class SensorDatabase:
         # The database will be properly closed when simulator.stop() is called
         pass
     
+    def _check_database_integrity(self, db_path: str) -> bool:
+        """Check if an existing database file is valid and not corrupted.
+        
+        Args:
+            db_path: Path to the database file to check
+            
+        Returns:
+            True if database is valid, False if corrupted or inaccessible
+        """
+        if not os.path.exists(db_path):
+            return True  # No file means no corruption
+        
+        try:
+            # Try to connect and run integrity check
+            test_conn = sqlite3.connect(db_path, timeout=5.0)
+            cursor = test_conn.cursor()
+            
+            # Quick integrity check
+            cursor.execute("PRAGMA quick_check")
+            result = cursor.fetchone()
+            
+            if result and result[0] != "ok":
+                self.logger.debug(f"Integrity check failed: {result[0]}")
+                cursor.close()
+                test_conn.close()
+                return False
+            
+            # Try to read the schema to ensure basic functionality
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            
+            # If we have tables, try to query one
+            if tables:
+                try:
+                    cursor.execute("SELECT COUNT(*) FROM sensor_readings")
+                    count = cursor.fetchone()[0]
+                    self.logger.debug(f"Database contains {count} readings")
+                except sqlite3.Error as e:
+                    self.logger.debug(f"Failed to query sensor_readings: {e}")
+                    cursor.close()
+                    test_conn.close()
+                    return False
+            
+            cursor.close()
+            test_conn.close()
+            return True
+            
+        except sqlite3.DatabaseError as e:
+            error_msg = str(e).lower()
+            if "malformed" in error_msg or "corrupt" in error_msg:
+                self.logger.debug(f"Database corruption detected: {e}")
+                return False
+            elif "locked" in error_msg:
+                # Database is locked but not corrupted
+                self.logger.debug("Database is locked by another process")
+                return True
+            else:
+                self.logger.debug(f"Database error during integrity check: {e}")
+                return False
+        except Exception as e:
+            self.logger.debug(f"Unexpected error during integrity check: {e}")
+            return False
+    
+    def _attempt_database_recovery(self, db_path: str) -> bool:
+        """Attempt to recover a corrupted database.
+        
+        Args:
+            db_path: Path to the corrupted database
+            
+        Returns:
+            True if recovery successful, False otherwise
+        """
+        self.logger.info("Attempting database recovery...")
+        
+        try:
+            # First, try to dump what we can from the corrupted database
+            recovery_conn = sqlite3.connect(db_path, timeout=5.0)
+            recovery_conn.isolation_level = None  # Autocommit mode
+            cursor = recovery_conn.cursor()
+            
+            # Try to recover data
+            recovered_data = []
+            try:
+                cursor.execute("SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 10000")
+                recovered_data = cursor.fetchall()
+                self.logger.info(f"Recovered {len(recovered_data)} readings from corrupted database")
+            except Exception as e:
+                self.logger.warning(f"Could not recover data: {e}")
+            
+            cursor.close()
+            recovery_conn.close()
+            
+            # Create a new temporary database
+            temp_db = f"{db_path}.recovery"
+            if os.path.exists(temp_db):
+                os.remove(temp_db)
+            
+            # Initialize new database with recovered data
+            if recovered_data:
+                new_conn = sqlite3.connect(temp_db)
+                new_cursor = new_conn.cursor()
+                
+                # Create schema (will be done by _init_db later, but we need it now)
+                # This is a simplified version - the real schema will be created properly
+                new_cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS sensor_readings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        sensor_id TEXT NOT NULL,
+                        temperature REAL,
+                        humidity REAL,
+                        pressure REAL,
+                        vibration REAL,
+                        voltage REAL,
+                        status_code INTEGER,
+                        anomaly_flag INTEGER,
+                        anomaly_type TEXT,
+                        firmware_version TEXT,
+                        model TEXT,
+                        manufacturer TEXT,
+                        location TEXT,
+                        latitude REAL,
+                        longitude REAL,
+                        original_timezone TEXT,
+                        synced INTEGER
+                    )
+                """)
+                
+                # Insert recovered data (adjust based on actual schema)
+                # This is a best-effort recovery
+                self.logger.info("Reinserting recovered data...")
+                for row in recovered_data:
+                    try:
+                        # Assuming row has the right number of columns
+                        placeholders = ','.join(['?' for _ in row[1:]])  # Skip ID
+                        new_cursor.execute(
+                            f"INSERT INTO sensor_readings VALUES (NULL, {placeholders})",
+                            row[1:]
+                        )
+                    except Exception as e:
+                        self.logger.debug(f"Could not reinsert row: {e}")
+                
+                new_conn.commit()
+                new_cursor.close()
+                new_conn.close()
+                
+                # Replace corrupted database with recovered one
+                shutil.move(temp_db, db_path)
+                self.logger.info("Database recovery successful")
+                return True
+            else:
+                self.logger.warning("No data could be recovered")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Recovery failed: {e}")
+            return False
+    
+    def _cleanup_database_files(self, db_path: str, skip_main: bool = False):
+        """Clean up database and related files (journal, wal, shm).
+        
+        Args:
+            db_path: Path to the database file
+            skip_main: If True, skip deleting the main database file
+        """
+        files_to_remove = []
+        
+        if not skip_main and os.path.exists(db_path):
+            files_to_remove.append(db_path)
+        
+        # Journal file (for DELETE mode)
+        journal_file = f"{db_path}-journal"
+        if os.path.exists(journal_file):
+            files_to_remove.append(journal_file)
+        
+        # WAL mode files (even though we use DELETE mode, they might exist from previous runs)
+        wal_file = f"{db_path}-wal"
+        if os.path.exists(wal_file):
+            files_to_remove.append(wal_file)
+        
+        shm_file = f"{db_path}-shm"
+        if os.path.exists(shm_file):
+            files_to_remove.append(shm_file)
+        
+        for file_path in files_to_remove:
+            try:
+                os.remove(file_path)
+                self.logger.debug(f"Removed: {file_path}")
+            except OSError as e:
+                self.logger.warning(f"Could not remove {file_path}: {e}")
+    
     def _start_background_commit_thread(self):
         """Start a background thread that commits data periodically for external readers."""
         self._commit_thread_running = True
@@ -560,6 +789,10 @@ class SensorDatabase:
                         if self.batch_buffer and batch_age >= self.batch_timeout:
                             self.logger.debug(f"Background thread committing {len(self.batch_buffer)} readings")
                             self.commit_batch()
+                    
+                    # Try to flush failure buffer periodically
+                    self._retry_failed_writes()
+                    
                 except Exception as e:
                     self.logger.error(f"Error in background commit thread: {e}")
         
@@ -576,6 +809,25 @@ class SensorDatabase:
 
     def _init_db(self):
         """Initialize the database schema based on SensorReadingSchema."""
+        # One more integrity check after connection manager is created
+        if self.db_path != ":memory:" and os.path.exists(self.db_path):
+            try:
+                # Quick test query to ensure database is accessible
+                test_result = self.conn_manager.execute_query("SELECT 1")
+                if test_result is None or test_result[0][0] != 1:
+                    raise sqlite3.DatabaseError("Database connection test failed")
+            except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
+                error_msg = str(e).lower()
+                if "malformed" in error_msg or "corrupt" in error_msg:
+                    self.logger.error(f"Database corruption detected during initialization: {e}")
+                    # Try one recovery attempt
+                    self.logger.info("Attempting recovery during initialization...")
+                    self._cleanup_database_files(self.db_path)
+                    # Reinitialize connection manager with fresh database
+                    self.conn_manager = DatabaseConnectionManager(self.db_path, self.debug_mode)
+                else:
+                    raise
+        
         try:
             with self.conn_manager.get_cursor() as cursor:
                 # Dynamically create the table based on the Pydantic model
@@ -741,24 +993,42 @@ class SensorDatabase:
 
         except sqlite3.OperationalError as e:
             error_msg = str(e)
-            self.logger.error(f"SQLite Operational Error storing reading: {error_msg}")
-
-            if self.debug_mode:
-                # Enhanced error diagnostics
-                self.logger.debug("=== SQLite Error Diagnostics ===")
-                self._log_error_diagnostics(error_msg)
-
-            # Handle disk I/O errors with retry
+            
+            # Handle disk I/O errors with in-memory buffering
             if "disk I/O error" in error_msg:
-                self.logger.error("DISK I/O ERROR - This is a critical storage system issue!")
-                self.logger.error("Possible causes:")
-                self.logger.error("  - Docker volume mount issues")
-                self.logger.error("  - Host filesystem full or read-only")
-                self.logger.error("  - Container resource limits reached")
-                self.logger.error("  - Filesystem corruption")
-                time.sleep(0.1)  # Brief pause before retry
+                # Check if we're past the 15-second retry threshold
+                if self.failure_retry_count >= len(self.failure_buffer_retry_intervals):
+                    # We've reached the 15-second interval, now log as error
+                    self.logger.error(f"DISK I/O ERROR persists after {self.failure_retry_count} retries - Buffering reading in memory")
+                    if self.failure_retry_count == len(self.failure_buffer_retry_intervals):
+                        # First time hitting the threshold, log possible causes
+                        self.logger.error("Possible causes:")
+                        self.logger.error("  - Docker volume mount issues")
+                        self.logger.error("  - Host filesystem full or read-only")
+                        self.logger.error("  - Container resource limits reached")
+                        self.logger.error("  - Filesystem corruption")
+                else:
+                    # Still in early retry phase, use debug logging only
+                    if len(self.failure_buffer) == 0:
+                        # First failure, log as debug
+                        self.logger.debug(f"Disk I/O error detected, buffering reading (retry in {self.failure_buffer_retry_intervals[0]}s)")
+                    else:
+                        # Subsequent failures during retry window
+                        self.logger.debug(f"Disk I/O error, buffering reading (retry #{self.failure_retry_count + 1})")
+                
+                if self.debug_mode:
+                    # Enhanced error diagnostics
+                    self.logger.debug("=== SQLite Error Diagnostics ===")
+                    self._log_error_diagnostics(error_msg)
+                
+                # Store the failed reading in the failure buffer
+                self._add_to_failure_buffer(reading_data)
+                
                 # Don't raise, let the simulator continue
                 return
+            else:
+                # Other operational errors - log immediately
+                self.logger.error(f"SQLite Operational Error storing reading: {error_msg}")
             
             raise
         except Exception as e:
@@ -958,6 +1228,9 @@ class SensorDatabase:
             batch_age = current_time - self.last_batch_time
 
             if len(self.batch_buffer) >= self.batch_size or batch_age >= self.batch_timeout:
+                if self.debug_mode:
+                    reason = "size" if len(self.batch_buffer) >= self.batch_size else "timeout"
+                    self.logger.debug(f"Triggering batch commit (reason: {reason}, size: {len(self.batch_buffer)}, age: {batch_age:.1f}s)")
                 return self.commit_batch()
 
         return None
@@ -1002,7 +1275,12 @@ class SensorDatabase:
                 self.total_insert_time += batch_time
 
                 # Log batch insert performance
-                if self.batch_insert_count % 10 == 0:
+                if self.debug_mode:
+                    self.logger.debug(
+                        f"✅ Batch committed: {batch_size} readings in {batch_time*1000:.2f}ms "
+                        f"({batch_size/batch_time if batch_time > 0 else 0:.1f} records/sec)"
+                    )
+                elif self.batch_insert_count % 10 == 0:
                     avg_time_per_reading = (
                         (self.total_batch_time / self.insert_count) * 1000
                         if self.insert_count > 0
@@ -1065,6 +1343,27 @@ class SensorDatabase:
             if self.batch_buffer:
                 self.logger.info(f"Committing {len(self.batch_buffer)} pending writes...")
                 self.commit_batch()
+            
+            # Try to flush failure buffer one last time
+            if self.failure_buffer:
+                self.logger.info(f"Attempting final flush of {len(self.failure_buffer)} failed writes...")
+                # Force immediate retry without waiting for interval
+                self.last_failure_retry_time = 0
+                self.failure_retry_count = 0  # Reset backoff for final attempt
+                self._retry_failed_writes()
+                
+                if self.failure_buffer:
+                    self.logger.warning(f"WARNING: {len(self.failure_buffer)} readings could not be written to disk and will be lost!")
+                    # Optionally save to a recovery file
+                    try:
+                        import json
+                        recovery_file = self.db_path.replace('.db', '_recovery.json')
+                        with open(recovery_file, 'w') as f:
+                            readings_data = [r.model_dump() for r in self.failure_buffer]
+                            json.dump(readings_data, f, indent=2, default=str)
+                        self.logger.info(f"Saved {len(self.failure_buffer)} unwritten readings to {recovery_file}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to save recovery file: {e}")
             
             # Force final commit for maximum durability (DELETE mode)
             self.logger.info("Executing final data commit...")
@@ -1202,6 +1501,7 @@ class SensorDatabase:
                 else 0,
                 "total_insert_time_s": self.total_insert_time,
                 "pending_batch_size": len(self.batch_buffer),
+                "failure_buffer_size": len(self.failure_buffer),
             }
 
             # Get sync statistics
@@ -1267,6 +1567,126 @@ class SensorDatabase:
                     },
                 },
             }
+
+    def _add_to_failure_buffer(self, reading_data: SensorReadingSchema):
+        """Add a failed reading to the in-memory failure buffer.
+        
+        Args:
+            reading_data: The reading that failed to write to disk
+        """
+        with self.failure_buffer_lock:
+            if len(self.failure_buffer) >= self.failure_buffer_max_size:
+                # Remove oldest readings if buffer is full (FIFO)
+                removed_count = min(100, len(self.failure_buffer) // 10)  # Remove 10% or 100 items
+                self.failure_buffer = self.failure_buffer[removed_count:]
+                self.logger.warning(f"Failure buffer full, dropped {removed_count} oldest readings")
+            
+            self.failure_buffer.append(reading_data)
+            
+            # Always use debug logging for buffer updates - the error will be logged separately
+            self.logger.debug(f"Added reading to failure buffer (current size: {len(self.failure_buffer)})")
+    
+    def _retry_failed_writes(self):
+        """Periodically retry writing failed readings from the failure buffer with custom backoff."""
+        current_time = time.time()
+        
+        # Get current retry interval from the custom sequence
+        if self.failure_retry_count < len(self.failure_buffer_retry_intervals):
+            current_retry_interval = self.failure_buffer_retry_intervals[self.failure_retry_count]
+        else:
+            # After exhausting the list, stay at the maximum interval
+            current_retry_interval = self.failure_buffer_max_retry_interval
+        
+        # Only retry periodically to avoid overwhelming the system
+        if current_time - self.last_failure_retry_time < current_retry_interval:
+            return
+        
+        if not self.failure_buffer:
+            # Reset retry count when buffer is empty
+            if self.failure_retry_count > 0:
+                self.failure_retry_count = 0
+                self.logger.debug("Failure buffer empty, reset retry count")
+            return
+        
+        with self.failure_buffer_lock:
+            if not self.failure_buffer:
+                return
+            
+            # Only log retry attempts at INFO level after hitting the 15-second threshold
+            if self.failure_retry_count >= len(self.failure_buffer_retry_intervals):
+                # At or past the 15-second interval
+                self.logger.info(f"Attempting to retry {len(self.failure_buffer)} failed writes (retry #{self.failure_retry_count + 1}, interval: {current_retry_interval:.0f}s)")
+            else:
+                # Still in early retry phase - use debug
+                self.logger.debug(f"Attempting to retry {len(self.failure_buffer)} failed writes (retry #{self.failure_retry_count + 1}, interval: {current_retry_interval:.0f}s)")
+            
+            successful_writes = []
+            failed_writes = []
+            
+            # Try to write each failed reading
+            for reading in self.failure_buffer[:100]:  # Process up to 100 at a time
+                try:
+                    # Convert back to dict for database insertion
+                    data_for_db = reading.model_dump(exclude_none=False)
+                    
+                    # Ensure boolean values are converted to integers
+                    if "anomaly_flag" in data_for_db and isinstance(data_for_db["anomaly_flag"], bool):
+                        data_for_db["anomaly_flag"] = int(data_for_db["anomaly_flag"])
+                    if "synced" in data_for_db and isinstance(data_for_db["synced"], bool):
+                        data_for_db["synced"] = int(data_for_db["synced"])
+                    
+                    # Prepare query
+                    columns = list(SensorReadingSchema.model_fields.keys())
+                    placeholders = ", ".join(["?"] * len(columns))
+                    column_names = ", ".join(columns)
+                    
+                    query = f"""
+                        INSERT INTO sensor_readings ({column_names})
+                        VALUES ({placeholders})
+                    """
+                    
+                    params = tuple(data_for_db[col] for col in columns)
+                    
+                    # Try to write with a short timeout
+                    self.conn_manager.execute_write(query, params)
+                    successful_writes.append(reading)
+                    
+                except sqlite3.OperationalError as e:
+                    if "disk I/O error" in str(e):
+                        # Still experiencing disk I/O issues, stop retrying for now
+                        self.failure_retry_count += 1
+                        next_interval = self.failure_buffer_retry_intervals[min(self.failure_retry_count, len(self.failure_buffer_retry_intervals) - 1)]
+                        
+                        # Only log as error after we've reached the 15-second interval
+                        if self.failure_retry_count >= len(self.failure_buffer_retry_intervals):
+                            self.logger.error(f"Disk I/O error persists after {self.failure_retry_count} attempts, next retry in {next_interval:.0f}s")
+                        else:
+                            self.logger.debug(f"Disk I/O error on retry #{self.failure_retry_count}, next retry in {next_interval:.0f}s")
+                        break
+                    else:
+                        failed_writes.append(reading)
+                except Exception as e:
+                    self.logger.debug(f"Failed to retry write: {e}")
+                    failed_writes.append(reading)
+            
+            # Remove successful writes from buffer
+            if successful_writes:
+                self.failure_buffer = [r for r in self.failure_buffer if r not in successful_writes]
+                
+                # Only log recovery at INFO level after we've hit the 15-second threshold
+                if self.failure_retry_count >= len(self.failure_buffer_retry_intervals):
+                    self.logger.info(f"Successfully wrote {len(successful_writes)} readings from failure buffer")
+                    if len(self.failure_buffer) > 0:
+                        self.logger.info(f"Remaining in failure buffer: {len(self.failure_buffer)}")
+                else:
+                    self.logger.debug(f"Successfully wrote {len(successful_writes)} readings from failure buffer")
+                    if len(self.failure_buffer) > 0:
+                        self.logger.debug(f"Remaining in failure buffer: {len(self.failure_buffer)}")
+                
+                # Reset retry count on successful writes
+                self.failure_retry_count = 0
+            
+            self.last_failure_retry_time = current_time
 
     def is_healthy(self):
         """Check if the database connection is healthy.

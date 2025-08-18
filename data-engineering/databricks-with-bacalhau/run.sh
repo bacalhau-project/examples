@@ -153,7 +153,7 @@ run_uploader_local() {
         exit 1
     fi
     
-    print_info "Using config: databricks-s3-uploader-config-local.yaml"
+    print_info "Using config: databricks-uploader/databricks-s3-uploader-config-local.yaml"
     print_info "Using database: sample-sensor/data/sensor_data.db"
     print_info "State directory: databricks-uploader/state"
     print_info "AWS Region: ${AWS_REGION:-us-west-2}"
@@ -164,77 +164,87 @@ run_uploader_local() {
     AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
     AWS_REGION="${AWS_REGION:-us-west-2}" \
     uv run sqlite_to_databricks_uploader.py \
-        --config ../databricks-s3-uploader-config-local.yaml
+        --config databricks-s3-uploader-config-local.yaml
+}
+
+# Function to print Docker image version info
+print_docker_version_info() {
+    local image="$1"
+    local component_name="$2"
+    
+    print_info "===== Docker Image Version Info for $component_name ====="
+    
+    # Get image digest and ID
+    local image_id=$(docker images --no-trunc --quiet "$image" | head -1)
+    local short_id=$(docker images --quiet "$image" | head -1)
+    
+    if [ -n "$image_id" ]; then
+        print_info "Image ID: $short_id (full: ${image_id:7:19}...)"
+        
+        # Get image details
+        local created=$(docker inspect "$image" --format='{{.Created}}' 2>/dev/null || echo "unknown")
+        local digest=$(docker inspect "$image" --format='{{.RepoDigests}}' 2>/dev/null | grep -o 'sha256:[a-f0-9]*' | head -1 || echo "unknown")
+        
+        print_info "Created: $created"
+        print_info "Digest: ${digest:-unknown}"
+        
+        # Try to get labels with version info
+        local version=$(docker inspect "$image" --format='{{.Config.Labels.version}}' 2>/dev/null || echo "")
+        local git_commit=$(docker inspect "$image" --format='{{.Config.Labels.git_commit}}' 2>/dev/null || echo "")
+        local build_date=$(docker inspect "$image" --format='{{.Config.Labels.build_date}}' 2>/dev/null || echo "")
+        
+        [ -n "$version" ] && [ "$version" != "<no value>" ] && print_info "Version Label: $version"
+        [ -n "$git_commit" ] && [ "$git_commit" != "<no value>" ] && print_info "Git Commit: $git_commit"
+        [ -n "$build_date" ] && [ "$build_date" != "<no value>" ] && print_info "Build Date: $build_date"
+    else
+        print_warning "Image not found locally yet"
+    fi
+    
+    # Check for local build tag file
+    if [ -f ".latest-image-tag" ]; then
+        local local_tag=$(cat .latest-image-tag)
+        print_info "Local Build Tag: $local_tag"
+    fi
+    
+    print_info "=========================================="
+    echo ""
 }
 
 # Function to run uploader in Docker
 run_uploader_docker() {
     print_status "Running databricks-uploader in Docker..."
     
-    # Pull latest image if enabled
-    if [ "$PULL_LATEST" == "true" ]; then
-        print_info "Pulling latest databricks-uploader image..."
-        docker pull ghcr.io/bacalhau-project/databricks-uploader:latest || {
-            print_warning "Could not pull from registry, using local image..."
-            if ! docker images | grep -q "databricks-uploader"; then
-                print_warning "Image not found locally, building..."
-                ./build.sh databricks-uploader
-            fi
-        }
-    else
-        print_info "Using local databricks-uploader image (pull disabled)"
-    fi
+    print_info "Pulling latest databricks-uploader image..."
+    docker pull ghcr.io/bacalhau-project/databricks-uploader:latest
+    
+    # Print version info after pulling
+    print_docker_version_info "ghcr.io/bacalhau-project/databricks-uploader:latest" "databricks-uploader"
     
     # Stop existing container if running
     docker stop databricks-uploader 2>/dev/null || true
     docker rm databricks-uploader 2>/dev/null || true
     
+    cmd="docker run $DETACH \
+        --name databricks-uploader \
+        -v \"$(pwd)/databricks-uploader/databricks-s3-uploader-config.yaml:/app/config.yaml:ro\" \
+        -v \"$(pwd)/sample-sensor/data/sensor_data.db:/app/sensor_data.db:ro\" \
+        -v \"$(pwd)/credentials:/bacalhau_data/credentials:ro\" \
+        -v \"$(pwd)/databricks-uploader/state:/app/state\" \
+        -v \"$(pwd)/logs:/app/logs\" \
+        -e AWS_ACCESS_KEY_ID=\"\${AWS_ACCESS_KEY_ID}\" \
+        -e AWS_SECRET_ACCESS_KEY=\"\${AWS_SECRET_ACCESS_KEY}\" \
+        -e AWS_REGION=\"\${AWS_REGION:-us-west-2}\" \
+        ghcr.io/bacalhau-project/databricks-uploader:latest"
+
     print_info "Docker command to run uploader:"
-    echo ""
-    echo "docker run $DETACH \\"
-    echo "  --name databricks-uploader \\"
-    echo "  -v \"$(pwd)/databricks-s3-uploader-config.yaml:/app/config.yaml:ro\" \\"
-    echo "  -v \"$(pwd)/sample-sensor/data/sensor_data.db:/app/sensor_data.db:ro\" \\"
-    echo "  -v \"$(pwd)/credentials:/bacalhau_data/credentials:ro\" \\"
-    echo "  -v \"$(pwd)/databricks-uploader/state:/app/state\" \\"
-    echo "  -v \"$(pwd)/logs:/app/logs\" \\"
-    echo "  -e AWS_ACCESS_KEY_ID=\"\${AWS_ACCESS_KEY_ID}\" \\"
-    echo "  -e AWS_SECRET_ACCESS_KEY=\"\${AWS_SECRET_ACCESS_KEY}\" \\"
-    echo "  -e AWS_REGION=\"\${AWS_REGION:-us-west-2}\" \\"
-    echo "  ghcr.io/bacalhau-project/databricks-uploader:latest"
-    echo ""
+    echo "$cmd"
     
     print_status "Starting databricks-uploader container..."
-    docker run $DETACH \
-        --name databricks-uploader \
-        -v "$(pwd)/databricks-s3-uploader-config.yaml:/app/config.yaml:ro" \
-        -v "$(pwd)/sample-sensor/data/sensor_data.db:/app/sensor_data.db:ro" \
-        -v "$(pwd)/credentials:/bacalhau_data/credentials:ro" \
-        -v "$(pwd)/databricks-uploader/state:/app/state" \
-        -v "$(pwd)/logs:/app/logs" \
-        -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-        -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-        -e AWS_REGION="${AWS_REGION:-us-west-2}" \
-        ghcr.io/bacalhau-project/databricks-uploader:latest
+    eval "$cmd"
     
     if [ "$FOLLOW_LOGS" == "true" ] && [ -n "$DETACH" ]; then
         docker logs -f databricks-uploader
     fi
-}
-
-# Function to run uploader on Bacalhau
-run_uploader_bacalhau() {
-    print_status "Submitting databricks-uploader job to Bacalhau..."
-    
-    # Check if job spec exists
-    if [ ! -f "jobs/databricks-uploader-job.yaml" ]; then
-        print_error "Bacalhau job spec not found: \
-jobs/databricks-uploader-job.yaml"
-        exit 1
-    fi
-    
-    # Submit job
-    bacalhau job run jobs/databricks-uploader-job.yaml
 }
 
 # Function to run pipeline manager locally
@@ -272,42 +282,25 @@ run_pipeline_manager_local() {
 run_pipeline_manager_docker() {
     print_status "Pipeline-manager is a CLI tool, not a service..."
     
-    # Pull latest image if enabled
-    if [ "$PULL_LATEST" == "true" ]; then
-        print_info "Pulling latest pipeline-manager image..."
-        docker pull ghcr.io/bacalhau-project/pipeline-manager:latest || {
-            print_warning "Could not pull from registry, using local image..."
-            if ! docker images | grep -q "pipeline-manager"; then
-                print_warning "Image not found locally, building..."
-                ./build.sh pipeline-manager
-            fi
-        }
-    else
-        print_info "Using local pipeline-manager image (pull disabled)"
-    fi
+    print_info "Pulling latest pipeline-manager image..."
+    docker pull ghcr.io/bacalhau-project/pipeline-manager:latest
+    
+    # Print version info after pulling
+    print_docker_version_info "ghcr.io/bacalhau-project/pipeline-manager:latest" "pipeline-manager"
+    
+    cmd="docker run --rm \
+        -v \"$(pwd)/databricks-uploader/state:/state\" \
+        ghcr.io/bacalhau-project/pipeline-manager:latest \
+        --db /state/pipeline_config.db get"
     
     print_info "Docker command to get current configuration:"
-    echo ""
-    echo "docker run --rm \\"
-    echo "  -v \"$(pwd)/databricks-uploader/state:/state\" \\"
-    echo "  ghcr.io/bacalhau-project/pipeline-manager:latest \\"
-    echo "  --db /state/pipeline_config.db get"
-    echo ""
+    echo "$cmd"
     
-    print_info "Showing current pipeline configuration:"
-    docker run --rm \
-        -v "$(pwd)/databricks-uploader/state:/state" \
-        ghcr.io/bacalhau-project/pipeline-manager:latest \
-        --db /state/pipeline_config.db get
+    eval "$cmd"
     
-    echo ""
-    print_info "To change pipeline type, run:"
-    echo "docker run --rm \\"
-    echo "  -v \$(pwd)/databricks-uploader/state:/state \\"
-    echo "  ghcr.io/bacalhau-project/pipeline-manager:latest \\"
-    echo "  --db /state/pipeline_config.db set <type>"
-    echo ""
-    echo "Available types: raw, schematized, filtered, aggregated"
+    if [ "$FOLLOW_LOGS" == "true" ] && [ -n "$DETACH" ]; then
+        docker logs -f pipeline-manager
+    fi
 }
 
 # Function to run sensor simulator
@@ -327,6 +320,9 @@ run_sensor() {
         docker pull ghcr.io/bacalhau-project/sensor-log-generator:latest || {
             print_warning "Could not pull sensor image from registry"
         }
+        
+        # Print version info after pulling
+        print_docker_version_info "ghcr.io/bacalhau-project/sensor-log-generator:latest" "sensor-log-generator"
     fi
     
     print_info "This will run the sensor using the start-sensor.sh script"
@@ -379,9 +375,6 @@ case $COMPONENT in
                 ;;
             docker)
                 run_uploader_docker
-                ;;
-            bacalhau)
-                run_uploader_bacalhau
                 ;;
             *)
                 print_error "Unknown mode: $MODE"

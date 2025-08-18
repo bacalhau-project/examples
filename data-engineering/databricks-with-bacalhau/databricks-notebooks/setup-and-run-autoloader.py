@@ -80,8 +80,149 @@ def test_bucket_access():
     print()
 
 
+def upload_schema_samples():
+    """Upload sample schema files to each bucket for Auto Loader schema inference."""
+    print("📤 Uploading Schema Sample Files")
+    print("=" * 40)
+
+    from datetime import datetime
+    import json
+
+    # Sample schemas for each stage
+    samples = {
+        "ingestion": [
+            {
+                "id": 1,
+                "timestamp": datetime.now().isoformat(),
+                "sensor_id": "SCHEMA_SAMPLE",
+                "temperature": 22.0,
+                "humidity": 60.0,
+                "pressure": 101325.0,
+                "vibration": 0.5,
+                "voltage": 24.0,
+                "status_code": 0,
+                "anomaly_flag": 0,
+                "firmware_version": "1.0.0",
+                "model": "SampleModel",
+                "manufacturer": "SampleMfg",
+                "location": "Sample Location",
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "original_timezone": "+00:00",
+                "synced": 0,
+            }
+        ],
+        "validated": [
+            {
+                "id": 1,
+                "timestamp": datetime.now().isoformat(),
+                "sensor_id": "SCHEMA_SAMPLE",
+                "temperature": 22.0,
+                "humidity": 60.0,
+                "pressure": 101325.0,
+                "vibration": 0.5,
+                "voltage": 24.0,
+                "status_code": 0,
+                "anomaly_flag": 0,
+                "anomaly_type": None,
+                "firmware_version": "1.0.0",
+                "model": "SampleModel",
+                "manufacturer": "SampleMfg",
+                "location": "Sample Location",
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "original_timezone": "+00:00",
+                "synced": 0,
+                "validation_status": "valid",
+            }
+        ],
+        "enriched": [
+            {
+                "id": 1,
+                "timestamp": datetime.now().isoformat(),
+                "sensor_id": "SCHEMA_SAMPLE",
+                "temperature": 22.0,
+                "humidity": 60.0,
+                "pressure": 101325.0,
+                "vibration": 0.5,
+                "voltage": 24.0,
+                "status_code": 0,
+                "anomaly_flag": 0,
+                "firmware_version": "1.0.0",
+                "model": "SampleModel",
+                "manufacturer": "SampleMfg",
+                "location": "Sample Location",
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "original_timezone": "+00:00",
+                "synced": 0,
+                "enrichment_timestamp": datetime.now().isoformat(),
+            }
+        ],
+        "aggregated": [
+            {
+                "window_start": datetime.now().isoformat(),
+                "window_end": datetime.now().isoformat(),
+                "sensor_id": "SCHEMA_SAMPLE",
+                "avg_temperature": 22.0,
+                "min_temperature": 20.0,
+                "max_temperature": 24.0,
+                "avg_humidity": 60.0,
+                "avg_pressure": 101325.0,
+                "avg_vibration": 0.5,
+                "avg_voltage": 24.0,
+                "record_count": 300,
+                "anomaly_count": 0,
+            }
+        ],
+        "anomalies": [
+            {
+                "id": 1,
+                "timestamp": datetime.now().isoformat(),
+                "sensor_id": "SCHEMA_SAMPLE",
+                "temperature": 45.0,
+                "humidity": 60.0,
+                "pressure": 101325.0,
+                "vibration": 2.5,
+                "voltage": 24.0,
+                "status_code": 1,
+                "anomaly_flag": 1,
+                "anomaly_type": "spike",
+                "anomaly_score": 0.95,
+                "firmware_version": "1.0.0",
+                "model": "SampleModel",
+                "manufacturer": "SampleMfg",
+                "location": "Sample Location",
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "original_timezone": "+00:00",
+                "synced": 0,
+            }
+        ],
+    }
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    for stage, bucket in BUCKETS.items():
+        try:
+            sample_data = samples.get(stage, samples["ingestion"])
+            json_content = json.dumps(sample_data, indent=2)
+
+            # Write sample file to bucket
+            file_path = f"{bucket}schema_sample_{timestamp}.json"
+            dbutils.fs.put(file_path, json_content, overwrite=True)
+
+            print(f"✅ {stage:12} : Uploaded schema sample")
+        except Exception as e:
+            print(f"❌ {stage:12} : Failed to upload sample: {str(e)[:50]}")
+
+    print()
+    print("📝 Schema samples uploaded for Auto Loader initialization")
+    print()
+
+
 def clear_all_buckets():
-    """Clear all JSON files from S3 buckets - USE WITH CAUTION!"""
+    """Clear all JSON files from S3 buckets and upload schema samples."""
     print("⚠️  CLEARING ALL JSON FILES FROM S3 BUCKETS")
     print("=" * 40)
 
@@ -101,11 +242,14 @@ def clear_all_buckets():
             print(f"❌ {stage:12} : {str(e)[:50]}")
     print()
 
+    # Upload schema samples after clearing
+    upload_schema_samples()
+
 
 # Always test access
 test_bucket_access()
 
-# Uncomment to clear all buckets - BE CAREFUL!
+# Uncomment to clear all buckets and initialize with schema samples
 # clear_all_buckets()
 
 # COMMAND ----------

@@ -452,8 +452,8 @@ class SQLiteToS3Uploader:
                 # Set to query-only mode for extra safety
                 conn.execute("PRAGMA query_only=1;")
 
-                # Use WAL mode for better concurrency (reader settings)
-                conn.execute("PRAGMA journal_mode=WAL;")
+                # NEVER set journal_mode - that's a WRITE operation!
+                # The sensor database controls its own journal mode
 
                 cursor = conn.cursor()
                 cursor.execute(query, params)

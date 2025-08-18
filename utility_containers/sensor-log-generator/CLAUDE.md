@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Build multi-platform images: `./build.sh`
 - Test container: `./test_container.sh`
 - Run tests: `uv run pytest tests/`
+- Keep existing database on startup: `docker run -v $(pwd)/data:/app/data -e PRESERVE_EXISTING_DB=true sensor-simulator`
 
 ## Code Style Guidelines
 - Python 3.11+ with type annotations (from typing import Dict, Optional, etc.)

@@ -1,50 +1,119 @@
-# Industrial Sensor Simulator
+# Industrial Sensor Simulator 🏭
 
-This project simulates industrial environmental sensors that monitor temperature, humidity, pressure, and voltage. It generates realistic sensor data and stores it in a SQLite database, including both normal operating patterns and various types of anomalies.
+**Your Swiss Army knife for testing data pipelines, monitoring systems, and edge computing deployments!**
 
-## Features
+This industrial sensor simulator generates hyper-realistic environmental sensor data complete with configurable anomalies, making it perfect for:
 
-- Generates realistic sensor data (temperature, humidity, pressure, voltage)
-- Configurable via YAML file and node-specific JSON identity file
-- Random location generation with GPS coordinates
-- Sensor replication for testing at scale
-- Simulates various types of anomalies:
-  - **Spike anomalies**: Sudden, short-lived extreme values
-  - **Trend anomalies**: Gradual shifts away from normal operation
-  - **Pattern anomalies**: Changes in the normal pattern of readings
-  - **Missing data**: Simulated sensor outages
-  - **Noise anomalies**: Increased random variation in readings
-- Firmware-dependent behavior (different versions exhibit different anomaly patterns)
-- Model and manufacturer-specific characteristics
-- Location-based environmental patterns
-- Stores data in a lightweight SQLite database
-- Runs as a Docker container with uv for dependency management
-- **Dynamic configuration reloading**: Changes to configuration files are automatically detected and applied
-- **Database sync support**: Includes a `synced` flag for integration with external data collection systems
+- **Testing data ingestion pipelines** without expensive hardware
+- **Developing anomaly detection algorithms** with controlled, reproducible scenarios
+- **Load testing time-series databases** with concurrent sensor streams
+- **Training machine learning models** on realistic sensor patterns
+- **Demonstrating edge computing architectures** with distributed sensors
+- **Validating monitoring and alerting systems** with predictable anomalies
 
-## Getting Started
+The simulator creates authentic sensor readings (temperature, humidity, pressure, voltage) with manufacturer-specific quirks, firmware-dependent behaviors, and location-based patterns—just like real industrial IoT deployments!
+
+## ⚡ Why This Simulator?
+
+Unlike basic data generators that produce random numbers, this simulator models the **real-world complexity** of industrial IoT:
+
+- **📦 Hardware variations**: Different manufacturers have different failure rates (SensorTech fails 20% more!)
+- **💾 Firmware bugs**: Beta versions are 50% more likely to glitch (just like real life)
+- **🌡️ Environmental effects**: Sensors drift differently in hot vs. cold locations
+- **⚙️ Realistic anomalies**: Not just random spikes, but patterned failures that mirror actual sensor decay
+- **🔄 Concurrent operations**: Multiple sensors can write to the same database safely (goodbye, disk I/O errors!)
+- **📈 Production-ready**: Monitoring endpoints, health checks, and metrics for integration with your observability stack
+
+Perfect for teams who need to test their systems against realistic sensor behavior without deploying expensive hardware!
+
+## 🚀 Key Features
+
+### Realistic Data Generation
+- **Multi-sensor readings**: Temperature, humidity, pressure, and voltage with authentic noise patterns
+- **Manufacturer quirks**: Different brands exhibit unique failure modes and accuracy levels
+- **Firmware behaviors**: Beta versions are buggy, stable releases are... mostly stable
+- **Location awareness**: Sensors in Denver behave differently than those in Miami
+
+### Powerful Anomaly Simulation 
+Perfect for testing your detection algorithms:
+- **🔥 Spike anomalies**: Sudden sensor freakouts (that one sensor that always acts up)
+- **📈 Trend anomalies**: Gradual drift from normal (like that slowly failing bearing)
+- **🔄 Pattern anomalies**: When sensors get "confused" and change their rhythm
+- **🚫 Missing data**: Simulated network outages and sensor failures
+- **📊 Noise anomalies**: Increased jitter (electrical interference, anyone?)
+
+### Enterprise-Ready Features
+- **🔄 Hot configuration reloading**: Tweak anomaly rates without restarting
+- **🎯 Concurrent database access**: Multiple sensors writing to the same database safely
+- **📡 HTTP monitoring API**: Real-time health checks and metrics endpoints
+- **🏷️ Semantic versioning**: Properly versioned Docker images with our new Python build system
+- **🔐 Data sync support**: Built-in `synced` flag for data pipeline integration
+- **📝 LLM-optimized documentation**: AI assistants can understand your setup instantly
+
+## 🎯 Common Use Cases
+
+### Testing Anomaly Detection
+Want to validate your anomaly detection system? Create controlled chaos:
+
+```yaml
+# chaos-test.yaml
+anomalies:
+  enabled: true
+  probability: 0.20  # 20% anomaly rate - bring on the chaos!
+  types:
+    spike:
+      enabled: true
+      weight: 0.5  # Lots of spikes to test your threshold alerts
+    trend:
+      enabled: true
+      weight: 0.3
+      duration_seconds: 600  # Long trends to test your drift detection
+```
+
+### Load Testing Databases
+Need to stress test your time-series database? Spawn a sensor army:
+
+```yaml
+# load-test.yaml
+replicas:
+  count: 100  # 100 concurrent sensors
+  prefix: "LOAD_TEST"
+simulation:
+  readings_per_second: 10  # 1000 readings/second total
+```
+
+### Training ML Models
+Building a predictive maintenance model? Generate training data with known patterns:
+
+```yaml
+# ml-training.yaml
+anomalies:
+  enabled: true
+  probability: 0.05  # Realistic 5% failure rate
+sensor:
+  manufacturer: "SensorTech"  # Known to fail more often
+  firmware_version: "3.0.0-beta"  # Buggy firmware for more anomalies
+```
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Docker
-- Python 3.11+ (if running without Docker)
-- SQLite3 (for querying the database)
+- Docker (recommended) or Python 3.11+ with uv
+- SQLite3 (for data analysis)
 
-### Quick Start with Docker
-
-Run the container with default settings:
+### 30-Second Setup
 
 ```bash
-docker run -v $(pwd)/data:/app/data ghcr.io/bacalhau-project/sensor-log-generator:latest
-```
-
-Or with custom sensor ID and location:
-
-```bash
+# Run with default settings (1 sensor, moderate anomalies)
 docker run -v $(pwd)/data:/app/data \
-          -e SENSOR_ID=CUSTOM001 \
-          -e SENSOR_LOCATION="Custom Location" \
-          ghcr.io/bacalhau-project/sensor-log-generator:latest
+  ghcr.io/bacalhau-project/sensor-log-generator:latest
+
+# Run with custom identity (specific location, model, etc.)
+docker run -v $(pwd)/data:/app/data \
+  -e SENSOR_ID=SENSOR_NYC_001 \
+  -e SENSOR_LOCATION="New York Factory Floor 3" \
+  ghcr.io/bacalhau-project/sensor-log-generator:latest
 ```
 
 ### Using Docker Compose
@@ -77,67 +146,85 @@ For local development with custom configuration:
 docker-compose -f docker-compose-local.yml up
 ```
 
-### Multi-Platform Docker Images
+### 🏗️ Building and Versioning
 
-The project supports multi-platform images for both AMD64 and ARM64 architectures:
+We use a Python-based build system with proper semantic versioning:
 
 ```bash
-# Build multi-platform images
-./build.sh
+# Build with automatic minor version bump (e.g., 1.2.0 -> 1.3.0)
+./build.py
 
-# The script will:
-# - Build for linux/amd64 and linux/arm64
-# - Tag with version from .version file
-# - Push to GitHub Container Registry
+# Build with major version bump (e.g., 1.2.0 -> 2.0.0)
+./build.py --version-bump major
+
+# Build with specific version
+./build.py --version-tag 2.5.3
+
+# Test build without pushing (dry run)
+./build.py --skip-push
 ```
 
-### Building Locally
+Each build creates three tags:
+- **latest**: Always points to the newest build
+- **datetime**: Unique timestamp (e.g., `2508180755`)
+- **semver**: Semantic version (e.g., `v1.2.3`)
 
-1. Clone the repository:
+The build system:
+- Supports linux/amd64 and linux/arm64 architectures
+- Uses Docker buildx for multi-platform builds
+- Automatically creates and pushes git tags
+- Validates semantic version format
+- Provides rich terminal output with build progress
+
+### 🛠️ Local Development
+
+1. Clone and setup:
 
 ```bash
 git clone https://github.com/bacalhau-project/bacalhau-examples.git
 cd bacalhau-examples/utility_containers/sensor-log-generator
 ```
 
-1. Build the Docker image:
+2. Build and test locally:
 
 ```bash
+# Quick test with the test script
+./test_container.sh
+
+# Or build manually
 docker build -t sensor-simulator .
-```
-
-1. Run the container:
-
-```bash
 docker run -v $(pwd)/data:/app/data sensor-simulator
 ```
 
-1. Test the container with the provided script:
+3. Run with custom configuration:
 
 ```bash
-./test_container.sh
+# Copy example config
+cp config.example.yaml my-config.yaml
+# Edit my-config.yaml to your needs
+
+# Run with your config
+docker run -v $(pwd)/data:/app/data \
+  -v $(pwd)/my-config.yaml:/app/config.yaml \
+  sensor-simulator
 ```
 
-This script:
+### 🐍 Running with Python (using uv)
 
-- Builds the Docker container
-- Clears and recreates the data directory
-- Runs the container for 30 seconds
-- Verifies the database was created and shows statistics
-- Displays sample data from the database
-
-### Running without Docker
-
-1. Install the required packages:
+For development or when Docker isn't available:
 
 ```bash
-pip install requests numpy pyyaml psutil
-```
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-2. Run the simulator:
+# Run directly with uv (dependencies auto-installed)
+uv run main.py --config config.yaml --identity node_identity.json
 
-```bash
-python main.py --config config.yaml --identity node_identity.json
+# Generate a new identity file
+uv run main.py --generate-identity
+
+# Run tests
+uv run pytest tests/
 ```
 
 ### Environment Variables
@@ -152,6 +239,8 @@ The simulator supports the following environment variables:
 | `SENSOR_LOCATION` | Override sensor location | None (required in config) |
 | `SQLITE_TMPDIR` | SQLite temporary directory (for containers) | /tmp |
 | `LOG_LEVEL` | Override logging level | INFO |
+| `PRESERVE_EXISTING_DB` | Preserve existing database on startup | false |
+| `DEBUG_MODE` | Enable debug logging and diagnostics | false |
 
 Environment variables take precedence over configuration file values.
 
@@ -528,9 +617,9 @@ The SQLite database uses the following schema (defined in `src/database.py`):
 - `instance_id` (TEXT): Cloud instance identifier (e.g., AWS EC2 instance ID)
 - `sensor_type` (TEXT): Type of sensor (e.g., environmental_monitoring)
 
-## Querying the Data
+## 📊 Analyzing Your Data
 
-Example SQLite queries:
+The simulator creates rich, queryable data perfect for analysis:
 
 ### Compare anomaly rates by firmware version
 
@@ -572,9 +661,9 @@ GROUP BY location
 ORDER BY readings DESC;
 ```
 
-## API Endpoints
+## 🌐 HTTP Monitoring API
 
-When monitoring is enabled (requires version 2 configuration), the simulator provides a REST API on port 8080:
+When monitoring is enabled, access real-time metrics and health checks:
 
 ### Health and Status Endpoints
 
@@ -621,24 +710,103 @@ monitoring:
   host: "0.0.0.0"
 ```
 
-## Technical Implementation
+## 🏗️ Architecture
 
-The simulator is built with a modular architecture:
+The simulator uses a modular, extensible architecture:
 
-- **main.py**: Entry point that parses arguments and starts the simulator
-- **src/simulator.py**: Core simulation logic that generates readings and applies anomalies
-- **src/anomaly.py**: Implements different types of anomalies and their behaviors
-- **src/database.py**: Handles database connections and operations with SQLite
-- **src/config.py**: Loads and manages configuration from files and environment variables
-- **src/location.py**: Generates random locations and manages replicas
-- **src/monitor.py**: HTTP monitoring server providing REST API endpoints
-- **src/enums.py**: Defines valid values for manufacturers, models, and firmware versions
+### Core Components
+- **main.py**: Entry point with CLI argument parsing
+- **src/simulator.py**: Core simulation engine with configurable timing
+- **src/anomaly.py**: Anomaly generation with weighted random selection
+- **src/database.py**: Resilient SQLite operations with retry logic and WAL mode
+- **src/config.py**: Dynamic configuration with hot reloading support
+- **src/location.py**: GPS coordinate generation and city database
+- **src/monitor.py**: HTTP server for health checks and metrics
+- **src/enums.py**: Type-safe enumerations for manufacturers and models
 
-## License
+### Key Features
+- **Concurrent-safe database access**: Multiple sensors can write to the same database
+- **Graceful degradation**: Continues operating even with disk errors
+- **Memory-efficient**: Streams data without buffering large datasets
+- **Cloud-native**: Designed for containerized deployments
+- **LLM-friendly**: Structured for easy AI assistant comprehension
+
+## 🔬 Advanced Testing Scenarios
+
+### Simulating Sensor Decay
+Test how your system handles gradually failing sensors:
+
+```yaml
+# sensor-decay.yaml
+anomalies:
+  enabled: true
+  probability: 0.01  # Start with 1% anomaly rate
+  
+# Then use dynamic reloading to gradually increase:
+# After 1 hour: probability: 0.05
+# After 2 hours: probability: 0.10
+# After 3 hours: probability: 0.25
+```
+
+### Geographic Distribution Testing
+Simulate a global sensor network:
+
+```yaml
+# global-network.yaml
+random_location:
+  enabled: true
+  number_of_cities: 50  # Use 50 different cities
+  gps_variation: 1000   # 1km variation around city centers
+
+replicas:
+  count: 50
+  prefix: "GLOBAL"
+```
+
+### Firmware Rollout Simulation
+Test how firmware updates affect your fleet:
+
+```bash
+# Start with stable firmware
+docker run -v $(pwd)/data:/app/data \
+  -e SENSOR_FIRMWARE="1.4" \
+  sensor-simulator
+
+# Simulate rolling update to beta firmware
+docker run -v $(pwd)/data:/app/data \
+  -e SENSOR_FIRMWARE="3.0.0-beta" \
+  sensor-simulator
+```
+
+## 📚 LLM Integration
+
+This project includes LLM-optimized documentation for AI assistants:
+
+- **CLAUDE.md**: Instructions for Claude and other AI coding assistants
+- **llm_docs.py**: Generates comprehensive project documentation
+- **Structured configs**: YAML and JSON formats that LLMs can easily parse
+
+To generate fresh LLM documentation:
+
+```bash
+uv run python src/llm_docs.py > LLM_DOCUMENTATION.md
+```
+
+## 🤝 Contributing
+
+We welcome contributions! This sensor simulator is perfect for:
+
+- Adding new sensor types (vibration, sound, air quality)
+- Implementing additional anomaly patterns
+- Creating industry-specific presets
+- Improving database performance
+- Adding export formats (Parquet, CSV, etc.)
+
+## 📜 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### SQLite Disk I/O Errors in Containers
 

@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import re
 import time
@@ -9,6 +10,8 @@ import numpy as np
 from .enums import AnomalyType, FirmwareVersion, Model, ParameterType
 
 logger = logging.getLogger(__name__)
+# Inherit parent logger's level
+logger.setLevel(logging.getLogger().level)
 
 
 class AnomalyGenerator:
@@ -84,12 +87,20 @@ class AnomalyGenerator:
         # Track active anomalies
         self.active_anomalies = {}
         self.start_times = {}
+        
+        # Debug mode
+        self.debug_mode = os.environ.get('DEBUG_MODE') == 'true' or logger.isEnabledFor(logging.DEBUG)
+        if self.debug_mode:
+            logger.setLevel(logging.DEBUG)
 
         # Log sensor identity
         logger.info(f"Initializing anomaly generator for sensor: {self.id}")
         logger.info(f"  Firmware: {self.firmware_version}")
         logger.info(f"  Model: {self.model}")
         logger.info(f"  Manufacturer: {self.manufacturer}")
+        
+        if self.debug_mode:
+            logger.debug(f"🔍 Anomaly config: enabled={self.enabled}, probability={self.probability}, types={list(self.types.keys())}")
 
     def _is_valid_semver(self, version: str) -> bool:
         """Validate if a string is a valid semantic version.
@@ -126,16 +137,12 @@ class AnomalyGenerator:
         elif fw_version in ["1.5", "1.5.0"]:
             adjusted_probability *= 0.7  # 30% fewer anomalies
 
-        # Adjust based on manufacturer
-        if self.manufacturer == "SensorTech":
-            # Standard probability
-            pass
-        elif self.manufacturer == "EnvMonitors":
-            adjusted_probability *= 0.8  # 20% fewer anomalies but more severe
-        elif self.manufacturer == "IoTPro":
-            adjusted_probability *= 1.2  # 20% more anomalies
-
-        return random.random() < adjusted_probability
+        should_generate = random.random() < adjusted_probability
+        
+        if self.debug_mode and should_generate:
+            logger.debug(f"🎲 Anomaly generation triggered (probability: {adjusted_probability:.3f})")
+        
+        return should_generate
 
     def select_anomaly_type(self):
         """Select an anomaly type based on configured weights and sensor characteristics."""

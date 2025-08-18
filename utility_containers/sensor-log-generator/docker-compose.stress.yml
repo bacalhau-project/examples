@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # Scenario 1: Limited memory (simulates OOM conditions)
+  sensor-limited-memory:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-limited-memory
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+    volumes:
+      - ./data-stress:/app/data
+      - ./:/app/config:ro
+    deploy:
+      resources:
+        limits:
+          memory: 50M  # Very limited memory
+          cpus: '0.5'
+    restart: unless-stopped
+
+  # Scenario 2: Limited disk I/O (simulates slow disk)
+  sensor-limited-io:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-limited-io
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+    volumes:
+      - ./data-stress:/app/data
+      - ./:/app/config:ro
+    # Limit disk I/O using blkio limits
+    blkio_config:
+      device_write_bps:
+        - path: /dev/sda
+          rate: '1mb'  # Limit write to 1MB/s
+      device_read_bps:
+        - path: /dev/sda
+          rate: '1mb'  # Limit read to 1MB/s
+    restart: unless-stopped
+
+  # Scenario 3: Read-only volume mount (simulates permission issues)
+  sensor-readonly:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-readonly
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+    volumes:
+      - ./data-stress:/app/data:ro  # Mount as read-only!
+      - ./:/app/config:ro
+    restart: unless-stopped
+
+  # Scenario 4: Limited tmpfs (simulates full disk)
+  sensor-tmpfs-limited:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-tmpfs-limited
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+      - SQLITE_TMPDIR=/app/data  # Force SQLite to use limited space
+    volumes:
+      - ./:/app/config:ro
+    tmpfs:
+      - /app/data:size=10M  # Only 10MB of space
+    restart: unless-stopped
+
+  # Scenario 5: Network storage simulation (high latency)
+  sensor-network-storage:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-network-storage
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+    volumes:
+      - nfs-volume:/app/data  # Simulated network volume
+      - ./:/app/config:ro
+    restart: unless-stopped
+
+  # Scenario 6: Chaos testing (random container restarts)
+  sensor-chaos:
+    image: ghcr.io/bacalhau-project/sensor-log-generator:latest
+    container_name: sensor-chaos
+    environment:
+      - CONFIG_FILE=/app/config/sensor-config.yaml
+      - IDENTITY_FILE=/app/config/identity.json
+      - DEBUG_MODE=true
+    volumes:
+      - ./data-stress:/app/data
+      - ./:/app/config:ro
+    restart: always  # Always restart
+    # This container will be randomly killed by chaos-monkey
+
+  # Chaos monkey to randomly kill containers
+  chaos-monkey:
+    image: alpine:latest
+    container_name: chaos-monkey
+    command: |
+      sh -c "
+      while true; do
+        sleep \$$(( RANDOM % 60 + 30 ))  # Random delay 30-90 seconds
+        echo 'Chaos Monkey: Killing sensor-chaos container...'
+        docker kill sensor-chaos 2>/dev/null || true
+        sleep 5
+      done
+      "
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  nfs-volume:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: './data-nfs'

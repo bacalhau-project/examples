@@ -3,6 +3,7 @@ import os
 import random
 import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Dict
@@ -19,6 +20,8 @@ from .monitor import MonitoringServer
 
 # Set up global logger
 logger = logging.getLogger(__name__)
+# Inherit parent logger's level
+logger.setLevel(logging.getLogger().level)
 
 
 class SensorSimulator:
@@ -30,6 +33,12 @@ class SensorSimulator:
         """
         self.config_manager = config_manager
         self.identity = self.config_manager.get_identity()  # Get initial identity
+
+        # Check if debug mode is enabled
+        self.debug_mode = os.environ.get('DEBUG_MODE') == 'true' or logger.isEnabledFor(logging.DEBUG)
+        if self.debug_mode:
+            logger.setLevel(logging.DEBUG)
+            logger.debug("🔍 SensorSimulator initialized in DEBUG mode")
 
         # Handle both old and new identity formats
         self.sensor_id = self.identity.get("sensor_id") or self.identity.get("id")
@@ -75,7 +84,16 @@ class SensorSimulator:
             os.makedirs(db_dir, exist_ok=True)
 
         # Initialize database
-        self.database = SensorDatabase(db_path)
+        # By default, delete old database to avoid corruption issues from unclean shutdowns
+        # Set PRESERVE_EXISTING_DB=true to keep existing data
+        preserve_db = os.environ.get('PRESERVE_EXISTING_DB', 'false').lower() == 'true'
+        
+        if preserve_db:
+            logger.info("PRESERVE_EXISTING_DB=true - Keeping existing database")
+        else:
+            logger.debug("Starting fresh - old database will be deleted if it exists")
+        
+        self.database = SensorDatabase(db_path, preserve_existing_db=preserve_db)
 
         # Set up logging to file (using config from ConfigManager)
         log_file = self.config_manager.get_logging_config().get("file")
@@ -168,15 +186,15 @@ class SensorSimulator:
     def _validate_sensor_config(self):
         """Validate the sensor configuration using self.identity and assign enum attributes."""
         current_identity = self.identity
-        
+
         # Check if location exists (handle both formats)
         location = current_identity.get("location")
         if not location:
             raise ValueError("Location is required in identity configuration")
-        
+
         # Extract device info based on format
         device_info = current_identity.get("device_info", {})
-        
+
         # Manufacturer - check nested first, then flat
         manufacturer_val = device_info.get("manufacturer") or current_identity.get("manufacturer")
         if manufacturer_val is None:
@@ -202,18 +220,18 @@ class SensorSimulator:
                 f"Must be a valid semantic version (e.g., 1.0.0, 2.1.3-beta, 1.0.0+build123)"
             )
         self.firmware_version = firmware_val
-        
+
         # Store additional device info if available
         self.serial_number = device_info.get("serial_number") if device_info else None
         self.manufacture_date = device_info.get("manufacture_date") if device_info else None
-        
+
         # Store deployment info if available
         deployment = current_identity.get("deployment") or {}
         self.deployment_type = deployment.get("deployment_type") if deployment else None
         self.installation_date = deployment.get("installation_date") if deployment else None
         self.height_meters = deployment.get("height_meters") if deployment else None
         self.orientation_degrees = deployment.get("orientation_degrees") if deployment else None
-        
+
         # Store metadata if available
         metadata = current_identity.get("metadata") or {}
         self.instance_id = metadata.get("instance_id") if metadata else None
@@ -415,7 +433,7 @@ class SensorSimulator:
                 self.identity = new_identity
                 # Re-fetch identity-dependent attributes
                 self.sensor_id = self.identity.get("sensor_id") or self.identity.get("id")
-                
+
                 # Extract location data based on format
                 location_data = self.identity.get("location")
                 if isinstance(location_data, dict):
@@ -488,7 +506,7 @@ class SensorSimulator:
 
             # Extract device info and other metadata based on identity format
             device_info = self.identity.get("device_info", {})
-            
+
             # Prepare data for Pydantic model
             reading_data_for_schema = {
                 "timestamp": iso_timestamp,
@@ -549,32 +567,87 @@ class SensorSimulator:
             self.readings_count += 1
             self.consecutive_errors = 0  # Reset error counter on success
 
-            # Log occasional status
+            # Print progress message every 100 entries
             if self.readings_count % 100 == 0:
-                logger.info(f"Generated {self.readings_count} readings")
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print(f"{self.readings_count} sensor readings created. ({current_time})")
 
             return True
         except Exception as e:
             self.error_count += 1
             self.consecutive_errors += 1
-            
+
             # Log the full error with traceback for diagnosis
             logger.error(f"Error processing reading: {e}", exc_info=True)
-            
+
             # Identify specific error types
             error_msg = str(e).lower()
             if "disk i/o error" in error_msg:
-                logger.error("DISK I/O ERROR detected - storage system may be overloaded")
+                # Check if database has been retrying for a while
+                if hasattr(self.database, 'failure_retry_count'):
+                    retry_count = self.database.failure_retry_count
+                    if retry_count >= len(self.database.failure_buffer_retry_intervals):
+                        # We've hit the 15-second threshold
+                        logger.error(f"DISK I/O ERROR persists after {retry_count} retry attempts")
+                    else:
+                        # Still in early retry phase, don't spam errors
+                        logger.debug(f"Disk I/O error, retry #{retry_count + 1} pending")
+                else:
+                    logger.debug("Disk I/O error detected, will retry")
             elif "database is locked" in error_msg:
                 logger.error("DATABASE LOCKED - another process may be holding a write lock")
             elif "malformed" in error_msg or "corrupt" in error_msg:
-                logger.critical("DATABASE CORRUPTION detected - stopping immediately")
-                return False
+                # Try to handle corruption gracefully
+                logger.error("DATABASE CORRUPTION detected")
+                
+                # If this is the first corruption error, try to recover
+                if not hasattr(self, '_corruption_recovery_attempted'):
+                    self._corruption_recovery_attempted = True
+                    logger.info("Attempting automatic database recovery...")
+                    
+                    try:
+                        # Close current database connection
+                        self.database.close()
+                        
+                        # Backup corrupted database
+                        import shutil
+                        backup_path = f"{self.database.db_path}.corrupted.{int(time.time())}"
+                        shutil.copy2(self.database.db_path, backup_path)
+                        logger.info(f"Corrupted database backed up to: {backup_path}")
+                        
+                        # Remove corrupted database
+                        os.remove(self.database.db_path)
+                        
+                        # Also remove journal files
+                        for suffix in ['-journal', '-wal', '-shm']:
+                            journal_path = f"{self.database.db_path}{suffix}"
+                            if os.path.exists(journal_path):
+                                os.remove(journal_path)
+                                logger.debug(f"Removed {journal_path}")
+                        
+                        # Create new database
+                        logger.info("Creating fresh database...")
+                        from src.database import SensorDatabase
+                        # Always preserve=False when recovering from corruption
+                        self.database = SensorDatabase(self.database.db_path, preserve_existing_db=False)
+                        logger.info("Database recreated successfully, continuing operation")
+                        
+                        # Reset error counters since we recovered
+                        self.consecutive_errors = 0
+                        return True
+                        
+                    except Exception as recovery_error:
+                        logger.error(f"Failed to recover from corruption: {recovery_error}")
+                        logger.critical("DATABASE CORRUPTION - unable to recover, stopping")
+                        return False
+                else:
+                    logger.critical("DATABASE CORRUPTION persists after recovery attempt - stopping")
+                    return False
 
             # If too many consecutive errors, stop the simulator
             if self.consecutive_errors >= self.max_consecutive_errors:
                 logger.critical(
-                    f"STOPPING: Too many consecutive errors ({self.consecutive_errors})"
+                    f"Stopping due to too many consecutive errors ({self.consecutive_errors})"
                 )
                 logger.critical(f"Last error was: {e}")
                 return False
@@ -583,6 +656,77 @@ class SensorSimulator:
             logger.warning(f"Continuing after error {self.consecutive_errors}/{self.max_consecutive_errors}")
             return True  # Return True to continue despite the error
 
+    def _start_debug_reporter(self):
+        """Start a background thread that reports detailed status every 5 seconds in debug mode."""
+        def debug_reporter():
+            """Background thread to report detailed status."""
+            last_reading_count = 0
+            while self.running:
+                time.sleep(5)
+                if not self.running:
+                    break
+
+                # Calculate rates
+                current_readings = self.readings_count
+                readings_in_interval = current_readings - last_reading_count
+                readings_per_sec = readings_in_interval / 5.0
+                last_reading_count = current_readings
+
+                # Get database stats
+                try:
+                    db_stats = self.database.get_database_stats()
+                    db_count = db_stats.get("total_readings", 0)
+                    db_size = db_stats.get("database_size_mb", 0)
+                    unsynced = db_stats.get("unsynced_readings", 0)
+                except:
+                    db_count = "?"
+                    db_size = "?"
+                    unsynced = "?"
+
+                # Memory usage
+                import psutil
+                process = psutil.Process()
+                memory_mb = process.memory_info().rss / 1024 / 1024
+
+                # Runtime
+                elapsed = time.time() - self.start_time
+                remaining = self.run_time_seconds - elapsed
+
+                logger.debug(
+                    f"📊 STATUS [Runtime: {elapsed:.1f}s/{self.run_time_seconds}s] | "
+                    f"Readings: {current_readings} (Rate: {readings_per_sec:.1f}/s, Target: {self.readings_per_second}/s) | "
+                    f"DB: {db_count} records ({db_size:.2f}MB, {unsynced} unsynced) | "
+                    f"Errors: {self.error_count} | Memory: {memory_mb:.1f}MB | "
+                    f"Remaining: {remaining:.1f}s"
+                )
+
+                # Detailed component status
+                if self.anomaly_generator:
+                    anomaly_state = self.anomaly_generator.active_anomalies
+                    if anomaly_state:
+                        logger.debug(f"   🔴 Active anomalies: {anomaly_state}")
+
+                # Batch buffer status
+                if hasattr(self.database, 'batch_buffer'):
+                    batch_size = len(self.database.batch_buffer)
+                    if batch_size > 0:
+                        logger.debug(f"   📦 Batch buffer: {batch_size}/{self.database.batch_size} readings pending")
+                
+                # Failure buffer status
+                if hasattr(self.database, 'failure_buffer'):
+                    failure_size = len(self.database.failure_buffer)
+                    if failure_size > 0:
+                        retry_count = self.database.failure_retry_count
+                        if retry_count < len(self.database.failure_buffer_retry_intervals):
+                            next_interval = self.database.failure_buffer_retry_intervals[retry_count]
+                        else:
+                            next_interval = self.database.failure_buffer_max_retry_interval
+                        logger.debug(f"   ⚠️  Failure buffer: {failure_size} readings (retry #{retry_count+1} in {next_interval:.0f}s)")
+
+        self.debug_thread = threading.Thread(target=debug_reporter, daemon=True, name="DebugReporter")
+        self.debug_thread.start()
+        logger.debug("Started debug status reporter thread")
+
     def run(self):
         """Run the simulator for the configured duration."""
         self.running = True
@@ -590,9 +734,17 @@ class SensorSimulator:
         logger.info(f"Starting sensor simulator for {self.run_time_seconds} seconds")
         logger.info(f"Generating {self.readings_per_second} readings per second")
 
+        if self.debug_mode:
+            logger.debug(f"Debug: Sensor ID={self.sensor_id}, Location={self.city_name}, "
+                        f"Coords=({self.latitude}, {self.longitude}), Timezone={self.timezone}")
+
         # Start monitoring server if enabled
         if self.monitoring_enabled and self.monitoring_server:
             self.monitoring_server.start()
+
+        # Start debug status reporter if in debug mode
+        if self.debug_mode:
+            self._start_debug_reporter()
 
         try:
             iteration_count = 0
@@ -606,17 +758,26 @@ class SensorSimulator:
 
                 # Generate and process a reading
                 try:
+                    if self.debug_mode and iteration_count % 10 == 1:
+                        logger.debug(f"Generating reading #{iteration_count}")
+
                     reading = self.generate_reading(self.sensor_id)
+
+                    if self.debug_mode and iteration_count % 10 == 1:
+                        logger.debug(f"Generated reading: temp={reading.get('temperature', 0):.2f}°C, "
+                                   f"humidity={reading.get('humidity', 0):.1f}%, "
+                                   f"pressure={reading.get('pressure', 0):.1f}hPa, "
+                                   f"anomaly={reading.get('anomaly_flag', False)}")
                 except Exception as e:
-                    logger.critical(f"CRITICAL: Failed to generate reading: {e}", exc_info=True)
-                    logger.critical("Cannot continue without ability to generate readings")
+                    logger.error(f"Failed to generate reading: {e}", exc_info=True)
+                    logger.error("Cannot continue without ability to generate readings")
                     break
-                
+
                 if not self.process_reading(reading):
                     # Only break if we've hit the max consecutive errors limit
                     if self.consecutive_errors >= self.max_consecutive_errors:
-                        logger.critical(f"STOPPING: Hit max consecutive errors ({self.consecutive_errors})")
-                        logger.critical(f"Total errors: {self.error_count}, Total readings: {self.readings_count}")
+                        logger.error(f"Stopping: Hit max consecutive errors ({self.consecutive_errors})")
+                        logger.info(f"Total errors: {self.error_count}, Total readings: {self.readings_count}")
                         break
                     else:
                         logger.warning(f"Failed to process reading (error {self.consecutive_errors}/{self.max_consecutive_errors})")
@@ -640,19 +801,19 @@ class SensorSimulator:
         except KeyboardInterrupt:
             logger.info("Simulation stopped by user (Ctrl+C)")
         except Exception as e:
-            logger.critical(f"UNEXPECTED ERROR during simulation: {e}", exc_info=True)
+            logger.error(f"Unexpected error during simulation: {e}", exc_info=True)
         finally:
             # Determine why we stopped
             elapsed = time.time() - self.start_time
             if elapsed < self.run_time_seconds - 1:  # Allow 1 second tolerance
                 if self.consecutive_errors >= self.max_consecutive_errors:
-                    logger.critical(f"SENSOR STOPPED EARLY: Too many consecutive errors ({self.consecutive_errors})")
+                    logger.error(f"Sensor stopped early: Too many consecutive errors ({self.consecutive_errors})")
                     logger.critical(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
                 elif self.error_count > 0:
-                    logger.error(f"SENSOR STOPPED EARLY: Encountered {self.error_count} total errors")
+                    logger.warning(f"Sensor stopped early: Encountered {self.error_count} total errors")
                     logger.error(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
                 else:
-                    logger.warning(f"SENSOR STOPPED EARLY: Unknown reason")
+                    logger.info(f"Sensor stopped early")
                     logger.warning(f"Only ran for {elapsed:.1f}s out of {self.run_time_seconds}s")
                     logger.warning(f"Generated {self.readings_count} readings before stopping")
             # Stop the monitoring server if it's running
@@ -688,7 +849,7 @@ class SensorSimulator:
         if self.running:
             logger.info("Stopping simulator (shutdown requested)...")
             self.running = False
-            
+
             # Ensure database gets final checkpoint
             if hasattr(self, "database"):
                 logger.info("Triggering database checkpoint on simulator stop...")
@@ -782,9 +943,7 @@ class SensorSimulator:
         }
 
         # Check for anomalies (AnomalyGenerator uses current config and identity)
-        should_gen = self.anomaly_generator.should_generate_anomaly()
-        if should_gen:
-            logger.debug(f"Generating anomaly for reading")
+        if self.anomaly_generator.should_generate_anomaly():
             anomaly_type = self.anomaly_generator.select_anomaly_type()
             if anomaly_type:
                 self.anomaly_generator.start_anomaly(anomaly_type)
@@ -810,13 +969,13 @@ class SensorSimulator:
         """
         min_val = params.get("min", 0)
         max_val = params.get("max", 100)
-        
+
         # Use mean if provided, otherwise use midpoint of range
         if "mean" in params:
             mean = params["mean"]
         else:
             mean = (min_val + max_val) / 2
-        
+
         # Use std_dev if provided, otherwise derive from range
         # Default to range/6 so that ±3 std devs covers most of the range
         if "std_dev" in params:
@@ -828,11 +987,11 @@ class SensorSimulator:
                 std_dev = range_size / 6
             else:
                 std_dev = 1.0  # Default standard deviation for zero range
-        
+
         # Generate value using normal distribution
         # random.gauss generates values from a normal distribution
         value = random.gauss(mean, std_dev)
-        
+
         # Ensure value stays within bounds
         # This might slightly skew the distribution at the edges, but ensures valid values
         return max(min_val, min(value, max_val))
@@ -902,10 +1061,10 @@ class SensorSimulator:
 
     def _is_valid_semver(self, version: str) -> bool:
         """Validate if a string is a valid semantic version.
-        
+
         Args:
             version: Version string to validate
-            
+
         Returns:
             True if valid SemVer, False otherwise
         """

@@ -205,6 +205,52 @@ docker run -d --name test-container image:tag
 - **NEVER**: Creates Databricks tables or schemas
 - **NEVER**: Manages bucket lifecycle
 
+### 🚨 CRITICAL DATABASE ACCESS RULES
+
+#### Databricks Uploader Database Access
+**ABSOLUTELY CRITICAL - VIOLATION IS A PRODUCTION INCIDENT**:
+
+1. **NEVER WRITE TO SENSOR DATABASE**
+   - The uploader must ONLY open sensor_data.db in read-only mode
+   - Use connection string: `file:{db_path}?mode=ro`
+   - Set PRAGMA: `query_only=1` 
+   - NEVER set journal modes or any write-affecting PRAGMAs
+   - NEVER execute UPDATE, INSERT, DELETE, or CREATE statements
+   - NEVER try to modify database settings (journal_mode, synchronous, etc.)
+
+2. **READ-ONLY OPERATIONS ONLY**
+   ```python
+   # CORRECT - Read-only connection
+   conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30.0)
+   conn.execute("PRAGMA query_only=1;")
+   # DO NOT ADD: conn.execute("PRAGMA journal_mode=WAL;")  # This is a WRITE operation!
+   ```
+
+3. **UPLOADER STATE MANAGEMENT**
+   - Uploader maintains its OWN state in `/databricks-uploader/state/`
+   - NEVER store uploader state in sensor database
+   - Track upload progress in `upload_state.json`
+   - Store pipeline config in separate `pipeline_config.db`
+
+4. **ERROR MESSAGES TO WATCH FOR**
+   - "attempt to write a readonly database" = CRITICAL BUG
+   - "database is locked" = Normal, retry with backoff
+   - "disk I/O error" = Check permissions, but NEVER try to fix by writing
+
+5. **TESTING DATABASE ACCESS**
+   ```bash
+   # Test that uploader CANNOT write
+   sqlite3 "file:sample-sensor/data/sensor_data.db?mode=ro" \
+     "INSERT INTO sensor_readings VALUES(...);"
+   # Should fail with: Error: attempt to write a readonly database
+   ```
+
+**WHY THIS MATTERS**: 
+- The sensor owns its database completely
+- Multiple writers = corruption
+- Read-only access prevents ALL write-related bugs
+- Production systems require strict separation of concerns
+
 #### Pipeline Manager (pipeline-manager/)
 - **OWNS**: Its own configuration database
 - **WRITES**: Pipeline configuration atomically
@@ -455,10 +501,11 @@ Only create new files when:
 13. **NEVER** use `continuous` trigger in Databricks serverless
 14. **NEVER** omit checkpoint location in streaming queries (even for console/test)
 15. **NEVER** let uploader write to sensor database
-16. **NEVER** let uploader create Databricks tables
-17. **NEVER** let pipeline manager directly upload to S3
-18. **NEVER** create schema samples outside of Databricks notebooks
-19. **NEVER** use Make or Makefiles - use Python scripts with uv run instead
+16. **NEVER** let uploader execute PRAGMA journal_mode on sensor database (it's a WRITE operation!)
+17. **NEVER** let uploader create Databricks tables
+18. **NEVER** let pipeline manager directly upload to S3
+19. **NEVER** create schema samples outside of Databricks notebooks
+20. **NEVER** use Make or Makefiles - use Python scripts with uv run instead
 
 ## ✅ ALWAYS DO THIS
 

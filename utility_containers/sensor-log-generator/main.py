@@ -953,6 +953,11 @@ def main():
         action="store_true",
         help="Output comprehensive LLM documentation and exit.",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable extremely verbose debug logging with periodic status updates.",
+    )
 
     args = parser.parse_args()
 
@@ -1014,10 +1019,28 @@ def main():
     identity_file_path = os.environ.get("IDENTITY_FILE") or args.identity
 
     # Set up basic logging first (before config is fully loaded)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    # Enable debug mode if requested
+    if args.debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            force=True  # Force reconfiguration
+        )
+        # Set debug level for all loggers
+        logging.getLogger().setLevel(logging.DEBUG)
+        for name in ['src.simulator', 'src.database', 'src.anomaly', 'SensorDatabase']:
+            logging.getLogger(name).setLevel(logging.DEBUG)
+        
+        logging.info("🔍 DEBUG MODE ENABLED - Extremely verbose logging active")
+        logging.debug("Debug flag detected from command line")
+        # Store debug flag globally
+        os.environ['DEBUG_MODE'] = 'true'
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
 
     if not config_file_path:
         # This condition might be less likely to be hit if args.config has a default
@@ -1204,8 +1227,8 @@ def main():
         
         # 1. Check database is writable
         try:
-            test_reading_count = simulator.database.get_database_stats()["total_readings"]
-            logging.info(f"✓ Database is accessible (contains {test_reading_count} readings)")
+            reading_count = simulator.database.get_database_stats()["total_readings"]
+            logging.info(f"✓ Database is accessible (contains {reading_count} readings)")
         except Exception as e:
             logging.error(f"✗ Database health check failed: {e}")
             raise RuntimeError(f"Database is not accessible: {e}")
@@ -1250,17 +1273,15 @@ def main():
         
         # Track start time for diagnostics
         start_time = time.time()
-        logging.info(f"ABOUT TO CALL simulator.run() - simulator exists: {simulator is not None}")
-        logging.info(f"Simulator config: run_time={simulator.run_time_seconds}, readings_per_second={simulator.readings_per_second}")
+        logging.info(f"Starting simulation: run_time={simulator.run_time_seconds}s, readings_per_second={simulator.readings_per_second}")
         simulator.run()
         
         # Check if simulator stopped early
         elapsed = time.time() - start_time
         expected_runtime = simulator.run_time_seconds
         if elapsed < expected_runtime * 0.9:  # Allow 10% tolerance
-            logging.critical(f"SIMULATOR STOPPED EARLY!")
-            logging.critical(f"Expected runtime: {expected_runtime}s, Actual: {elapsed:.1f}s")
-            logging.critical(f"Generated {simulator.readings_count} readings, {simulator.error_count} errors")
+            logging.warning(f"Simulation stopped early: expected {expected_runtime}s, ran for {elapsed:.1f}s")
+            logging.info(f"Generated {simulator.readings_count} readings, {simulator.error_count} errors")
             if simulator.error_count > 0:
                 logging.critical(f"Error rate: {simulator.error_count/max(simulator.readings_count, 1)*100:.2f}%")
 
@@ -1272,8 +1293,7 @@ def main():
         if stop_watcher_event:
             stop_watcher_event.set()  # Stop file watchers
     except Exception as e:
-        logging.critical(f"Main: CRITICAL UNHANDLED EXCEPTION: {e}", exc_info=True)
-        logging.critical("This should never happen - please report this issue!")
+        logging.error(f"Unexpected error in main: {e}", exc_info=True)
     finally:
         logging.info("Main: Beginning shutdown sequence...")
         

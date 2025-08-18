@@ -39,14 +39,14 @@ def query_unity_catalog():
         print("❌ Invalid or missing DATABRICKS_HTTP_PATH")
         sys.exit(1)
 
-    # Get database
-    database = os.getenv("DATABRICKS_DATABASE", "")
+    # Get database/schema
+    database = os.getenv("DATABRICKS_DATABASE", "sensor_readings")
     if not database:
         print("❌ Missing DATABRICKS_DATABASE")
         sys.exit(1)
 
-    # Use database as both catalog and schema for simplicity
-    catalog = database
+    # Catalog is fixed, schema is from environment
+    catalog = "expanso_databricks_workspace"
     schema = database
 
     if not all([host, token, warehouse_id]):
@@ -367,11 +367,12 @@ def query_s3_buckets():
     )
 
     # Define buckets to check - only the ones that actually exist
+    # Use actual bucket names from bucket-config.env
     bucket_names = {
-        "ingestion": "expanso-databricks-ingestion-us-west-2",
-        "validated": "expanso-databricks-validated-us-west-2",
-        "enriched": "expanso-databricks-enriched-us-west-2",
-        "aggregated": "expanso-databricks-aggregated-us-west-2",
+        "ingestion": "expanso-raw-data-us-west-2",  # S3_BUCKET_RAW
+        "validated": "expanso-validated-data-us-west-2",  # S3_BUCKET_VALIDATED
+        "enriched": "expanso-schematized-data-us-west-2",  # S3_BUCKET_SCHEMATIZED
+        "aggregated": "expanso-aggregated-data-us-west-2",  # S3_BUCKET_AGGREGATED
     }
 
     results = []
