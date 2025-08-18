@@ -1,0 +1,34 @@
+# SQLite to S3 Uploader Configuration - Local Version
+
+# SQLite Configuration
+sqlite: "../sample-sensor/data/sensor_data.db" # Path to the sensor database
+sqlite_table: "sensor_readings" # The table name in this database (sensor writes here)
+timestamp_col: "timestamp" # Changed from timestamp_column
+
+# S3 Configuration
+s3_configuration:
+  enabled: true
+  region: "us-west-2"
+  prefix: "expanso"
+  # AWS credentials (optional - will use environment variables if not set)
+  # access_key_id: "your-access-key"
+  # secret_access_key: "your-secret-key"
+  # Buckets for each scenario (from bucket-config.env)
+  buckets:
+    ingestion: "expanso-raw-data-us-west-2"           # S3_BUCKET_RAW
+    raw: "expanso-raw-data-us-west-2"                 # S3_BUCKET_RAW
+    validated: "expanso-validated-data-us-west-2"     # S3_BUCKET_VALIDATED  
+    enriched: "expanso-schematized-data-us-west-2"    # S3_BUCKET_SCHEMATIZED
+    schematized: "expanso-schematized-data-us-west-2" # S3_BUCKET_SCHEMATIZED
+    aggregated: "expanso-aggregated-data-us-west-2"   # S3_BUCKET_AGGREGATED
+    anomalies: "expanso-anomalies-us-west-2"          # S3_BUCKET_ANOMALIES
+
+# Processing Configuration
+state_dir: "state"
+upload_interval: 15 # seconds
+max_batch_size: 500
+enable_auto_detection: true
+
+# S3 upload settings
+s3_batch_size_mb: 50 # Target size for Parquet files
+s3_compression: "snappy"

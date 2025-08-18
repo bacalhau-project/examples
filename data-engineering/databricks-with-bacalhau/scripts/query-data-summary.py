@@ -6,6 +6,7 @@
 #     "python-dotenv>=1.0.0",
 #     "tabulate>=0.9.0",
 #     "boto3>=1.28.0",
+#     "colorama>=0.4.6",
 # ]
 # ///
 
@@ -18,14 +19,72 @@ from dotenv import load_dotenv
 from databricks import sql
 from tabulate import tabulate
 import boto3
-from datetime import datetime
+from datetime import datetime, timedelta
+from colorama import init, Fore, Style
+
+# Initialize colorama for cross-platform colored output
+init(autoreset=True)
 
 # Load environment variables
 load_dotenv()
 
 
+def print_header(title, color=Fore.CYAN):
+    """Print a formatted header."""
+    print(f"\n{color}{'=' * 70}{Style.RESET_ALL}")
+    print(f"{color}{title}{Style.RESET_ALL}")
+    print(f"{color}{'=' * 70}{Style.RESET_ALL}")
+
+
+def format_timestamp(ts):
+    """Format timestamp for display."""
+    if not ts:
+        return "N/A"
+    if isinstance(ts, str):
+        return ts[:19]
+    try:
+        return ts.strftime("%Y-%m-%d %H:%M:%S")
+    except:
+        return str(ts)[:19]
+
+
+def check_data_freshness(latest_time):
+    """Check how fresh the data is and return status."""
+    if not latest_time:
+        return "❌", "No data"
+
+    try:
+        if isinstance(latest_time, str):
+            # Parse string timestamp
+            if "T" in latest_time:
+                dt = datetime.fromisoformat(latest_time.replace("Z", "+00:00").split("+")[0])
+            else:
+                dt = datetime.strptime(latest_time[:19], "%Y-%m-%d %H:%M:%S")
+        elif hasattr(latest_time, "replace"):
+            # It's a datetime object, but may be timezone aware
+            dt = latest_time.replace(tzinfo=None)
+        else:
+            dt = latest_time
+
+        now = datetime.now()
+        diff = now - dt
+
+        if diff < timedelta(minutes=5):
+            return "🟢", "LIVE (< 5 min old)"
+        elif diff < timedelta(hours=1):
+            return "🟡", f"RECENT ({int(diff.seconds / 60)} min old)"
+        elif diff < timedelta(hours=24):
+            return "🟠", f"STALE ({int(diff.seconds / 3600)} hours old)"
+        else:
+            return "🔴", f"OLD ({diff.days} days old)"
+    except Exception as e:
+        return "⚪", "Unknown"
+
+
 def query_unity_catalog():
     """Query all tables in Unity Catalog and show summary."""
+
+    print_header("📊 DATABRICKS UNITY CATALOG SUMMARY")
 
     # Get Databricks credentials
     host = os.getenv("DATABRICKS_HOST")
@@ -36,13 +95,13 @@ def query_unity_catalog():
     if "/warehouses/" in http_path:
         warehouse_id = http_path.split("/warehouses/")[-1]
     else:
-        print("❌ Invalid or missing DATABRICKS_HTTP_PATH")
+        print(f"{Fore.RED}❌ Invalid or missing DATABRICKS_HTTP_PATH{Style.RESET_ALL}")
         sys.exit(1)
 
     # Get database/schema
     database = os.getenv("DATABRICKS_DATABASE", "sensor_readings")
     if not database:
-        print("❌ Missing DATABRICKS_DATABASE")
+        print(f"{Fore.RED}❌ Missing DATABRICKS_DATABASE{Style.RESET_ALL}")
         sys.exit(1)
 
     # Catalog is fixed, schema is from environment
@@ -50,16 +109,16 @@ def query_unity_catalog():
     schema = database
 
     if not all([host, token, warehouse_id]):
-        print("❌ Missing Databricks credentials in .env file")
+        print(f"{Fore.RED}❌ Missing Databricks credentials in .env file{Style.RESET_ALL}")
         print("Required: DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_HTTP_PATH")
         sys.exit(1)
 
     # Clean up host URL
     host = host.replace("https://", "").replace("http://", "")
 
-    print(f"🔍 Querying Database: {database}")
-    print(f"🏢 Host: {host}")
-    print(f"📊 Warehouse: {warehouse_id}\n")
+    print(f"📍 Database: {Fore.BLUE}{database}{Style.RESET_ALL}")
+    print(f"🏢 Host: {Fore.BLUE}{host}{Style.RESET_ALL}")
+    print(f"📊 Warehouse: {Fore.BLUE}{warehouse_id}{Style.RESET_ALL}")
 
     try:
         # Connect to Databricks
@@ -81,7 +140,7 @@ def query_unity_catalog():
                 if not all_tables:
                     print(f"⚠️  No tables found in {catalog}.{schema}")
                     print("   You may need to run the setup or check the catalog/schema names")
-                    return
+                    return {"icon": "❌", "text": "No tables", "latest": "N/A", "records": 0}
 
                 print(f"Found {len(all_tables)} tables:")
                 for table_info in all_tables:
@@ -145,13 +204,24 @@ def query_unity_catalog():
                         # Error querying table
                         results.append((table, 0, f"Error: {str(e)[:20]}", "", 0))
 
-                # Display results in a nice table
-                headers = ["Table", "Records", "Earliest", "Latest", "Sensors"]
-                print(tabulate(results, headers=headers, tablefmt="grid"))
+                # Display results in a nice table with freshness indicators
+                print(f"\n{Fore.YELLOW}📊 TABLE OVERVIEW{Style.RESET_ALL}")
+
+                # Add status column to results
+                enhanced_results = []
+                for row in results:
+                    status_icon, status_text = check_data_freshness(
+                        row[3] if len(row) > 3 else None
+                    )
+                    enhanced_row = list(row) + [f"{status_icon} {status_text}"]
+                    enhanced_results.append(enhanced_row)
+
+                headers = ["Table", "Records", "Earliest", "Latest", "Sensors", "Status"]
+                print(tabulate(enhanced_results, headers=headers, tablefmt="grid"))
 
                 # Get total summary only if we have results
                 if results and any(r[1] > 0 for r in results):
-                    print("\n📊 OVERALL SUMMARY")
+                    print(f"\n{Fore.GREEN}📊 OVERALL SUMMARY{Style.RESET_ALL}")
 
                     # Build dynamic UNION query based on existing tables with data
                     union_parts = []
@@ -192,24 +262,34 @@ def query_unity_catalog():
                             cursor.execute(query)
                             row = cursor.fetchone()
                             if row:
-                                print(f"Total Records: {row[0]:,}")
-                                print(f"Total Sensors: {row[1]}")
-                                print(f"Date Range: {row[2]} to {row[3]}")
-                                print(f"Days of Data: {row[4]}")
+                                print(f"  📈 Total Records: {Fore.CYAN}{row[0]:,}{Style.RESET_ALL}")
+                                print(f"  🔢 Total Sensors: {Fore.CYAN}{row[1]}{Style.RESET_ALL}")
+                                print(
+                                    f"  📅 Date Range: {Fore.CYAN}{format_timestamp(row[2])} to {format_timestamp(row[3])}{Style.RESET_ALL}"
+                                )
+                                print(f"  📆 Days of Data: {Fore.CYAN}{row[4]}{Style.RESET_ALL}")
+
+                                # Check overall data freshness
+                                status_icon, status_text = check_data_freshness(row[3])
+                                print(f"  {status_icon} Data Status: {status_text}")
                         except Exception as e:
                             print(f"Could not generate overall summary: {e}")
 
-                # Show last 10 entries from each table with data
-                print("\n📋 LAST 10 ENTRIES FROM EACH TABLE")
-                print("=" * 70)
+                # Show sample entries only for key tables
+                print(f"\n{Fore.YELLOW}📋 RECENT DATA SAMPLES{Style.RESET_ALL}")
+                print("-" * 70)
+
+                # Only show samples for ingestion and aggregated tables
+                key_tables = ["sensor_readings_ingestion", "sensor_readings_aggregated"]
 
                 for r in results:
-                    if r[1] > 0 and "Error" not in str(r[2]):  # Has records and no error
+                    if r[1] > 0 and "Error" not in str(r[2]) and r[0] in key_tables:
                         table_name = r[0]
                         full_table = f"{catalog}.{schema}.{table_name}"
 
-                        print(f"\n📊 Table: {table_name} (Last 10 records)")
-                        print("-" * 60)
+                        print(
+                            f"\n📊 {table_name.replace('sensor_readings_', '').upper()} (Last 5 records)"
+                        )
 
                         # Get column list for this table
                         try:
@@ -243,7 +323,7 @@ def query_unity_catalog():
                                 SELECT {", ".join(select_cols)}
                                 FROM {full_table}
                                 ORDER BY timestamp DESC
-                                LIMIT 10
+                                LIMIT 5
                                 """
 
                                 cursor.execute(query)
@@ -288,46 +368,112 @@ def query_unity_catalog():
                         except Exception as e:
                             print(f"Error querying table: {str(e)[:100]}")
 
-                # Show recent data ingestion - find a table with data
-                for r in results:
-                    if r[1] > 0 and "Error" not in str(r[2]):
-                        print("\n📈 RECENT INGESTION (Last 24 hours)")
-                        query = f"""
-                        SELECT 
-                            DATE_FORMAT(timestamp, 'yyyy-MM-dd HH:00') as hour,
-                            COUNT(*) as records
-                        FROM {catalog}.{schema}.{r[0]}
-                        WHERE timestamp > CURRENT_TIMESTAMP() - INTERVAL 24 HOURS
-                        GROUP BY 1
-                        ORDER BY 1 DESC
-                        LIMIT 10
-                        """
+                # Track latest data for status return
+                latest_timestamp = None
+                latest_records = 0
 
-                        try:
-                            cursor.execute(query)
-                            rows = cursor.fetchall()
-                            if rows:
-                                print(f"From table: {r[0]}")
-                                print(
-                                    tabulate(rows, headers=["Hour", "Records"], tablefmt="simple")
+                # Find the ingestion table for tracking
+                for r in results:
+                    if "ingestion" in r[0] and r[1] > 0:
+                        latest_timestamp = r[3]
+                        latest_records = r[1]
+                        break
+
+                # If no ingestion table, use any table with recent data
+                if not latest_timestamp:
+                    for r in results:
+                        if r[1] > 0 and r[3]:
+                            latest_timestamp = r[3]
+                            latest_records = r[1]
+                            break
+
+                # Show hourly ingestion rate
+                print(f"\n{Fore.YELLOW}📈 HOURLY INGESTION RATE (Last 12 hours){Style.RESET_ALL}")
+                print("-" * 70)
+
+                # Try to get ingestion data from the ingestion table first
+                ingestion_table = None
+                for r in results:
+                    if "ingestion" in r[0] and r[1] > 0 and "Error" not in str(r[2]):
+                        ingestion_table = r[0]
+                        break
+
+                # Fall back to any table with data
+                if not ingestion_table:
+                    for r in results:
+                        if r[1] > 0 and "Error" not in str(r[2]):
+                            ingestion_table = r[0]
+                            break
+
+                if ingestion_table:
+                    query = f"""
+                    SELECT 
+                        DATE_FORMAT(timestamp, 'yyyy-MM-dd HH:00') as hour,
+                        COUNT(*) as records,
+                        COUNT(DISTINCT sensor_id) as active_sensors
+                    FROM {catalog}.{schema}.{ingestion_table}
+                    WHERE timestamp > CURRENT_TIMESTAMP() - INTERVAL 12 HOURS
+                    GROUP BY 1
+                    ORDER BY 1 DESC
+                    LIMIT 12
+                    """
+
+                    try:
+                        cursor.execute(query)
+                        rows = cursor.fetchall()
+                        if rows:
+                            # Add status indicators
+                            enhanced_rows = []
+                            for row in rows:
+                                hour_str = row[0]
+                                records = row[1]
+                                sensors = row[2]
+
+                                # Check if this hour has good data flow
+                                if records > 100:
+                                    status = "🟢 Good"
+                                elif records > 10:
+                                    status = "🟡 Low"
+                                else:
+                                    status = "🔴 Minimal"
+
+                                enhanced_rows.append([hour_str, records, sensors, status])
+
+                            print(
+                                tabulate(
+                                    enhanced_rows,
+                                    headers=["Hour", "Records", "Sensors", "Status"],
+                                    tablefmt="simple",
                                 )
-                            else:
-                                print("No data in the last 24 hours")
-                        except:
-                            pass
-                        break  # Only show for first table with data
+                            )
+                        else:
+                            print(f"{Fore.RED}⚠️  No data in the last 12 hours{Style.RESET_ALL}")
+                    except Exception as e:
+                        print(
+                            f"{Fore.RED}Error getting hourly data: {str(e)[:50]}{Style.RESET_ALL}"
+                        )
+
+                # Return status for summary
+                if latest_timestamp:
+                    status_icon, status_text = check_data_freshness(latest_timestamp)
+                    return {
+                        "icon": status_icon,
+                        "text": status_text,
+                        "latest": format_timestamp(latest_timestamp),
+                        "records": latest_records,
+                    }
+                else:
+                    return {"icon": "❌", "text": "No data", "latest": "N/A", "records": 0}
 
     except Exception as e:
         print(f"❌ Error connecting to Databricks: {e}")
-        sys.exit(1)
+        return {"icon": "❌", "text": f"Error: {str(e)[:30]}", "latest": "N/A", "records": 0}
 
 
 def query_s3_buckets():
     """Query all S3 buckets and show summary."""
 
-    print("\n" + "=" * 70)
-    print("📦 S3 BUCKET SUMMARY")
-    print("=" * 70)
+    print_header("📦 S3 BUCKET SUMMARY")
 
     # Get AWS credentials - check multiple sources
     aws_access_key = None
@@ -356,7 +502,7 @@ def query_s3_buckets():
         print("⚠️  No AWS credentials found. Skipping S3 query.")
         print("   Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY or")
         print("   create credentials/expanso-s3-env.sh")
-        return
+        return {"icon": "❌", "text": "No credentials", "latest": "N/A"}
 
     # Create S3 client
     s3_client = boto3.client(
@@ -378,6 +524,7 @@ def query_s3_buckets():
     results = []
     total_files = 0
     total_size = 0
+    ingestion_latest = None
 
     for bucket_type, bucket_name in bucket_names.items():
         try:
@@ -401,6 +548,10 @@ def query_s3_buckets():
             total_files += file_count
             total_size += bucket_size
 
+            # Track ingestion bucket latest time
+            if bucket_type == "ingestion" and latest_modified:
+                ingestion_latest = latest_modified
+
             # Format size
             size_mb = bucket_size / (1024 * 1024)
             size_str = f"{size_mb:.2f} MB" if size_mb < 1024 else f"{size_mb / 1024:.2f} GB"
@@ -416,55 +567,171 @@ def query_s3_buckets():
             else:
                 results.append([bucket_type, 0, "0 MB", f"Error: {str(e)[:30]}"])
 
+    # Add freshness status to results
+    enhanced_results = []
+    for row in results:
+        bucket_type, file_count, size_str, date_str = row
+
+        # Parse date for freshness check
+        if (
+            date_str
+            and date_str != "N/A"
+            and "Error" not in date_str
+            and "not found" not in date_str
+        ):
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+                status_icon, status_text = check_data_freshness(dt)
+            except:
+                status_icon, status_text = "⚪", "Unknown"
+        else:
+            status_icon, status_text = "❌", date_str
+
+        enhanced_results.append(
+            [bucket_type, file_count, size_str, date_str, f"{status_icon} {status_text}"]
+        )
+
     # Display results
-    headers = ["Bucket Type", "Files", "Total Size", "Latest Update"]
-    print(tabulate(results, headers=headers, tablefmt="grid"))
+    headers = ["Bucket Type", "Files", "Total Size", "Latest Update", "Status"]
+    print(tabulate(enhanced_results, headers=headers, tablefmt="grid"))
 
     # Show totals
     total_size_mb = total_size / (1024 * 1024)
     size_display = (
         f"{total_size_mb:.2f} MB" if total_size_mb < 1024 else f"{total_size_mb / 1024:.2f} GB"
     )
-    print(f"\n📊 TOTALS: {total_files} files, {size_display}")
+    print(
+        f"\n📊 TOTALS: {Fore.CYAN}{total_files:,}{Style.RESET_ALL} files, {Fore.CYAN}{size_display}{Style.RESET_ALL}"
+    )
 
-    # Show recent uploads (last 5 files from any bucket)
-    print("\n📤 RECENT UPLOADS (Last 5 files across all buckets):")
-    all_files = []
+    # Show recent uploads (last 10 files from ingestion bucket for better monitoring)
+    print(f"\n{Fore.YELLOW}📤 RECENT INGESTION FILES (Last 10){Style.RESET_ALL}")
 
-    for bucket_type, bucket_name in bucket_names.items():
-        try:
-            response = s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=100)
-            if "Contents" in response:
-                for obj in response["Contents"]:
-                    all_files.append(
-                        {
-                            "bucket": bucket_type,
-                            "key": obj["Key"][:50] + ("..." if len(obj["Key"]) > 50 else ""),
-                            "modified": obj["LastModified"],
-                            "size": obj["Size"] / 1024,  # KB
-                        }
-                    )
-        except:
-            continue
+    try:
+        response = s3_client.list_objects_v2(Bucket=bucket_names["ingestion"], MaxKeys=1000)
 
-    # Sort by modified date and show last 5
-    all_files.sort(key=lambda x: x["modified"], reverse=True)
-    recent_files = all_files[:5]
+        if "Contents" in response:
+            # Get all files and sort by date
+            files = sorted(response["Contents"], key=lambda x: x["LastModified"], reverse=True)[:10]
 
-    if recent_files:
-        recent_data = [
-            [f["bucket"], f["key"], f"{f['size']:.1f} KB", f["modified"].strftime("%Y-%m-%d %H:%M")]
-            for f in recent_files
-        ]
+            recent_data = []
+            for obj in files:
+                key = obj["Key"]
+                # Extract just filename from path
+                filename = key.split("/")[-1] if "/" in key else key
+                size_kb = obj["Size"] / 1024
+                modified = obj["LastModified"]
 
+                # Check freshness
+                status_icon, _ = check_data_freshness(modified)
+
+                recent_data.append(
+                    [
+                        status_icon,
+                        filename[:40] + ("..." if len(filename) > 40 else ""),
+                        f"{size_kb:.1f} KB",
+                        modified.strftime("%Y-%m-%d %H:%M:%S"),
+                    ]
+                )
+
+            print(
+                tabulate(
+                    recent_data, headers=["Status", "File", "Size", "Uploaded"], tablefmt="simple"
+                )
+            )
+        else:
+            print(f"{Fore.RED}No files found in ingestion bucket{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"{Fore.RED}Error listing recent files: {str(e)[:50]}{Style.RESET_ALL}")
+
+    # Return status for summary
+    if ingestion_latest:
+        status_icon, status_text = check_data_freshness(ingestion_latest)
+        return {
+            "icon": status_icon,
+            "text": status_text,
+            "latest": ingestion_latest.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    else:
+        return {"icon": "❌", "text": "No data", "latest": "N/A"}
+
+
+def print_data_flow_summary(s3_status, db_status):
+    """Print a summary of data flow status."""
+    print_header("🔍 DATA FLOW STATUS SUMMARY", Fore.GREEN)
+
+    # Check S3 ingestion status
+    s3_icon = s3_status.get("icon", "⚪")
+    s3_text = s3_status.get("text", "Unknown")
+    s3_latest = s3_status.get("latest", "N/A")
+
+    # Check DB ingestion status
+    db_icon = db_status.get("icon", "⚪")
+    db_text = db_status.get("text", "Unknown")
+    db_latest = db_status.get("latest", "N/A")
+    db_records = db_status.get("records", 0)
+
+    print(f"\n{Fore.CYAN}📥 S3 INGESTION:{Style.RESET_ALL}")
+    print(f"   Status: {s3_icon} {s3_text}")
+    print(f"   Latest: {s3_latest}")
+
+    print(f"\n{Fore.CYAN}📊 DATABRICKS INGESTION:{Style.RESET_ALL}")
+    print(f"   Status: {db_icon} {db_text}")
+    print(f"   Latest: {db_latest}")
+    print(f"   Recent Records: {db_records:,}")
+
+    # Overall assessment
+    print(f"\n{Fore.CYAN}🎯 OVERALL PIPELINE STATUS:{Style.RESET_ALL}")
+
+    if "LIVE" in s3_text and "LIVE" in db_text:
         print(
-            tabulate(recent_data, headers=["Bucket", "File", "Size", "Modified"], tablefmt="simple")
+            f"   {Fore.GREEN}✅ Pipeline is FULLY OPERATIONAL - Data is flowing normally{Style.RESET_ALL}"
+        )
+    elif "LIVE" in s3_text or "RECENT" in s3_text:
+        print(
+            f"   {Fore.YELLOW}⚠️  S3 uploads are active but Databricks ingestion may be delayed{Style.RESET_ALL}"
+        )
+    elif "LIVE" in db_text or "RECENT" in db_text:
+        print(
+            f"   {Fore.YELLOW}⚠️  Databricks has recent data but S3 uploads may be stopped{Style.RESET_ALL}"
         )
     else:
-        print("No files found in any bucket")
+        print(
+            f"   {Fore.RED}❌ Pipeline appears to be STOPPED - No recent data flow detected{Style.RESET_ALL}"
+        )
+
+    print(f"\n{Fore.CYAN}💡 TROUBLESHOOTING TIPS:{Style.RESET_ALL}")
+
+    if "OLD" in s3_text or "STALE" in s3_text:
+        print(f"   • Check if sensor is running: ./run.sh --mode docker --component sensor")
+        print(f"   • Check if uploader is running: ./run.sh --mode docker --component uploader")
+
+    if "OLD" in db_text or "STALE" in db_text:
+        print(f"   • Check Databricks Auto Loader job status in the Databricks workspace")
+        print(f"   • Verify Databricks credentials in .env file")
+
+    print("")
 
 
 if __name__ == "__main__":
-    # Query both S3 and Unity Catalog
-    query_s3_buckets()
-    query_unity_catalog()
+    # Track status for summary
+    s3_status = {}
+    db_status = {}
+
+    # Query S3 first
+    try:
+        # We'll need to modify query_s3_buckets to return status
+        s3_status = query_s3_buckets()
+    except Exception as e:
+        print(f"{Fore.RED}Error querying S3: {e}{Style.RESET_ALL}")
+        s3_status = {"icon": "❌", "text": "Error", "latest": "N/A"}
+
+    # Query Databricks
+    try:
+        db_status = query_unity_catalog()
+    except Exception as e:
+        print(f"{Fore.RED}Error querying Databricks: {e}{Style.RESET_ALL}")
+        db_status = {"icon": "❌", "text": "Error", "latest": "N/A", "records": 0}
+
+    # Print final summary
+    print_data_flow_summary(s3_status, db_status)
