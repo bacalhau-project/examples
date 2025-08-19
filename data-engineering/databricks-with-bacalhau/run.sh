@@ -119,7 +119,7 @@ run_uploader_local() {
     print_status "Running databricks-uploader locally..."
     
     # Check for required files
-    if [ ! -f "databricks-s3-uploader-config.yaml" ]; then
+    if [ ! -f "databricks-uploader/databricks-s3-uploader-config.yaml" ]; then
         print_error "Config file not found: databricks-s3-uploader-config.yaml"
         exit 1
     fi

@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from databricks import sql
 from tabulate import tabulate
 import boto3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from colorama import init, Fore, Style
 
 # Initialize colorama for cross-platform colored output
@@ -36,6 +36,20 @@ def print_header(title, color=Fore.CYAN):
     print(f"{color}{'=' * 70}{Style.RESET_ALL}")
 
 
+def print_timestamp_info():
+    """Print information about timestamps used in the system."""
+    print(f"\n{Fore.CYAN}📅 TIMESTAMP INFORMATION:{Style.RESET_ALL}")
+    print(
+        f"  • S3 Status: Based on {Fore.YELLOW}LastModified{Style.RESET_ALL} (when file was uploaded to S3)"
+    )
+    print(
+        f"  • Databricks Status: Based on {Fore.YELLOW}timestamp{Style.RESET_ALL} column (sensor reading time)"
+    )
+    print(f"  • All times compared against {Fore.YELLOW}current UTC{Style.RESET_ALL} time")
+    print(f"  • Note: Sensor timestamps may differ from upload times by seconds/minutes")
+    print("")
+
+
 def format_timestamp(ts):
     """Format timestamp for display."""
     if not ts:
@@ -49,36 +63,62 @@ def format_timestamp(ts):
 
 
 def check_data_freshness(latest_time):
-    """Check how fresh the data is and return status."""
+    """Check how fresh the data is and return status.
+
+    Note: This compares against current UTC time since all our timestamps
+    are in UTC (S3 LastModified, Databricks timestamps).
+    """
     if not latest_time:
         return "❌", "No data"
 
     try:
+        # Parse timestamp to UTC datetime
         if isinstance(latest_time, str):
             # Parse string timestamp
             if "T" in latest_time:
-                dt = datetime.fromisoformat(latest_time.replace("Z", "+00:00").split("+")[0])
+                # ISO format timestamp (may have timezone)
+                if "+" in latest_time or latest_time.endswith("Z"):
+                    # Has timezone info
+                    dt_str = latest_time.replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(dt_str.split("+")[0])
+                else:
+                    dt = datetime.fromisoformat(latest_time.split(".")[0])
             else:
+                # Simple datetime format
                 dt = datetime.strptime(latest_time[:19], "%Y-%m-%d %H:%M:%S")
         elif hasattr(latest_time, "replace"):
-            # It's a datetime object, but may be timezone aware
+            # It's a datetime object, may be timezone aware
             dt = latest_time.replace(tzinfo=None)
         else:
             dt = latest_time
 
-        now = datetime.now()
+        # Use UTC now for comparison since our data is in UTC
+        from datetime import timezone
+
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         diff = now - dt
 
+        # Calculate total hours for accurate display
+        total_hours = diff.total_seconds() / 3600
+
         if diff < timedelta(minutes=5):
-            return "🟢", "LIVE (< 5 min old)"
+            return "🟢", "LIVE (< 5 min)"
         elif diff < timedelta(hours=1):
-            return "🟡", f"RECENT ({int(diff.seconds / 60)} min old)"
+            mins = int(diff.total_seconds() / 60)
+            return "🟡", f"RECENT ({mins} min ago)"
         elif diff < timedelta(hours=24):
-            return "🟠", f"STALE ({int(diff.seconds / 3600)} hours old)"
+            if total_hours < 2:
+                return "🟠", f"STALE ({int(total_hours * 60)} min ago)"
+            else:
+                return "🟠", f"STALE ({int(total_hours)} hours ago)"
         else:
-            return "🔴", f"OLD ({diff.days} days old)"
+            days = diff.days
+            if days == 1:
+                return "🔴", f"OLD (1 day ago)"
+            else:
+                return "🔴", f"OLD ({days} days ago)"
     except Exception as e:
-        return "⚪", "Unknown"
+        return "⚪", f"Unknown (parse error)"
 
 
 def query_unity_catalog():
@@ -216,7 +256,14 @@ def query_unity_catalog():
                     enhanced_row = list(row) + [f"{status_icon} {status_text}"]
                     enhanced_results.append(enhanced_row)
 
-                headers = ["Table", "Records", "Earliest", "Latest", "Sensors", "Status"]
+                headers = [
+                    "Table",
+                    "Records",
+                    "Earliest Reading",
+                    "Latest Reading (UTC)",
+                    "Sensors",
+                    "Status",
+                ]
                 print(tabulate(enhanced_results, headers=headers, tablefmt="grid"))
 
                 # Get total summary only if we have results
@@ -592,7 +639,7 @@ def query_s3_buckets():
         )
 
     # Display results
-    headers = ["Bucket Type", "Files", "Total Size", "Latest Update", "Status"]
+    headers = ["Bucket Type", "Files", "Total Size", "Last Upload (UTC)", "Status"]
     print(tabulate(enhanced_results, headers=headers, tablefmt="grid"))
 
     # Show totals
@@ -660,6 +707,15 @@ def print_data_flow_summary(s3_status, db_status):
     """Print a summary of data flow status."""
     print_header("🔍 DATA FLOW STATUS SUMMARY", Fore.GREEN)
 
+    # Print timestamp information first
+    print_timestamp_info()
+
+    # Get current UTC time for reference
+    from datetime import timezone
+
+    current_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    print(f"{Fore.BLUE}⏰ Current Time: {current_utc}{Style.RESET_ALL}\n")
+
     # Check S3 ingestion status
     s3_icon = s3_status.get("icon", "⚪")
     s3_text = s3_status.get("text", "Unknown")
@@ -671,14 +727,31 @@ def print_data_flow_summary(s3_status, db_status):
     db_latest = db_status.get("latest", "N/A")
     db_records = db_status.get("records", 0)
 
-    print(f"\n{Fore.CYAN}📥 S3 INGESTION:{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}📥 S3 UPLOADS (File Upload Time):{Style.RESET_ALL}")
     print(f"   Status: {s3_icon} {s3_text}")
-    print(f"   Latest: {s3_latest}")
+    print(f"   Latest Upload: {s3_latest} UTC")
 
-    print(f"\n{Fore.CYAN}📊 DATABRICKS INGESTION:{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}📊 DATABRICKS DATA (Sensor Reading Time):{Style.RESET_ALL}")
     print(f"   Status: {db_icon} {db_text}")
-    print(f"   Latest: {db_latest}")
-    print(f"   Recent Records: {db_records:,}")
+    print(f"   Latest Reading: {db_latest} UTC")
+    print(f"   Total Records: {db_records:,}")
+
+    # Calculate lag between S3 upload and DB ingestion if both are recent
+    if "LIVE" in s3_text and "LIVE" in db_text:
+        try:
+            s3_time = datetime.strptime(s3_latest[:19], "%Y-%m-%d %H:%M:%S")
+            db_time = datetime.strptime(db_latest[:19], "%Y-%m-%dT%H:%M:%S")
+            lag = abs((s3_time - db_time).total_seconds())
+            if lag < 60:
+                print(
+                    f"\n{Fore.GREEN}⚡ Pipeline Lag: {int(lag)} seconds (S3 upload → DB ingestion){Style.RESET_ALL}"
+                )
+            else:
+                print(
+                    f"\n{Fore.YELLOW}⚡ Pipeline Lag: {int(lag / 60)} minutes (S3 upload → DB ingestion){Style.RESET_ALL}"
+                )
+        except:
+            pass
 
     # Overall assessment
     print(f"\n{Fore.CYAN}🎯 OVERALL PIPELINE STATUS:{Style.RESET_ALL}")

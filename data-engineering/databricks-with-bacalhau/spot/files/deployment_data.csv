@@ -1,6 +1,0 @@
-service_name,version,port,replicas,memory_limit
-web-frontend,v2.1.0,8080,3,512Mi
-api-backend,v1.5.2,8000,5,1Gi
-database,v13.4,5432,1,2Gi
-redis-cache,v6.2,6379,2,256Mi
-worker-queue,v1.3.1,8001,10,512Mi

@@ -449,11 +449,10 @@ class SQLiteToS3Uploader:
                 )
                 conn.row_factory = sqlite3.Row
 
-                # Set to query-only mode for extra safety
-                conn.execute("PRAGMA query_only=1;")
-
-                # NEVER set journal_mode - that's a WRITE operation!
-                # The sensor database controls its own journal mode
+                # Note: We don't set any PRAGMA statements because:
+                # 1. The connection is already read-only via ?mode=ro
+                # 2. PRAGMA statements can sometimes be treated as write operations
+                # 3. The sensor database controls its own settings
 
                 cursor = conn.cursor()
                 cursor.execute(query, params)
@@ -496,7 +495,7 @@ class SQLiteToS3Uploader:
                         info_conn = sqlite3.connect(
                             f"file:{db_path}?mode=ro", uri=True, timeout=5.0
                         )
-                        info_conn.execute("PRAGMA query_only=1;")
+                        # Don't set PRAGMA - connection is already read-only
                         cursor = info_conn.cursor()
                         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                         tables = [row[0] for row in cursor.fetchall()]
