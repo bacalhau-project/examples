@@ -6,7 +6,7 @@ Compute:
   Orchestrators:
     - nats://f503ee90-c4dc-4ac7-a7b5-a460aeb94fb3.us1.dev-cloud.expanso.dev:4222
   Auth:
-    Token: "att3eiH8PWpazbFbiXv4tmXLnShzZky4kcJxW9T44r6wwpwB3ZBsnkvsqWsUpJa7"
+    Token: "REPLACE_WITH_YOUR_NATS_AUTH_TOKEN"
   TLS:
     RequireTLS: true
   AllowListedLocalPaths:

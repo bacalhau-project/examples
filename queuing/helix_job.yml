@@ -14,7 +14,7 @@ Tasks:
           - "cat /proc/cpuinfo > x.txt; helix fs upload x.txt hostnames/$(cat /etc/hostname).txt"
         EnvironmentVariables:
           - HELIX_URL=https://app.tryhelix.ai
-          - HELIX_API_KEY=hl-NVVaAZVwEROezrzMcENcGdRdSntXSE_574V9FYQZChQ=
+          - HELIX_API_KEY=hl-REPLACE_WITH_YOUR_HELIX_API_KEY
       Type: docker
     Name: main
     Network:

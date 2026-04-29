@@ -1,8 +1,8 @@
 x-common-env-variables: &common-env-variables
-  MINIO_ROOT_USER: "Willow_Hauck"
-  MINIO_ROOT_PASSWORD: "zyMa_wA4_qFxEuV"
-  AWS_ACCESS_KEY_ID: "Willow_Hauck"
-  AWS_SECRET_ACCESS_KEY: "zyMa_wA4_qFxEuV"
+  MINIO_ROOT_USER: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set. Please provide it in your .env file or shell environment.}"
+  MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set. Please provide it in your .env file or shell environment.}"
+  AWS_ACCESS_KEY_ID: "${MINIO_ROOT_USER}"
+  AWS_SECRET_ACCESS_KEY: "${MINIO_ROOT_PASSWORD}"
   BACALHAU_DISABLEANALYTICS: true
   POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER must be set. Please provide it in your .env file or shell environment.}"
   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set. Please provide it in your .env file or shell environment.}"
